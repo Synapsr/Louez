@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { enqueueEffects } from "@louez/api/platform/effects";
-import { db, payments, platformFees, reservations, stores } from "@louez/db";
+import { db, paymentDisputes, payments, platformFees, reservations, stores } from "@louez/db";
 
 import { dispatchApiEffects } from "@/lib/api/effects";
 import { isBillingEnabled } from "@/lib/billing/mode";
@@ -19,7 +19,10 @@ import { planOfferMonths } from "./plan-offer-core";
 /** The cheapest plan price there is, excluding VAT: a legacy month below it needs no look. */
 const CHEAPEST_PLAN_MINOR = 4900;
 
-/** A day's run checks at most this many stores; the rest wait for the next day. */
+/**
+ * A day's run checks at most this many stores. When there are more, each day takes the
+ * next ones in a fixed order (rotateDaily), so every candidate is checked in turn.
+ */
 const MAX_STORES_PER_RUN = 500;
 
 /** Stores checked at once: each check of a store the service bills reads its statements. */
@@ -50,20 +53,19 @@ async function legacyCandidates(now: Date): Promise<string[]> {
       ),
     )
     .groupBy(platformFees.storeId, platformFees.billingMonth)
-    .having(sql`${paid} > ${CHEAPEST_PLAN_MINOR}`)
-    .limit(MAX_STORES_PER_RUN);
+    .having(sql`${paid} > ${CHEAPEST_PLAN_MINOR}`);
   return rows.map((row) => row.storeId);
 }
 
 /**
- * Stores never e-mailed with a reservation or a payment since a week before the last
- * month began: only the billing service knows what they owe (minimums per payment,
+ * Stores never e-mailed with a reservation, a payment or a dispute since a week before
+ * the last month began: only the billing service knows what they owe (minimums per payment,
  * commission on unpaid totals), so nothing narrower is safe; the rule reads their
  * statements. A store with no such activity owes nothing for those months.
  */
 async function activeCandidates(now: Date): Promise<string[]> {
   const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1) - 7 * 86_400_000);
-  const [byReservation, byPayment] = await Promise.all([
+  const [byReservation, byPayment, byDispute] = await Promise.all([
     db
       .selectDistinct({ storeId: reservations.storeId })
       .from(reservations)
@@ -73,17 +75,35 @@ async function activeCandidates(now: Date): Promise<string[]> {
           isNull(stores.planOfferNotifiedAt),
           or(gte(reservations.createdAt, since), gte(reservations.endDate, since)),
         ),
-      )
-      .limit(MAX_STORES_PER_RUN),
+      ),
     db
       .selectDistinct({ storeId: reservations.storeId })
       .from(payments)
       .innerJoin(reservations, eq(reservations.id, payments.reservationId))
       .innerJoin(stores, eq(stores.id, reservations.storeId))
-      .where(and(isNull(stores.planOfferNotifiedAt), gte(payments.createdAt, since)))
-      .limit(MAX_STORES_PER_RUN),
+      .where(and(isNull(stores.planOfferNotifiedAt), gte(payments.createdAt, since))),
+    // A dispute opened or closed lately on an older payment moves its commission.
+    db
+      .selectDistinct({ storeId: reservations.storeId })
+      .from(paymentDisputes)
+      .innerJoin(reservations, eq(reservations.id, paymentDisputes.reservationId))
+      .innerJoin(stores, eq(stores.id, reservations.storeId))
+      .where(and(isNull(stores.planOfferNotifiedAt), gte(paymentDisputes.updatedAt, since))),
   ]);
-  return [...byReservation, ...byPayment].map((row) => row.storeId);
+  return [...byReservation, ...byPayment, ...byDispute].map((row) => row.storeId);
+}
+
+/**
+ * The day's share of the candidates: all of them when they fit in a run, otherwise
+ * `MAX_STORES_PER_RUN` of them in id order, starting where the day's number points,
+ * so the window moves each day and wraps around.
+ */
+export function rotateDaily(storeIds: readonly string[], now: Date): string[] {
+  const sorted = [...new Set(storeIds)].sort();
+  if (sorted.length <= MAX_STORES_PER_RUN) return sorted;
+  const day = Math.floor(now.getTime() / 86_400_000);
+  const start = (day * MAX_STORES_PER_RUN) % sorted.length;
+  return [...sorted.slice(start), ...sorted.slice(0, start)].slice(0, MAX_STORES_PER_RUN);
 }
 
 /**
@@ -112,7 +132,7 @@ async function queueEmail(storeId: string, now: Date): Promise<string[]> {
 export async function queuePlanOfferEmails(now: Date) {
   if (!isBillingEnabled()) return { candidates: 0, queued: 0, failed: 0 };
   const [legacy, active] = await Promise.all([legacyCandidates(now), activeCandidates(now)]);
-  const storeIds = [...new Set([...legacy, ...active])].slice(0, MAX_STORES_PER_RUN);
+  const storeIds = rotateDaily([...legacy, ...active], now);
   let queued = 0;
   let failed = 0;
   const queue = [...storeIds];

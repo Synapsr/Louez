@@ -392,6 +392,54 @@ describe("plan offer (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(checkouts.length, 1);
   });
 
+  test("a month billed on other terms than today's does not count", async () => {
+    service.handle(`/stores/${SERVICE}/billing/statements`, () => ({
+      status: 200,
+      body: {
+        timeZone: "Europe/Paris",
+        legacy: null,
+        statements: [{ ...FEBRUARY, groups: undefined }].map(
+          ({ groups: _groups, ...summary }) => summary,
+        ),
+      },
+    }));
+    service.handle(`/stores/${SERVICE}/billing/statements/2027-02-EUR`, () => ({
+      status: 200,
+      body: FEBRUARY,
+    }));
+    assert.equal((await offers.evaluatePlanOffer(SERVICE, NOW)).offer?.plan, "pro");
+
+    // The rate dropped on 5 February: February's figures are at the old rate.
+    const lower = percentPolicy(SERVICE);
+    await louezDb.db.insert(louezDb.billingPolicies).values({
+      storeId: SERVICE,
+      version: 2,
+      effectiveFrom: new Date("2027-02-05T00:00:00Z"),
+      body: {
+        ...lower,
+        version: 2,
+        effectiveFrom: "2027-02-05T00:00:00Z",
+        applicationFee: { ...lower.applicationFee, rateBps: 123 },
+      },
+    });
+    assert.equal((await offers.evaluatePlanOffer(SERVICE, NOW)).exclusion, "no_saving");
+  });
+
+  test("the daily run takes every candidate in turn when there are too many", () => {
+    const ids = Array.from(
+      { length: 1200 },
+      (_, index) => `store_${String(index).padStart(4, "0")}`,
+    );
+    const seen = new Set<string>();
+    for (let day = 0; day < 3; day += 1) {
+      const batch = emails.rotateDaily(ids, new Date(Date.UTC(2027, 1, 10 + day)));
+      assert.equal(batch.length, 500);
+      for (const id of batch) seen.add(id);
+    }
+    assert.equal(seen.size, 1200);
+    assert.deepEqual(emails.rotateDaily(["b", "a", "a"], NOW), ["a", "b"]);
+  });
+
   test("nothing at all with billing off", async () => {
     await legacyMonth({ tariffCents: 90, month: "2027-02", count: 80, priceCents: 90 });
     const billing = process.env.LOUEZ_BILLING;

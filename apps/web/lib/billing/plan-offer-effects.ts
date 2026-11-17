@@ -57,7 +57,8 @@ async function readRecipient(storeId: string) {
     storeName: store.name,
     country: store.settings?.country ?? null,
     primaryColor: store.theme?.primaryColor ?? undefined,
-    onPlan: planInForce(row),
+    // A plan in force, or subscription billing the platform set by hand.
+    onPlan: planInForce(row) || (row !== undefined && row.billingMode !== "pay_as_you_go"),
     hasAdminDiscount: Boolean(store.stripeCouponId) || store.discountPercent > 0,
   };
 }

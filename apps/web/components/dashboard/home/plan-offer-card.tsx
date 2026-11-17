@@ -74,7 +74,9 @@ export const PlanOfferCard = ({
     if (!node || counted.current) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (counted.current || !entries.some((entry) => entry.isIntersecting)) return;
+        // The first report comes at once, whatever the ratio: wait for half on screen.
+        const seen = entries.some((entry) => entry.intersectionRatio >= 0.5);
+        if (counted.current || !seen) return;
         counted.current = true;
         observer.disconnect();
         markShown({ offer });

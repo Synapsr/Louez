@@ -76,6 +76,17 @@ const isCurrency = (value: string): value is Currency =>
 const isOfferedSlug = (slug: string): slug is PlanOfferCandidate["slug"] =>
   slug === "pro" || slug === "ultra";
 
+/**
+ * What a month's figures depend on: who bills the store and, for the billing service,
+ * its fee terms. Two policies with the same key ask the same for the same booking.
+ */
+function termsKey(policy: EffectivePolicy): string {
+  const source = sourceOf(policy);
+  return source === "service"
+    ? `service:${JSON.stringify(policy.terms.applicationFee)}`
+    : String(source);
+}
+
 /** The plans the store can buy on Checkout in `currency`, monthly. */
 function offerablePlans(currency: Currency): PlanOfferCandidate[] {
   return getPlans().flatMap((plan) => {
@@ -258,7 +269,16 @@ export async function evaluatePlanOffer(
   if (!isBillingEnabled()) return none("billing_off");
 
   const months = planOfferMonths(now);
-  const [store, row, policyNow, policyPrevious, rawCurrency] = await Promise.all([
+  const currentStart = monthStart(months.current);
+  const [
+    store,
+    row,
+    policyNow,
+    policyCurrentStart,
+    policyPreviousEnd,
+    policyPreviousStart,
+    rawCurrency,
+  ] = await Promise.all([
     db.query.stores.findFirst({
       where: eq(stores.id, storeId),
       columns: {
@@ -273,8 +293,10 @@ export async function evaluatePlanOffer(
       columns: { billingMode: true, planSlug: true, status: true, stripeSubscriptionId: true },
     }),
     getEffectivePolicy(storeId, now),
-    // The last instant of the previous month: who billed it.
-    getEffectivePolicy(storeId, new Date(monthStart(months.current).getTime() - 1)),
+    // Who billed each month, and on which terms, at its first and last instants.
+    getEffectivePolicy(storeId, currentStart),
+    getEffectivePolicy(storeId, new Date(currentStart.getTime() - 1)),
+    getEffectivePolicy(storeId, monthStart(months.previous)),
     getStoreCurrency(storeId),
   ]);
   if (!store) return none("unknown_store");
@@ -293,13 +315,17 @@ export async function evaluatePlanOffer(
   const plans = offerablePlans(currency);
   if (plans.length === 0) return none("currency");
 
-  const counted: readonly [PlanOfferPeriod, string][] =
-    sourceOf(policyPrevious) === source
-      ? [
-          ["current", months.current],
-          ["previous", months.previous],
-        ]
-      : [["current", months.current]];
+  // A month counts only when it was billed as the store is billed now, from its start to
+  // its end: then what it paid is what today's tariff asks. Louez's legacy fees are also
+  // capped at today's tariff, row by row (legacyPaid).
+  const billedAsNow = (...policies: EffectivePolicy[]) =>
+    policies.every((policy) => termsKey(policy) === termsKey(policyNow));
+  const counted: [PlanOfferPeriod, string][] = [];
+  if (billedAsNow(policyCurrentStart)) counted.push(["current", months.current]);
+  if (billedAsNow(policyPreviousStart, policyPreviousEnd))
+    counted.push(["previous", months.previous]);
+  if (counted.length === 0) return none("no_saving");
+
   const [paidOf, usage] = await Promise.all([
     source === "service"
       ? servicePaid(

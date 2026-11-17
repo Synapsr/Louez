@@ -42,9 +42,11 @@ lignes qu'un abonnement aurait évitées, c'est-à-dire les groupes `commission`
 - les lignes qui régularisent un mois précédent (`adjustsPeriod`) sont exclues ;
 - si le service ne répond pas, aucune offre n'est faite.
 
-Deux mois sont comparés : le mois en cours (UTC, depuis le 1er) et le mois précédent. Le mois
-précédent ne compte que s'il a été facturé de la même façon qu'aujourd'hui. Le texte de la carte
-dit « Ce mois-ci » ou « Le mois dernier ».
+Deux mois sont comparés : le mois en cours (UTC, depuis le 1er) et le mois précédent. Un mois
+ne compte que s'il a été facturé comme aujourd'hui à son début comme à sa fin : même mode de
+facturation et, pour le service, même frais. Un tarif baissé depuis ne déclenche donc jamais
+d'offre sur des montants de l'ancien tarif. Le texte de la carte dit « Ce mois-ci » ou « Le mois
+dernier ».
 
 ## La règle
 
@@ -93,10 +95,12 @@ un plan entre-temps, ou qui a reçu une remise, n'ouvre rien.
 Le propriétaire reçoit un seul e-mail, la première fois que la règle propose un plan, même si la
 carte a été fermée :
 
-- le cron le prépare chaque jour à 08 h 15 UTC ;
+- le cron le prépare chaque jour à 08 h 15 UTC, sur les boutiques qui ont eu une activité
+  (réservation, paiement, litige) depuis le début du mois précédent ; au-delà de 500 boutiques,
+  chaque jour prend les suivantes, dans un ordre fixe ;
 - la boutique est marquée (`stores.plan_offer_notified_at`) et l'e-mail est mis dans la file de
   sortie dans la même transaction ;
-- l'envoi revérifie qu'aucun plan, coupon ou remise n'est arrivé depuis.
+- l'envoi revérifie qu'aucun plan, mode abonnement, coupon ou remise n'est arrivé depuis.
 
 ## Événements PostHog
 
