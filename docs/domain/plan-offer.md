@@ -108,11 +108,11 @@ Les trois événements sont envoyés côté serveur. Ils portent `store_id`, `pl
 `billing_source`, `period`, `month`, `currency`, `paid_cents`, `plan_price_cents`,
 `threshold_cents`, `savings_cents` et `vat_rate_bps`.
 
-| Événement | Quand |
-| --- | --- |
-| `plan_offer_shown` | La carte est à moitié visible à l'écran, une fois par visite de l'accueil. |
+| Événement              | Quand                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| `plan_offer_shown`     | La carte est à moitié visible à l'écran, une fois par visite de l'accueil.                        |
 | `plan_offer_dismissed` | Le propriétaire ferme la carte. Passe par la file de sortie, dans la transaction de la fermeture. |
-| `plan_offer_clicked` | Le Checkout est ouvert. Passe par la file de sortie. |
+| `plan_offer_clicked`   | Le Checkout est ouvert. Passe par la file de sortie.                                              |
 
 Ils sont comptés sur le propriétaire (seul à voir la carte), comme les étapes du cycle de vie
 de la boutique, et portent le groupe PostHog `store` (`withStoreGroup`). L'abonnement qui suit
