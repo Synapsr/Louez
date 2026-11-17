@@ -806,6 +806,13 @@
       "when": 1794850441218,
       "tag": "0109_refund_operation_pending",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "5",
+      "when": 1794904545333,
+      "tag": "0110_lifecycle_analytics",
+      "breakpoints": true
     }
   ]
 }

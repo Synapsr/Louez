@@ -42,6 +42,14 @@ export const productAnalyticsEvents = {
   whatsNewListViewed: 'whats_new_list_viewed',
   whatsNewAnnouncementViewed: 'whats_new_announcement_viewed',
   whatsNewAnnouncementCompleted: 'whats_new_announcement_completed',
+  // A store's lifecycle on its owner (docs/analytics/lifecycle.md), sent by the
+  // outbox's `store.lifecycleAnalytics` rows.
+  storePublished: 'store_published',
+  stripeConnectCompleted: 'stripe_connect_completed',
+  subscriptionStarted: 'subscription_started',
+  subscriptionChanged: 'subscription_changed',
+  subscriptionCanceled: 'subscription_canceled',
+  paygFeeCharged: 'payg_fee_charged',
 } as const;
 
 export type ProductAnalyticsEvent =
@@ -56,6 +64,12 @@ export const authenticationAnalyticsBaseProperties = {
   ...productAnalyticsBaseProperties,
   feature: 'authentication',
   surface: 'dashboard',
+} as const;
+
+/** Shared by a store's lifecycle events (docs/analytics/lifecycle.md). */
+export const lifecycleAnalyticsBaseProperties = {
+  feature: 'account_lifecycle',
+  surface: 'server',
 } as const;
 
 // Shared by every onboarding event so funnels can be filtered on one pair of

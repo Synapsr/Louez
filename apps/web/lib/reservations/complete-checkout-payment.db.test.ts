@@ -706,6 +706,9 @@ describe("the paid checkout's completion (database)", { skip: skipWithoutTestDat
         feature: "checkout",
         surface: "storefront",
         store_id: booking.storeId,
+        // The store owner, so the customer's payment counts on the loueur too.
+        merchant_distinct_id:
+          booking.storeId === STORE ? "owner_paid_completion" : "owner_paid_rules",
         reservation_id: booking.id,
         customer_id: customerOf(booking.storeId),
         source: "stripe_connect_webhook",

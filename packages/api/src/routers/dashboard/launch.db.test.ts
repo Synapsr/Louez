@@ -919,11 +919,16 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       .from(louezDb.billingSyncQueue);
     assert.deepEqual(marks, [{ type: "store", id: STORE }]);
 
-    // The platform's notice on each channel, and the analytics event, then dispatched.
+    // The platform's notice on each channel, and the analytics events, then dispatched.
     const queued = await effects();
     assert.deepEqual(
       queued.map((effect) => effect.type),
-      ["store.launchNotification", "store.launchNotification", "store.launchAnalytics"],
+      [
+        "store.launchNotification",
+        "store.launchNotification",
+        "store.launchAnalytics",
+        "store.lifecycleAnalytics",
+      ],
     );
     assert.deepEqual(
       queued.slice(0, 2).map((effect) => (effect.payload as { channel: string }).channel),
@@ -934,8 +939,20 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(analytics.reservationMode, "request");
     assert.equal(analytics.transport, "rpc");
     assert.equal(typeof analytics.eventUuid, "string");
+    // store_published, on the owner, with the booking mode and who set it up.
+    const published = queued[3]?.payload as Record<string, unknown>;
+    assert.equal(published.event, "store_published");
+    assert.equal(published.ownerUserId, OWNER);
+    assert.deepEqual(published.properties, {
+      reservation_mode: "request",
+      booking_mode_effective: "request",
+      transport: "rpc",
+      // The fixture store was created without the creation's mark.
+      setup_by: "unknown",
+    });
+    assert.notEqual(published.eventUuid, analytics.eventUuid);
     assert.equal(dispatched.length, 1);
-    assert.equal(dispatched[0]?.length, 3);
+    assert.equal(dispatched[0]?.length, 4);
     assert.deepEqual(
       events.map((event) => event.type),
       ["store.launched"],
@@ -959,13 +976,15 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       key({ "idempotency-key": "live-2", "louez-confirmation": tokenOf(confirmed) }),
     );
     assert.equal(first.launched, true);
-    // The notice on two channels, the completion event, and the agent's setup action.
+    // The notice on two channels, the completion and publication events, and the
+    // agent's setup action.
     assert.deepEqual(
       (await effects()).map((row) => row.type),
       [
         "store.launchNotification",
         "store.launchNotification",
         "store.launchAnalytics",
+        "store.lifecycleAnalytics",
         "store.agentSetupAction",
       ],
     );
@@ -983,7 +1002,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(again.links.storefront, first.links.storefront);
     const fromSession = await run("completeOnboarding", { reservationMode: "payment" }, session());
     assert.equal(fromSession.launched, false);
-    assert.equal((await effects()).length, 4, "nothing more once live");
+    assert.equal((await effects()).length, 5, "nothing more once live");
     assert.deepEqual(
       events.map((event) => event.type),
       ["store.launched"],
@@ -998,7 +1017,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(changed.launched, false);
     assert.equal(changed.bookingMode.intended, "request");
     assert.equal((await storeRow())?.settings?.reservationMode, "request");
-    assert.equal((await effects()).length, 3);
+    assert.equal((await effects()).length, 4);
     assert.deepEqual(events, [
       {
         type: "store.settingsUpdated",
@@ -1025,7 +1044,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       () => run("completeOnboarding", {}, session()),
     ]);
     assert.deepEqual(results.map((result) => result.launched).sort(), [false, true]);
-    assert.equal((await effects()).length, 3);
+    assert.equal((await effects()).length, 4);
     assert.deepEqual(
       events.map((event) => event.type),
       ["store.launched"],
@@ -1097,7 +1116,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       key({ "louez-confirmation": tokenOf(fresh) }),
     );
     assert.equal(again.launched, false);
-    assert.equal((await effects()).length, 4, "the launch's rows and its setup action, once");
+    assert.equal((await effects()).length, 5, "the launch's rows and its setup action, once");
   });
 
   test("a confirmed launch whose store lost its currency meanwhile is refused as not ready", async () => {
