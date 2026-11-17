@@ -18,6 +18,7 @@ import { reportLegacyFees } from "@/lib/pay-as-you-go/legacy-fee-repair";
 import { isLegacyFeeReportTick } from "@/lib/pay-as-you-go/legacy-fee-repair-core";
 import { checkBillableAt } from "@/lib/billing/billable-at-check";
 import { isBillingEnabled } from "@/lib/billing/mode";
+import { isPlanOfferEmailTick, queuePlanOfferEmails } from "@/lib/billing/plan-offer-email";
 import { isBillingSyncEnabled } from "@/lib/billing-sync/config";
 import { processReminders } from "@/lib/reminders/automation";
 import { processReviewRequests } from "@/lib/review-booster/automation";
@@ -153,6 +154,23 @@ async function handleCron(request: Request) {
       );
       tasks.push(...nightly.tasks);
       Object.assign(results, nightly.results);
+    }
+
+    // The plan offer's e-mail: daily at 08:15 UTC, only on an instance that bills its
+    // stores. Each store's owner gets it once, ever (lib/billing/plan-offer-email.ts).
+    if (isBillingEnabled() && isPlanOfferEmailTick(now)) {
+      const daily = await runIsolatedTasks(
+        [
+          {
+            task: "plan-offer-emails",
+            key: "planOfferEmails",
+            run: () => queuePlanOfferEmails(now),
+          },
+        ],
+        taskLogs,
+      );
+      tasks.push(...daily.tasks);
+      Object.assign(results, daily.results);
     }
 
     tasks.push("voice-sessions");

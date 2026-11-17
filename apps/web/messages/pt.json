@@ -1080,6 +1080,26 @@
         "hideQR": "Ocultar código QR",
         "qrDescription": "Escaneie este código para acessar a loja",
         "downloadQR": "Baixar"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "Este mês pagou {paid} de comissão.",
+        "titlePreviousCommission": "No mês passado pagou {paid} de comissão.",
+        "titleCurrentFees": "Este mês pagou {paid} em taxas por reserva.",
+        "titlePreviousFees": "No mês passado pagou {paid} em taxas por reserva.",
+        "comparisonWithVat": "Com o {plan} teria pago {price} s/ IVA ({priceWithVat} c/ IVA).",
+        "comparison": "Com o {plan} teria pago {price} s/ IVA.",
+        "cta": "Mudar para {plan}",
+        "noCommitment": "Sem fidelização, cancele quando quiser.",
+        "dismiss": "Ocultar durante 30 dias",
+        "detailsToggle": "Como é calculado",
+        "detailsMonth": "Mês",
+        "detailsPaidCommission": "Comissão paga, c/ IVA",
+        "detailsPaidFees": "Taxas por reserva pagas",
+        "detailsPlan": "Assinatura {plan}",
+        "detailsPlanPrice": "{price} s/ IVA por mês",
+        "detailsPlanPriceWithVat": "{price} s/ IVA por mês, ou seja {priceWithVat} com IVA a {vatRate}",
+        "detailsSavings": "Poupança",
+        "detailsNote": "Calculado com as tarifas da sua loja. Com uma assinatura, as taxas da Stripe e do marketplace reeent continuam devidas."
       }
     },
     "products": {
@@ -9656,7 +9676,8 @@
     "depositAttempt": {
       "needsStripe": "O Louez encontrou no Stripe uma autorização para este pedido, mas não corresponde ao que foi pedido (montante, cartão ou referência alterados): o Louez não a registou e o pedido continua aberto. Cancele-a a partir do painel do Stripe e depois clique em «Fechar o pedido». Se, em vez disso, a cobrar no Stripe, o Louez não regista esse montante e o pedido continua aberto: contacte o suporte do Louez.",
       "none": "Esta reserva já não tem nenhuma autorização por confirmar."
-    }
+    },
+    "planOfferUnavailable": "Esta oferta já não se aplica à sua loja. Encontra as assinaturas na página Assinatura."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

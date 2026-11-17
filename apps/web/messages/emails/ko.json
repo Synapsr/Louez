@@ -386,5 +386,22 @@
   },
   "customMessage": {
     "subject": "예약 정보 #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: 이번 달에는 {plan} 요금제가 더 저렴합니다",
+    "subjectPrevious": "{storeName}: 지난달에는 {plan} 요금제가 더 저렴했습니다",
+    "title": "{plan} 요금제라면 {savings}를 절약할 수 있었습니다",
+    "bodyCurrentCommission": "이번 달 {storeName}은(는) 이미 Louez에 수수료 {paid}를 지불했습니다. {plan} 요금제에서는 대여 수수료가 없습니다.",
+    "bodyPreviousCommission": "지난달 {storeName}은(는) Louez에 수수료 {paid}를 지불했습니다. {plan} 요금제에서는 대여 수수료가 없습니다.",
+    "bodyCurrentFees": "이번 달 {storeName}은(는) 이미 Louez에 예약 수수료 {paid}를 지불했습니다. {plan} 요금제에서는 예약당 수수료가 없습니다.",
+    "bodyPreviousFees": "지난달 {storeName}은(는) Louez에 예약 수수료 {paid}를 지불했습니다. {plan} 요금제에서는 예약당 수수료가 없습니다.",
+    "monthLabel": "기준 월:",
+    "paidLabel": "Louez에 지불한 금액:",
+    "planLabel": "{plan} 요금제:",
+    "planPrice": "월 {price}(세금 별도)",
+    "planPriceWithVat": "월 {price}(부가세 별도, 부가세 포함 {priceWithVat})",
+    "savingsLabel": "절약액:",
+    "cta": "제안 보기",
+    "footer": "월간 요금제, 약정 없음, 언제든 해지할 수 있습니다. Stripe 수수료와 reeent 마켓플레이스 수수료는 계속 부과됩니다."
   }
 }
