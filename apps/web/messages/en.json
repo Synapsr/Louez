@@ -9745,7 +9745,7 @@
     },
     "confirm": {
       "label": "Ask for confirmation before sensitive actions",
-      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording a payment or a deposit return you have already made, deleting a payment, refunding a payment or recording a refund you have already given, confirming a reservation beyond the available stock or past the turnover buffer, removing a member and cancelling an invitation wait for your approval, even with this off: the agent gives you a link, and you approve or refuse on a Louez page, signed in to your account. Spending AI credits always asks for a confirmation, even with this off."
+      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording a payment or a deposit return you have already made, deleting a payment, refunding a payment or recording a refund you have already given, creating or confirming a reservation, or changing its dates, beyond the available stock or past the turnover buffer, removing a member and cancelling an invitation wait for your approval, even with this off: the agent gives you a link, and you approve or refuse on a Louez page, signed in to your account. Spending AI credits always asks for a confirmation, even with this off."
     },
     "bundlesTitle": "Tools shown",
     "bundlesHint": "The agent sees these tool sets. You can add more later.",
