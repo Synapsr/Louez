@@ -1,6 +1,8 @@
 import type { ReservationFailure } from "@louez/api/services/reservation-failure";
 import type { CreateReservationInput } from "@louez/validations";
 
+import type { SalesChannel } from "@/lib/util.sales-channel";
+
 export type ReservationSource = "online" | "phone" | "marketplace";
 
 export type CreateReservationSuccess = {
@@ -42,6 +44,12 @@ export type QuoteReservationResult = { ok: true; quote: ReservationQuote } | Res
  */
 export type CreateReservationRequest = CreateReservationInput & {
   source: ReservationSource;
+  /**
+   * Server-only: the channel the booking came through, written on the row as
+   * `sales_channel`. The marketplace facade sets it; the public action reads
+   * it from the storefront's channel cookie. Absent means none.
+   */
+  salesChannel?: SalesChannel | null;
   /** Stable id supplied by the idempotent marketplace facade. */
   reservationId?: string;
   /** Server-only capability required for marketplace reservations. */
@@ -69,6 +77,7 @@ export type QuoteReservationRequest = Omit<
   | "totalAmount"
   | "advisorConversationId"
   | "reservationId"
+  | "salesChannel"
   | "marketplaceSecret"
   | "customerSignedIn"
   | "termsAcceptedFromIp"

@@ -12,8 +12,10 @@ import {
   toAnalyticsAmountCents,
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { reservationChannelAnalyticsProperties, type SalesChannel } from "@/lib/util.sales-channel";
 
 import { reservationCurrency } from "./payment-billing-facts";
+import type { ReservationSource } from "./reservation.types";
 import type { ResolvedDelivery } from "./resolve-delivery";
 import type { ReservationTotals } from "@louez/api/services/price-cart";
 
@@ -43,13 +45,23 @@ export interface CreatedReservationCustomer {
 
 export interface PostCreationEffectsInput {
   store: StoreRow;
-  reservation: CreatedReservationSummary & { lineCount: number; totalQuantity: number };
+  reservation: CreatedReservationSummary & {
+    lineCount: number;
+    totalQuantity: number;
+    source: ReservationSource;
+    salesChannel: SalesChannel | null;
+  };
   customer: CreatedReservationCustomer;
   totals: ReservationTotals;
   delivery: ResolvedDelivery;
   insurance: { amount: number; optIn: boolean };
   promoCodeUsed: boolean;
 }
+
+/** What the funnel event of a new reservation is built from. */
+export type ReservationCreatedEventInput = Omit<PostCreationEffectsInput, "customer"> & {
+  customerId: string;
+};
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -71,34 +83,35 @@ export const runAfterResponse = (task: () => Promise<void>): void => {
 };
 
 /**
- * What happens once the reservation row exists, whatever the mode: the
- * funnel event (deferred past the response), the calendar sync and the
- * platform's internal Discord ping.
+ * The funnel event of a new reservation, deferred past the response. A
+ * marketplace Booking API hold sends it alone: the rest of its creation is
+ * silent. It carries no personal data, only ids, amounts and flags.
  */
-export const runPostCreationEffects = async ({
+export const captureReservationCreated = ({
   store,
   reservation,
-  customer,
+  customerId,
   totals,
   delivery,
   insurance,
   promoCodeUsed,
-}: PostCreationEffectsInput): Promise<void> => {
-  const currency = reservationCurrency(reservation.currency, store.settings);
+}: ReservationCreatedEventInput): void => {
+  const fromBookingApi = reservation.source === "marketplace";
 
   runAfterResponse(() =>
     captureProductServerEvent({
-      distinctId: customer.id,
+      distinctId: customerId,
       event: productAnalyticsEvents.checkoutReservationCreated,
       properties: {
         feature: "checkout",
-        surface: "storefront",
+        surface: fromBookingApi ? "marketplace" : "storefront",
         store_id: store.id,
         // The store owner's person: the customer's event counts on the loueur too.
         merchant_distinct_id: store.userId,
         reservation_id: reservation.id,
-        customer_id: customer.id,
-        source: "storefront_checkout",
+        customer_id: customerId,
+        source: fromBookingApi ? "marketplace_booking_api" : "storefront_checkout",
+        ...reservationChannelAnalyticsProperties(reservation),
         reservation_status: "pending",
         reservation_mode: store.settings?.reservationMode ?? null,
         catalog_line_count: reservation.lineCount,
@@ -115,10 +128,25 @@ export const runPostCreationEffects = async ({
         delivery_fee_cents: toAnalyticsAmountCents(totals.deliveryFee),
         deposit_amount_cents: toAnalyticsAmountCents(totals.deposit),
         total_amount_cents: toAnalyticsAmountCents(totals.total),
-        currency,
+        currency: reservationCurrency(reservation.currency, store.settings),
       },
     }),
   );
+};
+
+/**
+ * What happens once the reservation row exists, whatever the mode: the
+ * funnel event (deferred past the response), the calendar sync and the
+ * platform's internal Discord ping.
+ */
+export const runPostCreationEffects = async ({
+  customer,
+  ...created
+}: PostCreationEffectsInput): Promise<void> => {
+  const { store, reservation, totals } = created;
+  const currency = reservationCurrency(reservation.currency, store.settings);
+
+  captureReservationCreated({ ...created, customerId: customer.id });
 
   try {
     await markReservationForCalendarSync(store.id, reservation.id);

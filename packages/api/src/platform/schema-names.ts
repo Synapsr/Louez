@@ -686,6 +686,7 @@ export const SCHEMA_NAMES = {
     "rotated_at",
     "rotation_replay_expires_at",
     "rotation_replay_response",
+    "sales_channel",
     "schedule_changed_at",
     "scope",
     "scopes",

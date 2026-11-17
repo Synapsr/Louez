@@ -59,6 +59,7 @@ import { getStripe } from "@/lib/stripe/client";
 
 import { applyPromoCode, consumePromoCode, type AppliedPromoCode } from "./apply-promo-code";
 import {
+  captureReservationCreated,
   notifyRequestReceived,
   runAfterResponse,
   runPostCreationEffects,
@@ -691,6 +692,7 @@ const buildReservationValues = (
     taxDisplayMode: totals.displayMode,
     customerNotes: request.customerNotes || null,
     source: request.source,
+    salesChannel: request.salesChannel ?? null,
     // The web checkout requires accepting the rental terms: the customer signs here.
     ...(request.source === "online"
       ? {
@@ -1226,10 +1228,8 @@ export const createReservation = async (
       instantAccessUrl: null,
     };
 
-    // Marketplace holds are intentionally silent pending reservations. Payment
-    // confirmation reuses the normal webhook notification and calendar paths.
-    if (written.replay || request.source === "marketplace") {
-      return { ...base, idempotentReplay: written.replay };
+    if (written.replay) {
+      return { ...base, idempotentReplay: true };
     }
 
     const reservationSummary = {
@@ -1240,6 +1240,29 @@ export const createReservation = async (
       customerNotes: request.customerNotes || null,
       currency: written.currency,
     };
+    const created = {
+      store,
+      reservation: {
+        ...reservationSummary,
+        lineCount: request.items.length,
+        totalQuantity: request.items.reduce((sum, item) => sum + item.quantity, 0),
+        source: request.source,
+        salesChannel: request.salesChannel ?? null,
+      },
+      totals,
+      delivery,
+      insurance: { amount: insurance.amount, optIn: insurance.appliedOptIn },
+      promoCodeUsed: promo !== null,
+    };
+
+    // Marketplace holds are intentionally silent pending reservations: only
+    // their funnel event goes out. Payment confirmation reuses the normal
+    // webhook notification and calendar paths.
+    if (request.source === "marketplace") {
+      captureReservationCreated({ ...created, customerId: written.customerId });
+      return { ...base, idempotentReplay: false };
+    }
+
     const customerSummary = {
       id: written.customerId,
       email: request.customer.email,
@@ -1250,19 +1273,7 @@ export const createReservation = async (
 
     // A resumed reservation already ran its creation effects the first time.
     if (!written.reused) {
-      await runPostCreationEffects({
-        store,
-        reservation: {
-          ...reservationSummary,
-          lineCount: request.items.length,
-          totalQuantity: request.items.reduce((sum, item) => sum + item.quantity, 0),
-        },
-        customer: customerSummary,
-        totals,
-        delivery,
-        insurance: { amount: insurance.amount, optIn: insurance.appliedOptIn },
-        promoCodeUsed: promo !== null,
-      });
+      await runPostCreationEffects({ ...created, customer: customerSummary });
     }
 
     let paymentUrl: string | null = null;
