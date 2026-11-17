@@ -5,9 +5,12 @@ import { getTranslations } from "next-intl/server";
 
 import { PageTracker } from "@/components/storefront/page-tracker";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
+import { hasReservationCustomerSession } from "@/lib/customer-auth/reservation-session";
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import {
+  getRedirectReservationId,
   getSafeAccountRedirect,
+  isOwnerOnlyLogin,
   parseLoginErrorCode,
 } from "@/lib/customer-auth/util.account-redirect";
 import { generateStoreMetadata } from "@/lib/seo";
@@ -18,7 +21,11 @@ import { LoginForm } from "./login-form";
 
 interface LoginPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ redirect?: string | string[]; error?: string | string[] }>;
+  searchParams: Promise<{
+    redirect?: string | string[];
+    error?: string | string[];
+    owner?: string | string[];
+  }>;
 }
 
 export const instant = false;
@@ -40,7 +47,10 @@ export async function generateMetadata({ params }: LoginPageProps): Promise<Meta
 /**
  * Email → 6-digit code. `?redirect` (account paths or checkout) is honoured after
  * the code is verified; `?error` (set by `/r/{id}` on an expired link) is
- * shown inline above the form.
+ * shown inline above the form. A signed-in visitor is sent straight to the
+ * redirect, except with `?owner=1` (the checkout's paid page) when it opens a
+ * reservation of another customer: the form then lets them sign in as its own,
+ * and nobody is signed out until they do.
  */
 export default async function LoginPage({ params, searchParams }: LoginPageProps) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
@@ -50,8 +60,15 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
   const redirectPath = getSafeAccountRedirect(query.redirect);
   const errorCode = parseLoginErrorCode(query.error);
 
+  const ownerReservationId = isOwnerOnlyLogin(query.owner)
+    ? getRedirectReservationId(redirectPath)
+    : null;
   const session = await getCustomerSession(store.id);
-  if (session) storefrontRedirect(slug, redirectPath);
+  const sessionOpensRedirect =
+    session !== null &&
+    (ownerReservationId === null ||
+      (await hasReservationCustomerSession(store.id, ownerReservationId)));
+  if (sessionOpensRedirect) storefrontRedirect(slug, redirectPath);
 
   return (
     <>
