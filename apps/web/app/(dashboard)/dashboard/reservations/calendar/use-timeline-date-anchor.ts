@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
 
 import { toCalendarDateParam } from "./calendar-query";
+import { saveTimelineAnchor } from "./util.timeline-anchor-storage";
 
 interface UseTimelineDateAnchorOptions {
   /** Which timeline the `returnTo` round-trip should reopen. */
@@ -16,6 +17,8 @@ interface UseTimelineDateAnchorOptions {
   visibleDate: Date;
   /** Jumps the viewport to a day; `"auto"` must not smooth-scroll. */
   goToDate: (date: Date, behavior: ScrollBehavior) => void;
+  storeId?: string;
+  scrollLeft?: number;
 }
 
 /**
@@ -28,6 +31,8 @@ export function useTimelineDateAnchor({
   dateParam,
   visibleDate,
   goToDate,
+  storeId,
+  scrollLeft,
 }: UseTimelineDateAnchorOptions) {
   const searchParams = useSearchParams();
 
@@ -74,6 +79,10 @@ export function useTimelineDateAnchor({
     const date = new Date(visibleDate);
     date.setHours(0, 0, 0, 0);
     persistedDateRef.current = date.getTime();
+
+    if (storeId) {
+      saveTimelineAnchor(storeId, date, scrollLeft);
+    }
 
     const params = new URLSearchParams(window.location.search);
     params.set("date", toCalendarDateParam(date));

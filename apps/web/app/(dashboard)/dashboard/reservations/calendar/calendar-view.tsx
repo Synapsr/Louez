@@ -43,6 +43,7 @@ import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
 import type { Product, Reservation } from "./types";
 import { useTimelineDateAnchor } from "./use-timeline-date-anchor";
 import { useTimelineDateParam } from "./use-timeline-date-param";
+import { getTimelineAnchor, saveTimelineAnchor } from "./util.timeline-anchor-storage";
 
 // =============================================================================
 // Constants — mirror the planning timeline so both views feel identical
@@ -150,8 +151,12 @@ export function ReservationsCalendarView({
   // Window state (infinite horizontal scroll)
   // ---------------------------------------------------------------------------
 
-  // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
-  const anchorDateRef = useRef(dateParam ?? initialDate ?? new Date());
+  // Anchor on the `date` param when present (deep links, `returnTo` round-trips),
+  // or the saved timeline anchor when returning from a reservation/detail page.
+  const [initialAnchorDate] = useState(
+    () => dateParam ?? initialDate ?? getTimelineAnchor(storeId)?.date ?? new Date(),
+  );
+  const anchorDateRef = useRef(initialAnchorDate);
   const initialWindowRef = useRef(reservationCalendarQueries.initialWindow(anchorDateRef.current));
 
   const [windowStart, setWindowStart] = useState(initialWindowRef.current.start);
@@ -424,12 +429,28 @@ export function ReservationsCalendarView({
       previous.getTime() === centeredDate.getTime() ? previous : centeredDate,
     );
     setVisibleMonthLabel((previous) => (previous === label ? previous : label));
+
+    if (storeId) {
+      saveTimelineAnchor(storeId, centeredDate, element.scrollLeft);
+    }
   };
 
   const centerInitialAnchorDate = (element: HTMLDivElement) => {
     // A timeline view can mount while hidden during client-side navigation.
     // Wait for its real width instead of permanently consuming the initial scroll.
     if (element.clientWidth === 0 || element.scrollWidth <= element.clientWidth) return false;
+
+    const saved = getTimelineAnchor(storeId);
+    if (
+      typeof saved?.scrollLeft === "number" &&
+      saved.scrollLeft >= 0 &&
+      saved.scrollLeft <= element.scrollWidth - element.clientWidth
+    ) {
+      element.scrollLeft = saved.scrollLeft;
+      didInitialScrollRef.current = true;
+      updateVisibleViewport(element);
+      return true;
+    }
 
     const anchorIndex = diffInDays(windowStart, anchorDateRef.current);
     const target = (anchorIndex + 0.5) * dayWidth - element.clientWidth / 2;
@@ -618,6 +639,8 @@ export function ReservationsCalendarView({
     dateParam,
     visibleDate,
     goToDate,
+    storeId,
+    scrollLeft: scrollerRef.current?.scrollLeft,
   });
 
   // ---------------------------------------------------------------------------
@@ -691,10 +714,12 @@ export function ReservationsCalendarView({
     const end = addDays(windowStart, selection.endIndex);
     end.setHours(DRAG_CREATE_END_HOUR, 0, 0, 0);
 
+    persistVisibleDate();
     const params = new URLSearchParams({
       source: "calendar_timeline",
       startDate: start.toISOString(),
       endDate: end.toISOString(),
+      returnTo,
     });
     router.push(`/dashboard/reservations/new?${params.toString()}`);
   };
@@ -960,7 +985,12 @@ export function ReservationsCalendarView({
               </p>
               {!storeHasReservations && !readOnly ? (
                 <Button
-                  render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
+                  render={
+                    <Link
+                      href={`/dashboard/reservations/new?source=reservations_page&returnTo=${encodeURIComponent(returnTo)}`}
+                      onClick={persistVisibleDate}
+                    />
+                  }
                   variant="outline"
                   size="default"
                   className="pointer-events-auto mt-4"

@@ -36,7 +36,9 @@ interface CartLineItemProps {
 
 const formatAttributes = (attributes: Record<string, string> | undefined): string | null => {
   const entries = Object.entries(attributes ?? {});
-  return entries.length > 0 ? entries.map(([, value]) => value).join(" · ") : null;
+  return entries.length > 0
+    ? entries.map(([key, value]) => (key ? `${key}: ${value}` : value)).join(" · ")
+    : null;
 };
 
 /**

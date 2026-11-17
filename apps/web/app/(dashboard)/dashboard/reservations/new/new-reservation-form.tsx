@@ -46,6 +46,7 @@ import {
   dashboardReservationAnalyticsBaseProperties,
   productAnalyticsEvents,
 } from "@/lib/product-analytics/analytics-events";
+import { getDashboardReservationBackHref } from "@/lib/dashboard/util.reservation-navigation";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { useAppForm } from "@/hooks/form/form";
@@ -517,7 +518,11 @@ export function NewReservationForm({
         type: "success",
       });
       onReservationCreated();
-      router.replace(`/dashboard/reservations/${result.reservationId}`);
+      const returnTo = searchParams.get("returnTo");
+      const nextHref = returnTo
+        ? `/dashboard/reservations/${result.reservationId}?returnTo=${encodeURIComponent(returnTo)}`
+        : `/dashboard/reservations/${result.reservationId}`;
+      router.replace(nextHref);
     } catch (error) {
       posthog.capture(productAnalyticsEvents.dashboardReservationCreationFailed, {
         ...dashboardReservationAnalyticsBaseProperties,
@@ -1760,7 +1765,14 @@ export function NewReservationForm({
                 variant="outline"
                 size="lg"
                 className="max-sm:hidden"
-                onClick={() => router.push("/dashboard/reservations")}
+                onClick={() => {
+                  const returnTo = searchParams.get("returnTo");
+                  if (returnTo) {
+                    router.push(getDashboardReservationBackHref(returnTo));
+                  } else {
+                    router.push("/dashboard/reservations");
+                  }
+                }}
               >
                 {tCommon("cancel")}
               </Button>

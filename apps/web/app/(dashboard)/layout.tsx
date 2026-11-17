@@ -1,15 +1,33 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 
+import { getCurrentStore } from "@/lib/store-context";
+
 import { DashboardLayoutContent } from "./dashboard-layout-content";
 
-export const metadata: Metadata = {
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    title: "Rental management",
-    statusBarStyle: "default",
-  },
+export const generateMetadata = async (): Promise<Metadata> => {
+  const store = await getCurrentStore();
+  const iconUrl = store?.faviconUrl || store?.logoUrl;
+
+  return {
+    title: {
+      default: "Dashboard",
+      template: "%s | Dashboard",
+    },
+    ...(iconUrl && {
+      icons: {
+        icon: iconUrl,
+        shortcut: iconUrl,
+        apple: iconUrl,
+      },
+    }),
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      title: "Dashboard",
+      statusBarStyle: "default",
+    },
+  };
 };
 
 export const viewport: Viewport = {

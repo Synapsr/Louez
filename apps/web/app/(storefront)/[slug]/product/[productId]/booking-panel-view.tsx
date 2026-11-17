@@ -22,6 +22,8 @@ import { BookingPeriodField } from "./booking-period-field";
 import { ProductSummary } from "./product-summary";
 import { PriceSummary } from "./price-summary";
 import { StickyBookingBar } from "./sticky-booking-bar";
+import { StudioBookingFields } from "./studio-booking-fields";
+import type { StudioBookingValues } from "@/lib/utils/util.studio-booking";
 import type { BookingPrice } from "./use-booking-price";
 
 export interface BookingPanelViewProps {
@@ -52,6 +54,13 @@ export interface BookingPanelViewProps {
   blockedReason?: string | null;
   handleReserve: () => void;
   getCategoryHref?: (href: string) => string;
+  isRoom?: boolean;
+  isStudio?: boolean;
+  studioValues?: StudioBookingValues;
+  onStudioValuesChange?: (values: StudioBookingValues) => void;
+  studioErrors?: Partial<Record<keyof StudioBookingValues, string>>;
+  hasAttemptedSubmit?: boolean;
+  studioFieldsRef?: Ref<HTMLDivElement>;
 }
 
 /** Shared booking column; availability, cart writes and analytics stay in its container. */
@@ -83,6 +92,13 @@ export const BookingPanelView = ({
   blockedReason,
   handleReserve,
   getCategoryHref,
+  isRoom = false,
+  isStudio = false,
+  studioValues,
+  onStudioValuesChange,
+  studioErrors = {},
+  hasAttemptedSubmit = false,
+  studioFieldsRef,
 }: BookingPanelViewProps) => {
   const t = useTranslations();
   const formatPeriodLabel = usePeriodLabel();
@@ -147,21 +163,23 @@ export const BookingPanelView = ({
             />
           ) : null}
 
-          <QuantityStepper
-            value={quantity}
-            max={maxQuantity}
-            onChange={setRequestedQuantity}
-            disabled={isSelectionUnavailable}
-            hint={
-              isFirstCheck
-                ? t("storefront.product.booking.checking")
-                : period && maxQuantity !== null
-                  ? t("storefront.product.booking.availableForDates", {
-                      count: maxQuantity,
-                    })
-                  : undefined
-            }
-          />
+          {!isRoom && (
+            <QuantityStepper
+              value={quantity}
+              max={maxQuantity}
+              onChange={setRequestedQuantity}
+              disabled={isSelectionUnavailable}
+              hint={
+                isFirstCheck
+                  ? t("storefront.product.booking.checking")
+                  : period && maxQuantity !== null
+                    ? t("storefront.product.booking.availableForDates", {
+                        count: maxQuantity,
+                      })
+                    : undefined
+              }
+            />
+          )}
 
           <ExtrasList
             accessories={requiredAccessories}
@@ -177,6 +195,16 @@ export const BookingPanelView = ({
             seasons={product.seasonalPricings}
             durationLabel={durationLabel}
           />
+
+          {isStudio && studioValues && onStudioValuesChange ? (
+            <StudioBookingFields
+              values={studioValues}
+              onChange={onStudioValuesChange}
+              errors={studioErrors}
+              showErrors={hasAttemptedSubmit}
+              containerRef={studioFieldsRef}
+            />
+          ) : null}
 
           <div className="hidden flex-col gap-1.5 lg:flex">
             <Button

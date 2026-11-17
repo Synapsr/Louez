@@ -37,6 +37,7 @@ import type { Product, StoreTimelineReservation } from "./types";
 import { useTimelineDateAnchor } from "./use-timeline-date-anchor";
 import { useTimelineDateParam } from "./use-timeline-date-param";
 import { toStoreTimelineReservation } from "./util.planning-timeline";
+import { getTimelineAnchor, saveTimelineAnchor } from "./util.timeline-anchor-storage";
 
 // =============================================================================
 // Constants — mirror the product page timeline so both feel identical
@@ -163,8 +164,12 @@ export function PlanningTimeline({
   // Window state (infinite horizontal scroll)
   // ---------------------------------------------------------------------------
 
-  // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
-  const anchorDateRef = useRef(dateParam ?? initialDate ?? new Date());
+  // Anchor on the `date` param when present (deep links, `returnTo` round-trips),
+  // or the saved timeline anchor when returning from a reservation/detail page.
+  const [initialAnchorDate] = useState(
+    () => dateParam ?? initialDate ?? getTimelineAnchor(storeId)?.date ?? new Date(),
+  );
+  const anchorDateRef = useRef(initialAnchorDate);
 
   const initialWindowRef = useRef(reservationPlanningQueries.initialWindow(anchorDateRef.current));
 
@@ -383,19 +388,41 @@ export function PlanningTimeline({
       previous.getTime() === centeredDate.getTime() ? previous : centeredDate,
     );
     setVisibleMonthLabel((previous) => (previous === label ? previous : label));
+
+    if (storeId) {
+      saveTimelineAnchor(storeId, centeredDate, element.scrollLeft);
+    }
+  };
+
+  const centerInitialAnchorDate = (element: HTMLDivElement) => {
+    if (element.clientWidth === 0 || element.scrollWidth <= element.clientWidth) return false;
+
+    const saved = getTimelineAnchor(storeId);
+    if (
+      typeof saved?.scrollLeft === "number" &&
+      saved.scrollLeft >= 0 &&
+      saved.scrollLeft <= element.scrollWidth - element.clientWidth
+    ) {
+      element.scrollLeft = saved.scrollLeft;
+      didInitialScrollRef.current = true;
+      updateVisibleViewport(element);
+      return true;
+    }
+
+    const anchorIndex = diffInDays(windowStart, anchorDateRef.current);
+    const target =
+      anchorIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 2);
+    element.scrollLeft = Math.max(0, target);
+    didInitialScrollRef.current = true;
+    updateVisibleViewport(element);
+    return true;
   };
 
   // Center the anchor date on first mount (and again after a window reset)
   useLayoutEffect(() => {
     const element = scrollerRef.current;
     if (!element || didInitialScrollRef.current) return;
-    didInitialScrollRef.current = true;
-
-    const anchorIndex = diffInDays(windowStart, anchorDateRef.current);
-    const target =
-      anchorIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 2);
-    element.scrollLeft = Math.max(0, target);
-    updateVisibleViewport(element);
+    centerInitialAnchorDate(element);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowStart]);
 
@@ -513,6 +540,8 @@ export function PlanningTimeline({
     dateParam,
     visibleDate,
     goToDate,
+    storeId,
+    scrollLeft: scrollerRef.current?.scrollLeft,
   });
 
   // ---------------------------------------------------------------------------
@@ -594,11 +623,13 @@ export function PlanningTimeline({
     const end = addDays(windowStart, selection.endIndex);
     end.setHours(DRAG_CREATE_END_HOUR, 0, 0, 0);
 
+    persistVisibleDate();
     const params = new URLSearchParams({
       source: "planning_timeline",
       productId: product.id,
       startDate: start.toISOString(),
       endDate: end.toISOString(),
+      returnTo,
     });
     router.push(`/dashboard/reservations/new?${params.toString()}`);
   };

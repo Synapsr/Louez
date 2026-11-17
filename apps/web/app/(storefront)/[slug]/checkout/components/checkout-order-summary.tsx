@@ -237,7 +237,9 @@ export const CheckoutOrderSummary = ({
                 </div>
                 {attributes && Object.keys(attributes).length > 0 && (
                   <p className="truncate text-xs text-muted-foreground">
-                    {Object.values(attributes).join(" · ")}
+                    {Object.entries(attributes)
+                      .map(([key, value]) => (key ? `${key}: ${value}` : value))
+                      .join(" · ")}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">

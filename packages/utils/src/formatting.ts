@@ -1,4 +1,4 @@
-const DEFAULT_FORMAT_LOCALE = "fr-FR";
+const DEFAULT_FORMAT_LOCALE = "pl-PL";
 
 // Currency formatting
 export interface FormatCurrencyOptions {

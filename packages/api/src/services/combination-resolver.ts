@@ -8,6 +8,7 @@ import type {
 } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
+  canonicalizeAttributes,
   getDeterministicCombinationSortValue,
   matchesSelectedAttributes,
 } from "@louez/utils";
@@ -49,9 +50,10 @@ export function pickDeterministicCombination({
   selectedAttributes,
 }: PickCombinationParams): CombinationAvailability | null {
   const axes = Array.isArray(bookingAxes) ? bookingAxes : [];
+  const canonicalSelected = canonicalizeAttributes(axes, selectedAttributes);
   const candidates = (combinations ?? [])
     .filter((combination) =>
-      matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
+      matchesSelectedAttributes(canonicalSelected, combination.selectedAttributes),
     )
     .sort((a, b) => {
       const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes);

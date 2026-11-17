@@ -7,7 +7,7 @@ import { Skeleton } from "@louez/ui";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { getCurrentStore } from "@/lib/store-context";
 
-import { parseReservationView } from "./calendar/calendar-query";
+import { parseCalendarDateParam, parseReservationView } from "./calendar/calendar-query";
 import { getCalendarProducts, getStoreHasReservations } from "./calendar/data";
 import { ReservationsPageContent } from "./reservations-page-content";
 
@@ -141,6 +141,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
 
   const currency = store.settings?.currency || "PLN";
   const timezone = store.settings?.timezone;
+  const initialDate = parseCalendarDateParam(params.date) ?? undefined;
 
   const status = normalizeStatus(params.status);
   const period = normalizePeriod(params.period);
@@ -196,6 +197,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
         planSlug={plan.slug}
         currency={currency}
         timezone={timezone}
+        initialDate={initialDate}
       />
     </Suspense>
   );

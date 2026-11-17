@@ -21,7 +21,7 @@ import { getInstanceConfig } from "@/lib/deployment";
 import { ORPCProvider } from "@/lib/orpc/provider";
 
 // Import translations directly since this is a root layout without NextIntlProvider
-import messages from "@/messages/fr.json";
+import messages from "@/messages/pl.json";
 
 import "./globals.css";
 

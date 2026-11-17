@@ -25,7 +25,14 @@ import {
   formatDurationFromMinutes,
   validateMinRentalDurationMinutes,
 } from "@/lib/utils/rental-duration";
+import { isRoomProduct, isStudioRoomProduct } from "@/lib/utils/util.product-category";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
+import {
+  formatStudioAttributes,
+  initialStudioBookingValues,
+  type StudioBookingValues,
+  validateStudioBookingValues,
+} from "@/lib/utils/util.studio-booking";
 import { deriveAttributeValues } from "@/lib/utils/util.variant-combinations";
 
 import { type CartPeriod, useCartState } from "@/contexts/cart-context";
@@ -60,6 +67,22 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
   const [isPeriodOpen, setIsPeriodOpen] = useState(false);
   const [requestedQuantity, setRequestedQuantity] = useState(1);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+
+  const isRoom = isRoomProduct(product);
+  const isStudio = isStudioRoomProduct(product);
+  const [studioValues, setStudioValues] = useState<StudioBookingValues>(initialStudioBookingValues);
+  const [studioErrors, setStudioErrors] = useState<Partial<Record<keyof StudioBookingValues, string>>>({});
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const studioFieldsRef = useRef<HTMLDivElement>(null);
+
+  const handleStudioValuesChange = (nextValues: StudioBookingValues) => {
+    setStudioValues(nextValues);
+    if (hasAttemptedSubmit) {
+      const validation = validateStudioBookingValues(nextValues);
+      setStudioErrors(validation.errors);
+    }
+  };
+
   const quickAdd = useQuickAdd();
   const requiredAccessories = useMemo(() => selectRequiredAccessories(accessories), [accessories]);
   const extraIds = useMemo<ReadonlySet<string>>(() => new Set(), []);
@@ -161,11 +184,28 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
       return;
     }
 
+    if (isStudio) {
+      const validation = validateStudioBookingValues(studioValues);
+      if (!validation.isValid) {
+        setHasAttemptedSubmit(true);
+        setStudioErrors(validation.errors);
+        studioFieldsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        toastManager.add({
+          title: "Uzupełnij wymagane opcje studia przed dodaniem do koszyka",
+          type: "error",
+        });
+        return;
+      }
+    }
+
+    const studioAttributes = isStudio ? formatStudioAttributes(studioValues) : {};
+    const finalSelectedAttributes = { ...selectedAttributes, ...studioAttributes };
+
     const result = addToCart({
       period,
       quantity,
       maxQuantity: capacity.maxQuantity,
-      selectedAttributes,
+      selectedAttributes: finalSelectedAttributes,
       allocationMode: hasAxes ? capacity.allocationMode : "single",
       combinations,
       extraIds,
@@ -217,6 +257,13 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
       isCtaDisabled={isCtaDisabled}
       blockedReason={blockedReason}
       handleReserve={handleReserve}
+      isRoom={isRoom}
+      isStudio={isStudio}
+      studioValues={studioValues}
+      onStudioValuesChange={handleStudioValuesChange}
+      studioErrors={studioErrors}
+      hasAttemptedSubmit={hasAttemptedSubmit}
+      studioFieldsRef={studioFieldsRef}
     />
   );
 };

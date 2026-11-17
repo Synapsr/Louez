@@ -21,6 +21,7 @@ import {
   isWithinStockQuantityLimit,
   type SeasonalPricingConfig,
   type StockQuantityLimit,
+  canonicalizeAttributes,
   matchesSelectedAttributes,
 } from "@louez/utils";
 
@@ -269,7 +270,10 @@ export async function resolveStorefrontCart(
       product.trackUnits && productAvailability?.combinations?.length
         ? productAvailability.combinations
             .filter((combination) =>
-              matchesSelectedAttributes(line.selectedAttributes, combination.selectedAttributes),
+              matchesSelectedAttributes(
+                canonicalizeAttributes(product.bookingAttributeAxes, line.selectedAttributes),
+                combination.selectedAttributes,
+              ),
             )
             .reduce((sum, combination) => sum + combination.availableQuantity, 0)
         : productAvailability

@@ -66,6 +66,7 @@ interface ReservationsPageContentProps {
   planSlug: string;
   currency?: string;
   timezone?: string;
+  initialDate?: Date;
 }
 
 export function ReservationsPageContent({
@@ -82,6 +83,7 @@ export function ReservationsPageContent({
   planSlug,
   currency,
   timezone,
+  initialDate,
 }: ReservationsPageContentProps) {
   const t = useTranslations("dashboard.reservations");
   const tCalendar = useTranslations("dashboard.calendar");
@@ -275,7 +277,11 @@ export function ReservationsPageContent({
         {t("noReservationsDescription")}
       </p>
       <Button
-        render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
+        render={
+          <Link
+            href={`/dashboard/reservations/new?source=reservations_page&returnTo=${encodeURIComponent(listReturnTo)}`}
+          />
+        }
         className="mt-6"
       >
         {t("createReservation")}
@@ -365,7 +371,11 @@ export function ReservationsPageContent({
               </Tooltip>
             </TooltipProvider>
             <Button
-              render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
+              render={
+                <Link
+                  href={`/dashboard/reservations/new?source=reservations_page&returnTo=${encodeURIComponent(listReturnTo)}`}
+                />
+              }
               aria-label={t("createReservation")}
               className="max-xl:size-9 max-xl:px-0"
             >
@@ -393,6 +403,7 @@ export function ReservationsPageContent({
             products={calendarData.products}
             currency={currency ?? "PLN"}
             storeId={storeId}
+            initialDate={initialDate}
           />
         </div>
       )}
@@ -404,6 +415,7 @@ export function ReservationsPageContent({
             currency={currency ?? "PLN"}
             storeHasReservations={storeHasReservations}
             storeId={storeId}
+            initialDate={initialDate}
           />
         </div>
       )}

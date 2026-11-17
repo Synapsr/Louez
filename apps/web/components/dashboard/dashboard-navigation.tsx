@@ -31,6 +31,7 @@ import {
 } from "@louez/ui/icons/glass";
 import { SidebarLink } from "@/components/dashboard/sidebar-link";
 import { cn } from "@/lib/utils";
+import { clearTimelineAnchor } from "@/app/(dashboard)/dashboard/reservations/calendar/util.timeline-anchor-storage";
 
 type LocalNavigation = {
   href: string;
@@ -50,6 +51,7 @@ function NavigationLink({ href, onClick, ...props }: ComponentProps<typeof Sideb
       prefetch={local ? false : undefined}
       data-navigation-href={String(href)}
       onClick={(event) => {
+        clearTimelineAnchor();
         onClick?.(event);
         if (local && !event.defaultPrevented) {
           event.preventDefault();

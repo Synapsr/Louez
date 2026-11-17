@@ -5,6 +5,7 @@ import type { CartItem } from "@/contexts/cart-context";
 import type { Locale } from "@/i18n/config";
 import { normalizePhoneNumber } from "@/lib/sms/phone";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
+import { isStudioRoomProduct } from "@/lib/utils/util.product-category";
 
 import type { CheckoutFormValues, DeliveryAddress, TulipInsuranceMode } from "./checkout.types";
 
@@ -77,60 +78,78 @@ export const buildReservationPayload = ({
   promoCode,
   advisorConversationId,
   resumeReservationId,
-}: BuildReservationPayloadInput): CreateReservationInput => ({
-  storeId,
-  customer: {
-    email: values.email,
-    firstName: values.firstName,
-    lastName: values.lastName,
-    phone: normalizePhoneNumber(values.phone) ?? values.phone,
-    customerType: values.isBusinessCustomer ? "business" : "individual",
-    companyName: values.isBusinessCustomer ? values.companyName.trim() : undefined,
-    companyNumber: values.isBusinessCustomer ? optionalTrimmed(values.companyNumber) : undefined,
-    vatNumber: values.isBusinessCustomer ? optionalTrimmed(values.vatNumber) : undefined,
-    address: values.address || undefined,
-    city: values.city || undefined,
-    postalCode: values.postalCode || undefined,
-  },
-  items: items.map((item) => {
-    const priceResult = calculateCartItemPrice(item, null, null);
+}: BuildReservationPayloadInput): CreateReservationInput => {
+  const studioLinesNotes = items
+    .filter((item) => item.selectedAttributes && isStudioRoomProduct({ name: item.productName }))
+    .map((item) => {
+      const entries = Object.entries(item.selectedAttributes ?? {});
+      if (entries.length === 0) return null;
+      return `Konfiguracja: ${item.productName}\n${entries.map(([k, v]) => `• ${k}: ${v}`).join("\n")}`;
+    })
+    .filter((entry): entry is string => entry !== null);
 
-    return {
-      lineId: item.lineId,
-      productId: item.productId,
-      selectedAttributes: item.selectedAttributes,
-      resolvedCombinationKey: item.resolvedCombinationKey,
-      resolvedAttributes: item.resolvedAttributes,
-      quantity: item.quantity,
-      startDate: item.startDate,
-      endDate: item.endDate,
-      unitPrice: priceResult.subtotal / Math.max(1, item.quantity),
-      depositPerUnit: item.deposit,
-      productSnapshot: {
-        name: item.productName,
-        description: null,
-        images: item.productImage ? [item.productImage] : [],
-        combinationKey: item.resolvedCombinationKey || null,
-        selectedAttributes: item.resolvedAttributes || item.selectedAttributes || null,
-      },
-    };
-  }),
-  customerNotes: values.notes || undefined,
-  tulipInsuranceOptIn:
-    tulipInsuranceMode === "required"
-      ? true
-      : tulipInsuranceMode === "optional"
-        ? values.tulipInsuranceOptIn
-        : undefined,
-  subtotalAmount,
-  depositAmount,
-  totalAmount,
-  locale,
-  promoCode,
-  advisorConversationId,
-  resumeReservationId,
-  delivery: {
-    outbound: buildDeliveryLeg(outboundMethod, outboundAddress, pickupLocationId),
-    return: buildDeliveryLeg(returnMethod, returnAddress, returnLocationId),
-  },
-});
+  const finalCustomerNotes = [
+    values.notes?.trim() || undefined,
+    ...studioLinesNotes,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    storeId,
+    customer: {
+      email: values.email,
+      firstName: values.firstName,
+      lastName: values.lastName,
+      phone: normalizePhoneNumber(values.phone) ?? values.phone,
+      customerType: values.isBusinessCustomer ? "business" : "individual",
+      companyName: values.isBusinessCustomer ? values.companyName.trim() : undefined,
+      companyNumber: values.isBusinessCustomer ? optionalTrimmed(values.companyNumber) : undefined,
+      vatNumber: values.isBusinessCustomer ? optionalTrimmed(values.vatNumber) : undefined,
+      address: values.address || undefined,
+      city: values.city || undefined,
+      postalCode: values.postalCode || undefined,
+    },
+    items: items.map((item) => {
+      const priceResult = calculateCartItemPrice(item, null, null);
+
+      return {
+        lineId: item.lineId,
+        productId: item.productId,
+        selectedAttributes: item.selectedAttributes,
+        resolvedCombinationKey: item.resolvedCombinationKey,
+        resolvedAttributes: item.resolvedAttributes,
+        quantity: item.quantity,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        unitPrice: priceResult.subtotal / Math.max(1, item.quantity),
+        depositPerUnit: item.deposit,
+        productSnapshot: {
+          name: item.productName,
+          description: null,
+          images: item.productImage ? [item.productImage] : [],
+          combinationKey: item.resolvedCombinationKey || null,
+          selectedAttributes: item.resolvedAttributes || item.selectedAttributes || null,
+        },
+      };
+    }),
+    customerNotes: finalCustomerNotes || undefined,
+    tulipInsuranceOptIn:
+      tulipInsuranceMode === "required"
+        ? true
+        : tulipInsuranceMode === "optional"
+          ? values.tulipInsuranceOptIn
+          : undefined,
+    subtotalAmount,
+    depositAmount,
+    totalAmount,
+    locale,
+    promoCode,
+    advisorConversationId,
+    resumeReservationId,
+    delivery: {
+      outbound: buildDeliveryLeg(outboundMethod, outboundAddress, pickupLocationId),
+      return: buildDeliveryLeg(returnMethod, returnAddress, returnLocationId),
+    },
+  };
+};

@@ -1,4 +1,5 @@
 import { DashboardContentFrame } from "@/components/dashboard/dashboard-content-frame";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { eq } from "drizzle-orm";
@@ -20,6 +21,7 @@ import { ReservationPollingProvider } from "@/components/dashboard/reservation-p
 import { SettingsSearchFocus } from "@/components/dashboard/settings-search-focus";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
+import { TimelineAnchorReset } from "./timeline-anchor-reset";
 import { DashboardSaveShortcut } from "@/components/shared/dashboard-save-shortcut";
 import { KeyboardShortcutsProvider } from "@/components/shared/keyboard-shortcuts-provider";
 import { WhatsNewProvider } from "@/components/shared/whats-new-provider";
@@ -42,6 +44,25 @@ import { StoreProvider } from "@/contexts/store-context";
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const store = await getCurrentStore();
+  const iconUrl = store?.faviconUrl || store?.logoUrl;
+
+  return {
+    title: {
+      default: "Dashboard",
+      template: "%s | Dashboard",
+    },
+    ...(iconUrl && {
+      icons: {
+        icon: iconUrl,
+        shortcut: iconUrl,
+        apple: iconUrl,
+      },
+    }),
+  };
+};
 
 /** Total balance under which the sidebar shows its low-credit marker. */
 const LOW_AI_CREDITS_THRESHOLD = 5;
@@ -191,6 +212,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
               <Suspense fallback={null}>
                 <WelcomeOverlay />
                 <SettingsSearchFocus />
+                <TimelineAnchorReset />
               </Suspense>
             </div>
           </ReservationPollingProvider>

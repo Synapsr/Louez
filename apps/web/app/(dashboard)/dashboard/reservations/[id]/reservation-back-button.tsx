@@ -23,6 +23,12 @@ export const ReservationBackButton = ({ onBack, readOnly = false }: ReservationB
       return;
     }
 
+    const returnTo = searchParams.get("returnTo");
+    if (returnTo) {
+      router.push(getDashboardReservationBackHref(returnTo));
+      return;
+    }
+
     if (!readOnly && window.history.length > 1) {
       router.back();
       return;
@@ -31,7 +37,7 @@ export const ReservationBackButton = ({ onBack, readOnly = false }: ReservationB
     router.push(
       readOnly
         ? "/demos/landing/planning"
-        : getDashboardReservationBackHref(searchParams.get("returnTo")),
+        : getDashboardReservationBackHref(null),
     );
   };
 
