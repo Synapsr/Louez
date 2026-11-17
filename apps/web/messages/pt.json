@@ -2768,7 +2768,13 @@
             "generic": "A autorização de depósito falhou. Peça ao cliente para tentar novamente ou usar outro cartão.",
             "closedByStore": "Pedido fechado pela loja: nenhuma autorização encontrada no Stripe."
           }
-        }
+        },
+        "refundDone": "Reembolso efetuado",
+        "refundFailed": "Reembolso falhou",
+        "refundToCheck": "Reembolso a verificar no Stripe",
+        "onlineRefundTotal": "Total reembolsado online",
+        "onlineRefundFull": "Pagamento online totalmente reembolsado",
+        "approvedBy": "Aprovado por"
       },
       "unitAssignment": {
         "title": "Atribuição de unidades",

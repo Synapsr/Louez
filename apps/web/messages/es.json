@@ -2807,7 +2807,13 @@
             "generic": "La autorización del depósito falló. Pida al cliente que reintente o utilice otra tarjeta.",
             "closedByStore": "Solicitud cerrada por la tienda: no se encontró ninguna autorización en Stripe."
           }
-        }
+        },
+        "refundDone": "Reembolso realizado",
+        "refundFailed": "Reembolso fallido",
+        "refundToCheck": "Reembolso por revisar en Stripe",
+        "onlineRefundTotal": "Total reembolsado en línea",
+        "onlineRefundFull": "Pago en línea reembolsado por completo",
+        "approvedBy": "Aprobado por"
       },
       "unitAssignment": {
         "title": "Asignación de unidades",

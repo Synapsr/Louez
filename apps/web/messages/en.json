@@ -2807,7 +2807,13 @@
             "generic": "Deposit authorization failed. Ask the customer to retry or use another card.",
             "closedByStore": "Request closed by the store: no authorization found in Stripe."
           }
-        }
+        },
+        "refundDone": "Refund made",
+        "refundFailed": "Refund failed",
+        "refundToCheck": "Refund to check in Stripe",
+        "onlineRefundTotal": "Total refunded online",
+        "onlineRefundFull": "Online payment fully refunded",
+        "approvedBy": "Approved by"
       },
       "unitAssignment": {
         "title": "Unit assignment",

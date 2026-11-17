@@ -2768,7 +2768,13 @@
             "generic": "Autoryzacja kaucji nie powiodła się. Poproś klienta o ponowienie próby lub użycie innej karty.",
             "closedByStore": "Prośba zamknięta przez sklep: w Stripe nie znaleziono autoryzacji."
           }
-        }
+        },
+        "refundDone": "Zwrot wykonany",
+        "refundFailed": "Zwrot nieudany",
+        "refundToCheck": "Zwrot do sprawdzenia w Stripe",
+        "onlineRefundTotal": "Łącznie zwrócono online",
+        "onlineRefundFull": "Płatność online zwrócona w całości",
+        "approvedBy": "Zatwierdził(a)"
       },
       "unitAssignment": {
         "title": "Przypisanie jednostek",

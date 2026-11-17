@@ -2768,7 +2768,13 @@
             "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken.",
             "closedByStore": "Verzoek gesloten door de winkel: geen autorisatie gevonden in Stripe."
           }
-        }
+        },
+        "refundDone": "Terugbetaling uitgevoerd",
+        "refundFailed": "Terugbetaling mislukt",
+        "refundToCheck": "Terugbetaling controleren in Stripe",
+        "onlineRefundTotal": "Totaal online terugbetaald",
+        "onlineRefundFull": "Onlinebetaling volledig terugbetaald",
+        "approvedBy": "Goedgekeurd door"
       },
       "unitAssignment": {
         "title": "Eenheid toewijzing",

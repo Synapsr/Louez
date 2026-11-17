@@ -2816,7 +2816,13 @@
             "generic": "L'empreinte de caution a échoué. Demandez au client de réessayer ou d'utiliser une autre carte.",
             "closedByStore": "Demande close par la boutique : aucune autorisation trouvée dans Stripe."
           }
-        }
+        },
+        "refundDone": "Remboursement effectué",
+        "refundFailed": "Remboursement échoué",
+        "refundToCheck": "Remboursement à vérifier dans Stripe",
+        "onlineRefundTotal": "Total remboursé en ligne",
+        "onlineRefundFull": "Paiement en ligne intégralement remboursé",
+        "approvedBy": "Approuvé par"
       },
       "unitAssignment": {
         "title": "Assignation des unités",

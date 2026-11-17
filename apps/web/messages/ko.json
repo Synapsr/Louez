@@ -2807,7 +2807,13 @@
             "generic": "입금 승인에 실패했습니다. 고객에게 다시 시도하거나 다른 카드를 사용하도록 요청하세요.",
             "closedByStore": "매장에서 요청을 닫음: Stripe에서 승인을 찾지 못했습니다."
           }
-        }
+        },
+        "refundDone": "환불 완료",
+        "refundFailed": "환불 실패",
+        "refundToCheck": "Stripe에서 환불 확인 필요",
+        "onlineRefundTotal": "온라인 환불 총액",
+        "onlineRefundFull": "온라인 결제 전액 환불됨",
+        "approvedBy": "승인자"
       },
       "unitAssignment": {
         "title": "단위 할당",

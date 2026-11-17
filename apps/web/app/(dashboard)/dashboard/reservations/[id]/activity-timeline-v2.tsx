@@ -44,7 +44,13 @@ import {
   showsOverbookedBadge,
   showsTurnoverBufferOverriddenBadge,
 } from './utils/capacity-verdict-badge'
+import { readPaymentRow } from '@/lib/reservations/util.payment-status'
 import { formatPaymentFailureDescription } from './utils/payment-failure-description'
+import {
+  type RefundActivityContext,
+  refundActivityTitleKey,
+  refundActivityView,
+} from './utils/refund-activity'
 
 type ActivityType =
   | 'created'
@@ -101,19 +107,24 @@ interface Activity {
 }
 
 interface ActivityTimelinePayment {
+  id?: string
   type: string
   method: string
   status: string
   paidAt: Date | string | null
-  amount?: string | number | null
+  amount: string | number
   currency?: string | null
   stripePaymentIntentId?: string | null
   stripeCheckoutSessionId?: string | null
+  stripeRefundId?: string | null
+  refundOfPaymentId?: string | null
 }
 
 interface ActivityTimelineV2Props {
   activities: Activity[]
   payments?: ActivityTimelinePayment[]
+  /** The refunds asked through Louez (`reservation.refunds`): Stripe's word, who approved. */
+  refunds?: RefundActivityContext['refunds']
   reservationCreatedAt: Date
   reservationSource: string | null
   currency?: string
@@ -340,6 +351,7 @@ function getUserInitials(name: string | null, email: string): string {
 export function ActivityTimelineV2({
   activities,
   payments = [],
+  refunds = [],
   reservationCreatedAt,
   reservationSource,
   currency = 'EUR',
@@ -384,6 +396,8 @@ export function ActivityTimelineV2({
   for (const [index, payment] of payments.entries()) {
     if (payment.method !== 'stripe' || payment.status !== 'completed') continue
     if (payment.type !== 'rental' || !payment.paidAt) continue
+    // Money received, never a refund: the reader the payment card uses.
+    if (readPaymentRow(payment).kind !== 'receipt') continue
 
     const paymentIntentId = payment.stripePaymentIntentId || undefined
     const checkoutSessionId = payment.stripeCheckoutSessionId || undefined
@@ -482,9 +496,17 @@ export function ActivityTimelineV2({
         : null
     const isPickupWithoutSignature =
       activity.activityType === 'picked_up' && activity.metadata?.contractUnsigned === true
+    // A refund of an online payment, told as one, by the shape its writer gave the line.
+    const refundView = refundActivityView(activity, { payments, refunds })
+    const refundApprover = refundView?.kind === 'refund' ? refundView.approvedBy : null
+    const refundAmount =
+      refundView && refundView.kind !== 'to_check' ? refundView.amount : null
+    const refundState = refundView?.kind === 'refund' ? refundView.state : null
     const activityTitle = isPaymentRequest
       ? t('requestPaymentModal.success')
-      : t(`activity.${activity.activityType}`)
+      : refundView
+        ? t(refundActivityTitleKey(refundView))
+        : t(`activity.${activity.activityType}`)
     const showPositivePaymentPrefix =
       paymentAmount !== null &&
       paymentAmount > 0 &&
@@ -579,8 +601,32 @@ export function ActivityTimelineV2({
                     Stripe
                   </Badge>
                 )}
+              {/* Money given back: its sign, struck when Stripe failed it */}
+              {refundView && refundAmount !== null && (
+                <Badge
+                  variant={
+                    refundState === 'failed'
+                      ? 'failed'
+                      : refundState === 'processing'
+                        ? 'progress'
+                        : 'review'
+                  }
+                  className={cn(
+                    'h-4 px-1.5 py-0 font-mono text-[10px]',
+                    refundState === 'failed' && 'line-through'
+                  )}
+                >
+                  {refundState === 'done' || refundState === 'processing' ? '-' : ''}
+                  {formatCurrency(
+                    refundAmount,
+                    (refundView.kind === 'refund' && refundView.currency) || paymentCurrency,
+                    formatLocale,
+                  )}
+                </Badge>
+              )}
               {/* Payment amount badge */}
-              {paymentAmount !== null &&
+              {!refundView &&
+                paymentAmount !== null &&
                 PAYMENT_AMOUNT_ACTIVITY_TYPES.has(activity.activityType) && (
                   <Badge
                     variant={getPaymentAmountVariant(
@@ -647,6 +693,27 @@ export function ActivityTimelineV2({
             </div>
           )}
 
+          {/* The person who approved a refund an agent asked for */}
+          {!activity.user && refundApprover && (
+            <div className="flex items-center gap-2 mt-1">
+              <Avatar className="h-4 w-4">
+                <AvatarImage
+                  src={refundApprover.image || undefined}
+                  alt={refundApprover.name || refundApprover.email}
+                />
+                <AvatarFallback className="text-[8px] bg-muted">
+                  {getUserInitials(refundApprover.name, refundApprover.email)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground">
+                {t('activity.approvedBy')}{' '}
+                <span className="font-medium text-foreground">
+                  {refundApprover.name || refundApprover.email}
+                </span>
+              </span>
+            </div>
+          )}
+
           {/* Signer of a contract signed in store, on the renter's device */}
           {contractSignerName && (
             <p className="mt-1 text-xs text-muted-foreground">
@@ -667,6 +734,7 @@ export function ActivityTimelineV2({
 
           {/* Show "system" for other cases without user */}
           {!activity.user &&
+            !refundApprover &&
             activitySource !== 'online' &&
             !activitySource &&
             !CUSTOMER_ACTIVITY_TYPES.has(activity.activityType) && (

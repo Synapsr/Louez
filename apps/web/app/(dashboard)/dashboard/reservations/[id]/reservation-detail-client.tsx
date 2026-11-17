@@ -428,6 +428,7 @@ export function ReservationDetailClient({
             <ActivityTimelineV2
               activities={reservation.activity}
               payments={reservation.payments}
+              refunds={reservation.refunds}
               reservationCreatedAt={reservation.createdAt}
               reservationSource={reservation.source}
               currency={currency}

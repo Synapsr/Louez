@@ -2807,7 +2807,13 @@
             "generic": "入金の承認に失敗しました。再試行するか、別のカードを使用するようお客様に依頼します。",
             "closedByStore": "ストアが要求を閉じました：Stripe にオーソリは見つかりませんでした。"
           }
-        }
+        },
+        "refundDone": "返金済み",
+        "refundFailed": "返金失敗",
+        "refundToCheck": "Stripeで返金を確認してください",
+        "onlineRefundTotal": "オンライン返金合計",
+        "onlineRefundFull": "オンライン決済は全額返金済み",
+        "approvedBy": "承認者"
       },
       "unitAssignment": {
         "title": "単位の割り当て",

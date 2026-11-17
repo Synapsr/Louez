@@ -2807,7 +2807,13 @@
             "generic": "Otorisasi setoran gagal. Minta pelanggan untuk mencoba lagi atau menggunakan kartu lain.",
             "closedByStore": "Permintaan ditutup oleh toko: tidak ada otorisasi yang ditemukan di Stripe."
           }
-        }
+        },
+        "refundDone": "Pengembalian dana selesai",
+        "refundFailed": "Pengembalian dana gagal",
+        "refundToCheck": "Periksa pengembalian dana di Stripe",
+        "onlineRefundTotal": "Total dikembalikan secara online",
+        "onlineRefundFull": "Pembayaran online dikembalikan sepenuhnya",
+        "approvedBy": "Disetujui oleh"
       },
       "unitAssignment": {
         "title": "Penugasan satuan",

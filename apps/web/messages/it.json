@@ -2768,7 +2768,13 @@
             "generic": "Autorizzazione del deposito fallita. Chieda al cliente di riprovare o di utilizzare un'altra carta.",
             "closedByStore": "Richiesta chiusa dal negozio: nessuna autorizzazione trovata in Stripe."
           }
-        }
+        },
+        "refundDone": "Rimborso effettuato",
+        "refundFailed": "Rimborso non riuscito",
+        "refundToCheck": "Rimborso da verificare in Stripe",
+        "onlineRefundTotal": "Totale rimborsato online",
+        "onlineRefundFull": "Pagamento online rimborsato per intero",
+        "approvedBy": "Approvato da"
       },
       "unitAssignment": {
         "title": "Assegnazione unità",

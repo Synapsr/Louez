@@ -2807,7 +2807,13 @@
             "generic": "Kautionsautorisierung fehlgeschlagen. Bitten Sie den Kunden, es erneut zu versuchen oder eine andere Karte zu verwenden.",
             "closedByStore": "Anfrage vom Shop geschlossen: keine Autorisierung in Stripe gefunden."
           }
-        }
+        },
+        "refundDone": "Rückerstattung erfolgt",
+        "refundFailed": "Rückerstattung fehlgeschlagen",
+        "refundToCheck": "Rückerstattung in Stripe prüfen",
+        "onlineRefundTotal": "Online insgesamt erstattet",
+        "onlineRefundFull": "Online-Zahlung vollständig erstattet",
+        "approvedBy": "Genehmigt von"
       },
       "unitAssignment": {
         "title": "Einheitenzuweisung",

@@ -610,6 +610,8 @@ The approval is bound to the payment, its reservation, the amount in minor units
 
 **Who sees the booking.** A key that may write payments sees the booking number of the payment it acts on, in the preview and the answer, as `delete_payment` and `record_refund` show it; the dashboard link (`links`) needs the reservations scope. Both are pinned by `payment-refunds.db.test.ts`.
 
+**How a refund reads.** `reservations_get` (`GET /reservations/{id}`) lists the reservation's refunds asked through `refund_payment` in `refunds`, oldest first: each one's id, its payment, its own payment row once Stripe made it, its status as `get_refund` states it (`onlineRefundStatus`, `services/reservation-refunds.ts`), and the person who approved it (`approvedBy`); empty without payments read. One reader decides what a payment row is (`readPaymentRow`, `apps/web/lib/reservations/util.payment-status.ts`): money received, a hold, or a refund in each of its shapes, `done`, `processing` while Stripe has not settled it though its row is already `completed`, or `failed`. The reservation's payment card (its online tile, the latest of the rental's online money, and its history), the reservation's history (`refundActivityView`, which reads the `payment_updated` lines of the refund writer, of a refund undone and of the `charge.refunded` webhook as they are stored) and the customer's account page all use it; the totals keep their own rules.
+
 ### Not established
 
 Which assistants negotiate 2026-07-28 with Louez and declare `elicitation.form` or `elicitation.url`, and how each draws a titled `oneOf`; the state of MCP Apps and of OpenAI's widgets as ways to show choices (not in the sources at hand). Until a client is tested, the link is the path every client takes.
