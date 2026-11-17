@@ -11,18 +11,20 @@ import { clearPendingCheckout } from "@/lib/storefront/util.pending-checkout-sto
  * and forgets the pending reservation the checkout left behind for a resume.
  * Kept apart from the outcome banner: the banner stays silent on events the
  * status bar already covers, but the cart has to be cleared on all of them.
+ * It waits for the cart to have read its storage: a page loaded afresh runs
+ * this effect first, and the cart's own read would put the lines back.
  */
 export const ReservationCartReset = ({ event }: { event: ReservationOutcomeEvent | null }) => {
-  const { clearCart } = useCart();
+  const { clearCart, isHydrated } = useCart();
   const hasCleared = useRef(false);
 
   useEffect(() => {
-    if (hasCleared.current) return;
+    if (hasCleared.current || !isHydrated) return;
     if (event !== "paid" && event !== "requested") return;
     hasCleared.current = true;
     clearCart();
     clearPendingCheckout();
-  }, [event, clearCart]);
+  }, [event, clearCart, isHydrated]);
 
   return null;
 };
