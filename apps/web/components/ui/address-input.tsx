@@ -25,7 +25,11 @@ import {
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
-import { withinRequestBound } from '@/components/ui/util.address-input';
+import {
+  fetchWithinBound,
+  isGivenUp,
+  withinRequestBound,
+} from '@/components/ui/util.address-input';
 
 import { orpc } from '@/lib/orpc/react';
 
@@ -141,6 +145,9 @@ export const AddressInput = ({
   // list answers one text of a mounted field.
   const inputTextRef = useRef(value);
   const unmountedRef = useRef(false);
+  // Aborted with the field: its requests stop waiting, their timers cleared.
+  const lifetimeRef = useRef<AbortController | null>(null);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Writes the text the field shows; the ref moves at once, before React commits. */
   const setInputValue = (text: string) => {
     inputTextRef.current = text;
@@ -185,12 +192,18 @@ export const AddressInput = ({
       writeGenerationRef.current += 1;
     }
   }, [relatedKey]);
-  // Once unmounted, the field waits for nothing: its pending answers are void.
+  // Once unmounted, the field waits for nothing: its pending answers are
+  // void, and none of its timers is left to run.
   useEffect(() => {
     unmountedRef.current = false;
+    const lifetime = new AbortController();
+    lifetimeRef.current = lifetime;
     return () => {
       unmountedRef.current = true;
       writeGenerationRef.current += 1;
+      lifetime.abort();
+      if (blurTimerRef.current !== null) clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
     };
   }, []);
   useLayoutEffect(() => {
@@ -257,23 +270,29 @@ export const AddressInput = ({
       const isCurrent = () => !unmountedRef.current && inputTextRef.current === query;
       const request = startLoading();
       try {
-        const data = await withinRequestBound(
-          source
-            ? Promise.resolve(source.search(query)).then((found) => ({ suggestions: found }))
-            : queryClient.fetchQuery(
-                orpc.public.address.autocomplete.queryOptions({
-                  input: { query },
-                }),
-              ),
-        );
+        const signal = lifetimeRef.current?.signal;
+        const search = orpc.public.address.autocomplete.queryOptions({ input: { query } });
+        const data = source
+          ? { suggestions: await withinRequestBound(source.search(query), { signal }) }
+          : await fetchWithinBound(
+              queryClient,
+              search.queryKey,
+              () => queryClient.fetchQuery(search),
+              signal,
+            );
         if (!isCurrent()) return;
         suggestionsTextRef.current = query;
         setSuggestions(data.suggestions || []);
         setIsOpen((data.suggestions || []).length > 0);
         setSelectedIndex(-1);
       } catch (error) {
-        console.error('Address search error:', error);
-        if (isCurrent()) setSuggestions([]);
+        if (!unmountedRef.current) console.error('Address search error:', error);
+        // Failed or given up: the field is back to no list, so Enter or a
+        // focus searches the text again.
+        if (isCurrent()) {
+          setSuggestions([]);
+          setIsOpen(false);
+        }
       } finally {
         stopLoading(request);
       }
@@ -312,17 +331,18 @@ export const AddressInput = ({
         );
       };
       try {
-        const data = await withinRequestBound(
-          source
-            ? Promise.resolve(source.details(suggestion.placeId)).then((found) => ({
-                details: found,
-              }))
-            : queryClient.fetchQuery(
-                orpc.public.address.details.queryOptions({
-                  input: { placeId: suggestion.placeId },
-                }),
-              ),
-        );
+        const signal = lifetimeRef.current?.signal;
+        const lookup = orpc.public.address.details.queryOptions({
+          input: { placeId: suggestion.placeId },
+        });
+        const data = source
+          ? { details: await withinRequestBound(source.details(suggestion.placeId), { signal }) }
+          : await fetchWithinBound(
+              queryClient,
+              lookup.queryKey,
+              () => queryClient.fetchQuery(lookup),
+              signal,
+            );
 
         if (!isCurrent()) return;
         if (data.details) {
@@ -338,7 +358,9 @@ export const AddressInput = ({
           keepDescription();
         }
       } catch (error) {
-        console.error('Error fetching address details:', error);
+        if (!unmountedRef.current || !isGivenUp(error)) {
+          console.error('Error fetching address details:', error);
+        }
         if (isCurrent()) keepDescription();
       } finally {
         stopLoading(request);
@@ -390,7 +412,8 @@ export const AddressInput = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) {
+    // The list counts as open only while it shows suggestions.
+    if (!isOpen || suggestions.length === 0) {
       if (e.key === 'Enter' && needsCoordinates) {
         // Enter never sends a form from here: it shows what can be chosen.
         e.preventDefault();
@@ -429,7 +452,9 @@ export const AddressInput = ({
     onBlur?.();
     setIsFocused(false);
 
-    window.setTimeout(() => {
+    if (blurTimerRef.current !== null) clearTimeout(blurTimerRef.current);
+    blurTimerRef.current = setTimeout(() => {
+      blurTimerRef.current = null;
       if (isPressingSuggestionRef.current) {
         isPressingSuggestionRef.current = false;
         return;

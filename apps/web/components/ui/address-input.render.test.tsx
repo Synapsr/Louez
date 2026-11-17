@@ -367,6 +367,79 @@ for (const outcome of ["answers", "fails"] as const) {
   });
 }
 
+test("after a search that timed out, Enter searches the text again", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  typeInto(field.input, "12 rue de Siam");
+  await tick(SEARCH_DELAY);
+  await tick(REQUEST_BOUND);
+  assert.equal(field.searches.length, 2);
+  assert.deepEqual(field.shownSuggestions(), []);
+
+  pressKey(field.input, "Enter");
+  await settle();
+  assert.deepEqual(
+    field.searches.map((search) => search.query),
+    ["8 quai", "12 rue de Siam", "12 rue de Siam"],
+  );
+  field.searches[2].answer.resolve([suggestion("siam", "12 Rue de Siam, Brest")]);
+  await settle();
+  assert.deepEqual(field.shownSuggestions(), ["siam"]);
+});
+
+test("after a search that failed, Enter searches the text again", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  typeInto(field.input, "12 rue de Siam");
+  await tick(SEARCH_DELAY);
+  field.searches[1].answer.reject(new Error("search failed"));
+  await settle();
+
+  pressKey(field.input, "Enter");
+  await settle();
+  assert.equal(field.searches.length, 3);
+  assert.equal(field.searches[2].query, "12 rue de Siam");
+});
+
+test("once the field is gone, none of its timers is left pending", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+  // The timers set from here on, and those still waiting to run.
+  const pending = new Set<unknown>();
+  const set = globalThis.setTimeout;
+  const clear = globalThis.clearTimeout;
+  globalThis.setTimeout = ((callback: (...args: unknown[]) => void, delay?: number) => {
+    const id = set(() => {
+      pending.delete(id);
+      callback();
+    }, delay);
+    pending.add(id);
+    return id;
+  }) as typeof setTimeout;
+  globalThis.clearTimeout = ((id: Parameters<typeof clearTimeout>[0]) => {
+    pending.delete(id);
+    clear(id);
+  }) as typeof clearTimeout;
+  try {
+    // A search waiting for its answer, under its bound, and a blur waiting to close the list.
+    typeInto(field.input, "8 quai");
+    await tick(SEARCH_DELAY);
+    blur(field.input);
+    assert.ok(pending.size >= 2, "the bound and the blur are armed");
+
+    field.hide();
+    await settle();
+    assert.equal(pending.size, 0);
+  } finally {
+    globalThis.setTimeout = set;
+    globalThis.clearTimeout = clear;
+  }
+});
+
 test("a picked suggestion answering after another pick writes nothing", async () => {
   const field = renderField();
   unmount = field.unmount;
