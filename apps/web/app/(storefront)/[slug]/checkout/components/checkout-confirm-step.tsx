@@ -22,6 +22,7 @@ import { useFormatMoney } from "@/hooks/use-format-money";
 import type {
   CheckoutBlockedReason,
   CheckoutTulipInsurance,
+  CustomerDiscountState,
   ReservationMode,
 } from "../checkout.types";
 import type { AdvanceNoticeIssueDisplay } from "../hooks/use-checkout-advance-notice";
@@ -47,6 +48,7 @@ interface CheckoutConfirmStepProps {
   tulipQuote: ReturnType<typeof useCheckoutTulipQuote>;
   advisorGate: ReturnType<typeof useCheckoutAdvisorGate>;
   promo: ReturnType<typeof useCheckoutPromo>;
+  customerDiscount?: CustomerDiscountState;
   hasActivePromoCodes: boolean;
   totalDeposit: number;
   submitLabel: CheckoutSubmitLabel;
@@ -72,6 +74,7 @@ export const CheckoutConfirmStep = withForm({
     tulipQuote,
     advisorGate,
     promo,
+    customerDiscount,
     hasActivePromoCodes,
     totalDeposit,
     submitLabel,
@@ -193,6 +196,50 @@ export const CheckoutConfirmStep = withForm({
               )}
             </form.Field>
           )}
+
+          {customerDiscount &&
+            customerDiscount.discountPercent > 0 &&
+            customerDiscount.discountAmount > 0 && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">
+                      Naliczono stały rabat klienta (-{customerDiscount.discountPercent}%)
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Ten rabat został przypisany z góry do Twojego konta klienta i naliczony
+                      automatycznie przy podliczeniu zamówienia.
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-success">
+                    -{customerDiscount.discountPercent}%
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5 rounded-xl bg-background/70 p-3">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">Normalna cena zamówienia</span>
+                    <span className="tabular-nums text-muted-foreground line-through">
+                      {formatMoney(customerDiscount.normalTotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      Twój stały rabat (-{customerDiscount.discountPercent}%)
+                    </span>
+                    <span className="font-medium tabular-nums text-success">
+                      -{formatMoney(customerDiscount.discountAmount)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2 border-t pt-2 text-sm font-semibold">
+                    <span>Cena zamówienia po rabacie</span>
+                    <span className="tabular-nums text-foreground">
+                      {formatMoney(customerDiscount.discountedTotal)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
           {hasActivePromoCodes && (
             <CheckoutPromoCode

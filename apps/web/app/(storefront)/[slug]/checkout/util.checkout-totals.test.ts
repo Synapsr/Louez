@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   calculateCheckoutTotals,
+  calculateCustomerDiscountBreakdown,
   getCheckoutSubtotalDisplay,
   getCheckoutSubmitLabel,
 } from "./util.checkout-totals";
@@ -165,6 +166,59 @@ describe("getCheckoutSubmitLabel", () => {
     assert.deepEqual(getCheckoutSubmitLabel(partial, "payment"), {
       kind: "payDeposit",
       amount: 20,
+    });
+  });
+});
+
+describe("calculateCustomerDiscountBreakdown", () => {
+  it("computes normal total, discount amount, and discounted total for customer percentage discount", () => {
+    const breakdown = calculateCustomerDiscountBreakdown({
+      subtotal: 500,
+      promoDiscountAmount: 0,
+      customerDiscountPercent: 15,
+      deliveryFee: 50,
+      insuranceAmount: 0,
+    });
+
+    assert.deepEqual(breakdown, {
+      discountPercent: 15,
+      discountAmount: 75,
+      totalDiscountAmount: 75,
+      normalTotal: 550,
+      discountedTotal: 475,
+    });
+  });
+
+  it("applies customer percentage discount on remaining subtotal after promo code", () => {
+    const breakdown = calculateCustomerDiscountBreakdown({
+      subtotal: 400,
+      promoDiscountAmount: 100,
+      customerDiscountPercent: 10,
+      deliveryFee: 20,
+      insuranceAmount: 10,
+    });
+
+    assert.deepEqual(breakdown, {
+      discountPercent: 10,
+      discountAmount: 30,
+      totalDiscountAmount: 130,
+      normalTotal: 330,
+      discountedTotal: 300,
+    });
+  });
+
+  it("returns zero discount when customerDiscountPercent is 0", () => {
+    const breakdown = calculateCustomerDiscountBreakdown({
+      subtotal: 300,
+      customerDiscountPercent: 0,
+    });
+
+    assert.deepEqual(breakdown, {
+      discountPercent: 0,
+      discountAmount: 0,
+      totalDiscountAmount: 0,
+      normalTotal: 300,
+      discountedTotal: 300,
     });
   });
 });

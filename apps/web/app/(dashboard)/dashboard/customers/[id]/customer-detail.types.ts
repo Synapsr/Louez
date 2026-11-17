@@ -18,7 +18,9 @@ export type CustomerDetail = Pick<
   | "country"
   | "notes"
   | "createdAt"
->;
+> & {
+  discountPercent?: number | null;
+};
 
 export type CustomerHistoryReservation = Pick<
   typeof reservations.$inferSelect,

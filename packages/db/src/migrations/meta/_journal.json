@@ -652,6 +652,13 @@
       "when": 1793798400000,
       "tag": "0087_add_booked_by_name",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "5",
+      "when": 1794916000000,
+      "tag": "0088_add_customer_discount_percent",
+      "breakpoints": true
     }
   ]
 }

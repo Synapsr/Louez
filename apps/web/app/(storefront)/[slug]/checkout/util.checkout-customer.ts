@@ -12,6 +12,7 @@ interface CustomerRowLike {
   address?: string | null;
   city?: string | null;
   postalCode?: string | null;
+  discountPercent?: number | null;
 }
 
 /** Form-ready customer from a `customers` row (session or OTP login). */
@@ -27,4 +28,5 @@ export const toCheckoutInitialCustomer = (customer: CustomerRowLike): CheckoutIn
   address: customer.address ?? "",
   city: customer.city ?? "",
   postalCode: customer.postalCode ?? "",
+  discountPercent: customer.discountPercent ?? 0,
 });

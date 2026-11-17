@@ -41,6 +41,7 @@ import { CheckoutSkeleton } from "./components/checkout-skeleton";
 import { useCheckoutAdvanceNotice } from "./hooks/use-checkout-advance-notice";
 import { useCheckoutAdvisorGate } from "./hooks/use-checkout-advisor-gate";
 import { useCheckoutDelivery } from "./hooks/use-checkout-delivery";
+import { useCheckoutCustomerDiscount } from "./hooks/use-checkout-customer-discount";
 import { useCheckoutLineResolutions } from "./hooks/use-checkout-line-resolutions";
 import { useCheckoutPromo } from "./hooks/use-checkout-promo";
 import { useCheckoutStepFlow } from "./hooks/use-checkout-step-flow";
@@ -207,20 +208,31 @@ export const CheckoutForm = ({
     timezone,
   });
 
+  const customerDiscount = useCheckoutCustomerDiscount({
+    storeId,
+    email: values.email,
+    sessionCustomer,
+    subtotal,
+    promoDiscountAmount: promo.discountAmount,
+    deliveryFee: delivery.totalFee,
+    insuranceAmount: tulipQuote.appliedAmount,
+    isConfirmStep: stepFlow.currentStep === "confirm",
+  });
+
   const totals = useMemo(
     () =>
       calculateCheckoutTotals({
         subtotal,
-        discountAmount: promo.discountAmount,
+        discountAmount: customerDiscount.totalDiscountAmount,
         deliveryFee: delivery.totalFee,
         insuranceAmount: tulipQuote.appliedAmount,
         depositPercentage,
         reservationMode,
       }),
     [
+      customerDiscount.totalDiscountAmount,
       delivery.totalFee,
       depositPercentage,
-      promo.discountAmount,
       reservationMode,
       subtotal,
       tulipQuote.appliedAmount,
@@ -372,6 +384,7 @@ export const CheckoutForm = ({
     lineResolutions,
     promo: promo.promo,
     discountAmount: promo.discountAmount,
+    customerDiscount,
     onEditDates: () => setIsDatePickerOpen(true),
   };
 
@@ -466,6 +479,7 @@ export const CheckoutForm = ({
               tulipQuote={tulipQuote}
               advisorGate={advisorGate}
               promo={promo}
+              customerDiscount={customerDiscount}
               hasActivePromoCodes={hasActivePromoCodes}
               totalDeposit={totalDeposit}
               submitLabel={submitLabel}

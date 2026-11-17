@@ -1,9 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { db, stores } from "@louez/db";
+import { customers, db, stores } from "@louez/db";
 import type { TulipPublicMode } from "@louez/types";
 import {
   companySearchSchema,
@@ -242,4 +242,30 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     customerId: result.customerId,
     instantAccessUrl: result.instantAccessUrl,
   };
+}
+
+const customerDiscountPreviewSchema = z.object({
+  storeId: z.string().min(1).max(64),
+  email: z.email().trim().max(255),
+});
+
+export async function getCustomerDiscountPreview(input: {
+  storeId: string;
+  email: string;
+}): Promise<{ discountPercent: number }> {
+  const parsed = customerDiscountPreviewSchema.safeParse(input);
+  if (!parsed.success) {
+    return { discountPercent: 0 };
+  }
+
+  const customer = await db.query.customers.findFirst({
+    where: and(
+      eq(customers.storeId, parsed.data.storeId),
+      eq(customers.email, parsed.data.email),
+    ),
+    columns: { discountPercent: true },
+  });
+
+  const discountPercent = Math.min(100, Math.max(0, customer?.discountPercent ?? 0));
+  return { discountPercent };
 }

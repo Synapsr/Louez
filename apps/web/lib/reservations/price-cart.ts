@@ -95,6 +95,7 @@ export const computeReservationTotals = ({
   deliveryFee,
   totalDeposit,
   taxSettings,
+  hasCustomerDiscount = false,
 }: {
   lines: PricedCartLine[];
   insuranceAmount: number;
@@ -102,6 +103,7 @@ export const computeReservationTotals = ({
   deliveryFee: number;
   totalDeposit: number;
   taxSettings: TaxSettings | undefined;
+  hasCustomerDiscount?: boolean;
 }): ReservationTotals => {
   const taxConfig = taxSettingsToConfig(taxSettings);
   const taxEnabled = taxConfig?.enabled ?? false;
@@ -123,9 +125,11 @@ export const computeReservationTotals = ({
     lines: taxableLines,
     deliveryFee,
     discountAmount,
-    discountableLineIds: lines.some((line) => line.promotion)
-      ? lines.flatMap((line, index) => (line.promotion ? [] : [getItemTaxLineId(index)]))
-      : undefined,
+    discountableLineIds: hasCustomerDiscount
+      ? lines.map((_, index) => getItemTaxLineId(index))
+      : lines.some((line) => line.promotion)
+        ? lines.flatMap((line, index) => (line.promotion ? [] : [getItemTaxLineId(index)]))
+        : undefined,
     depositAmount: totalDeposit,
     taxConfig,
   });

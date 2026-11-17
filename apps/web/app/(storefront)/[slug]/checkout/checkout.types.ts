@@ -22,6 +22,14 @@ export interface CheckoutInitialCustomer {
   address: string;
   city: string;
   postalCode: string;
+  discountPercent?: number;
+}
+
+export interface CustomerDiscountState {
+  discountPercent: number;
+  discountAmount: number;
+  normalTotal: number;
+  discountedTotal: number;
 }
 
 export interface CheckoutLocationOption {

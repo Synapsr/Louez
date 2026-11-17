@@ -32,7 +32,10 @@ interface Customer {
   postalCode: string | null;
   country: string | null;
   notes: string | null;
+  discountPercent?: number | null;
 }
+
+const DISCOUNT_PRESETS = [5, 10, 15, 20, 25, 30, 50] as const;
 
 interface CustomerFormProps {
   customer?: Customer;
@@ -47,6 +50,8 @@ export const CustomerForm = ({ customer, openReplaySource = "direct" }: Customer
   const [isPending, startTransition] = useTransition();
   const isEditing = !!customer;
   const [rootError, setRootError] = useState<string | null>(null);
+  const initialDiscount = customer?.discountPercent ?? 0;
+  const [hasDiscount, setHasDiscount] = useState<boolean>(initialDiscount > 0);
 
   useEffect(() => {
     if (isEditing) {
@@ -74,12 +79,20 @@ export const CustomerForm = ({ customer, openReplaySource = "direct" }: Customer
       postalCode: customer?.postalCode || undefined,
       country: customer?.country || undefined,
       notes: customer?.notes || undefined,
+      discountPercent: initialDiscount,
     },
     onSubmit: async ({ value }) => {
       setRootError(null);
 
+      const normalizedValue = {
+        ...value,
+        discountPercent: hasDiscount
+          ? Math.min(100, Math.max(0, Math.round(Number(value.discountPercent) || 0)))
+          : 0,
+      };
+
       // Validate with Zod
-      const validation = customerSchema.safeParse(value);
+      const validation = customerSchema.safeParse(normalizedValue);
       if (!validation.success) {
         const firstError = validation.error.issues[0];
         if (firstError) {
@@ -290,6 +303,109 @@ export const CustomerForm = ({ customer, openReplaySource = "direct" }: Customer
                 )}
               </form.AppField>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Stały rabat klienta</CardTitle>
+            <CardDescription>
+              Nadaj klientowi stały rabat procentowy, który zostanie automatycznie naliczony przy
+              podliczeniu zamówienia na etapie „Dokończ Rezerwację” → „Potwierdzenie”.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label className="text-base">Nadaj stały rabat</Label>
+                <p className="text-sm text-muted-foreground">
+                  Po włączeniu klient otrzyma określony rabat (%) od ceny zamówienia podczas
+                  składania rezerwacji.
+                </p>
+              </div>
+              <Switch
+                checked={hasDiscount}
+                onCheckedChange={(checked) => {
+                  setHasDiscount(checked);
+                  if (!checked) {
+                    form.setFieldValue("discountPercent", 0);
+                  } else if ((form.getFieldValue("discountPercent") ?? 0) === 0) {
+                    form.setFieldValue("discountPercent", 10);
+                  }
+                }}
+              />
+            </div>
+
+            {hasDiscount && (
+              <form.Field name="discountPercent">
+                {(field) => {
+                  const currentPercent = Number(field.state.value ?? 0);
+                  return (
+                    <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={field.name}>Wysokość rabatu (%)</Label>
+                        <div className="flex max-w-xs items-center gap-2">
+                          <div className="relative flex-1">
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              type="number"
+                              min={1}
+                              max={100}
+                              step={1}
+                              inputMode="numeric"
+                              value={field.state.value ?? ""}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === "") {
+                                  field.handleChange(0);
+                                  return;
+                                }
+                                const parsed = Math.min(
+                                  100,
+                                  Math.max(0, Math.round(Number(raw) || 0)),
+                                );
+                                field.handleChange(parsed);
+                              }}
+                              onBlur={field.handleBlur}
+                              placeholder="np. 10"
+                              className="pr-9"
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-muted-foreground">
+                              %
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="mr-1 text-xs text-muted-foreground">Szybki wybór:</span>
+                        {DISCOUNT_PRESETS.map((preset) => (
+                          <Button
+                            key={preset}
+                            type="button"
+                            size="sm"
+                            variant={currentPercent === preset ? "default" : "outline"}
+                            className="h-7 px-2.5 text-xs"
+                            onClick={() => field.handleChange(preset)}
+                          >
+                            {preset}%
+                          </Button>
+                        ))}
+                      </div>
+
+                      {currentPercent > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Klient zobaczy na etapie potwierdzenia informację o przypisanym z góry
+                          rabacie <strong>-{currentPercent}%</strong> wraz z porównaniem ceny
+                          regularnej oraz ceny po rabacie.
+                        </p>
+                      )}
+                    </div>
+                  );
+                }}
+              </form.Field>
+            )}
           </CardContent>
         </Card>
 

@@ -73,6 +73,7 @@ export async function createCustomer(data: CustomerInput) {
         firstName,
         lastName,
         phone: validated.phone?.trim() || null,
+        discountPercent: Math.min(100, Math.max(0, Math.round(validated.discountPercent ?? 0))),
         ...resolveCustomerCompanyFields(validated),
       })
       .$returningId();
@@ -130,6 +131,7 @@ export async function updateCustomer(customerId: string, data: CustomerInput) {
         firstName: validated.firstName?.trim() || null,
         lastName: validated.lastName?.trim() || null,
         phone: validated.phone?.trim() || null,
+        discountPercent: Math.min(100, Math.max(0, Math.round(validated.discountPercent ?? 0))),
         ...resolveCustomerCompanyFields(validated),
         updatedAt: new Date(),
       })

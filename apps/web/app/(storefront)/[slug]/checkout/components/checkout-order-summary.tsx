@@ -24,6 +24,7 @@ import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibilit
 
 import type {
   CheckoutTulipInsurance,
+  CustomerDiscountState,
   LineResolutionState,
   ReservationMode,
   TulipQuotePreview,
@@ -58,6 +59,7 @@ interface CheckoutOrderSummaryProps {
   lineResolutions: Record<string, LineResolutionState>;
   promo: ValidatedPromo | null;
   discountAmount: number;
+  customerDiscount?: CustomerDiscountState;
   onEditDates: () => void;
   /** `card` = desktop sticky card; `bare` = inside the mobile disclosure. */
   variant?: "card" | "bare";
@@ -107,6 +109,7 @@ export const CheckoutOrderSummary = ({
   lineResolutions,
   promo,
   discountAmount,
+  customerDiscount,
   onEditDates,
   variant = "card",
   className,
@@ -310,6 +313,16 @@ export const CheckoutOrderSummary = ({
           />
         )}
 
+        {customerDiscount &&
+          customerDiscount.discountPercent > 0 &&
+          customerDiscount.discountAmount > 0 && (
+            <SummaryRow
+              label={`Stały rabat klienta (-${customerDiscount.discountPercent}%)`}
+              value={`-${formatMoney(customerDiscount.discountAmount)}`}
+              tone="success"
+            />
+          )}
+
         {hasDeliveryLegs && (
           <SummaryRow
             label={t("deliveryFee")}
@@ -331,10 +344,35 @@ export const CheckoutOrderSummary = ({
 
         <Separator />
 
+        {customerDiscount &&
+          customerDiscount.discountPercent > 0 &&
+          customerDiscount.discountAmount > 0 && (
+            <SummaryRow
+              label="Normalna cena zamówienia"
+              value={<s>{formatMoney(customerDiscount.normalTotal)}</s>}
+              tone="muted"
+            />
+          )}
+
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-base font-medium">{t("pricing.total")}</span>
+          <span className="text-base font-medium">
+            {customerDiscount &&
+            customerDiscount.discountPercent > 0 &&
+            customerDiscount.discountAmount > 0
+              ? "Cena po rabacie"
+              : t("pricing.total")}
+          </span>
           <Price amount={totals.total} size="lg" tone="primary" />
         </div>
+
+        {customerDiscount &&
+          customerDiscount.discountPercent > 0 &&
+          customerDiscount.discountAmount > 0 && (
+            <p className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-2.5 py-1.5 text-xs text-muted-foreground">
+              Uwzględniono stały rabat <strong>-{customerDiscount.discountPercent}%</strong>{" "}
+              przypisany z góry do Twojego konta klienta.
+            </p>
+          )}
 
         {totals.isPartialPayment && (
           <>

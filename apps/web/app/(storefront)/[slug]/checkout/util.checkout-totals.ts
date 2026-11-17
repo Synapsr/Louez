@@ -112,3 +112,43 @@ export const getCheckoutSubmitLabel = (
     ? { kind: "payDeposit", amount: totals.amountDueNow }
     : { kind: "pay", amount: totals.amountDueNow };
 };
+
+export interface CustomerDiscountBreakdown {
+  discountPercent: number;
+  discountAmount: number;
+  totalDiscountAmount: number;
+  normalTotal: number;
+  discountedTotal: number;
+}
+
+export const calculateCustomerDiscountBreakdown = ({
+  subtotal,
+  promoDiscountAmount = 0,
+  customerDiscountPercent = 0,
+  deliveryFee = 0,
+  insuranceAmount = 0,
+}: {
+  subtotal: number;
+  promoDiscountAmount?: number;
+  customerDiscountPercent?: number;
+  deliveryFee?: number;
+  insuranceAmount?: number;
+}): CustomerDiscountBreakdown => {
+  const safePercent = Math.min(100, Math.max(0, Math.round(customerDiscountPercent || 0)));
+  const remainingSubtotal = Math.max(0, roundToCents(subtotal - promoDiscountAmount));
+  const discountAmount =
+    safePercent > 0 ? roundToCents(remainingSubtotal * (safePercent / 100)) : 0;
+  const totalDiscountAmount = Math.min(subtotal, roundToCents(promoDiscountAmount + discountAmount));
+  const normalTotal = roundToCents(remainingSubtotal + deliveryFee + insuranceAmount);
+  const discountedTotal = roundToCents(
+    Math.max(0, subtotal - totalDiscountAmount) + deliveryFee + insuranceAmount,
+  );
+
+  return {
+    discountPercent: safePercent,
+    discountAmount,
+    totalDiscountAmount,
+    normalTotal,
+    discountedTotal,
+  };
+};

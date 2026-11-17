@@ -6,6 +6,7 @@ import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pri
 import {
   aiAdvisorConversations,
   cancelFailedCheckoutReservation,
+  customers,
   db,
   getBlockingReservationStatuses,
   payments,
@@ -412,10 +413,34 @@ const prepareReservation = async (
     promo = evaluation;
   }
 
-  const discountAmount = promo?.discountAmount ?? 0;
+  const promoDiscountAmount = promo?.discountAmount ?? 0;
+
+  let customerDiscountPercent = 0;
+  const normalizedCustomerEmail = input.customer.email?.trim();
+  if (normalizedCustomerEmail) {
+    const existingCustomer = await db.query.customers.findFirst({
+      where: and(
+        eq(customers.storeId, store.id),
+        eq(customers.email, normalizedCustomerEmail),
+      ),
+      columns: { discountPercent: true },
+    });
+    customerDiscountPercent = Math.min(100, Math.max(0, existingCustomer?.discountPercent ?? 0));
+  }
+
+  const remainingSubtotal = Math.max(0, Math.round((cart.subtotal - promoDiscountAmount) * 100) / 100);
+  const customerDiscountAmount =
+    customerDiscountPercent > 0
+      ? Math.round(remainingSubtotal * (customerDiscountPercent / 100) * 100) / 100
+      : 0;
+  const discountAmount = Math.min(
+    cart.subtotal,
+    Math.round((promoDiscountAmount + customerDiscountAmount) * 100) / 100,
+  );
+
   const minimumOrderCheck = validateDeliveryMinimumOrder(
     delivery,
-    Math.round((cart.subtotal - discountAmount) * 100) / 100,
+    Math.round((cart.subtotal - promoDiscountAmount) * 100) / 100,
   );
   if (!minimumOrderCheck.ok) return minimumOrderCheck;
 
@@ -426,6 +451,7 @@ const prepareReservation = async (
     deliveryFee: delivery.fee,
     totalDeposit: cart.totalDeposit,
     taxSettings: settings?.tax,
+    hasCustomerDiscount: customerDiscountAmount > 0,
   });
 
   return {

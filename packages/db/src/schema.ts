@@ -1208,6 +1208,9 @@ export const customers = mysqlTable(
     // Internal notes
     notes: text("notes"),
 
+    // Permanent customer discount percentage (0 - 100)
+    discountPercent: int("discount_percent").default(0).notNull(),
+
     // Metadata
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),

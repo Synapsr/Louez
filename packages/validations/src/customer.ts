@@ -30,6 +30,7 @@ const baseCustomerFields = {
   postalCode: z.string().optional(),
   country: z.string().length(2, "validation.minLength").optional(),
   notes: z.string().optional(),
+  discountPercent: z.coerce.number().int().min(0).max(100).optional(),
 };
 
 // Schema factory that accepts translation function
@@ -60,6 +61,7 @@ export const createCustomerSchema = (
         .length(2, t("minLength", { min: 2 }))
         .optional(),
       notes: z.string().optional(),
+      discountPercent: z.coerce.number().int().min(0).max(100).optional(),
     })
     .superRefine((data, ctx) => {
       if (data.customerType === "business") {

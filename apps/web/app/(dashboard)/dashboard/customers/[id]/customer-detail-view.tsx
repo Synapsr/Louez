@@ -97,6 +97,11 @@ export const CustomerDetailView = ({
                   <Badge variant="expired" className="font-normal">
                     {t("customerType.business")}
                   </Badge>
+                  {(customer.discountPercent ?? 0) > 0 && (
+                    <Badge variant="success" className="font-medium">
+                      Stały rabat: -{customer.discountPercent}%
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {contactName && `${t("contact")}: ${contactName} · `}
@@ -111,6 +116,11 @@ export const CustomerDetailView = ({
                   <Badge variant="expired" className="font-normal">
                     {t("customerType.individual")}
                   </Badge>
+                  {(customer.discountPercent ?? 0) > 0 && (
+                    <Badge variant="success" className="font-medium">
+                      Stały rabat: -{customer.discountPercent}%
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t("customerSince")}{" "}
