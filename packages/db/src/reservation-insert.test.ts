@@ -63,6 +63,27 @@ describe("planReservationInsert", () => {
     }
   });
 
+  test("the sales channel never makes a fee a marketplace one: the source does", () => {
+    for (const [source, marketplace] of [
+      // A storefront visit from reeent.
+      ["online", false],
+      // reeent's Booking API.
+      ["marketplace", true],
+    ] as const) {
+      const plan = planReservationInsert(
+        { ...values("confirmed", source), salesChannel: "marketplace" },
+        NOW,
+      );
+      assert.equal(plan.row.salesChannel, "marketplace", source);
+      assert.equal(plan.effects[0]?.type, "legacy_fee.record", source);
+      assert.equal(
+        plan.effects[0]?.type === "legacy_fee.record" && plan.effects[0].marketplace,
+        marketplace,
+        source,
+      );
+    }
+  });
+
   test("a pending or quote insert has no billable date and no effect", () => {
     for (const status of ["pending", "quote"] as const) {
       for (const source of ["online", "manual", "marketplace"]) {
