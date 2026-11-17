@@ -2,7 +2,7 @@ import type { ReservationEffectRunner, ReservationGateReason, Transaction } from
 import type { StoreSettings } from "@louez/types";
 
 import type { StripeConnectClient } from "../adapters/stripe-connect";
-import type { BillingStatus } from "../contracts/billing";
+import type { BillingStatus, PlanOfferView } from "../contracts/billing";
 import type { Transport } from "./actor";
 import type { ReportServerError } from "./error-reporting";
 import type { RefusalLogEvent } from "./refusal-log";
@@ -562,6 +562,27 @@ export interface BillingPort {
     storeId: string;
     checkoutSessionId: string;
   }) => Promise<"refreshed" | "pending">;
+  /**
+   * The plan that would have cost the store less than what it paid Louez, as its
+   * dashboard offers it now, or null (apps/web lib/billing/plan-offer.ts). Absent: no
+   * offer.
+   */
+  planOffer?: (input: { storeId: string; now: Date }) => Promise<PlanOfferView | null>;
+  /** Counts the offer's card as seen by `userId`, with the figures it showed. Never throws. */
+  recordPlanOfferShown?: (input: {
+    storeId: string;
+    userId: string;
+    offer: PlanOfferView;
+  }) => Promise<void>;
+  /**
+   * The offered plan's Stripe Checkout, monthly, no trial, opened only while the offer
+   * still applies; null when it no longer does.
+   */
+  startPlanOfferCheckout?: (input: {
+    storeId: string;
+    affiliateReferral: string | null;
+    now: Date;
+  }) => Promise<{ url: string; offer: PlanOfferView } | null>;
 }
 
 /** Whether the billing service would open a card setup for the store now. */

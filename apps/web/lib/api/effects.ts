@@ -7,6 +7,7 @@ import {
   type ApiEffectSenders,
 } from "@louez/api/platform/effects";
 
+import { createPlanOfferEffectSenders } from "@/lib/billing/plan-offer-effects";
 import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
 import { createRefundCreditNoteEffectSenders } from "@/lib/invoicing/refund-credit-note-effects";
@@ -26,6 +27,7 @@ import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-ef
  * effect type. A domain that adds an effect type adds its sender here.
  */
 export const apiEffectSenders: ApiEffectSenders = {
+  ...createPlanOfferEffectSenders(),
   ...createDepositHoldEffectSenders(),
   ...createRefundCreditNoteEffectSenders(),
   ...createReservationEffectSenders(),

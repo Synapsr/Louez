@@ -50,6 +50,9 @@ export const productAnalyticsEvents = {
   subscriptionChanged: 'subscription_changed',
   subscriptionCanceled: 'subscription_canceled',
   paygFeeCharged: 'payg_fee_charged',
+  planOfferShown: 'plan_offer_shown',
+  planOfferDismissed: 'plan_offer_dismissed',
+  planOfferClicked: 'plan_offer_clicked',
 } as const;
 
 export type ProductAnalyticsEvent =

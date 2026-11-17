@@ -31,6 +31,7 @@ export { PhoneCallbackLandlordEmail } from "./phone-callback-landlord";
 export { ContactMessageEmail } from "./contact-message";
 export { VoiceNumberBillingEmail } from "./voice-number-billing";
 export { BalanceLimitEmail } from "./balance-limit";
+export { PlanOfferEmail } from "./plan-offer";
 export { TeamInvitationEmail } from "./team-invitation";
 export { RewardUnlockedEmail } from "./reward-unlocked";
 export { MagicLinkEmail } from "@louez/email/templates";

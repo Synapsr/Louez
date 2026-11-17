@@ -143,3 +143,63 @@ export const billingErrors = {
       details: { reason },
     }),
 };
+
+// ---------------------------------------------------------------------------
+// The dashboard's offer of a Louez plan (apps/web lib/billing/plan-offer.ts)
+
+/**
+ * A plan that would have cost the store less than what it paid Louez in a month, at
+ * the store's own tariff. Amounts in minor units of `currency`: the dashboard formats
+ * them. Only the store's dashboard reads it.
+ */
+export const planOfferSchema = z.object({
+  plan: z.enum(["pro", "ultra"]),
+  /** `legacy`: Louez's per-reservation fees; `service`: the billing service's commission. */
+  source: z.enum(["legacy", "service"]),
+  /** The running month, or the last closed one. */
+  period: z.enum(["current", "previous"]),
+  month: z.string().describe("YYYY-MM"),
+  currency: z.string(),
+  /** What the store paid Louez that month, VAT included. */
+  paidMinor: z.number().int(),
+  /** The plan's monthly price, excluding VAT. */
+  planPriceMinor: z.number().int(),
+  /** The VAT rate counted on the plan's price, in basis points. */
+  vatRateBps: z.number().int(),
+  /** The plan's monthly price with that VAT. */
+  thresholdMinor: z.number().int(),
+  /** `paidMinor − thresholdMinor`. */
+  savingsMinor: z.number().int(),
+});
+export type PlanOfferView = z.infer<typeof planOfferSchema>;
+
+export const getPlanOfferInput = z.object({});
+export const getPlanOfferOutput = z.object({ offer: planOfferSchema.nullable() });
+
+/** The figures the card showed, as `getPlanOffer` gave them: counted as seen. */
+export const recordPlanOfferShownInput = z.object({ offer: planOfferSchema });
+export const recordPlanOfferShownOutput = z.object({ recorded: z.literal(true) });
+
+export const dismissPlanOfferInput = z.object({});
+export const dismissPlanOfferOutput = z.object({ dismissed: z.literal(true) });
+
+export const startPlanOfferInput = z.object({
+  /** The affiliate code the browser holds (Klibon), passed on to Checkout as the plans page does. */
+  affiliateReferral: z.string().max(200).nullable().optional(),
+});
+export const startPlanOfferOutput = z.object({ url: z.string().url() });
+
+export const planOfferErrors = {
+  /** The card and its Checkout are the store owner's, as the billing pages are. */
+  ownerOnly: () =>
+    apiError("FORBIDDEN", "PERMISSION_DENIED", {
+      message: "Only the store's owner is offered a plan here.",
+      i18nKey: "errors.permissionDenied",
+    }),
+  /** No plan would cost the store less now, or it may not buy one here (a plan, a coupon). */
+  unavailable: () =>
+    apiError("CONFLICT", "PLAN_OFFER_UNAVAILABLE", {
+      message: "No plan offer applies to this store now. Its plans are on the subscription page.",
+      i18nKey: "errors.planOfferUnavailable",
+    }),
+};

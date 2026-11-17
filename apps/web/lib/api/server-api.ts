@@ -47,5 +47,9 @@ export async function serverApi() {
       context,
       path: ["dashboard", "team"],
     }),
+    billing: createRouterClient(appRouter.dashboard.billing, {
+      context,
+      path: ["dashboard", "billing"],
+    }),
   };
 }

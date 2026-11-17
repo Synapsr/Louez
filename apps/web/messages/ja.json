@@ -1117,6 +1117,26 @@
         "hideQR": "QRコードを隠す",
         "qrDescription": "このコードをスキャンしてストアにアクセスします",
         "downloadQR": "ダウンロード"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "今月は手数料として{paid}をお支払いいただいています。",
+        "titlePreviousCommission": "先月は手数料として{paid}をお支払いいただきました。",
+        "titleCurrentFees": "今月は予約手数料として{paid}をお支払いいただいています。",
+        "titlePreviousFees": "先月は予約手数料として{paid}をお支払いいただきました。",
+        "comparisonWithVat": "{plan}なら{price}（税抜）、税込{priceWithVat}で済みました。",
+        "comparison": "{plan}なら{price}（税抜）で済みました。",
+        "cta": "{plan}に切り替える",
+        "noCommitment": "契約期間の縛りなし、いつでも解約できます。",
+        "dismiss": "30日間表示しない",
+        "detailsToggle": "計算方法",
+        "detailsMonth": "対象月",
+        "detailsPaidCommission": "支払った手数料（税込）",
+        "detailsPaidFees": "支払った予約手数料",
+        "detailsPlan": "{plan}プラン",
+        "detailsPlanPrice": "月額{price}（税抜）",
+        "detailsPlanPriceWithVat": "月額{price}（税抜）、付加価値税{vatRate}込みで{priceWithVat}",
+        "detailsSavings": "節約額",
+        "detailsNote": "ストアの実際の料金で計算しています。プランご利用中も、Stripeの手数料とreeentマーケットプレイスの手数料はかかります。"
       }
     },
     "products": {
@@ -9643,7 +9663,8 @@
     "depositAttempt": {
       "needsStripe": "Louez はこの要求に対するオーソリを Stripe で見つけましたが、要求した内容と一致しません（金額、カード、または参照が変更されています）。Louez はこれを記録しておらず、要求は開いたままです。Stripe ダッシュボードでキャンセルしてから、「要求を閉じる」をクリックしてください。代わりに Stripe で回収した場合、Louez はその金額を記録せず、要求は開いたままになります。Louez サポートにお問い合わせください。",
       "none": "この予約には未確認のオーソリはもうありません。"
-    }
+    },
+    "planOfferUnavailable": "このオファーはストアに適用されなくなりました。プランはサブスクリプションのページでご確認ください。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",
