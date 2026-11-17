@@ -10,7 +10,26 @@ import {
 } from '@/lib/utils/geo'
 import { fetchDeliveryDistanceKm } from '@/lib/utils/delivery-distance'
 
+import {
+  type EditedDeliveryLeg,
+  isDeliveryLegKept,
+  isUnmeasuredAddressLeg,
+  needsChosenAddress,
+} from '@/app/(dashboard)/dashboard/reservations/util.delivery-leg-choice'
 import type { ReservationDelivery, StoreDeliveryInfo } from '../types'
+
+/**
+ * A leg's error when the edit sends it to an address, or to another one,
+ * with no place chosen: it cannot be measured, so the edit cannot be saved.
+ */
+export const ADDRESS_NOT_CHOSEN = 'addressNotChosen'
+
+const editedLeg = (leg: DeliveryLegState): EditedDeliveryLeg => ({
+  method: leg.method,
+  address: leg.address.address,
+  latitude: leg.address.latitude,
+  longitude: leg.address.longitude,
+})
 
 export interface DeliveryLegAddress {
   address: string
@@ -116,6 +135,34 @@ export function useEditReservationDelivery({
   )
 
   const isDeliveryIncluded = storeDelivery?.settings.mode === 'included'
+
+  // The legs as stored: what the edit is compared with to know a leg changed.
+  const storedLegs = useMemo(
+    () => ({
+      outbound: {
+        method: initialDelivery.outboundMethod,
+        address: initialDelivery.deliveryAddress,
+        latitude: initialDelivery.deliveryLatitude,
+        longitude: initialDelivery.deliveryLongitude,
+      },
+      inbound: {
+        method: initialDelivery.returnMethod,
+        address: initialDelivery.returnAddress,
+        latitude: initialDelivery.returnLatitude,
+        longitude: initialDelivery.returnLongitude,
+      },
+    }),
+    [initialDelivery],
+  )
+  const outboundNeedsChoice = needsChosenAddress(storedLegs.outbound, editedLeg(outbound))
+  const inboundNeedsChoice = needsChosenAddress(storedLegs.inbound, editedLeg(inbound))
+  // Legs kept as stored, one of them with no place (an address saved long ago
+  // as typed), cannot be measured again: the fee they were given stands, as
+  // the server keeps it.
+  const keepsStoredFee =
+    isDeliveryLegKept(storedLegs.outbound, editedLeg(outbound)) &&
+    isDeliveryLegKept(storedLegs.inbound, editedLeg(inbound)) &&
+    (isUnmeasuredAddressLeg(storedLegs.outbound) || isUnmeasuredAddressLeg(storedLegs.inbound))
   const [outboundIsCalculating, setOutboundIsCalculating] = useState(false)
   const [inboundIsCalculating, setInboundIsCalculating] = useState(false)
 
@@ -129,6 +176,15 @@ export function useEditReservationDelivery({
       return { outboundFee: 0, returnFee: 0, totalFee: 0 }
     }
 
+    if (keepsStoredFee) {
+      const onOutbound = outbound.method === 'address'
+      return {
+        outboundFee: onOutbound ? initialDeliveryFee : 0,
+        returnFee: onOutbound ? 0 : initialDeliveryFee,
+        totalFee: initialDeliveryFee,
+      }
+    }
+
     const outDist = outbound.method === 'address' ? outbound.distance : null
     const retDist = inbound.method === 'address' ? inbound.distance : null
 
@@ -138,7 +194,7 @@ export function useEditReservationDelivery({
       storeDelivery.settings,
       subtotal,
     )
-  }, [storeDelivery, isDeliveryIncluded, outbound.method, outbound.distance, inbound.method, inbound.distance, subtotal])
+  }, [storeDelivery, isDeliveryIncluded, keepsStoredFee, initialDeliveryFee, outbound.method, outbound.distance, inbound.method, inbound.distance, subtotal])
 
   const recalculateDistance = useCallback(
     (
@@ -299,12 +355,14 @@ export function useEditReservationDelivery({
   const hasDeliveryLegs =
     outbound.method === 'address' || inbound.method === 'address'
 
-  const hasErrors = outbound.error !== null || inbound.error !== null
+  const outboundError = outbound.error ?? (outboundNeedsChoice ? ADDRESS_NOT_CHOSEN : null)
+  const inboundError = inbound.error ?? (inboundNeedsChoice ? ADDRESS_NOT_CHOSEN : null)
+  const hasErrors = outboundError !== null || inboundError !== null
   const isCalculating = outboundIsCalculating || inboundIsCalculating
 
   return {
-    outbound: { ...outbound, fee: fees.outboundFee },
-    inbound: { ...inbound, fee: fees.returnFee },
+    outbound: { ...outbound, error: outboundError, fee: fees.outboundFee },
+    inbound: { ...inbound, error: inboundError, fee: fees.returnFee },
     totalFee: fees.totalFee,
     hasDeliveryLegs,
     hasErrors,

@@ -66,6 +66,11 @@ interface AddressInputProps {
    * typed), it does neither.
    */
   needsCoordinates?: boolean;
+  /**
+   * Whether the field says under itself that an address must be chosen. Off
+   * when the form says it in its own words, as an error of its own.
+   */
+  showChoiceHint?: boolean;
   /** Supplied address service; when present, no remote lookup is performed. */
   source?: AddressInputSource;
   /** Whether clearing the field may return focus to the input. */
@@ -99,6 +104,7 @@ export const AddressInput = ({
   onBlur,
   onAddressResolved,
   needsCoordinates = true,
+  showChoiceHint = true,
   source,
   autoFocus = true,
   autoComplete,
@@ -450,7 +456,8 @@ export const AddressInput = ({
     );
   };
 
-  const showsChoiceHint = needsChoice && !disabled && !isFocused && !isLoading;
+  const showsChoiceHint =
+    showChoiceHint && needsChoice && !disabled && !isFocused && !isLoading;
 
   return (
     <>

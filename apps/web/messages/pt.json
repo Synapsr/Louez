@@ -2432,6 +2432,8 @@
           "included": "Incluído",
           "totalFee": "Taxa total de entrega",
           "tooFar": "O endereço excede a distância máxima ({maxDistance} km)",
+          "outboundAddressNotChosen": "Escolha o endereço de entrega na lista ou coloque-o no mapa.",
+          "returnAddressNotChosen": "Escolha o endereço de recolha na lista ou coloque-o no mapa.",
           "savings": "Poupança",
           "deliveryFee": "Taxa de entrega"
         }
@@ -9546,6 +9548,8 @@
     "deliveryNotEnabled": "A entrega não está ativada para esta loja",
     "deliveryMinimumOrderAmountNotMet": "A entrega está disponível a partir de {amount} de aluguel",
     "deliveryAddressRequired": "Por favor, insira um endereço de entrega válido",
+    "deliveryAddressNotChosen": "O endereço de entrega deve ser escolhido na lista ou colocado no mapa.",
+    "returnAddressNotChosen": "O endereço de recolha deve ser escolhido na lista ou colocado no mapa.",
     "storeCoordinatesNotConfigured": "As coordenadas da loja não estão configuradas",
     "deliveryTooFar": "O endereço de entrega está muito longe (máximo {maxDistance} km)",
     "deliveryRequired": "A entrega é obrigatória para esta loja",
