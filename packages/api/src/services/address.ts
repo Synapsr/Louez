@@ -11,11 +11,6 @@ interface GetAddressDetailsParams {
   googlePlacesApiKey?: string
 }
 
-interface ResolveAddressQueryParams {
-  query: string
-  googlePlacesApiKey?: string
-}
-
 interface ReverseGeocodeParams {
   latitude: number
   longitude: number
@@ -80,68 +75,6 @@ export async function getAddressAutocomplete(
     }))
 
   return { suggestions }
-}
-
-export async function resolveAddressQuery(
-  params: ResolveAddressQueryParams,
-): Promise<{ details: AddressDetails | null }> {
-  const { query, googlePlacesApiKey } = params
-  const apiKey = getGoogleApiKey(googlePlacesApiKey)
-
-  const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'places.id,places.formattedAddress,places.location,places.addressComponents',
-    },
-    body: JSON.stringify({
-      textQuery: query,
-      maxResultCount: 1,
-    }),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok || data.error) {
-    throw new ApiServiceError('INTERNAL_SERVER_ERROR', 'errors.addressLookupFailed', data.error)
-  }
-
-  const place = data.places?.[0]
-  if (!place) {
-    return { details: null }
-  }
-
-  const addressComponents = place.addressComponents || []
-
-  const getComponent = (types: string[]): string | undefined => {
-    const component = addressComponents.find((entry: { types: string[] }) =>
-      types.some((type) => entry.types.includes(type)),
-    )
-    return component?.longText
-  }
-
-  const getComponentShort = (types: string[]): string | undefined => {
-    const component = addressComponents.find((entry: { types: string[] }) =>
-      types.some((type) => entry.types.includes(type)),
-    )
-    return component?.shortText
-  }
-
-  return {
-    details: {
-      placeId: place.id,
-      formattedAddress: place.formattedAddress,
-      latitude: place.location?.latitude,
-      longitude: place.location?.longitude,
-      streetNumber: getComponent(['street_number']),
-      street: getComponent(['route']),
-      city: getComponent(['locality', 'administrative_area_level_2']),
-      postalCode: getComponent(['postal_code']),
-      country: getComponent(['country']),
-      countryCode: getComponentShort(['country']),
-    },
-  }
 }
 
 export async function getAddressDetails(

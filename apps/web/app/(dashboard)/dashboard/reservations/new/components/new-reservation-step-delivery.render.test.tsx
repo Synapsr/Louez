@@ -54,7 +54,7 @@ const carquefouSuggestion: AddressSuggestion = {
   secondaryText: "Carquefou",
 };
 
-type Endpoint = "autocomplete" | "details" | "resolve" | "distance";
+type Endpoint = "autocomplete" | "details" | "distance";
 
 /** The address endpoints answered by the test; a distance answers 12 km at once. */
 const controlledQueryClient = () => {
@@ -66,7 +66,7 @@ const controlledQueryClient = () => {
   const queryClient = new QueryClient();
   queryClient.fetchQuery = ((options: { queryKey: unknown }) => {
     const key = JSON.stringify(options.queryKey);
-    const endpoint = (["autocomplete", "details", "resolve", "distance"] as const).find((name) =>
+    const endpoint = (["autocomplete", "details", "distance"] as const).find((name) =>
       key.includes(`"${name}"`),
     );
     assert.ok(endpoint, `unexpected query ${key}`);
@@ -128,8 +128,7 @@ const renderStep = () => {
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
-  const lookups = () =>
-    requests.filter((request) => request.endpoint === "details" || request.endpoint === "resolve");
+  const lookups = () => requests.filter((request) => request.endpoint === "details");
   return {
     ...view,
     requests,

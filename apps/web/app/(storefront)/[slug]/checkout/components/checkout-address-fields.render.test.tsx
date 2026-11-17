@@ -61,11 +61,11 @@ type Answer = ReturnType<typeof deferred<unknown>>;
 
 /** The address endpoints, answered by the test when it chooses. */
 const controlledQueryClient = () => {
-  const requests: Array<{ endpoint: "autocomplete" | "details" | "resolve"; answer: Answer }> = [];
+  const requests: Array<{ endpoint: "autocomplete" | "details"; answer: Answer }> = [];
   const queryClient = new QueryClient();
   queryClient.fetchQuery = ((options: { queryKey: unknown }) => {
     const key = JSON.stringify(options.queryKey);
-    const endpoint = (["autocomplete", "details", "resolve"] as const).find((name) =>
+    const endpoint = (["autocomplete", "details"] as const).find((name) =>
       key.includes(`"${name}"`),
     );
     assert.ok(endpoint, `unexpected query ${key}`);
