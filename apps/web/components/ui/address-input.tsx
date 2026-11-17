@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, MapPin, Search, X } from 'lucide-react';
@@ -64,6 +70,11 @@ interface AddressInputProps {
    * password managers are kept away so they do not cover the suggestions.
    */
   autoComplete?: string;
+  /**
+   * Values that go with the address, such as its postal code and city: a
+   * change from anywhere voids the answers still pending, as an edit does.
+   */
+  relatedValues?: readonly string[];
 }
 
 export const AddressInput = ({
@@ -86,6 +97,7 @@ export const AddressInput = ({
   source,
   autoFocus = true,
   autoComplete,
+  relatedValues,
 }: AddressInputProps) => {
   const t = useTranslations('common.addressInput');
   const queryClient = useQueryClient();
@@ -103,11 +115,14 @@ export const AddressInput = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const shouldSkipBlurResolveRef = useRef(false);
   const lastRequestRef = useRef(0);
-  // Every write to the field (an edit, a clear, a pick, a lookup) moves this
-  // on; an answer asked before it moved on is dropped, success or failure.
+  // Every write to the field (an edit, a clear, a pick, a lookup, a value or a
+  // related value set from outside, the field unmounting) moves this on; an
+  // answer asked before it moved on is dropped, success or failure.
   const writeGenerationRef = useRef(0);
   const pickInFlightRef = useRef<number | null>(null);
   const emittedTextRef = useRef<string | null>(null);
+  const relatedKey = JSON.stringify(relatedValues ?? []);
+  const relatedKeyRef = useRef(relatedKey);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   const startLoading = () => {
@@ -129,15 +144,32 @@ export const AddressInput = ({
     onChange(address, lat, lng, display, info);
   };
 
-  // Sync with external value
-  useEffect(() => {
+  // A text or a related value set from outside (a located address, a reset)
+  // is a write too, counted as soon as it is committed.
+  useLayoutEffect(() => {
     const text = displayAddress || value;
-    // A text set from outside (a located address, a reset) is a write too.
     if (text !== emittedTextRef.current) {
       emittedTextRef.current = text;
       writeGenerationRef.current += 1;
     }
-    setInputValue(text);
+  }, [value, displayAddress]);
+  useLayoutEffect(() => {
+    if (relatedKey !== relatedKeyRef.current) {
+      relatedKeyRef.current = relatedKey;
+      writeGenerationRef.current += 1;
+    }
+  }, [relatedKey]);
+  // Once unmounted, the field waits for nothing: its pending answers are void.
+  useEffect(
+    () => () => {
+      writeGenerationRef.current += 1;
+    },
+    [],
+  );
+
+  // Sync with external value
+  useEffect(() => {
+    setInputValue(displayAddress || value);
   }, [value, displayAddress]);
 
   // Close dropdown on outside click
@@ -189,6 +221,9 @@ export const AddressInput = ({
         return;
       }
 
+      // Only the latest search of the text still shown may change the list.
+      const generation = writeGenerationRef.current;
+      const isCurrent = () => writeGenerationRef.current === generation;
       const request = startLoading();
       try {
         const data = source
@@ -198,12 +233,13 @@ export const AddressInput = ({
                 input: { query },
               }),
             );
+        if (!isCurrent()) return;
         setSuggestions(data.suggestions || []);
         setIsOpen((data.suggestions || []).length > 0);
         setSelectedIndex(-1);
       } catch (error) {
         console.error('Address search error:', error);
-        setSuggestions([]);
+        if (isCurrent()) setSuggestions([]);
       } finally {
         stopLoading(request);
       }

@@ -79,6 +79,8 @@ export const CheckoutAddressFields = withForm({
                     });
                   }}
                   resolvesTypedText={CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT}
+                  // A pick still answering loses to any change of the locality.
+                  relatedValues={[postalCode, city]}
                   onBlur={field.handleBlur}
                   placeholder={t("addressPlaceholder")}
                   ariaInvalid={hasError}

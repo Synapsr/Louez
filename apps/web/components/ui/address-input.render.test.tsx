@@ -2,7 +2,7 @@ import "@/lib/testing/install-dom";
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
-import { useState } from "react";
+import { act, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 
@@ -79,15 +79,21 @@ interface FieldState {
   longitude: number | null;
 }
 
+/** The field's value lives in its parent, which can unmount it and mount it again. */
 const DeliveryField = ({
   source,
   state,
+  controls,
 }: {
   source: ReturnType<typeof controlledSource>["source"];
   state: { current: FieldState };
+  controls: { setShown: (shown: boolean) => void };
 }) => {
   const [field, setField] = useState<FieldState>({ address: "", latitude: null, longitude: null });
+  const [shown, setShown] = useState(true);
   state.current = field;
+  controls.setShown = setShown;
+  if (!shown) return null;
   return (
     <AddressInput
       source={source}
@@ -103,18 +109,39 @@ const DeliveryField = ({
 const renderField = () => {
   const control = controlledSource();
   const state = { current: { address: "", latitude: null, longitude: null } as FieldState };
+  const controls = { setShown: (_shown: boolean) => {} };
   const view = mount(
     <QueryClientProvider client={new QueryClient()}>
       <NextIntlClientProvider locale="en" messages={messages}>
-        <DeliveryField source={control.source} state={state} />
+        <DeliveryField source={control.source} state={state} controls={controls} />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
-  const input = view.container.querySelector("input") as unknown as HTMLInputElement;
   const isSpinning = () => view.container.querySelector(".animate-spin") !== null;
   const option = (placeId: string) =>
     document.querySelector(`[data-address-suggestion="${placeId}"]`) as unknown as HTMLElement;
-  return { ...control, ...view, input, state, isSpinning, option };
+  const shownSuggestions = () =>
+    [...document.querySelectorAll("[data-address-suggestion]")].map((element) =>
+      element.getAttribute("data-address-suggestion"),
+    );
+  /** Leaves the field, as a step change does, and comes back to a new one. */
+  const remount = () => {
+    act(() => controls.setShown(false));
+    act(() => controls.setShown(true));
+  };
+  return {
+    ...control,
+    ...view,
+    get input() {
+      return view.container.querySelector("input") as unknown as HTMLInputElement;
+    },
+    state,
+    isSpinning,
+    option,
+    shownSuggestions,
+    remount,
+    hide: () => act(() => controls.setShown(false)),
+  };
 };
 
 /** Types, lets the search start and answers it with these suggestions. */
@@ -305,4 +332,94 @@ test("Enter in the delivery field with the list closed resolves the typed text",
     field.resolves.map((resolve) => resolve.query),
     ["8 quai de la douane"],
   );
+});
+
+test("a search answering after the text changed shows no list", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  typeInto(field.input, "8 quai");
+  await tick(SEARCH_DELAY);
+  typeInto(field.input, "12 rue de Siam");
+  field.searches[0].answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
+  await settle();
+
+  assert.deepEqual(field.shownSuggestions(), []);
+});
+
+for (const outcome of ["answers", "fails"] as const) {
+  test(`an older search that ${outcome} after a newer one leaves the newer list as it is`, async () => {
+    const field = renderField();
+    unmount = field.unmount;
+
+    typeInto(field.input, "8 quai");
+    await tick(SEARCH_DELAY);
+    typeInto(field.input, "12 rue de Siam");
+    await tick(SEARCH_DELAY);
+    const [older, newer] = field.searches;
+    assert.equal(newer.query, "12 rue de Siam");
+    newer.answer.resolve([suggestion("siam", "12 Rue de Siam, Brest")]);
+    await settle();
+    if (outcome === "answers")
+      older.answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
+    else older.answer.reject(new Error("search failed"));
+    await settle();
+
+    assert.deepEqual(field.shownSuggestions(), ["siam"]);
+    assert.equal(field.input.value, "12 rue de Siam");
+  });
+}
+
+for (const outcome of ["answers", "fails"] as const) {
+  test(`a pick that ${outcome} after its field unmounted writes nothing to the new one`, async () => {
+    const field = renderField();
+    unmount = field.unmount;
+
+    await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+    pointerClick(field.option("brest"));
+    await tick(BLUR_DELAY);
+    field.remount();
+    typeInto(field.input, "12 rue de Siam");
+
+    const pick = field.resolves[0];
+    if (outcome === "answers") pick.answer.resolve(details("brest", "8 Quai de la Douane, Brest"));
+    else pick.answer.reject(new Error("details failed"));
+    await settle();
+
+    assert.equal(field.input.value, "12 rue de Siam");
+    assert.deepEqual(field.state.current, {
+      address: "12 rue de Siam",
+      latitude: null,
+      longitude: null,
+    });
+  });
+}
+
+test("a typed-text lookup answering after its field unmounted writes nothing", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  typeInto(field.input, "8 quai de la douane");
+  blur(field.input);
+  await tick(BLUR_DELAY);
+  field.remount();
+  typeInto(field.input, "12 rue de Siam");
+  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, Brest"));
+  await settle();
+
+  assert.equal(field.input.value, "12 rue de Siam");
+  assert.equal(field.state.current.address, "12 rue de Siam");
+});
+
+test("a blur whose delay ends after the field unmounted looks nothing up", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  typeInto(field.input, "8 quai de la douane");
+  blur(field.input);
+  field.hide();
+  await tick(BLUR_DELAY);
+
+  assert.deepEqual(field.resolves, []);
+  assert.equal(field.state.current.address, "8 quai de la douane");
 });

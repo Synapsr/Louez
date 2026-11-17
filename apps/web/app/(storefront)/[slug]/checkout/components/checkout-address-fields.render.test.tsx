@@ -2,7 +2,7 @@ import "@/lib/testing/install-dom";
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
-import { useState } from "react";
+import { act, useState } from "react";
 import { useStore } from "@tanstack/react-form";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
@@ -81,9 +81,33 @@ interface Snapshot {
   coordinates: ReturnType<typeof getPickedCoordinates>;
 }
 
-const AddressFields = ({ snapshot }: { snapshot: { current: Snapshot } }) => {
-  const form = useAppForm({ ...checkoutFormOptions });
+interface Controls {
+  /** What a customer session change does: the pick forgotten, the form reset. */
+  reset: (fields: CustomerAddressFields) => void;
+  /** Leaves the contact step (the fields unmount) or comes back to it. */
+  setShown: (shown: boolean) => void;
+}
+
+/** The form and the pick live above the fields, as the checkout keeps them across steps. */
+const AddressFields = ({
+  snapshot,
+  controls,
+}: {
+  snapshot: { current: Snapshot };
+  controls: Controls;
+}) => {
+  // As the checkout does, the form's defaults follow the customer it was reset for.
+  const [defaultValues, setDefaultValues] = useState(checkoutFormOptions.defaultValues);
+  const form = useAppForm({ ...checkoutFormOptions, defaultValues });
   const [pick, setPick] = useState<CustomerAddressPick | null>(null);
+  const [shown, setShown] = useState(true);
+  controls.setShown = setShown;
+  controls.reset = (fields) => {
+    const values = { ...form.state.values, ...fields };
+    setDefaultValues(values);
+    setPick(null);
+    form.reset(values);
+  };
   const address = useStore(form.store, (state) => state.values.address);
   const postalCode = useStore(form.store, (state) => state.values.postalCode);
   const city = useStore(form.store, (state) => state.values.city);
@@ -93,7 +117,7 @@ const AddressFields = ({ snapshot }: { snapshot: { current: Snapshot } }) => {
   snapshot.current = { values, coordinates: getPickedCoordinates(pick, values) };
   return (
     <form.AppForm>
-      <CheckoutAddressFields form={form} pick={pick} onPickChange={setPick} />
+      {shown && <CheckoutAddressFields form={form} pick={pick} onPickChange={setPick} />}
     </form.AppForm>
   );
 };
@@ -106,10 +130,11 @@ const renderAddress = () => {
       coordinates: { latitude: null, longitude: null },
     } as Snapshot,
   };
+  const controls: Controls = { reset: () => {}, setShown: () => {} };
   const view = mount(
     <QueryClientProvider client={queryClient}>
       <NextIntlClientProvider locale="fr" messages={messages}>
-        <AddressFields snapshot={snapshot} />
+        <AddressFields snapshot={snapshot} controls={controls} />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
@@ -122,9 +147,20 @@ const renderAddress = () => {
     requests,
     snapshot,
     lookups,
-    street: byId("address"),
-    postalCode: byId("postalCode"),
-    city: byId("city"),
+    reset: (fields: CustomerAddressFields) => act(() => controls.reset(fields)),
+    remount: () => {
+      act(() => controls.setShown(false));
+      act(() => controls.setShown(true));
+    },
+    get street() {
+      return byId("address");
+    },
+    get postalCode() {
+      return byId("postalCode");
+    },
+    get city() {
+      return byId("city");
+    },
   };
 };
 
@@ -300,3 +336,70 @@ test("a password manager filling the locality, then the street, after a pick kee
   assert.deepEqual(view.snapshot.current.values, TYPED);
   assert.deepEqual(view.snapshot.current.coordinates, NO_COORDINATES);
 });
+
+const STARTED = "2 rue volt";
+
+for (const [edited, edit, expected] of [
+  [
+    "the postal code",
+    (view: AddressView) => typeInto(view.postalCode, "75001"),
+    { address: STARTED, postalCode: "75001", city: "" },
+  ],
+  [
+    "the city",
+    (view: AddressView) => typeInto(view.city, "Paris"),
+    { address: STARTED, postalCode: "", city: "Paris" },
+  ],
+] as const) {
+  for (const outcome of ["answers", "fails"] as const) {
+    test(`a pick that ${outcome} after ${edited} was typed writes nothing`, async () => {
+      const view = renderAddress();
+      unmount = view.unmount;
+
+      const details = await startPick(view);
+      edit(view);
+      if (outcome === "answers") details.resolve({ details: voltaire });
+      else details.reject(new Error("details failed"));
+      await settle();
+
+      assert.deepEqual(view.snapshot.current.values, expected);
+      assert.equal(view.street.value, STARTED);
+      assert.deepEqual(view.snapshot.current.coordinates, NO_COORDINATES);
+    });
+  }
+}
+
+for (const outcome of ["answers", "fails"] as const) {
+  test(`a pick that ${outcome} after a reset with the same street writes nothing`, async () => {
+    const view = renderAddress();
+    unmount = view.unmount;
+
+    const details = await startPick(view);
+    const saved = { address: STARTED, postalCode: "29200", city: "Brest" };
+    view.reset(saved);
+    if (outcome === "answers") details.resolve({ details: voltaire });
+    else details.reject(new Error("details failed"));
+    await settle();
+
+    assert.deepEqual(view.snapshot.current.values, saved);
+    assert.deepEqual(view.snapshot.current.coordinates, NO_COORDINATES);
+  });
+}
+
+for (const outcome of ["answers", "fails"] as const) {
+  test(`a pick that ${outcome} after the contact step was left and opened again writes nothing`, async () => {
+    const view = renderAddress();
+    unmount = view.unmount;
+
+    const details = await startPick(view);
+    view.remount();
+    typeAddress(view, TYPED);
+    if (outcome === "answers") details.resolve({ details: voltaire });
+    else details.reject(new Error("details failed"));
+    await settle();
+
+    assert.deepEqual(view.snapshot.current.values, TYPED);
+    assert.equal(view.street.value, TYPED.address);
+    assert.deepEqual(view.snapshot.current.coordinates, NO_COORDINATES);
+  });
+}
