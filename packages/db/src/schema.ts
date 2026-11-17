@@ -1,5 +1,5 @@
 import type { CustomerFieldValues, CustomerSocialLinks, ProductPromotion } from "@louez/types";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -1525,6 +1525,10 @@ export const customers = mysqlTable(
       "ai",
     ]),
     socialLinks: json("social_links").$type<CustomerSocialLinks>(),
+    // The customer of a test reservation (packages/db test-reservations.ts):
+    // kept out of counts, exports and the API. A real checkout with its e-mail
+    // makes it a real customer.
+    isTest: boolean("is_test").default(false).notNull(),
 
     // Internal notes
     notes: text("notes"),
@@ -1857,6 +1861,17 @@ export const reservations = mysqlTable(
     // Source
     source: varchar("source", { length: 20 }).default("online"),
 
+    // A test reservation: the store owner's rehearsal of the customer journey
+    // (packages/db test-reservations.ts). It holds no stock, is never billed, and
+    // stays out of every count, export, calendar, API and message to a customer.
+    isTest: boolean("is_test").default(false).notNull(),
+    // The store's id on its one test reservation, null on every other row: the
+    // unique index below allows a single test reservation per store.
+    testStoreId: varchar("test_store_id", { length: 21 }).generatedAlwaysAs(
+      sql`(case when \`is_test\` then \`store_id\` else null end)`,
+      { mode: "virtual" },
+    ),
+
     // Tulip insurance contract
     tulipInsuranceOptIn: boolean("tulip_insurance_opt_in"),
     tulipInsuranceAmount: decimal("tulip_insurance_amount", {
@@ -1883,6 +1898,7 @@ export const reservations = mysqlTable(
     statusIdx: index("reservations_status_idx").on(table.status),
     dateIdx: index("reservations_date_idx").on(table.startDate, table.endDate),
     billableAtIdx: index("reservations_billable_at_idx").on(table.billableAt),
+    oneTestPerStore: unique("reservations_one_test_per_store").on(table.testStoreId),
   }),
 );
 

@@ -25,6 +25,7 @@ import {
   reservationItems,
   reservations,
 } from "./schema";
+import { excludeTestReservations } from "./test-reservations";
 
 export const BLOCKING_RESERVATION_STATUSES = ["pending", "confirmed", "ongoing"] as const;
 
@@ -114,7 +115,7 @@ export function buildReservationAvailabilityPredicate(
   database: Pick<Database, "select">,
   now: Date = new Date(),
 ) {
-  const predicate = or(
+  const marketplaceHold = or(
     isNull(reservations.source),
     ne(reservations.source, "marketplace"),
     not(eq(reservations.status, "pending")),
@@ -140,6 +141,8 @@ export function buildReservationAvailabilityPredicate(
         ),
     ),
   );
+  // A test reservation never holds stock (test-reservations.ts).
+  const predicate = and(excludeTestReservations(), marketplaceHold);
   if (!predicate) {
     throw new Error("Failed to build reservation availability predicate");
   }

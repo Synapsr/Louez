@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import {
+  excludeTestReservations,
   paymentDisputes,
   paymentRequests,
   payments,
@@ -28,9 +29,11 @@ export async function buildReservationSnapshot(
 ): Promise<BuiltSnapshot<ReservationSnapshotData>> {
   const reservationId = key.aggregateId;
   const checks = snapshotChecks(`reservation ${reservationId}`);
+  // A test reservation is never billed: it reads as missing (packages/db test-reservations.ts).
   const ofReservation = and(
     eq(reservations.id, reservationId),
     eq(reservations.storeId, key.storeId),
+    excludeTestReservations(),
   );
 
   const [reservation] = await db

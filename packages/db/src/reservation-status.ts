@@ -114,6 +114,8 @@ export interface LockedReservation {
   status: ReservationStatus;
   source: string | null;
   billableAt: Date | null;
+  /** A test reservation is never billed: no fee effect, no billing dates (test-reservations.ts). */
+  isTest?: boolean;
 }
 
 export type PlanReservationStatusChangeInput = Omit<
@@ -232,8 +234,11 @@ export function planReservationStatusChange(
   if (!activityType) throw new Error(`No activity type for a change to ${to}`);
 
   const now = toWholeSeconds(input.now);
-  const entersBillable = !isBillableReservationStatus(from) && isBillableReservationStatus(to);
-  const leavesBillable = isBillableReservationStatus(from) && !isBillableReservationStatus(to);
+  const billed = !locked.isTest;
+  const entersBillable =
+    billed && !isBillableReservationStatus(from) && isBillableReservationStatus(to);
+  const leavesBillable =
+    billed && isBillableReservationStatus(from) && !isBillableReservationStatus(to);
 
   const effects: ReservationBillingEffect[] = [];
   // The Connect webhook records a paid checkout's fee, with the collected amount.
@@ -247,7 +252,7 @@ export function planReservationStatusChange(
     });
   }
   // Whatever the previous status was: the cancel paths void unconditionally today.
-  if (isFeeVoidingReservationStatus(to)) {
+  if (billed && isFeeVoidingReservationStatus(to)) {
     effects.push({
       type: "legacy_fee.void",
       storeId: input.storeId,
@@ -307,6 +312,7 @@ export async function changeReservationStatus(
       status: reservations.status,
       source: reservations.source,
       billableAt: reservations.billableAt,
+      isTest: reservations.isTest,
     })
     .from(reservations)
     .where(scope)
@@ -319,7 +325,8 @@ export async function changeReservationStatus(
   if (plan.stock !== null || input.beforeWrite) {
     assertReservationLock(tx, input.lock, ["products"], input);
   }
-  if (requiresReservationGate(locked.status, input.to, input.actor)) {
+  // A test reservation is never billed, so the card gate never stops it.
+  if (!locked.isTest && requiresReservationGate(locked.status, input.to, input.actor)) {
     await assertStoreCanTakeReservations(tx, input.storeId, now);
   }
 
@@ -355,7 +362,9 @@ export async function changeReservationStatus(
     metadata: { ...plan.activity.metadata, ...checked?.activityMetadata },
     ...(checked?.activityAt ? { createdAt: toWholeSeconds(checked.activityAt) } : {}),
   });
-  await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
+  if (!locked.isTest) {
+    await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
+  }
 
   return { changed: true, ...change, effects: plan.effects };
 }

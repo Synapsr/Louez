@@ -64,6 +64,15 @@ export * from "./schema";
 export * from "./billing-queue";
 export * from "./billing-policy";
 export {
+  TEST_RESERVATION_LIFETIME_DAYS,
+  TestReservationRefusedError,
+  excludeTestCustomers,
+  excludeTestReservations,
+  findStoreTestReservation,
+  isTestReservation,
+  refuseOnTestReservation,
+} from "./test-reservations";
+export {
   activeProductUnitCountSql,
   effectiveProductQuantitySql,
   getEffectiveProductQuantities,
