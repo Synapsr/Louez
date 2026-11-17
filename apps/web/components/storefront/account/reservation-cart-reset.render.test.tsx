@@ -38,13 +38,14 @@ const storedLines = (): unknown[] => {
 
 let unmounts: Array<() => void> = [];
 
-const renderPage = (reservationId: string, settled: boolean) => {
+const renderPage = (reservationId: string, settled: boolean | "requested") => {
+  const outcome = settled === "requested" ? "requested" : settled ? "paid" : null;
   const queryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
   const { unmount } = mount(
     <QueryClientProvider client={queryClient}>
       <StoreProvider storeId={STORE} currency="EUR" storeSlug="shop" storeName="Shop">
         <CartProvider>
-          <ReservationCartReset reservationId={reservationId} settled={settled} />
+          <ReservationCartReset reservationId={reservationId} outcome={outcome} />
         </CartProvider>
       </StoreProvider>
     </QueryClientProvider>,
@@ -106,6 +107,24 @@ test("an outcome not settled yet keeps the cart and the record", async () => {
 
   assert.equal(storedLines().length, 1);
   assert.notEqual(window.localStorage.getItem(PENDING_KEY), null);
+});
+
+test("a payment checkout left unpaid, opened as a request's landing, keeps its cart and its record", async () => {
+  writePendingCheckout({ storeId: STORE, reservationId: "booking", resumable: true });
+  renderPage("booking", "requested");
+  await settle();
+
+  assert.equal(storedLines().length, 1);
+  assert.notEqual(window.localStorage.getItem(PENDING_KEY), null, "it can still be resumed");
+});
+
+test("a request this browser sent has its cart emptied on its landing", async () => {
+  writePendingCheckout({ storeId: STORE, reservationId: "booking", resumable: false });
+  renderPage("booking", "requested");
+  await settle();
+
+  assert.deepEqual(storedLines(), []);
+  assert.equal(window.localStorage.getItem(PENDING_KEY), null);
 });
 
 test("the confirmation opened again later leaves the new cart alone", async () => {

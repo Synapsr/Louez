@@ -103,15 +103,27 @@ export const writePendingCheckout = ({
   }
 };
 
+/** What a checkout was: one that pays at once, or a request the store answers. */
+export type StartedCheckoutKind = "payment" | "request";
+
 /**
- * Whether this browser started the checkout of `reservationId` at this store;
- * true once only, since the record is then forgotten.
+ * Whether this browser started the checkout of `reservationId` at this store,
+ * and that checkout was of this kind; true once only, since the record is then
+ * forgotten. The kind is part of the proof: a page that states a request as
+ * sent must not consume the record of a payment checkout still unpaid, which
+ * is the one the customer resumes with.
  */
-export const consumeStartedCheckout = (storeId: string, reservationId: string): boolean => {
+export const consumeStartedCheckout = (
+  storeId: string,
+  reservationId: string,
+  kind: StartedCheckoutKind,
+): boolean => {
   const storage = getStorage();
   if (!storage) return false;
   try {
-    if (readRecord(storage, storeId)?.reservationId !== reservationId) return false;
+    const record = readRecord(storage, storeId);
+    if (record?.reservationId !== reservationId) return false;
+    if (record.resumable !== (kind === "payment")) return false;
     forget(storage, storeId);
     return true;
   } catch {

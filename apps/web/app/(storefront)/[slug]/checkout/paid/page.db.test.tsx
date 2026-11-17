@@ -76,11 +76,11 @@ Reflect.set(globalThis, STUBS_KEY, {
   cartReset: {
     ReservationCartReset: ({
       reservationId,
-      settled,
+      outcome,
     }: {
       reservationId: string;
-      settled: boolean;
-    }) => createElement("i", { "data-cart-reset": reservationId, "data-settled": String(settled) }),
+      outcome: "paid" | "requested" | null;
+    }) => createElement("i", { "data-cart-reset": reservationId, "data-outcome": String(outcome) }),
   },
   refresh: { StorefrontPageRefresh: () => createElement("i", { "data-refresh": "" }) },
   headers: {
@@ -357,7 +357,7 @@ describe(
       const html = await render();
 
       assert.ok(html.includes(`data-cart-reset="${paid.id}"`));
-      assert.match(html, /data-settled="true"/);
+      assert.match(html, /data-outcome="paid"/);
     });
 
     for (const [label, state] of [
@@ -378,7 +378,7 @@ describe(
         assert.match(html, /S&#x27;il a bien été effectué/);
         assert.doesNotMatch(html, /reçu|en cours de confirmation|e-mail/);
         assert.ok(html.includes(unverified.number));
-        assert.match(html, /data-settled="false"/, "the cart stays until the payment is recorded");
+        assert.match(html, /data-outcome="null"/, "the cart stays until the payment is recorded");
         assert.match(html, /data-refresh/);
         await assertHoldsNone(html, privateValues(STORE, unverified.sessionId), element);
       });

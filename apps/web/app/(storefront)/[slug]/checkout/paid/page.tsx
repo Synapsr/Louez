@@ -81,7 +81,7 @@ const CheckoutPaidPage = async ({ params }: CheckoutPaidPageProps) => {
 
   return (
     <StorefrontSection width="narrow">
-      <ReservationCartReset reservationId={claim.reservationId} settled={received} />
+      <ReservationCartReset reservationId={claim.reservationId} outcome={received ? "paid" : null} />
       {received ? null : <StorefrontPageRefresh renderedAt={Date.now()} />}
       <OutcomeHeader
         tone={received ? "success" : "pending"}

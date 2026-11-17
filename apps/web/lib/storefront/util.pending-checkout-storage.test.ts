@@ -29,23 +29,34 @@ test("a request, which no checkout may resume, is never read as a resume hint", 
   writePendingCheckout({ storeId: "store_a", reservationId: "res_request", resumable: false });
 
   assert.equal(readPendingCheckout("store_a"), undefined);
-  assert.equal(consumeStartedCheckout("store_a", "res_request"), true);
+  assert.equal(consumeStartedCheckout("store_a", "res_request", "request"), true);
 });
 
 test("the record proves the checkout once, for its own store and reservation", () => {
   writePendingCheckout({ storeId: "store_a", reservationId: "res_a", resumable: true });
 
-  assert.equal(consumeStartedCheckout("store_b", "res_a"), false);
-  assert.equal(consumeStartedCheckout("store_a", "res_other"), false);
+  assert.equal(consumeStartedCheckout("store_b", "res_a", "payment"), false);
+  assert.equal(consumeStartedCheckout("store_a", "res_other", "payment"), false);
   assert.equal(readPendingCheckout("store_a"), "res_a", "a refused proof leaves the record");
 
-  assert.equal(consumeStartedCheckout("store_a", "res_a"), true);
-  assert.equal(consumeStartedCheckout("store_a", "res_a"), false);
+  assert.equal(consumeStartedCheckout("store_a", "res_a", "payment"), true);
+  assert.equal(consumeStartedCheckout("store_a", "res_a", "payment"), false);
   assert.equal(readPendingCheckout("store_a"), undefined);
 });
 
+test("the proof is of one kind of checkout: a request's page never consumes a payment's record", () => {
+  writePendingCheckout({ storeId: "store_a", reservationId: "res_a", resumable: true });
+
+  assert.equal(consumeStartedCheckout("store_a", "res_a", "request"), false);
+  assert.equal(readPendingCheckout("store_a"), "res_a", "the unpaid checkout can still be resumed");
+
+  writePendingCheckout({ storeId: "store_a", reservationId: "res_request", resumable: false });
+  assert.equal(consumeStartedCheckout("store_a", "res_request", "payment"), false);
+  assert.equal(consumeStartedCheckout("store_a", "res_request", "request"), true);
+});
+
 test("without a record there is no proof", () => {
-  assert.equal(consumeStartedCheckout("store_a", "res_a"), false);
+  assert.equal(consumeStartedCheckout("store_a", "res_a", "payment"), false);
 });
 
 test("a record written before records were per store still counts for its store, once", () => {
@@ -55,11 +66,11 @@ test("a record written before records were per store still counts for its store,
   );
 
   assert.equal(readPendingCheckout("store_b"), undefined);
-  assert.equal(consumeStartedCheckout("store_b", "res_a"), false);
+  assert.equal(consumeStartedCheckout("store_b", "res_a", "payment"), false);
   assert.equal(readPendingCheckout("store_a"), "res_a");
-  assert.equal(consumeStartedCheckout("store_a", "res_a"), true);
+  assert.equal(consumeStartedCheckout("store_a", "res_a", "payment"), true);
   assert.equal(window.localStorage.getItem(LEGACY_KEY), null);
-  assert.equal(consumeStartedCheckout("store_a", "res_a"), false);
+  assert.equal(consumeStartedCheckout("store_a", "res_a", "payment"), false);
 });
 
 test("a new record of a store replaces that store's older one", () => {
@@ -70,11 +81,11 @@ test("a new record of a store replaces that store's older one", () => {
   writePendingCheckout({ storeId: "store_a", reservationId: "res_new", resumable: true });
 
   assert.equal(readPendingCheckout("store_a"), "res_new");
-  assert.equal(consumeStartedCheckout("store_a", "res_old"), false);
+  assert.equal(consumeStartedCheckout("store_a", "res_old", "payment"), false);
 });
 
 test("a corrupt record proves nothing", () => {
   window.localStorage.setItem(`${LEGACY_KEY}:store_a`, "{not json");
   assert.equal(readPendingCheckout("store_a"), undefined);
-  assert.equal(consumeStartedCheckout("store_a", "res_a"), false);
+  assert.equal(consumeStartedCheckout("store_a", "res_a", "payment"), false);
 });
