@@ -157,34 +157,82 @@ test("extensions surface once confirmed, date requests once filed", () => {
   );
 });
 
-test("cancellations remember who asked; Stripe's count of refunds is no refund for the customer", () => {
+test("cancellations remember who asked", () => {
   const updates = getReservationUpdates([
     row("1", "cancelled", "2026-09-05T10:00:00Z", { source: "customer_request_cancellation" }),
     row("2", "cancelled", "2026-09-05T11:00:00Z", { previousStatus: "pending" }),
-    // The webhook's line counts a refund Stripe may still fail: the customer's payments
-    // list states each refund by its own state instead.
-    row("3", "payment_updated", "2026-09-05T12:00:00Z", {
-      chargeId: "ch_1",
-      refundAmount: 20,
-      isFullRefund: false,
-    }),
-    row("4", "payment_updated", "2026-09-05T13:00:00Z", { refundAmount: 0 }),
   ]);
-  assert.deepEqual(
-    updates.map((update) => update.id),
-    ["2", "1"],
+  assert.deepEqual(updates, [
+    { id: "2", at: at("2026-09-05T11:00:00Z"), kind: "cancelled", byCustomer: false },
+    { id: "1", at: at("2026-09-05T10:00:00Z"), kind: "cancelled", byCustomer: true },
+  ]);
+});
+
+// Stripe's count of a charge's refunds (pending ones included) is shown to the customer only
+// when no refund row of the reservation stands for a refund of that charge: the oldest
+// webhooks stamped the refund on the payment and wrote no row, so the count is all there is.
+// When rows exist, the customer's payments list states each refund by its own state.
+const countLine = (refundAmount: number) =>
+  row("3", "payment_updated", "2026-09-05T12:00:00Z", {
+    chargeId: "ch_1",
+    refundAmount,
+    isFullRefund: false,
+  });
+// 100.00 netted to 60.00, its refund id stamped on it, no refund row of its own.
+const stampedCharge = {
+  id: "pay_1",
+  type: "rental",
+  method: "stripe",
+  status: "completed",
+  amount: "60.00",
+  stripeChargeId: "ch_1",
+  stripePaymentIntentId: "pi_1",
+  stripeCheckoutSessionId: null,
+  stripeRefundId: "re_old",
+  refundOfPaymentId: null,
+};
+const refundRow = (fields: Record<string, unknown>) => ({
+  id: "pay_r",
+  type: "rental",
+  method: "stripe",
+  status: "completed",
+  amount: "40.00",
+  stripeChargeId: null,
+  stripePaymentIntentId: null,
+  stripeCheckoutSessionId: null,
+  stripeRefundId: "re_new",
+  refundOfPaymentId: null,
+  ...fields,
+});
+
+test("the oldest shape: Stripe's count is the customer's only word of the refund, and is kept", () => {
+  assert.deepEqual(getReservationUpdates([countLine(40)], [stampedCharge]), [
+    { id: "3", at: at("2026-09-05T12:00:00Z"), kind: "stripe_refund_count", amount: 40 },
+  ]);
+  // A refund row of another charge does not stand for this one.
+  assert.equal(
+    getReservationUpdates(
+      [countLine(40)],
+      [stampedCharge, refundRow({ stripeChargeId: "ch_other" })],
+    ).length,
+    1,
   );
-  const [byStore, byCustomer] = updates;
-  assert.deepEqual(byStore, {
-    id: "2",
-    at: at("2026-09-05T11:00:00Z"),
-    kind: "cancelled",
-    byCustomer: false,
-  });
-  assert.deepEqual(byCustomer, {
-    id: "1",
-    at: at("2026-09-05T10:00:00Z"),
-    kind: "cancelled",
-    byCustomer: true,
-  });
+  // Nothing counted, nothing said.
+  assert.deepEqual(getReservationUpdates([countLine(0)], [stampedCharge]), []);
+});
+
+test("a refund row of that charge stands for the refund: Stripe's count stays out", () => {
+  const charge = { ...stampedCharge, stripeRefundId: null };
+  // Linked to the charge's payment row.
+  assert.deepEqual(
+    getReservationUpdates([countLine(40)], [charge, refundRow({ refundOfPaymentId: "pay_1" })]),
+    [],
+  );
+  // Carrying the charge's id (the dashboard's refunds before 2026-08).
+  assert.deepEqual(
+    getReservationUpdates([countLine(40)], [charge, refundRow({ stripeChargeId: "ch_1" })]),
+    [],
+  );
+  // Neither: the rows cannot tell which charge it came off, so it may be this one's.
+  assert.deepEqual(getReservationUpdates([countLine(40)], [charge, refundRow({})]), []);
 });

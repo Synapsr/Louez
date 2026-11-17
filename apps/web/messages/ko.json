@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "픽업상태 보고 완료",
         "inspection_return_completed": "반품조건 신고 완료",
         "inspection_damage_detected": "상태 보고서에 명시된 손상",
-        "inspection_signed": "상태 보고서 서명됨"
+        "inspection_signed": "상태 보고서 서명됨",
+        "stripe_refund_count": "이 결제에 대해 Stripe가 집계한 환불: {amount}"
       },
       "inspections": {
         "title": "상태 보고서",
@@ -8545,8 +8546,7 @@
           "failed": "실패"
         },
         "refundedStatus": {
-          "issued": "환불 발행됨",
-          "processing": "환불 진행 중"
+          "issued": "환불 발행됨"
         }
       },
       "reviewPrompt": {

@@ -48,8 +48,9 @@ test("a payment refunded in full is said refunded only once its refunds are know
     key: "refundedStatus.issued",
     variant: "info",
   });
-  assert.deepEqual(customerPaymentBadge({ kind: "receipt" }, "refunded", "processing"), {
-    key: "refundedStatus.processing",
-    variant: "pending",
+  // Not read: never said refunded.
+  assert.deepEqual(customerPaymentBadge({ kind: "receipt" }, "refunded"), {
+    key: "refundedStatus.issued",
+    variant: "info",
   });
 });

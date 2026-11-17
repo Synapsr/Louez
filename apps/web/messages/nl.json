@@ -8498,7 +8498,8 @@
         "inspection_departure_completed": "Staat van oplevering bij ophalen opgemaakt",
         "inspection_return_completed": "Staat van oplevering bij inleveren opgemaakt",
         "inspection_damage_detected": "Schade vastgesteld bij de inspectie",
-        "inspection_signed": "Staat van oplevering ondertekend"
+        "inspection_signed": "Staat van oplevering ondertekend",
+        "stripe_refund_count": "{amount} aan terugbetalingen door Stripe geteld op deze betaling"
       },
       "inspections": {
         "title": "Staten van oplevering",
@@ -8556,8 +8557,7 @@
           "failed": "Mislukt"
         },
         "refundedStatus": {
-          "issued": "Terugbetaling uitgegeven",
-          "processing": "Terugbetaling bezig"
+          "issued": "Terugbetaling uitgegeven"
         }
       },
       "reviewPrompt": {

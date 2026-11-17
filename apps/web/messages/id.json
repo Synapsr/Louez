@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "Laporan kondisi penjemputan selesai",
         "inspection_return_completed": "Laporan kondisi pengembalian selesai",
         "inspection_damage_detected": "Kerusakan dicatat dalam laporan kondisi",
-        "inspection_signed": "Laporan kondisi ditandatangani"
+        "inspection_signed": "Laporan kondisi ditandatangani",
+        "stripe_refund_count": "{amount} pengembalian dana dicatat oleh Stripe untuk pembayaran ini"
       },
       "inspections": {
         "title": "Laporan kondisi",
@@ -8545,8 +8546,7 @@
           "failed": "Gagal"
         },
         "refundedStatus": {
-          "issued": "Pengembalian dana diterbitkan",
-          "processing": "Pengembalian dana sedang diproses"
+          "issued": "Pengembalian dana diterbitkan"
         }
       },
       "reviewPrompt": {

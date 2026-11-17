@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { type PaymentLike, isRefundRow } from "./util.payment-status";
+
 /**
  * The activity log is written for the store. This keeps the rows a customer
  * may see (their own actions, the store's decisions, money movements,
@@ -42,6 +44,7 @@ export type ReservationUpdate = { id: string; at: Date } & (
   | { kind: "rejected"; reason: string | null }
   | { kind: "cancelled"; byCustomer: boolean }
   | { kind: "payment_received" | "deposit_authorized"; amount: number | null }
+  | { kind: "stripe_refund_count"; amount: number }
   | { kind: "deposit_captured"; amount: number | null; reason: string | null }
   | { kind: "payment_added"; paymentType: ReservationUpdatePaymentType; amount: number | null }
   | { kind: "modified"; startDate: Date | null; endDate: Date | null }
@@ -103,7 +106,37 @@ const damageSchema = z
 const sameInstant = (a: Date | null | undefined, b: Date | null | undefined) =>
   (a?.getTime() ?? null) === (b?.getTime() ?? null);
 
-const toUpdate = (row: ReservationActivityRow): ReservationUpdate | null => {
+/** A payment row as the customer's history reads it: which charge a refund row stands for. */
+export interface ReservationUpdatePayment extends PaymentLike {
+  id: string;
+  method: string;
+  stripeChargeId?: string | null;
+}
+
+const chargeCountSchema = z
+  .object({ chargeId: z.string().min(1), refundAmount: money.default(null) })
+  .nullable()
+  .catch(null);
+
+/**
+ * Whether a Stripe refund row of the reservation stands, or may stand, for a refund of the
+ * charge: it carries that charge's id, or is linked to a payment that does; a row whose
+ * charge cannot be told (no charge id, no link to a payment that carries one) may be its own.
+ */
+const chargeHasRefundRow = (chargeId: string, payments: readonly ReservationUpdatePayment[]) => {
+  const chargeOf = new Map(payments.map((payment) => [payment.id, payment.stripeChargeId ?? null]));
+  return payments.some((payment) => {
+    if (!isRefundRow(payment) || payment.method !== "stripe") return false;
+    if (payment.stripeChargeId) return payment.stripeChargeId === chargeId;
+    const linkedCharge = payment.refundOfPaymentId ? chargeOf.get(payment.refundOfPaymentId) : null;
+    return !linkedCharge || linkedCharge === chargeId;
+  });
+};
+
+const toUpdate = (
+  row: ReservationActivityRow,
+  payments: readonly ReservationUpdatePayment[],
+): ReservationUpdate | null => {
   const base = { id: row.id, at: row.createdAt };
   switch (row.activityType) {
     case "created":
@@ -139,11 +172,17 @@ const toUpdate = (row: ReservationActivityRow): ReservationUpdate | null => {
         reason: capture.reason,
       };
     }
-    // Its lines about refunds are the store's record: Stripe's count of a payment's refunds
-    // (pending ones included) states no refund made. The customer reads each refund, with
-    // its own state, in the reservation's payments.
-    case "payment_updated":
-      return null;
+    // Of its lines, only Stripe's count of a charge's refunds (pending ones included), and
+    // only when no refund row stands for a refund of that charge: the oldest webhooks
+    // stamped the refund on the payment and wrote none. Otherwise the customer reads each
+    // refund, with its own state, in the reservation's payments.
+    case "payment_updated": {
+      const count = chargeCountSchema.parse(row.metadata);
+      if (!count || count.refundAmount === null || count.refundAmount <= 0) return null;
+      return chargeHasRefundRow(count.chargeId, payments)
+        ? null
+        : { ...base, kind: "stripe_refund_count", amount: count.refundAmount };
+    }
     case "payment_added": {
       const parsed = manualPaymentSchema.safeParse(row.metadata);
       return parsed.success
@@ -199,10 +238,12 @@ const toUpdate = (row: ReservationActivityRow): ReservationUpdate | null => {
 
 export const getReservationUpdates = (
   rows: readonly ReservationActivityRow[],
+  /** The reservation's payment rows: which refunds Stripe's count lines stand for. */
+  payments: readonly ReservationUpdatePayment[] = [],
 ): ReservationUpdate[] =>
   rows
     .flatMap((row) => {
-      const update = toUpdate(row);
+      const update = toUpdate(row, payments);
       return update ? [update] : [];
     })
     .sort((a, b) => b.at.getTime() - a.at.getTime());

@@ -103,25 +103,41 @@ export const readPaymentRow = (
 };
 
 /**
- * A payment Stripe counts as refunded in full (status `refunded`), as its refunds read: still
- * `processing` while one is, `issued` while one is only issued at Stripe (or none of its
- * refunds has a row: the oldest webhooks stamped it on the payment), and `done` once each is
- * known made. A failed refund among them gave nothing back and holds nothing back.
+ * A payment Stripe counts as refunded in full (status `refunded`): `done`, said refunded,
+ * only when every refund of it is known made; else `issued`, never said refunded. Done
+ * needs all of:
+ * - no refund id stamped on the payment itself (the oldest webhooks' shape, whose refund
+ *   has no row of its own to read);
+ * - no Stripe refund row of the reservation without a link to a payment: the rows cannot
+ *   tell whether such a refund came off this payment or another of the reservation, so
+ *   Louez stays neutral;
+ * - at least one refund linked to it, and each reading `done` by `readPaymentRow` (none
+ *   issued, in progress or failed).
  */
 export const refundedPaymentState = (
   payment: PaymentLike,
   payments: readonly PaymentLike[],
-  refundStatuses?: RefundStatusByRow,
-): Exclude<RefundState, "failed"> => {
-  const states = payments.flatMap((candidate) => {
-    if (!payment.id || candidate.refundOfPaymentId !== payment.id) return [];
-    const read = readPaymentRow(candidate, refundStatuses);
-    return read.kind === "refund" && read.state !== "failed" ? [read.state] : [];
-  });
-  if (states.includes("processing")) return "processing";
-  if (states.includes("issued")) return "issued";
-  if (states.length > 0) return "done";
-  return isStripeRefund(payment) ? "issued" : "done";
+  refunds: readonly {
+    refundPaymentId: string | null;
+    status: "pending" | "succeeded" | "failed";
+  }[],
+): "done" | "issued" => {
+  if (payment.stripeRefundId) return "issued";
+  const unlinkedStripeRefund = payments.some(
+    (candidate) => isStripeRefundRow(candidate) && !candidate.refundOfPaymentId,
+  );
+  if (unlinkedStripeRefund) return "issued";
+  const statuses = refundStatusByRow(refunds);
+  const linked = payments.filter(
+    (candidate) => payment.id !== undefined && candidate.refundOfPaymentId === payment.id,
+  );
+  const allMade =
+    linked.length > 0 &&
+    linked.every((candidate) => {
+      const read = readPaymentRow(candidate, statuses);
+      return read.kind === "refund" && read.state === "done";
+    });
+  return allMade ? "done" : "issued";
 };
 
 /** With `currency`, the reservation's, a payment in another currency pays nothing. */

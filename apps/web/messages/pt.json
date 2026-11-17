@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "Auto de entrega realizado",
         "inspection_return_completed": "Auto de devolução realizado",
         "inspection_damage_detected": "Danos constatados no auto",
-        "inspection_signed": "Auto assinado"
+        "inspection_signed": "Auto assinado",
+        "stripe_refund_count": "{amount} de reembolso contabilizado pelo Stripe neste pagamento"
       },
       "inspections": {
         "title": "Autos de estado",
@@ -8545,8 +8546,7 @@
           "failed": "Falhou"
         },
         "refundedStatus": {
-          "issued": "Reembolso emitido",
-          "processing": "Reembolso em curso"
+          "issued": "Reembolso emitido"
         }
       },
       "reviewPrompt": {

@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "Отчет о состоянии самовывоза завершен",
         "inspection_return_completed": "Отчет об условиях возврата завершен",
         "inspection_damage_detected": "Повреждения отмечены в отчете о состоянии",
-        "inspection_signed": "Отчет о состоянии подписан"
+        "inspection_signed": "Отчет о состоянии подписан",
+        "stripe_refund_count": "{amount} возврата учтено Stripe по этому платежу"
       },
       "inspections": {
         "title": "Отчеты о состоянии",
@@ -8545,8 +8546,7 @@
           "failed": "Не выполнен"
         },
         "refundedStatus": {
-          "issued": "Возврат оформлен",
-          "processing": "Возврат обрабатывается"
+          "issued": "Возврат оформлен"
         }
       },
       "reviewPrompt": {

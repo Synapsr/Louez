@@ -326,28 +326,29 @@ export default async function ReservationDetailPage({
     ? { storeSlug: slug, reservationId }
     : null;
 
-  const updates: ReservationUpdateView[] = getReservationUpdates(reservation.activity).map(
-    (update) => ({
-      id: update.id,
-      kind: update.kind,
-      dateLabel: formatDate(update.at, "DATE_AT_TIME"),
-      amount: "amount" in update ? update.amount : null,
-      paymentType: update.kind === "payment_added" ? update.paymentType : undefined,
-      byCustomer: update.kind === "cancelled" ? update.byCustomer : undefined,
-      note:
-        update.kind === "rejected" || update.kind === "deposit_captured"
-          ? update.reason
-          : update.kind === "inspection_damage_detected"
-            ? update.description
-            : null,
-      periodLabel:
-        update.kind === "modified" && update.startDate && update.endDate
-          ? formatStoreDateRange(update.startDate, update.endDate, timezone, formatLocale)
-          : update.kind === "extension_confirmed"
-            ? formatStoreDateRange(reservation.startDate, update.endDate, timezone, formatLocale)
-            : null,
-    }),
-  );
+  const updates: ReservationUpdateView[] = getReservationUpdates(
+    reservation.activity,
+    reservation.payments,
+  ).map((update) => ({
+    id: update.id,
+    kind: update.kind,
+    dateLabel: formatDate(update.at, "DATE_AT_TIME"),
+    amount: "amount" in update ? update.amount : null,
+    paymentType: update.kind === "payment_added" ? update.paymentType : undefined,
+    byCustomer: update.kind === "cancelled" ? update.byCustomer : undefined,
+    note:
+      update.kind === "rejected" || update.kind === "deposit_captured"
+        ? update.reason
+        : update.kind === "inspection_damage_detected"
+          ? update.description
+          : null,
+    periodLabel:
+      update.kind === "modified" && update.startDate && update.endDate
+        ? formatStoreDateRange(update.startDate, update.endDate, timezone, formatLocale)
+        : update.kind === "extension_confirmed"
+          ? formatStoreDateRange(reservation.startDate, update.endDate, timezone, formatLocale)
+          : null,
+  }));
 
   const inspectionViews: ReservationInspectionView[] = inspectionRows
     .sort((a, b) => (a.type === b.type ? 0 : a.type === "departure" ? -1 : 1))
@@ -546,7 +547,7 @@ export default async function ReservationDetailPage({
             reading: readPaymentRow(payment, refundStatuses),
             refunded:
               payment.status === "refunded"
-                ? refundedPaymentState(payment, reservation.payments, refundStatuses)
+                ? refundedPaymentState(payment, reservation.payments, onlineRefunds)
                 : null,
           })),
         }}

@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "État des lieux de départ réalisé",
         "inspection_return_completed": "État des lieux de retour réalisé",
         "inspection_damage_detected": "Dommages constatés à l’état des lieux",
-        "inspection_signed": "État des lieux signé"
+        "inspection_signed": "État des lieux signé",
+        "stripe_refund_count": "{amount} de remboursement compté par Stripe sur ce paiement"
       },
       "inspections": {
         "title": "États des lieux",
@@ -8545,8 +8546,7 @@
           "failed": "Échoué"
         },
         "refundedStatus": {
-          "issued": "Remboursement émis",
-          "processing": "Remboursement en cours"
+          "issued": "Remboursement émis"
         }
       },
       "reviewPrompt": {

@@ -8498,7 +8498,8 @@
         "inspection_departure_completed": "Inspección de salida realizada",
         "inspection_return_completed": "Inspección de devolución realizada",
         "inspection_damage_detected": "Daños constatados en la inspección",
-        "inspection_signed": "Inspección firmada"
+        "inspection_signed": "Inspección firmada",
+        "stripe_refund_count": "{amount} de reembolso contado por Stripe en este pago"
       },
       "inspections": {
         "title": "Inspecciones",
@@ -8556,8 +8557,7 @@
           "failed": "Fallido"
         },
         "refundedStatus": {
-          "issued": "Reembolso emitido",
-          "processing": "Reembolso en curso"
+          "issued": "Reembolso emitido"
         }
       },
       "reviewPrompt": {

@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "Pickup condition report completed",
         "inspection_return_completed": "Return condition report completed",
         "inspection_damage_detected": "Damage noted in the condition report",
-        "inspection_signed": "Condition report signed"
+        "inspection_signed": "Condition report signed",
+        "stripe_refund_count": "{amount} in refunds counted by Stripe on this payment"
       },
       "inspections": {
         "title": "Condition reports",
@@ -8545,8 +8546,7 @@
           "failed": "Failed"
         },
         "refundedStatus": {
-          "issued": "Refund issued",
-          "processing": "Refund in progress"
+          "issued": "Refund issued"
         }
       },
       "reviewPrompt": {

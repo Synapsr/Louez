@@ -8498,7 +8498,8 @@
         "inspection_departure_completed": "Übergabeprotokoll erstellt",
         "inspection_return_completed": "Rücknahmeprotokoll erstellt",
         "inspection_damage_detected": "Schäden im Protokoll festgestellt",
-        "inspection_signed": "Protokoll unterschrieben"
+        "inspection_signed": "Protokoll unterschrieben",
+        "stripe_refund_count": "{amount} an Rückerstattungen von Stripe auf diese Zahlung gezählt"
       },
       "inspections": {
         "title": "Zustandsprotokolle",
@@ -8556,8 +8557,7 @@
           "failed": "Fehlgeschlagen"
         },
         "refundedStatus": {
-          "issued": "Rückerstattung ausgestellt",
-          "processing": "Rückerstattung läuft"
+          "issued": "Rückerstattung ausgestellt"
         }
       },
       "reviewPrompt": {

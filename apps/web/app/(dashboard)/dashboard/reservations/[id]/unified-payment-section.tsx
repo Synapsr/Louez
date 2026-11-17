@@ -225,7 +225,6 @@ const VISIBLE_HISTORY_COUNT = 3;
 const REFUNDED_PAYMENT_LABEL = {
   done: "payment.statusRefunded",
   issued: "payment.refundIssued",
-  processing: "payment.refundProcessing",
 } as const;
 
 const ONLINE_TILE = {
@@ -1330,7 +1329,7 @@ export function UnifiedPaymentSection({
                                 <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
                                   {t(
                                     REFUNDED_PAYMENT_LABEL[
-                                      refundedPaymentState(payment, payments, refundStatuses)
+                                      refundedPaymentState(payment, payments, refunds)
                                     ],
                                   )}
                                 </Badge>

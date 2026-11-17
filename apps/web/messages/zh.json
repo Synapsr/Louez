@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "已完成拾取状况报告",
         "inspection_return_completed": "退货状况报告已完成",
         "inspection_damage_detected": "状况报告中注明的损坏",
-        "inspection_signed": "已签署状况报告"
+        "inspection_signed": "已签署状况报告",
+        "stripe_refund_count": "Stripe 在此付款上计入的退款：{amount}"
       },
       "inspections": {
         "title": "状况报告",
@@ -8545,8 +8546,7 @@
           "failed": "失败"
         },
         "refundedStatus": {
-          "issued": "已发起退款",
-          "processing": "退款处理中"
+          "issued": "已发起退款"
         }
       },
       "reviewPrompt": {

@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "Verbale di consegna compilato",
         "inspection_return_completed": "Verbale di riconsegna compilato",
         "inspection_damage_detected": "Danni rilevati nel verbale",
-        "inspection_signed": "Verbale firmato"
+        "inspection_signed": "Verbale firmato",
+        "stripe_refund_count": "{amount} di rimborso conteggiato da Stripe su questo pagamento"
       },
       "inspections": {
         "title": "Verbali di stato",
@@ -8545,8 +8546,7 @@
           "failed": "Non riuscito"
         },
         "refundedStatus": {
-          "issued": "Rimborso emesso",
-          "processing": "Rimborso in corso"
+          "issued": "Rimborso emesso"
         }
       },
       "reviewPrompt": {

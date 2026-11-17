@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "集荷状況レポート完了",
         "inspection_return_completed": "返品条件レポート完了",
         "inspection_damage_detected": "コンディションレポートに記載されたダメージ",
-        "inspection_signed": "状態報告書に署名"
+        "inspection_signed": "状態報告書に署名",
+        "stripe_refund_count": "この支払いについてStripeが計上した返金：{amount}"
       },
       "inspections": {
         "title": "状態レポート",
@@ -8545,8 +8546,7 @@
           "failed": "失敗"
         },
         "refundedStatus": {
-          "issued": "返金を発行済み",
-          "processing": "返金処理中"
+          "issued": "返金を発行済み"
         }
       },
       "reviewPrompt": {

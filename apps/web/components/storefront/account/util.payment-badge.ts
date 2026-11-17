@@ -1,4 +1,4 @@
-import type { PaymentRowReading, RefundState } from "@/lib/reservations/util.payment-status";
+import type { PaymentRowReading } from "@/lib/reservations/util.payment-status";
 
 export type PaymentBadgeVariant = "success" | "pending" | "failed" | "tertiary" | "info";
 
@@ -20,16 +20,14 @@ const STATUS_VARIANT: Record<string, PaymentBadgeVariant> = {
 export function customerPaymentBadge(
   reading: PaymentRowReading,
   status: string,
-  /** A payment refunded in full: what its refunds read (`refundedPaymentState`). */
-  refunded: Exclude<RefundState, "failed"> | null = null,
+  /** A payment refunded in full: `done` only when each of its refunds is known made (`refundedPaymentState`). */
+  refunded: "done" | "issued" | null = null,
 ): { key: string; variant: PaymentBadgeVariant } {
   switch (reading.kind) {
     case "receipt":
-      if (status === "refunded" && refunded !== null && refunded !== "done") {
-        return {
-          key: `refundedStatus.${refunded}`,
-          variant: refunded === "issued" ? "info" : "pending",
-        };
+      // Said refunded only when known made; else, or when not read, issued.
+      if (status === "refunded" && refunded !== "done") {
+        return { key: "refundedStatus.issued", variant: "info" };
       }
       return { key: `status.${status}`, variant: STATUS_VARIANT[status] ?? "tertiary" };
     case "hold":

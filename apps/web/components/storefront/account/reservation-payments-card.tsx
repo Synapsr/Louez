@@ -4,7 +4,7 @@ import { Badge } from "@louez/ui";
 
 import { AccountCard } from "@/components/storefront/account/account-card";
 import { Price } from "@/components/storefront/ui/price";
-import type { PaymentRowReading, RefundState } from "@/lib/reservations/util.payment-status";
+import type { PaymentRowReading } from "@/lib/reservations/util.payment-status";
 
 import { customerPaymentBadge } from "./util.payment-badge";
 
@@ -24,7 +24,7 @@ export interface ReservationPaymentView {
    */
   reading: PaymentRowReading;
   /** On a payment refunded in full: what its refunds read (`refundedPaymentState`). */
-  refunded?: Exclude<RefundState, "failed"> | null;
+  refunded?: "done" | "issued" | null;
 }
 
 interface ReservationPaymentsCardProps {

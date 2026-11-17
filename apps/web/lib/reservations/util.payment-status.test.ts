@@ -506,7 +506,7 @@ describe("readPaymentRow: what a row is, the one reading of the card, the histor
   });
 });
 
-describe("refundedPaymentState: a payment Stripe counts as refunded in full", () => {
+describe("refundedPaymentState: a payment Stripe counts as refunded in full reads refunded only when every refund of it is known made", () => {
   const charge = {
     id: "pay_charge",
     type: "rental",
@@ -516,42 +516,73 @@ describe("refundedPaymentState: a payment Stripe counts as refunded in full", ()
     stripePaymentIntentId: "pi_1",
     stripeCheckoutSessionId: null,
     stripeRefundId: null,
+    refundOfPaymentId: null,
   };
-  const refund = (id: string, fields: Record<string, unknown> = {}) => ({
-    ...stripeRefund("50.00"),
+  // A Louez refund: its own row, linked to the charge.
+  const linked = (id: string, amount = "50.00", fields: Record<string, unknown> = {}) => ({
+    ...stripeRefund(amount),
+    stripeRefundId: `re_${id}`,
     id,
     method: "stripe",
     refundOfPaymentId: "pay_charge",
     ...fields,
   });
   const ops = (...rows: [string, "pending" | "succeeded" | "failed"][]) =>
-    refundStatusByRow(rows.map(([refundPaymentId, status]) => ({ refundPaymentId, status })));
+    rows.map(([refundPaymentId, status]) => ({ refundPaymentId, status }));
 
-  test("is refunded once each of its refunds is known settled", () => {
-    const rows = [charge, refund("r1"), refund("r2")];
+  test("one linked Louez refund that succeeded: refunded", () => {
+    const rows = [charge, linked("r1", "100.00")];
+    assert.equal(refundedPaymentState(charge, rows, ops(["r1", "succeeded"])), "done");
+  });
+
+  test("two linked refunds, both made: refunded", () => {
+    const rows = [charge, linked("r1"), linked("r2")];
     assert.equal(
       refundedPaymentState(charge, rows, ops(["r1", "succeeded"], ["r2", "succeeded"])),
       "done",
     );
   });
 
-  test("is not stated refunded while one of its refunds is in progress or only issued", () => {
-    const rows = [charge, refund("r1"), refund("r2")];
+  test("one linked refund only issued, or still in progress, beside one made: issued", () => {
+    const rows = [charge, linked("r1"), linked("r2")];
+    assert.equal(refundedPaymentState(charge, rows, ops(["r1", "succeeded"])), "issued");
     assert.equal(
       refundedPaymentState(charge, rows, ops(["r1", "succeeded"], ["r2", "pending"])),
-      "processing",
+      "issued",
     );
-    assert.equal(refundedPaymentState(charge, rows, ops(["r1", "succeeded"])), "issued");
-    // The oldest webhooks left no refund row: Stripe counted it, nothing says it settled.
-    assert.equal(refundedPaymentState(charge, [charge], new Map()), "issued");
   });
 
-  test("a failed refund among them is no money back, and does not hold the state back", () => {
-    const rows = [charge, refund("r1"), refund("r2", { status: "failed" })];
+  test("an old unlinked Stripe refund of the reservation may be this payment's: issued", () => {
+    // 100.00: an old 30.00 refund with its own row and no link, then a 70.00 Louez refund
+    // that succeeded. Which payment the 30.00 came off, the rows cannot tell.
+    const old = {
+      ...stripeRefund("30.00"),
+      id: "r_old",
+      stripeRefundId: "re_old",
+      method: "stripe",
+    };
+    const rows = [charge, old, linked("r1", "70.00")];
+    assert.equal(refundedPaymentState(charge, rows, ops(["r1", "succeeded"])), "issued");
+  });
+
+  test("the oldest shape, a refund id stamped on the payment itself: issued", () => {
+    const stamped = { ...charge, stripeRefundId: "re_old" };
+    const rows = [stamped, linked("r1", "70.00")];
+    assert.equal(refundedPaymentState(stamped, rows, ops(["r1", "succeeded"])), "issued");
+    assert.equal(refundedPaymentState(stamped, [stamped], []), "issued");
+  });
+
+  test("two refunds read completed, then one failed between the two reads: issued", () => {
+    // The page read both 50.00 rows completed; the operations read one succeeded, one failed.
+    const rows = [charge, linked("r1"), linked("r2")];
     assert.equal(
       refundedPaymentState(charge, rows, ops(["r1", "succeeded"], ["r2", "failed"])),
-      "done",
+      "issued",
     );
+  });
+
+  test("no refund of it has a row: issued", () => {
+    assert.equal(refundedPaymentState(charge, [charge], []), "issued");
   });
 
   test("refunds given by hand are the store's word", () => {
@@ -564,6 +595,6 @@ describe("refundedPaymentState: a payment Stripe counts as refunded in full", ()
       amount: "50.00",
       refundOfPaymentId: "pay_charge",
     };
-    assert.equal(refundedPaymentState(cash, [cash, back], new Map()), "done");
+    assert.equal(refundedPaymentState(cash, [cash, back], []), "done");
   });
 });

@@ -8487,7 +8487,8 @@
         "inspection_departure_completed": "Sporządzono protokół wydania",
         "inspection_return_completed": "Sporządzono protokół zwrotu",
         "inspection_damage_detected": "W protokole stwierdzono szkody",
-        "inspection_signed": "Protokół podpisany"
+        "inspection_signed": "Protokół podpisany",
+        "stripe_refund_count": "{amount} zwrotu naliczonego przez Stripe dla tej płatności"
       },
       "inspections": {
         "title": "Protokoły stanu",
@@ -8545,8 +8546,7 @@
           "failed": "Nieudany"
         },
         "refundedStatus": {
-          "issued": "Zwrot wystawiony",
-          "processing": "Zwrot w toku"
+          "issued": "Zwrot wystawiony"
         }
       },
       "reviewPrompt": {
