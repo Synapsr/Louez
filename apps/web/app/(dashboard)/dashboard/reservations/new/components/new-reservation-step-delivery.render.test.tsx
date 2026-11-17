@@ -191,6 +191,10 @@ test("a picked delivery address is priced from the pick and stays when the field
   assert.equal(step.lookups().length, 1);
   assert.equal(step.distances().length, 1);
   assert.equal(step.delivery.current?.outboundDistance, 12, "measured from the pick");
+  // The route measured is the one to the place picked, not to another point.
+  const measured = await step.distances()[0].sent;
+  assert.ok(measured.includes(String(carquefou.latitude)), measured);
+  assert.ok(measured.includes(String(carquefou.longitude)), measured);
   assert.equal(step.input.value, carquefou.formattedAddress);
   assert.equal(step.delivery.current?.outboundAddress.latitude, carquefou.latitude);
   assert.equal(step.delivery.current?.canContinue, true);

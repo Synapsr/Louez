@@ -317,8 +317,12 @@ export function useEditReservationDelivery({
   const hasDeliveryLegs =
     outbound.method === 'address' || inbound.method === 'address'
 
-  const outboundError = errorOf(outbound)
-  const inboundError = errorOf(inbound)
+  // The rule holds only when the form shows and sends its delivery section
+  // (a store with delivery or several locations): without one, the person
+  // has no field to choose an address in, and the edit neither checks nor
+  // rewrites the legs.
+  const outboundError = storeDelivery ? errorOf(outbound) : outbound.error
+  const inboundError = storeDelivery ? errorOf(inbound) : inbound.error
   const hasErrors = outboundError !== null || inboundError !== null
   const isCalculating = outboundIsCalculating || inboundIsCalculating
 

@@ -33,6 +33,8 @@ interface Deferred<T> {
 export interface RpcCall {
   /** The procedure's name, the last segment of its path (`autocomplete`, `details`, `distance`). */
   endpoint: string;
+  /** What the caller sent: the request's URL and body, as text, for a test to read its input. */
+  sent: Promise<string>;
   signal: AbortSignal;
   answer: Deferred<unknown>;
 }
@@ -52,7 +54,11 @@ export const controlledRpc = (answers: Record<string, unknown> = {}) => {
       resolve = onResolve;
       reject = onReject;
     });
-    calls.push({ endpoint, signal: request.signal, answer: { promise, resolve, reject } });
+    const sent = request
+      .clone()
+      .text()
+      .then((body) => `${decodeURIComponent(request.url)} ${body}`);
+    calls.push({ endpoint, sent, signal: request.signal, answer: { promise, resolve, reject } });
     if (endpoint in answers) resolve(answers[endpoint]);
     return new Promise<Response>((onAnswer, onFailure) => {
       request.signal.addEventListener("abort", () => onFailure(request.signal.reason));

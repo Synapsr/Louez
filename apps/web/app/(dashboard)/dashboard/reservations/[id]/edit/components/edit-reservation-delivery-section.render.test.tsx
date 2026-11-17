@@ -101,17 +101,22 @@ const controlledNetwork = () => ({
   requests: controlledRpc({ distance: { distanceKm: 12 } }),
 });
 
-const renderSection = (initialDelivery: ReservationDelivery) => {
+const renderSection = (
+  initialDelivery: ReservationDelivery,
+  storeDelivery: StoreDeliveryInfo | null = STORE_DELIVERY,
+) => {
   const { queryClient, requests } = controlledNetwork();
   const delivery = { current: null as ReturnType<typeof useEditReservationDelivery> | null };
 
   const Section = () => {
     const state = useEditReservationDelivery({
-      storeDelivery: STORE_DELIVERY,
+      storeDelivery,
       initialDelivery,
       subtotal: 100,
     });
     delivery.current = state;
+    // The form shows the section only for a store with delivery or several locations.
+    if (!storeDelivery) return null;
     return (
       <EditReservationDeliverySection
         outbound={state.outbound}
@@ -226,6 +231,21 @@ test("a delivery address stored without its place is an error until the leg goes
 
   assert.equal(section.legError(), null);
   assert.equal(section.delivery.current?.hasErrors, false);
+});
+
+test("without a delivery section, a stored address without its place blocks no save", async () => {
+  // A store with neither delivery nor several locations: the form shows no
+  // delivery section and sends none, so there is nothing to choose and nothing to refuse.
+  const section = renderSection(
+    deliveredTo({ address: "Le Moulin, route de Nantes", latitude: null, longitude: null }),
+    null,
+  );
+  unmount = section.unmount;
+  await settle();
+
+  assert.equal(section.delivery.current?.hasErrors, false);
+  assert.equal(section.delivery.current?.outbound.error, null);
+  assert.equal(section.legError(), null);
 });
 
 test("a located delivery address stored without its country, city or postal code is no error", async () => {
