@@ -8,7 +8,8 @@ import {
   editedLineTaxSettings,
   type EditedLineTax,
 } from "./edit-line-pricing";
-import { loadPricingCatalog, priceRegularCatalogLine } from "./pricing-catalog";
+import { priceRegularCatalogLine } from "./catalogue-line-pricing";
+import { loadPricingCatalog } from "./pricing-catalog";
 import { taxDisplayModeOf, taxSettingsForRepricing, type TaxDisplayMode } from "./pricing-facts";
 import {
   computeReservationTotals,

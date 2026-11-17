@@ -21,6 +21,7 @@
     "./services/approval-preview": "./src/services/approval-preview.ts",
     "./services/approvals": "./src/services/approvals.ts",
     "./services/capacity-verdict": "./src/services/capacity-verdict.ts",
+    "./services/catalogue-line-pricing": "./src/services/catalogue-line-pricing.ts",
     "./services/categories": "./src/services/categories.ts",
     "./services/customer-fields": "./src/services/customer-fields.ts",
     "./services/customer-fields-online": "./src/services/customer-fields-online.ts",

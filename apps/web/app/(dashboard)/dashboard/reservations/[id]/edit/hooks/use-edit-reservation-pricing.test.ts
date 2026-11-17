@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import type { PricingBreakdown } from '@louez/types'
+import { toPricingCatalogProduct } from '@louez/api/services/catalogue-line-pricing'
+import type { PricingBreakdown, PricingKind, PricingMode } from '@louez/types'
 import { getRentalPaid } from '@louez/utils'
 
 import type { EditableItem } from '../types'
@@ -12,6 +13,42 @@ import {
   previewEditTotals,
 } from './use-edit-reservation-pricing'
 
+/** A product as the server's catalogue holds it (`loadPricingCatalog`). */
+const catalogueOf = (product: {
+  price: string
+  pricingKind: PricingKind
+  pricingMode: PricingMode
+  basePeriodMinutes: number | null
+  rates?: Array<{ id: string; period: number; price: string }>
+}) =>
+  toPricingCatalogProduct(
+    {
+      id: 'product-1',
+      name: 'Included media set',
+      description: null,
+      images: [],
+      price: product.price,
+      deposit: '0.00',
+      pricingKind: product.pricingKind,
+      pricingMode: product.pricingMode,
+      basePeriodMinutes: product.basePeriodMinutes,
+      enforceStrictTiers: false,
+      stockKind: 'consumable',
+      quantity: 10,
+      trackUnits: false,
+      bookingAttributeAxes: null,
+      taxSettings: null,
+      promotion: null,
+    },
+    (product.rates ?? []).map((rate) => ({
+      ...rate,
+      minDuration: 0,
+      discountPercent: '0',
+      displayOrder: 0,
+    })),
+    [],
+  )
+
 const fixedProductItem: EditableItem = {
   id: 'item-1',
   productId: 'product-1',
@@ -21,6 +58,7 @@ const fixedProductItem: EditableItem = {
   depositPerUnit: 0,
   isManualPrice: true,
   pricingMode: 'day',
+  pricingKind: 'fixed',
   basePeriodMinutes: null,
   enforceStrictTiers: false,
   productSnapshot: {
@@ -43,6 +81,12 @@ const fixedProductItem: EditableItem = {
     enforceStrictTiers: false,
     pricingTiers: [],
     seasonalPricings: [],
+    catalogue: catalogueOf({
+      price: '15.00',
+      pricingKind: 'fixed',
+      pricingMode: 'day',
+      basePeriodMinutes: null,
+    }),
   },
   stored: null,
 }
@@ -85,6 +129,13 @@ const hourlyRateItem: EditableItem = {
     pricingMode: 'hour',
     basePeriodMinutes: 60,
     pricingTiers: [{ id: 'day-rate', minDuration: 0, discountPercent: 0, period: 1440, price: 18 }],
+    catalogue: catalogueOf({
+      price: '2.50',
+      pricingKind: 'duration',
+      pricingMode: 'hour',
+      basePeriodMinutes: 60,
+      rates: [{ id: 'day-rate', period: 1440, price: '18.00' }],
+    }),
   },
 }
 
