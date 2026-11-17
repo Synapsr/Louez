@@ -350,6 +350,24 @@ test("a search answering after the text changed shows no list", async () => {
   assert.deepEqual(field.shownSuggestions(), []);
 });
 
+test("a search still pending when a suggestion is picked does not reopen its list under the pick", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  typeInto(field.input, "8 quai d");
+  await tick(SEARCH_DELAY);
+  pointerClick(field.option("brest"));
+  await tick(BLUR_DELAY);
+  // The pick's details and the older search answer together, before React renders.
+  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, Brest"));
+  field.searches.at(-1)?.answer.resolve([suggestion("orsay", "8 Quai d'Orsay, Paris")]);
+  await settle();
+
+  assert.equal(field.input.value, "8 Quai de la Douane, Brest");
+  assert.deepEqual(field.shownSuggestions(), []);
+});
+
 test("a search queued before an address was set from outside shows no list under it", async () => {
   const field = renderField();
   unmount = field.unmount;

@@ -101,7 +101,7 @@ export const AddressInput = ({
 }: AddressInputProps) => {
   const t = useTranslations('common.addressInput');
   const queryClient = useQueryClient();
-  const [inputValue, setInputValue] = useState(value);
+  const [inputValue, setInputValueState] = useState(value);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   // The spinner belongs to the request that last started one: an earlier
   // request that settles later never hides it.
@@ -124,6 +124,11 @@ export const AddressInput = ({
   // list answers one text of a mounted field.
   const inputTextRef = useRef(value);
   const unmountedRef = useRef(false);
+  /** Writes the text the field shows; the ref moves at once, before React commits. */
+  const setInputValue = (text: string) => {
+    inputTextRef.current = text;
+    setInputValueState(text);
+  };
   const emittedTextRef = useRef<string | null>(null);
   const relatedKey = JSON.stringify(relatedValues ?? []);
   const relatedKeyRef = useRef(relatedKey);
@@ -322,7 +327,6 @@ export const AddressInput = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     claimWrite();
-    inputTextRef.current = newValue;
     setInputValue(newValue);
     debouncedSearch(newValue);
 
