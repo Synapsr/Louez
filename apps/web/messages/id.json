@@ -9745,7 +9745,7 @@
     },
     "confirm": {
       "label": "Minta konfirmasi sebelum tindakan sensitif",
-      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat pembayaran atau pengembalian deposit yang sudah dilakukan, menghapus pembayaran, mengonfirmasi reservasi melebihi stok yang tersedia atau tanpa memenuhi buffer turnover, mengeluarkan anggota, dan membatalkan undangan memerlukan persetujuan Anda, meskipun pengaturan ini dimatikan: agen memberi Anda tautan, lalu Anda menyetujui atau menolaknya di halaman Louez setelah masuk ke akun Anda. Memakai kredit AI selalu meminta konfirmasi, meski ini dimatikan."
+      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat pembayaran atau pengembalian deposit yang sudah dilakukan, menghapus pembayaran, mengembalikan dana pembayaran atau mencatat pengembalian dana yang sudah dilakukan, membuat atau mengonfirmasi reservasi, atau mengubah tanggalnya, melebihi stok yang tersedia atau tanpa memenuhi buffer turnover, mengeluarkan anggota, dan membatalkan undangan memerlukan persetujuan Anda, meskipun pengaturan ini dimatikan: agen memberi Anda tautan, lalu Anda menyetujui atau menolaknya di halaman Louez setelah masuk ke akun Anda. Memakai kredit AI selalu meminta konfirmasi, meski ini dimatikan."
     },
     "bundlesTitle": "Alat yang ditampilkan",
     "bundlesHint": "Agen melihat kumpulan alat ini. Anda dapat menambahkan lainnya nanti.",

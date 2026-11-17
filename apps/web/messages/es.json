@@ -9745,7 +9745,7 @@
     },
     "confirm": {
       "label": "Pedir confirmación antes de las acciones sensibles",
-      "description": "Antes de una eliminación o un mensaje a un cliente, el agente recibe primero una vista previa y debe confirmar; tiene instrucciones de mostrársela antes. Registrar un pago o una devolución de depósito ya realizada, eliminar un pago, confirmar una reserva por encima del stock disponible o sin respetar el margen de rotación, quitar a un miembro y cancelar una invitación requieren su aprobación, incluso con esta opción desactivada: el agente le da un enlace y usted aprueba o rechaza en una página de Louez, desde su cuenta. Gastar créditos de IA siempre pide confirmación, incluso desactivado."
+      "description": "Antes de una eliminación o un mensaje a un cliente, el agente recibe primero una vista previa y debe confirmar; tiene instrucciones de mostrársela antes. Registrar un pago o una devolución de depósito ya realizada, eliminar un pago, reembolsar un pago o registrar un reembolso ya realizado, crear o confirmar una reserva, o cambiar sus fechas, por encima del stock disponible o sin respetar el margen de rotación, quitar a un miembro y cancelar una invitación requieren su aprobación, incluso con esta opción desactivada: el agente le da un enlace y usted aprueba o rechaza en una página de Louez, desde su cuenta. Gastar créditos de IA siempre pide confirmación, incluso desactivado."
     },
     "bundlesTitle": "Herramientas mostradas",
     "bundlesHint": "El agente ve estos conjuntos de herramientas. Podrá añadir más después.",
