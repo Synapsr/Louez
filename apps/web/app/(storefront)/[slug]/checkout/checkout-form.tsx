@@ -35,7 +35,6 @@ import type {
   CheckoutFormProps,
   CheckoutFormValues,
   CheckoutInitialCustomer,
-  DeliveryAddress,
   StepId,
 } from "./checkout.types";
 import { CheckoutConfirmStep } from "./components/checkout-confirm-step";
@@ -59,15 +58,13 @@ import {
   hasCheckoutDetailsStep,
 } from "./util.checkout-custom-fields";
 import { calculateCheckoutTotals, getCheckoutSubmitLabel } from "./util.checkout-totals";
+import { type CustomerAddressPick, getPickedCoordinates } from "./util.customer-address";
 import {
   checkoutFormOptions,
   createCheckoutValidator,
   getCheckoutDefaultValues,
 } from "./validator.checkout";
 
-type Coordinates = Pick<DeliveryAddress, "latitude" | "longitude">;
-
-const NO_COORDINATES: Coordinates = { latitude: null, longitude: null };
 const NO_SAVED_VALUES: Record<string, string> = {};
 
 type CheckoutFieldName = DeepKeys<CheckoutFormValues>;
@@ -136,7 +133,7 @@ export const CheckoutForm = ({
   const savedCustomerProfileValues = sessionCustomer
     ? initialCustomerProfileValues
     : EMPTY_CUSTOMER_PROFILE_FORM_VALUES;
-  const [coordinates, setCoordinates] = useState<Coordinates>(NO_COORDINATES);
+  const [customerAddressPick, setCustomerAddressPick] = useState<CustomerAddressPick | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const stepRef = useRef<HTMLDivElement>(null);
   const submitRef = useRef<(values: CheckoutFormValues) => Promise<void>>(async () => undefined);
@@ -344,7 +341,7 @@ export const CheckoutForm = ({
 
   const handleSessionCustomer = (customer: CheckoutInitialCustomer | null) => {
     setSessionCustomer(customer);
-    setCoordinates(NO_COORDINATES);
+    setCustomerAddressPick(null);
     form.reset(
       customer
         ? getCheckoutDefaultValues(
@@ -358,6 +355,7 @@ export const CheckoutForm = ({
 
   const handleUseCustomerAddress = (leg: "outbound" | "return") => {
     const legAddress = leg === "outbound" ? delivery.outboundAddress : delivery.returnAddress;
+    const coordinates = getPickedCoordinates(customerAddressPick, values);
     if (
       legAddress.address ||
       !values.address ||
@@ -509,8 +507,8 @@ export const CheckoutForm = ({
               showAddressFields={showAddressInContact}
               sessionCustomer={sessionCustomer}
               onSessionCustomer={handleSessionCustomer}
-              coordinates={coordinates}
-              onCoordinatesChange={setCoordinates}
+              addressPick={customerAddressPick}
+              onAddressPickChange={setCustomerAddressPick}
               profileFields={checkoutFields.profileFields}
               customerFields={checkoutFields.customerFields}
               customerLayout={checkoutFields.customerLayout}
