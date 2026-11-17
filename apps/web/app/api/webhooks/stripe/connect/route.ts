@@ -40,6 +40,7 @@ import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
 import { env } from "@/env";
 import { dispatchApiEffects } from "@/lib/api/effects";
+import { queueStoreLifecycleEvent } from "@/lib/product-analytics/lifecycle-events";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
@@ -547,19 +548,22 @@ async function handleCheckoutCompleted(
 
   const paidAt = new Date();
 
+  // New PaymentIntents carry the exact reservation commission in metadata (recorded
+  // verbatim — no recompute drift). For a legacy/missing breakdown with a positive
+  // application fee (deploy seam / stripped metadata), the whole application fee was the
+  // reservation commission.
+  const reservationFeeCents =
+    !feeBreakdown.hasBreakdown && applicationFeeCollectedCents > 0
+      ? applicationFeeCollectedCents
+      : feeBreakdown.reservationFeeCents;
+
   // Record the pay-as-you-go reservation commission skimmed from this charge BEFORE the
   // payment is marked completed, so a transient failure aborts the webhook (Stripe retries
   // with the payment still pending) instead of silently dropping it. Idempotent per
   // reservation. recordReservationFee itself waives the fee (source='free') when the store
   // still has welcome-allowance credits.
   if (paymentIntentId && isPayAsYouGoStore) {
-    // New PaymentIntents carry the exact reservation commission in metadata (recorded
-    // verbatim — no recompute drift). For a legacy/missing breakdown with a positive
-    // application fee (deploy seam / stripped metadata), the whole application fee was the
-    // reservation commission.
-    let reservationFeeCents = feeBreakdown.reservationFeeCents;
     if (!feeBreakdown.hasBreakdown && applicationFeeCollectedCents > 0) {
-      reservationFeeCents = applicationFeeCollectedCents;
       log.warn({
         payg: {
           event: "fee_breakdown_metadata_missing",
@@ -633,6 +637,26 @@ async function handleCheckoutCompleted(
         },
       });
     }
+  }
+
+  // The pay-as-you-go commission Stripe took from this charge, on the store owner,
+  // keyed on the PaymentIntent: the webhook's redeliveries count it once. An extension's
+  // payment takes its own commission too.
+  if (paymentIntentId && isPayAsYouGoStore && reservationFeeCents > 0) {
+    await queueStoreLifecycleEvent({
+      storeId: reservation.store.id,
+      event: "payg_fee_charged",
+      properties: {
+        reservation_id: reservationId,
+        fee_cents: reservationFeeCents,
+        currency,
+        collection: "application_fee",
+        payment_amount_cents: session.amount_total ?? null,
+        fee_breakdown_present: feeBreakdown.hasBreakdown,
+      },
+      dedupKey: `payg_fee_charged:${paymentIntentId}`,
+      ...(chargeCreatedAt ? { occurredAt: chargeCreatedAt } : {}),
+    });
   }
 
   // Claim → confirm → effects, shared with the customer's return from Stripe
@@ -930,10 +954,12 @@ async function handleAccountUpdated(account: Stripe.Account) {
   const chargesEnabled = account.charges_enabled ?? false;
   const detailsSubmitted = account.details_submitted ?? false;
 
-  await writeConnectColumns(store.id, {
+  // The first write that finds charges enabled queues `stripe_connect_completed`.
+  const effectIds = await writeConnectColumns(store.id, {
     stripeChargesEnabled: chargesEnabled,
     stripeOnboardingComplete: chargesEnabled && detailsSubmitted,
   });
+  dispatchApiEffects(effectIds);
   // The user finished Stripe's form: a handoff an agent gave them for it is done.
   if (detailsSubmitted) await completeActiveHandoff(store.id, "stripe_connect_onboarding");
 

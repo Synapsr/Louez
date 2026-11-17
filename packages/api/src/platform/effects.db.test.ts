@@ -68,6 +68,7 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     "store.creationAnalytics": async () => {},
     "store.launchNotification": async () => {},
     "store.launchAnalytics": async () => {},
+    "store.lifecycleAnalytics": async () => {},
     "store.agentSetupAction": async () => {},
   };
 

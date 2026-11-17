@@ -460,6 +460,7 @@ const stubs: Record<string, Record<string, unknown>> = {
     },
   },
   "@/lib/referral/analytics": { captureReferralServerEvent: async () => undefined },
+  "@/lib/product-analytics/lifecycle-events": { queueStoreLifecycleEvent: async () => undefined },
   "@/lib/discord/platform-notifications": {
     notifyBillingAlert: (kind: string, message: string) =>
       discord.notifyBillingAlert(kind, message),

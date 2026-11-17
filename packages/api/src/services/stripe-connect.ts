@@ -1,5 +1,5 @@
 import { db, markStore, stores, users } from "@louez/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import {
   connectAccountParams,
@@ -8,6 +8,7 @@ import {
   type ConnectAccountStatus,
   type StripeConnectClient,
 } from "../adapters/stripe-connect";
+import { analyticsEventIdentity, enqueueEffects } from "../platform/effects";
 import { apiError, isApiError } from "../platform/errors";
 import { logProviderError } from "../platform/sanitize-error";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
@@ -80,14 +81,54 @@ export type ConnectColumns = Partial<
   >
 >;
 
-/** Writes the store's Connect columns and marks its billing snapshot. */
-export async function writeConnectColumns(storeId: string, values: ConnectColumns) {
-  await db.transaction(async (tx) => {
+/**
+ * Writes the store's Connect columns and marks its billing snapshot. The
+ * first write that finds charges enabled, from the webhook or a status sync,
+ * marks the store's Connect as completed and queues `stripe_connect_completed`
+ * in the same transaction: once per store, whatever writes after it (a
+ * redelivered event, an account disabled then enabled again, a new account).
+ * Answers the ids of the rows it queued, for `ports.dispatchEffects`.
+ */
+export async function writeConnectColumns(
+  storeId: string,
+  values: ConnectColumns,
+): Promise<string[]> {
+  return db.transaction(async (tx) => {
+    const now = new Date();
     await tx
       .update(stores)
-      .set({ ...values, updatedAt: new Date() })
+      .set({ ...values, updatedAt: now })
       .where(eq(stores.id, storeId));
     await markStore(tx, storeId);
+    if (values.stripeChargesEnabled !== true) return [];
+
+    const [marked] = await tx
+      .update(stores)
+      .set({ stripeConnectCompletedAt: now })
+      .where(and(eq(stores.id, storeId), isNull(stores.stripeConnectCompletedAt)));
+    if (marked.affectedRows !== 1) return [];
+    const store = await tx.query.stores.findFirst({
+      where: eq(stores.id, storeId),
+      columns: { userId: true, createdAt: true },
+    });
+    if (!store) return [];
+    return enqueueEffects(tx, storeId, [
+      {
+        type: "store.lifecycleAnalytics",
+        payload: {
+          ...analyticsEventIdentity(now),
+          event: "stripe_connect_completed",
+          ownerUserId: store.userId,
+          properties: {
+            details_submitted: values.stripeOnboardingComplete === true,
+            seconds_since_store_created: Math.max(
+              0,
+              Math.round((now.getTime() - store.createdAt.getTime()) / 1000),
+            ),
+          },
+        },
+      },
+    ]);
   });
 }
 

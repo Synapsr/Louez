@@ -375,6 +375,8 @@ const runCheckoutPaymentCompletion = async ({
         feature: "checkout",
         surface: "storefront",
         store_id: store.id,
+        // The store owner's person: the customer's event counts on the loueur too.
+        merchant_distinct_id: store.userId,
         reservation_id: reservationId,
         customer_id: reservation.customerId,
         source: source === "webhook" ? "stripe_connect_webhook" : "success_page_verification",
