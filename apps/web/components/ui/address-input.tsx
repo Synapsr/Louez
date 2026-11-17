@@ -25,6 +25,7 @@ import {
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
+import { withinRequestBound } from '@/components/ui/util.address-input';
 
 import { orpc } from '@/lib/orpc/react';
 
@@ -250,13 +251,15 @@ export const AddressInput = ({
       const isCurrent = () => !unmountedRef.current && inputTextRef.current === query;
       const request = startLoading();
       try {
-        const data = source
-          ? { suggestions: await source.search(query) }
-          : await queryClient.fetchQuery(
-              orpc.public.address.autocomplete.queryOptions({
-                input: { query },
-              }),
-            );
+        const data = await withinRequestBound(
+          source
+            ? Promise.resolve(source.search(query)).then((found) => ({ suggestions: found }))
+            : queryClient.fetchQuery(
+                orpc.public.address.autocomplete.queryOptions({
+                  input: { query },
+                }),
+              ),
+        );
         if (!isCurrent()) return;
         suggestionsTextRef.current = query;
         setSuggestions(data.suggestions || []);
@@ -303,13 +306,17 @@ export const AddressInput = ({
         );
       };
       try {
-        const data = source
-          ? { details: await source.details(suggestion.placeId) }
-          : await queryClient.fetchQuery(
-              orpc.public.address.details.queryOptions({
-                input: { placeId: suggestion.placeId },
-              }),
-            );
+        const data = await withinRequestBound(
+          source
+            ? Promise.resolve(source.details(suggestion.placeId)).then((found) => ({
+                details: found,
+              }))
+            : queryClient.fetchQuery(
+                orpc.public.address.details.queryOptions({
+                  input: { placeId: suggestion.placeId },
+                }),
+              ),
+        );
 
         if (!isCurrent()) return;
         if (data.details) {

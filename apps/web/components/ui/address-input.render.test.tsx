@@ -28,10 +28,12 @@ import { AddressInput } from "./address-input";
 // checkout and in the dashboard, the store's addresses): coordinates come only
 // from a suggestion the person picks, never from a best match of what they
 // typed. An answer only lands if nothing happened to the field since it was
-// asked, and the spinner belongs to the request that started it.
+// asked, the spinner belongs to the request that started it, and a request
+// that does not answer in time is given up.
 
 const SEARCH_DELAY = 300;
 const BLUR_DELAY = 120;
+const REQUEST_BOUND = 10_000;
 const CHOOSE_HINT = messages.common.addressInput.chooseFromList;
 
 const details = (placeId: string, formattedAddress: string): AddressDetails => ({
@@ -123,6 +125,11 @@ const renderField = () => {
   const isSpinning = () => view.container.querySelector(".animate-spin") !== null;
   const hint = () =>
     view.container.querySelector("[data-address-choice-hint]")?.textContent ?? null;
+  /** Whether the field's own controls (here, clearing it) show, rather than only the spinner. */
+  const canClear = () =>
+    [...view.container.querySelectorAll("button")].some(
+      (button) => !button.querySelector(".animate-spin"),
+    );
   const option = (placeId: string) =>
     document.querySelector(`[data-address-suggestion="${placeId}"]`) as unknown as HTMLElement;
   const shownSuggestions = () =>
@@ -143,6 +150,7 @@ const renderField = () => {
     state,
     isSpinning,
     hint,
+    canClear,
     option,
     shownSuggestions,
     remount,
@@ -288,6 +296,49 @@ test("a saved address with coordinates is left as it is by focusing and leaving 
   assert.deepEqual(field.searches, []);
   assert.deepEqual(field.state.current, saved);
   assert.equal(field.hint(), null);
+});
+
+test("a search that never answers is given up at the bound and its late list is ignored", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  typeInto(field.input, "8 quai");
+  await tick(SEARCH_DELAY);
+  assert.equal(field.isSpinning(), true);
+  assert.equal(field.canClear(), false);
+
+  await tick(REQUEST_BOUND);
+  assert.equal(field.isSpinning(), false);
+  assert.equal(field.canClear(), true);
+
+  field.searches[0].answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
+  await settle();
+  assert.deepEqual(field.shownSuggestions(), []);
+});
+
+test("a pick that never answers is given up at the bound and its late details write nothing", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  pointerClick(field.option("brest"));
+  await tick(BLUR_DELAY);
+  assert.equal(field.isSpinning(), true);
+
+  await tick(REQUEST_BOUND);
+  assert.equal(field.isSpinning(), false);
+  assert.equal(field.input.value, "8 Quai de la Douane, Brest");
+  assert.deepEqual(field.state.current, {
+    address: "8 Quai de la Douane, Brest",
+    latitude: null,
+    longitude: null,
+  });
+  assert.equal(field.hint(), CHOOSE_HINT);
+
+  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, 29200 Brest"));
+  await settle();
+  assert.equal(field.state.current.latitude, null);
+  assert.equal(field.input.value, "8 Quai de la Douane, Brest");
 });
 
 for (const outcome of ["answers", "fails"] as const) {
