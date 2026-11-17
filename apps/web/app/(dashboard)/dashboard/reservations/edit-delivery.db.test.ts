@@ -5,39 +5,62 @@ import { count, eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import { calculateTotalDeliveryFee } from "@/lib/utils/geo";
+
 import { STORE_KEY } from "./actions-test-stubs";
 
-// The delivery legs of a reservation the store edits: a leg the edit sends to
-// an address, or moves to another one, is priced from a place someone chose;
-// without its coordinates the edit is refused before anything is written. A
-// leg kept as stored is never asked again, and keeps the fee it was given. A
-// reservation created by hand holds the same rule on both legs.
+// The delivery legs of a reservation the store edits. The edit saves no
+// address leg without its place, changed or not: such a leg has no distance,
+// and any save would price it at zero. It is refused before anything is
+// written, and goes through once the address is chosen or the leg goes back
+// to the store. Legs that all have their place are priced as they always
+// were: from the route to each, the store's tariff and the rental's amount.
+// A reservation created by hand holds the same rule on both legs.
 
 const STORE = "store_edit_legs";
 const CUSTOMER = "customer_edit_legs";
 const DAY = 86_400_000;
 const START = new Date("2031-06-10T09:00:00.000Z");
-const END = new Date(START.getTime() + 2 * DAY);
-const STORE_POSITION = { latitude: "47.2125000", longitude: "-1.5592000" };
+const TWO_DAYS = new Date(START.getTime() + 2 * DAY);
+const THREE_DAYS = new Date(START.getTime() + 3 * DAY);
+const STORE_POSITION = { latitude: 47.2125, longitude: -1.5592 };
+/** Free from 125.00 of rental: two days of five bikes (100.00) pay, three (150.00) do not. */
 const DELIVERY = {
   enabled: true,
   mode: "optional",
   pricePerKm: 1.5,
   minimumFee: 0,
   maximumDistance: 100,
-  freeDeliveryThreshold: null,
+  freeDeliveryThreshold: 125,
 } as const;
-/** A place chosen from the suggestions, about twelve kilometres from the store. */
-const CARQUEFOU = {
+
+interface Place {
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+/** Places chosen from the suggestions, a few kilometres from the store. */
+const CARQUEFOU: Place = {
   address: "24 Rue du Moulin, 44470 Carquefou",
   latitude: 47.2969,
   longitude: -1.4901,
 };
+const REZE: Place = {
+  address: "3 Rue Jean Jaurès, 44400 Rezé",
+  latitude: 47.1833,
+  longitude: -1.55,
+};
+
+/** A leg as a reservation stores it: at the store, or at an address with or without its place. */
+type StoredLeg =
+  | { method: "store" }
+  | { method: "address"; address: string; latitude: number | null; longitude: number | null };
 
 describe("the delivery legs of an edit (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let actions: typeof import("./actions");
+  let services: typeof import("@louez/api/services");
   let counter = 0;
   const nextId = (prefix: string) => `${prefix}_${++counter}`;
   let productId = "";
@@ -49,14 +72,19 @@ describe("the delivery legs of an edit (database)", { skip: skipWithoutTestDatab
     louezDb = await import("@louez/db");
     actions = await import("./actions");
     await import("@louez/mcp/testing/cjs-named-exports");
+    services = await import("@louez/api/services");
 
     const settings = { currency: "eur", delivery: DELIVERY };
+    const position = {
+      latitude: STORE_POSITION.latitude.toFixed(7),
+      longitude: STORE_POSITION.longitude.toFixed(7),
+    };
     await louezDb.db.insert(louezDb.stores).values({
       id: STORE,
       userId: "owner_edit_legs",
       name: "Edit delivery",
       slug: "edit-delivery",
-      ...STORE_POSITION,
+      ...position,
       settings: settings as never,
     });
     Reflect.set(globalThis, STORE_KEY, {
@@ -65,7 +93,7 @@ describe("the delivery legs of an edit (database)", { skip: skipWithoutTestDatab
       name: "Edit delivery",
       slug: "edit-delivery",
       address: null,
-      ...STORE_POSITION,
+      ...position,
       settings,
       stripeAccountId: null,
     });
@@ -94,17 +122,26 @@ describe("the delivery legs of an edit (database)", { skip: skipWithoutTestDatab
     await database?.drop();
   });
 
-  /**
-   * A confirmed rental of 100.00 (five bikes, two days) delivered for 18.00
-   * to an address, or to a text saved long ago without its coordinates, and
-   * brought back to the store.
-   */
-  async function deliveredReservation(outbound: {
-    address: string;
-    latitude: string | null;
-    longitude: string | null;
+  /** A confirmed rental of five bikes at 10.00 a day, with its legs and the fee they were given. */
+  async function reservation({
+    outbound,
+    back = { method: "store" },
+    end = TWO_DAYS,
+    deliveryFee,
+    country = null,
+  }: {
+    outbound: StoredLeg;
+    back?: StoredLeg;
+    end?: Date;
+    deliveryFee: number;
+    /** The country stored with each address leg: none on rows written before it was kept. */
+    country?: string | null;
   }) {
     const id = nextId("res");
+    const itemId = nextId("itm");
+    const days = Math.round((end.getTime() - START.getTime()) / DAY);
+    const subtotal = 5 * 10 * days;
+    const coordinate = (value: number | null) => (value === null ? null : value.toFixed(7));
     await louezDb.db.insert(louezDb.reservations).values({
       id,
       storeId: STORE,
@@ -112,36 +149,71 @@ describe("the delivery legs of an edit (database)", { skip: skipWithoutTestDatab
       number: id,
       status: "confirmed",
       startDate: START,
-      endDate: END,
-      subtotalAmount: "100.00",
+      endDate: end,
+      subtotalAmount: subtotal.toFixed(2),
       depositAmount: "0.00",
-      totalAmount: "118.00",
-      deliveryFee: "18.00",
+      totalAmount: (subtotal + deliveryFee).toFixed(2),
+      deliveryFee: deliveryFee.toFixed(2),
       discountAmount: "0.00",
       source: "manual",
-      deliveryOption: "delivery",
-      outboundMethod: "address",
-      deliveryAddress: outbound.address,
-      deliveryLatitude: outbound.latitude,
-      deliveryLongitude: outbound.longitude,
-      deliveryDistanceKm: outbound.latitude ? "12.00" : null,
-      returnMethod: "store",
+      deliveryOption:
+        outbound.method === "address" || back.method === "address" ? "delivery" : "pickup",
+      outboundMethod: outbound.method,
+      ...(outbound.method === "address"
+        ? {
+            deliveryAddress: outbound.address,
+            deliveryCountry: country,
+            deliveryLatitude: coordinate(outbound.latitude),
+            deliveryLongitude: coordinate(outbound.longitude),
+          }
+        : {}),
+      returnMethod: back.method,
+      ...(back.method === "address"
+        ? {
+            returnAddress: back.address,
+            returnCountry: country,
+            returnLatitude: coordinate(back.latitude),
+            returnLongitude: coordinate(back.longitude),
+          }
+        : {}),
     });
     await louezDb.db.insert(louezDb.reservationItems).values({
-      id: nextId("itm"),
+      id: itemId,
       reservationId: id,
       productId,
       quantity: 5,
       unitPrice: "10.00",
       depositPerUnit: "0.00",
-      totalPrice: "100.00",
+      totalPrice: subtotal.toFixed(2),
       productSnapshot: { name: "Bike", description: null, images: [] },
     });
-    return id;
+    return { id, itemId };
   }
 
-  /** What the edit may write about the money and the legs. */
-  async function legsOf(reservationId: string) {
+  /** A leg as the edit form sends it: what it holds, a country of "FR" where the row has none. */
+  const sent = (leg: StoredLeg) =>
+    leg.method === "store"
+      ? { method: "store" as const, locationId: null }
+      : {
+          method: "address" as const,
+          address: leg.address,
+          city: "",
+          postalCode: "",
+          country: "FR",
+          latitude: leg.latitude ?? undefined,
+          longitude: leg.longitude ?? undefined,
+        };
+  const atStore: StoredLeg = { method: "store" };
+  const at = (place: Place): StoredLeg => ({ method: "address", ...place });
+  const typed = (address: string): StoredLeg => ({
+    method: "address",
+    address,
+    latitude: null,
+    longitude: null,
+  });
+
+  /** What the edit may write about the window, the money and the legs. */
+  async function rowOf(reservationId: string) {
     const r = louezDb.reservations;
     const [row] = await louezDb.db
       .select({
@@ -162,140 +234,260 @@ describe("the delivery legs of an edit (database)", { skip: skipWithoutTestDatab
       })
       .from(r)
       .where(eq(r.id, reservationId));
-    return row;
+    const i = louezDb.reservationItems;
+    const items = await louezDb.db
+      .select({ quantity: i.quantity, totalPrice: i.totalPrice })
+      .from(i)
+      .where(eq(i.reservationId, reservationId));
+    return { row, items };
   }
 
-  const PICKED = {
-    address: "8 Quai de la Douane, 44000 Nantes",
-    latitude: "47.2100000",
-    longitude: "-1.5500000",
-  };
-  /** The outbound leg as the edit form sends it back untouched. */
-  const keptOutbound = (stored: {
-    address: string;
-    latitude: string | null;
-    longitude: string | null;
-  }) => ({
-    method: "address" as const,
-    address: stored.address,
-    city: "",
-    postalCode: "",
-    country: "FR",
-    latitude: stored.latitude === null ? undefined : Number(stored.latitude),
-    longitude: stored.longitude === null ? undefined : Number(stored.longitude),
-  });
-  const storeReturn = { method: "store" as const, locationId: null };
+  /** The fee the store's tariff gives these legs for this rental, measured as the edit measures them. */
+  async function tariff(legs: Array<Place | null>, rental: number) {
+    const [outbound, back] = await Promise.all(
+      legs.map(async (place) =>
+        place
+          ? (
+              await services.getRouteDistance({
+                originLatitude: STORE_POSITION.latitude,
+                originLongitude: STORE_POSITION.longitude,
+                destinationLatitude: place.latitude,
+                destinationLongitude: place.longitude,
+              })
+            ).distanceKm
+          : null,
+      ),
+    );
+    return calculateTotalDeliveryFee(outbound ?? null, back ?? null, DELIVERY, rental).totalFee;
+  }
 
   test("a delivery address typed over a priced one, with no place chosen, is refused and nothing is written", async () => {
-    const id = await deliveredReservation(PICKED);
-    const before = await legsOf(id);
+    const booking = await reservation({ outbound: at(CARQUEFOU), deliveryFee: 16 });
+    const before = await rowOf(booking.id);
 
-    const result = await actions.updateReservation(id, {
-      delivery: {
-        outbound: {
-          method: "address",
-          address: "8 quai de la douane nantes",
-          city: "",
-          postalCode: "",
-          country: "FR",
-        },
-        return: storeReturn,
-      },
+    const result = await actions.updateReservation(booking.id, {
+      delivery: { outbound: sent(typed("8 quai de la douane nantes")), return: sent(atStore) },
     });
 
     assert.equal(result.error, "errors.deliveryAddressNotChosen");
-    assert.deepEqual(await legsOf(id), before);
+    assert.deepEqual(await rowOf(booking.id), before);
   });
 
   test("a collection address the edit adds without a place chosen is refused and nothing is written", async () => {
-    const id = await deliveredReservation(PICKED);
-    const before = await legsOf(id);
+    const booking = await reservation({ outbound: at(CARQUEFOU), deliveryFee: 16 });
+    const before = await rowOf(booking.id);
 
-    const result = await actions.updateReservation(id, {
-      delivery: {
-        outbound: keptOutbound(PICKED),
-        return: {
-          method: "address",
-          address: "12 rue de Siam",
-          city: "",
-          postalCode: "",
-          country: "FR",
-        },
-      },
+    const result = await actions.updateReservation(booking.id, {
+      delivery: { outbound: sent(at(CARQUEFOU)), return: sent(typed("12 rue de Siam")) },
     });
 
     assert.equal(result.error, "errors.returnAddressNotChosen");
-    assert.deepEqual(await legsOf(id), before);
+    assert.deepEqual(await rowOf(booking.id), before);
   });
 
-  test("a delivery address changed to a chosen place is saved and priced from it", async () => {
-    const id = await deliveredReservation(PICKED);
+  for (const [edit, change] of [
+    ["the dates", { startDate: START, endDate: THREE_DAYS }],
+    ["a quantity", { items: "quantity" }],
+  ] as const) {
+    test(`a stored delivery address without its place refuses an edit of ${edit}, and nothing is written`, async () => {
+      const legacy = typed("Le Moulin, route de Nantes");
+      const booking = await reservation({ outbound: legacy, deliveryFee: 18 });
+      const before = await rowOf(booking.id);
 
-    const result = await actions.updateReservation(id, {
-      delivery: {
-        outbound: {
-          method: "address",
-          address: CARQUEFOU.address,
-          city: "Carquefou",
-          postalCode: "44470",
-          country: "FR",
-          latitude: CARQUEFOU.latitude,
-          longitude: CARQUEFOU.longitude,
-        },
-        return: storeReturn,
-      },
+      const result = await actions.updateReservation(booking.id, {
+        ...("items" in change
+          ? {
+              items: [
+                {
+                  id: booking.itemId,
+                  productId,
+                  quantity: 6,
+                  unitPrice: 10,
+                  depositPerUnit: 0,
+                  productSnapshot: { name: "Bike" },
+                },
+              ],
+            }
+          : change),
+        delivery: { outbound: sent(legacy), return: sent(atStore) },
+      });
+
+      assert.equal(result.error, "errors.deliveryAddressNotChosen");
+      assert.deepEqual(await rowOf(booking.id), before);
     });
+  }
 
-    assert.equal(result.error, undefined);
-    const after = await legsOf(id);
-    assert.equal(after?.deliveryAddress, CARQUEFOU.address);
-    assert.equal(Number(after?.deliveryLatitude), CARQUEFOU.latitude);
-    assert.equal(Number(after?.deliveryLongitude), CARQUEFOU.longitude);
-    assert.ok(Number(after?.deliveryDistanceKm) > 0, "the leg is measured");
-    assert.ok(Number(after?.deliveryFee) > 0, "the leg is priced");
-    assert.equal(
-      Number(after?.totalAmount),
-      Number(after?.subtotalAmount) + Number(after?.deliveryFee),
-    );
-  });
+  test("the same edit of the dates goes through once the address is chosen, priced from it", async () => {
+    const booking = await reservation({ outbound: typed("Le Moulin"), deliveryFee: 18 });
 
-  test("a delivery address saved long ago without a place does not block a change of dates, and keeps its fee", async () => {
-    const legacy = { address: "Le Moulin, route de Nantes", latitude: null, longitude: null };
-    const id = await deliveredReservation(legacy);
-    const newEnd = new Date(END.getTime() + DAY);
-
-    const result = await actions.updateReservation(id, {
+    const result = await actions.updateReservation(booking.id, {
       startDate: START,
-      endDate: newEnd,
-      delivery: { outbound: keptOutbound(legacy), return: storeReturn },
+      endDate: TWO_DAYS,
+      delivery: { outbound: sent(at(CARQUEFOU)), return: sent(atStore) },
     });
 
     assert.equal(result.error, undefined);
-    const after = await legsOf(id);
-    assert.equal(after?.endDate.getTime(), newEnd.getTime());
-    assert.equal(after?.deliveryFee, "18.00");
-    assert.equal(after?.deliveryAddress, legacy.address);
-    assert.equal(after?.deliveryLatitude, null);
-    assert.equal(
-      Number(after?.totalAmount),
-      Number(after?.subtotalAmount) + 18,
-      "the rental is repriced for its new window, the delivery is not",
-    );
+    const { row } = await rowOf(booking.id);
+    assert.equal(Number(row?.deliveryLatitude), CARQUEFOU.latitude);
+    assert.equal(Number(row?.deliveryFee), await tariff([CARQUEFOU, null], 100));
+    assert.ok(Number(row?.deliveryFee) > 0);
+    assert.equal(Number(row?.totalAmount), 100 + Number(row?.deliveryFee));
   });
 
-  test("a delivery moved back to the store is saved without a fee", async () => {
-    const id = await deliveredReservation(PICKED);
+  test("the same edit of the dates goes through once the leg goes back to the store, with no fee", async () => {
+    const booking = await reservation({ outbound: typed("Le Moulin"), deliveryFee: 18 });
 
-    const result = await actions.updateReservation(id, {
-      delivery: { outbound: { method: "store", locationId: null }, return: storeReturn },
+    const result = await actions.updateReservation(booking.id, {
+      startDate: START,
+      endDate: THREE_DAYS,
+      delivery: { outbound: sent(atStore), return: sent(atStore) },
     });
 
     assert.equal(result.error, undefined);
-    const after = await legsOf(id);
-    assert.equal(after?.outboundMethod, "store");
-    assert.equal(after?.deliveryAddress, null);
-    assert.equal(after?.deliveryFee, "0.00");
-    assert.equal(after?.totalAmount, "100.00");
+    const { row } = await rowOf(booking.id);
+    assert.equal(row?.outboundMethod, "store");
+    assert.equal(row?.deliveryAddress, null);
+    assert.equal(row?.deliveryFee, "0.00");
+    assert.equal(row?.totalAmount, "150.00");
+  });
+
+  test("a reservation with one leg located and one stored without its place refuses any edit", async () => {
+    const booking = await reservation({
+      outbound: typed("Le Moulin"),
+      back: at(REZE),
+      deliveryFee: 30,
+    });
+    const before = await rowOf(booking.id);
+
+    const result = await actions.updateReservation(booking.id, {
+      startDate: START,
+      endDate: THREE_DAYS,
+      delivery: { outbound: sent(typed("Le Moulin")), return: sent(at(REZE)) },
+    });
+
+    assert.equal(result.error, "errors.deliveryAddressNotChosen");
+    assert.deepEqual(await rowOf(booking.id), before);
+  });
+
+  test("a chosen collection added to a delivery stored without its place is refused, and nothing is written", async () => {
+    const legacy = typed("Le Moulin");
+    const booking = await reservation({ outbound: legacy, deliveryFee: 18 });
+    const before = await rowOf(booking.id);
+
+    const result = await actions.updateReservation(booking.id, {
+      delivery: { outbound: sent(legacy), return: sent(at(REZE)) },
+    });
+
+    assert.equal(result.error, "errors.deliveryAddressNotChosen");
+    assert.deepEqual(await rowOf(booking.id), before);
+  });
+
+  test("with delivery included, an edit of located legs saves no fee, as the form shows", async () => {
+    const included = { currency: "eur", delivery: { ...DELIVERY, mode: "included" } };
+    const store = Reflect.get(globalThis, STORE_KEY) as Record<string, unknown>;
+    const useSettings = async (settings: unknown) => {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: settings as never })
+        .where(eq(louezDb.stores.id, STORE));
+      Reflect.set(globalThis, STORE_KEY, { ...store, settings });
+    };
+    await useSettings(included);
+    try {
+      const booking = await reservation({ outbound: at(CARQUEFOU), deliveryFee: 18 });
+
+      const result = await actions.updateReservation(booking.id, {
+        startDate: START,
+        endDate: THREE_DAYS,
+        delivery: { outbound: sent(at(CARQUEFOU)), return: sent(atStore) },
+      });
+
+      assert.equal(result.error, undefined);
+      const { row } = await rowOf(booking.id);
+      assert.equal(row?.deliveryFee, "0.00");
+      assert.equal(row?.totalAmount, "150.00");
+    } finally {
+      await useSettings(store.settings);
+    }
+  });
+
+  test("located legs crossing below the free-delivery amount are priced by the tariff", async () => {
+    const booking = await reservation({
+      outbound: at(CARQUEFOU),
+      back: at(REZE),
+      end: THREE_DAYS,
+      deliveryFee: 0,
+    });
+
+    const result = await actions.updateReservation(booking.id, {
+      startDate: START,
+      endDate: TWO_DAYS,
+      delivery: { outbound: sent(at(CARQUEFOU)), return: sent(at(REZE)) },
+    });
+
+    assert.equal(result.error, undefined);
+    const { row } = await rowOf(booking.id);
+    const fee = await tariff([CARQUEFOU, REZE], 100);
+    assert.ok(fee > 0);
+    assert.equal(Number(row?.deliveryFee), fee);
+    assert.equal(Number(row?.totalAmount), Math.round((100 + fee) * 100) / 100);
+  });
+
+  test("located legs crossing above the free-delivery amount become free", async () => {
+    const booking = await reservation({
+      outbound: at(CARQUEFOU),
+      back: at(REZE),
+      end: TWO_DAYS,
+      deliveryFee: 36,
+    });
+
+    const result = await actions.updateReservation(booking.id, {
+      startDate: START,
+      endDate: THREE_DAYS,
+      delivery: { outbound: sent(at(CARQUEFOU)), return: sent(at(REZE)) },
+    });
+
+    assert.equal(result.error, undefined);
+    const { row } = await rowOf(booking.id);
+    assert.equal(row?.deliveryFee, "0.00");
+    assert.equal(row?.totalAmount, "150.00");
+  });
+
+  test("an edit of a quantity that touches nothing of the located delivery is priced by the tariff", async () => {
+    const booking = await reservation({ outbound: at(CARQUEFOU), deliveryFee: 16 });
+
+    const result = await actions.updateReservation(booking.id, {
+      items: [
+        {
+          id: booking.itemId,
+          productId,
+          quantity: 4,
+          unitPrice: 10,
+          depositPerUnit: 0,
+          productSnapshot: { name: "Bike" },
+        },
+      ],
+      delivery: { outbound: sent(at(CARQUEFOU)), return: sent(atStore) },
+    });
+
+    assert.equal(result.error, undefined);
+    const { row, items } = await rowOf(booking.id);
+    assert.equal(items[0]?.quantity, 4);
+    assert.equal(Number(row?.deliveryFee), await tariff([CARQUEFOU, null], 80));
+  });
+
+  test("a located address stored without its country, city or postal code edits with no error", async () => {
+    const booking = await reservation({ outbound: at(CARQUEFOU), deliveryFee: 16, country: null });
+
+    const result = await actions.updateReservation(booking.id, {
+      startDate: START,
+      endDate: TWO_DAYS,
+      delivery: { outbound: sent(at(CARQUEFOU)), return: sent(atStore) },
+    });
+
+    assert.equal(result.error, undefined);
+    const { row } = await rowOf(booking.id);
+    assert.equal(Number(row?.deliveryFee), await tariff([CARQUEFOU, null], 100));
   });
 
   for (const leg of ["outbound", "return"] as const) {
@@ -308,24 +500,17 @@ describe("the delivery legs of an edit (database)", { skip: skipWithoutTestDatab
             .where(eq(louezDb.reservations.storeId, STORE))
         )[0]?.total;
       const before = await reservationsOfStore();
-      const typed = { method: "address" as const, address: "12 rue de Siam", country: "FR" };
-      const chosen = {
-        method: "address" as const,
-        address: CARQUEFOU.address,
-        country: "FR",
-        latitude: CARQUEFOU.latitude,
-        longitude: CARQUEFOU.longitude,
-      };
+      const unchosen = { method: "address" as const, address: "12 rue de Siam", country: "FR" };
 
       const result = await actions.createManualReservation({
         customerId: CUSTOMER,
         startDate: START,
-        endDate: END,
+        endDate: TWO_DAYS,
         items: [{ productId, quantity: 1 }],
         delivery:
           leg === "outbound"
-            ? { outbound: typed, return: storeReturn }
-            : { outbound: chosen, return: typed },
+            ? { outbound: unchosen, return: sent(atStore) }
+            : { outbound: sent(at(CARQUEFOU)), return: unchosen },
         sendConfirmationEmail: false,
       });
 

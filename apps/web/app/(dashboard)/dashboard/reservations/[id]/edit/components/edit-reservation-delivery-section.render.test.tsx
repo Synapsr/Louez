@@ -3,6 +3,7 @@ import "@/lib/testing/install-dom";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act } from "react";
 import { NextIntlClientProvider } from "next-intl";
 
 import type { AddressDetails, AddressSuggestion, DeliverySettings } from "@louez/types";
@@ -25,11 +26,11 @@ import { useEditReservationDelivery } from "../hooks/use-edit-reservation-delive
 import type { ReservationDelivery, StoreDeliveryInfo } from "../types";
 import { EditReservationDeliverySection } from "./edit-reservation-delivery-section";
 
-// The delivery of a reservation the store edits: a leg sent to an address, or
-// to another one, with no place chosen is an error of the form, which refuses
-// to save (`delivery.hasErrors`); picking a suggestion clears it. A leg kept
-// as stored, even one saved long ago without its place, is no error and keeps
-// the fee it was given.
+// The delivery of a reservation the store edits: every address leg without
+// its place is an error of the form, which refuses to save
+// (`delivery.hasErrors`), whether the edit changed it or not. Picking a
+// suggestion, or sending the leg back to the store, clears it. A located leg
+// stored without its country, city or postal code is no error.
 
 const SEARCH_DELAY = 300;
 const BLUR_DELAY = 120;
@@ -219,14 +220,33 @@ test("a delivery address typed over a priced one is an error until a suggestion 
   assert.equal(section.delivery.current?.outbound.address.latitude, carquefou.latitude);
 });
 
-test("a delivery address saved long ago without a place is no error, and keeps its fee", async () => {
+test("a delivery address stored without its place is an error until the leg goes back to the store", async () => {
   const section = renderSection(
     deliveredTo({ address: "Le Moulin, route de Nantes", latitude: null, longitude: null }),
   );
   unmount = section.unmount;
   await settle();
 
+  assert.equal(section.legError(), LEG_ERROR);
+  assert.equal(section.delivery.current?.hasErrors, true, "the save is refused");
+
+  const storePickup = [...section.container.querySelectorAll("button")].find((button) =>
+    button.textContent?.includes(messages.dashboard.reservations.edit.delivery.storePickup),
+  ) as unknown as HTMLButtonElement;
+  act(() => storePickup.click());
+  await settle();
+
   assert.equal(section.legError(), null);
   assert.equal(section.delivery.current?.hasErrors, false);
-  assert.equal(section.delivery.current?.totalFee, 18);
+});
+
+test("a located delivery address stored without its country, city or postal code is no error", async () => {
+  const section = renderSection(
+    deliveredTo({ address: "24 Rue du Moulin", latitude: "47.2969000", longitude: "-1.4901000" }),
+  );
+  unmount = section.unmount;
+  await settle();
+
+  assert.equal(section.legError(), null);
+  assert.equal(section.delivery.current?.hasErrors, false);
 });

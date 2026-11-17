@@ -205,12 +205,7 @@ import { sendReservationModificationEmailForStore } from "@/lib/reservations/mod
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { creationTotals } from "./new/utils/creation-totals";
 import { typedLineSubtotal } from "./new/utils/product-line-pricing";
-import {
-  isDeliveryLegKept,
-  isUnmeasuredAddressLeg,
-  needsChosenAddress,
-  type StoredDeliveryLeg,
-} from "./util.delivery-leg-choice";
+import { lacksChosenPlace } from "./util.delivery-leg-choice";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
@@ -2127,36 +2122,6 @@ const DELIVERY_LEG_FIELDS = [
   "returnLongitude",
 ] as const satisfies ReadonlyArray<keyof ReservationDeliveryUpdateValues>;
 
-type StoredLegsRow = Pick<
-  typeof reservations.$inferSelect,
-  | "outboundMethod"
-  | "deliveryAddress"
-  | "deliveryLatitude"
-  | "deliveryLongitude"
-  | "returnMethod"
-  | "returnAddress"
-  | "returnLatitude"
-  | "returnLongitude"
->;
-
-/** The two delivery legs a reservation stores. */
-const storedLegsOf = (
-  row: StoredLegsRow,
-): { outbound: StoredDeliveryLeg; return: StoredDeliveryLeg } => ({
-  outbound: {
-    method: row.outboundMethod,
-    address: row.deliveryAddress,
-    latitude: row.deliveryLatitude,
-    longitude: row.deliveryLongitude,
-  },
-  return: {
-    method: row.returnMethod,
-    address: row.returnAddress,
-    latitude: row.returnLatitude,
-    longitude: row.returnLongitude,
-  },
-});
-
 /** A leg's value, the same however it was written: a coordinate's trailing zeros, an empty text. */
 const normalizeLegValue = (value: unknown): string | null => {
   if (value === null || value === undefined || value === "") return null;
@@ -3118,20 +3083,6 @@ export async function updateReservation(
       (field) =>
         normalizeLegValue(deliveryUpdateFields[field]) !== normalizeLegValue(reservation[field]),
     );
-  // Legs kept as stored (the same method, address text and place), one of
-  // which holds no place, cannot be measured again (an address saved long ago
-  // as typed): the fee they were given stands, and so do the distances.
-  const storedLegs = storedLegsOf(reservation);
-  if (
-    data.delivery !== undefined &&
-    isDeliveryLegKept(storedLegs.outbound, data.delivery.outbound) &&
-    isDeliveryLegKept(storedLegs.return, data.delivery.return) &&
-    (isUnmeasuredAddressLeg(storedLegs.outbound) || isUnmeasuredAddressLeg(storedLegs.return))
-  ) {
-    deliveryFeeUnderLocks = parseFloat(reservation.deliveryFee || "0");
-    delete deliveryUpdateFields.deliveryDistanceKm;
-    delete deliveryUpdateFields.returnDistanceKm;
-  }
   const pricingChanged =
     dateChanged ||
     linesChanged ||
@@ -3254,17 +3205,13 @@ export async function updateReservation(
         ) {
           return { error: "errors.reservationChangedMeanwhile" };
         }
-        // A leg the edit sends to an address, or to another one, is priced
-        // from a place someone chose: without its coordinates it would be
-        // saved unmeasured and free. Compared with the leg stored now.
-        if (data.delivery) {
-          const lockedLegs = storedLegsOf(lockedReservation);
-          if (needsChosenAddress(lockedLegs.outbound, data.delivery.outbound)) {
-            return { error: "errors.deliveryAddressNotChosen" };
-          }
-          if (needsChosenAddress(lockedLegs.return, data.delivery.return)) {
-            return { error: "errors.returnAddressNotChosen" };
-          }
+        // Every address leg the edit saves has its place: without it the leg
+        // has no distance and would be saved free, changed or not.
+        if (data.delivery && lacksChosenPlace(data.delivery.outbound)) {
+          return { error: "errors.deliveryAddressNotChosen" };
+        }
+        if (data.delivery && lacksChosenPlace(data.delivery.return)) {
+          return { error: "errors.returnAddressNotChosen" };
         }
 
         for (const itemWrite of itemWrites) {
