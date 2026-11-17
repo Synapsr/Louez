@@ -564,6 +564,52 @@ describe(
         assert.equal(line?.totalPrice, "24.00");
       });
 
+      test("a dashboard creation during a promotion, then its window moved after the promotion ended: the promotion it recorded is kept", async () => {
+        await useStore({});
+        const kayak = await product();
+        await louezDb.db
+          .update(louezDb.products)
+          .set({ promotion: { percentage: 20, startsOn: null, endsOn: null } })
+          .where(eq(louezDb.products.id, kayak));
+        const created = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: TWO_DAYS,
+          items: [{ productId: kayak, quantity: 1 }],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(created.reservationId, JSON.stringify(created));
+        const id = created.reservationId;
+        // Two days at 10.00, 20 % off.
+        assert.equal((await items(id))[0]?.totalPrice, "16.00");
+        // The promotion ends.
+        await louezDb.db
+          .update(louezDb.products)
+          .set({ promotion: null })
+          .where(eq(louezDb.products.id, kayak));
+
+        const shown = await previewOf(id, { end: THREE_DAYS });
+        const result = await actions.updateReservation(id, {
+          endDate: THREE_DAYS,
+          items: await formLines(id),
+        });
+
+        assert.equal(result.error, undefined);
+        const [line] = await items(id);
+        // Three days at 10.00, the 20 % it recorded taken off.
+        assert.equal(line?.totalPrice, "24.00");
+        assert.deepEqual(line?.pricingBreakdown?.promotion, {
+          percentage: 20,
+          originalSubtotal: 30,
+          discountAmount: 6,
+        });
+        assert.equal(
+          shown,
+          (await reservationRow(id)).totalAmount,
+          "the form showed what is written",
+        );
+      });
+
       test("a recorded 'none' stays recorded", async () => {
         await useStore({});
         const kayak = await product();

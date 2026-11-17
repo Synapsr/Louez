@@ -6,8 +6,8 @@ import type { AppliedProductPromotion, PricingBreakdown, TaxSettings } from "@lo
  * promotion on each line. A fact that was not recorded reads as
  * `"not_recorded"`, never as zero, false or none: rows written before
  * migration 0107 hold none, nor does a line's promotion where its creator
- * did not price it with the checkout's engine (the dashboard's creation and
- * edit, a custom line).
+ * did not price it with the checkout's engine (a line the dashboard's edit
+ * adds, a price typed by hand, a custom line).
  *
  * Pure, with no runtime import.
  */

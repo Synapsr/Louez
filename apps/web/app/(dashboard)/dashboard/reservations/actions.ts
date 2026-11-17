@@ -27,7 +27,7 @@ import {
   TAX_OF_TODAY,
   type EditedLineTax,
 } from "@louez/api/services/edit-line-pricing";
-import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
+import { loadPricingCatalog, priceCatalogLine } from "@louez/api/services/pricing-catalog";
 import {
   priceReservationEdit,
   type EditedLine,
@@ -1005,25 +1005,35 @@ export async function createManualReservation(data: CreateReservationData) {
     }
 
     // Priced under the locks (slice 10): a line priced from its product is
-    // priced from the catalogue the locks hold, and that is what is written.
-    // A price typed by hand stands as typed.
+    // priced from the catalogue the locks hold, as the checkout prices it,
+    // the product's promotion in force today included, and that is what is
+    // written, with the promotion it applied or none. A price typed by hand
+    // stands as typed, never discounted.
     const lockedCatalog = await loadPricingCatalog(tx, {
       storeId: store.id,
       productIds: lines.map(({ detail }) => detail.product.id),
       timezone: availabilityRules?.settings?.timezone,
       includeInactive: true,
     });
-    const lockedLines: Array<{ unitPrice: string; totalPrice: string }> = [];
+    const lockedLines: Array<{
+      unitPrice: string;
+      totalPrice: string;
+      pricingBreakdown: PricingBreakdown;
+    }> = [];
     for (const { detail } of lines) {
       if (detail.pricingBreakdown.isManualOverride) {
-        lockedLines.push({ unitPrice: detail.unitPrice, totalPrice: detail.totalPrice });
+        lockedLines.push({
+          unitPrice: detail.unitPrice,
+          totalPrice: detail.totalPrice,
+          pricingBreakdown: detail.pricingBreakdown,
+        });
         continue;
       }
       const lockedProduct = lockedCatalog.get(detail.product.id);
       if (!lockedProduct) {
         return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
       }
-      const priced = priceRegularCatalogLine(lockedProduct, {
+      const priced = priceCatalogLine(lockedProduct, {
         productId: lockedProduct.id,
         quantity: detail.quantity,
         startDate: data.startDate.toISOString(),
@@ -1032,6 +1042,8 @@ export async function createManualReservation(data: CreateReservationData) {
       lockedLines.push({
         unitPrice: roundToMinorUnit(priced.unitPrice, currency).toFixed(2),
         totalPrice: roundToMinorUnit(priced.subtotal, currency).toFixed(2),
+        // The promotion in the checkout's shape, for a later edit to apply (slice 11).
+        pricingBreakdown: { ...detail.pricingBreakdown, promotion: priced.promotion ?? null },
       });
     }
     const lockedSubtotal =
@@ -1236,7 +1248,7 @@ export async function createManualReservation(data: CreateReservationData) {
         unitPrice: lockedLines[lineIndex]!.unitPrice,
         depositPerUnit: detail.depositPerUnit,
         totalPrice: lockedLines[lineIndex]!.totalPrice,
-        pricingBreakdown: detail.pricingBreakdown,
+        pricingBreakdown: lockedLines[lineIndex]!.pricingBreakdown,
         ...lineTaxValues(lineIndex),
         combinationKey: choice.combinationKey,
         selectedAttributes: choice.selectedAttributes,

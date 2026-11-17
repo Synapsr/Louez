@@ -6,6 +6,7 @@ import type {
   DeliverySettings,
   PricingKind,
   PricingMode,
+  ProductPromotion,
   ProductTaxSettings,
   Rate,
   StockKind,
@@ -54,6 +55,8 @@ export interface Product {
   seasonalPricings?: SeasonalPricingConfig[];
   /** The product's own rate, or null for the store's: the summary totals with the tax engine. */
   taxSettings?: ProductTaxSettings | null;
+  /** Its promotion: a line priced from the catalogue applies it while it is in force, as the checkout does. */
+  promotion?: ProductPromotion | null;
 }
 
 export interface SelectedProduct {

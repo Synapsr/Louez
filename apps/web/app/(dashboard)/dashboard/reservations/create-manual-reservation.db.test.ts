@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
 import { after, before, describe, test } from "node:test";
 
+import { formatInTimeZone } from "date-fns-tz";
 import { and, eq } from "drizzle-orm";
 
 import {
@@ -11,7 +12,7 @@ import {
   skipWithoutTestDatabase,
   type TestDatabase,
 } from "@louez/db/testing";
-import type { StoreSettings, UnitAttributes } from "@louez/types";
+import type { ProductPromotion, StoreSettings, UnitAttributes } from "@louez/types";
 import { buildCombinationKey } from "@louez/utils";
 
 import {
@@ -22,6 +23,9 @@ import {
 } from "@louez/api/services/pricing-facts";
 
 import { STORE_KEY } from "./actions-test-stubs";
+import type { Product as FormProduct } from "./new/types";
+import { creationTotals } from "./new/utils/creation-totals";
+import { productLinePricing } from "./new/utils/product-line-pricing";
 
 // A booking typed in the dashboard, on a migrated database: what stock it is
 // checked against, when it is refused with its shortfalls, what it writes when
@@ -1148,7 +1152,8 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
           MANUAL_LINES,
         );
 
-        // The facts: the store's mode; the insurance outside the tax; no promotion priced.
+        // The facts: the store's mode; the insurance outside the tax; the product
+        // line priced with the promotion in force, none here; the custom line records none.
         assert.equal(recordedTaxDisplayMode(row), "exclusive");
         assert.deepEqual(
           items.map((item) => [item.productSnapshot.name, recordedTaxExempt(item)]),
@@ -1158,10 +1163,201 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
             ["Garantie casse/vol", true],
           ],
         );
-        assert.equal(recordedPromotion(items[0]!), NOT_RECORDED);
+        assert.deepEqual(
+          items.slice(0, 2).map((item) => [item.productSnapshot.name, recordedPromotion(item)]),
+          [
+            ["Bike", null],
+            ["Delivery", NOT_RECORDED],
+          ],
+        );
       } finally {
         Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
       }
+    });
+  });
+
+  describe("a product on promotion", () => {
+    // The checkout's rule for a promotion in force: the day of the booking in
+    // the store's timezone (Europe/Paris when it has none), both ends included.
+    const today = formatInTimeZone(new Date(), "Europe/Paris", "yyyy-MM-dd");
+    const dayFromToday = (days: number) =>
+      new Date(Date.parse(`${today}T00:00:00.000Z`) + days * DAY).toISOString().slice(0, 10);
+
+    /** A product at 5.35 a day, with this promotion. */
+    async function promoted(promotion: ProductPromotion) {
+      const id = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Paddle",
+        price: "5.35",
+        pricingMode: "day",
+        quantity: 10,
+        promotion,
+      });
+      return id;
+    }
+
+    /** The reservation's money and its one product line, as written. */
+    async function moneyOf(reservationId: string) {
+      const [row] = await louezDb.db
+        .select()
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, reservationId));
+      const [line] = await louezDb.db
+        .select()
+        .from(louezDb.reservationItems)
+        .where(eq(louezDb.reservationItems.reservationId, reservationId));
+      assert.ok(row && line);
+      return {
+        subtotal: row.subtotalAmount,
+        total: row.totalAmount,
+        unitPrice: line.unitPrice,
+        totalPrice: line.totalPrice,
+        promotion: recordedPromotion(line),
+      };
+    }
+
+    /** The same line booked through the checkout (a trusted caller, nothing paid). */
+    async function bookedByCheckout(productId: string, quantity: number) {
+      const result = await checkout.createReservation({
+        source: "phone",
+        storeId: STORE,
+        customer: { email: "caller@example.test", firstName: "Call", lastName: "In" },
+        items: [
+          {
+            lineId: "0",
+            productId,
+            quantity,
+            startDate: START.toISOString(),
+            endDate: END.toISOString(),
+            unitPrice: 5.35,
+            depositPerUnit: 0,
+          },
+        ],
+        subtotalAmount: 0,
+        depositAmount: 0,
+        totalAmount: 0,
+      });
+      assert.ok(result.ok, JSON.stringify(result));
+      return moneyOf(result.reservationId);
+    }
+
+    /** The total the creation form shows for the line, from the product as its page loads it. */
+    async function formTotal(productId: string, quantity: number, priceOverride?: number) {
+      const [row] = await louezDb.db
+        .select()
+        .from(louezDb.products)
+        .where(eq(louezDb.products.id, productId));
+      assert.ok(row);
+      const formProduct: FormProduct = {
+        ...row,
+        units: [],
+        pricingTiers: [],
+        seasonalPricings: [],
+      };
+      const line = productLinePricing({
+        product: formProduct,
+        selectedItem: {
+          lineId: "0",
+          productId,
+          quantity,
+          ...(priceOverride === undefined ? {} : { priceOverride: { unitPrice: priceOverride } }),
+        },
+        startDate: START,
+        endDate: END,
+        timezone: undefined,
+      });
+      return creationTotals({
+        productLines: [{ amount: line.lineSubtotal, taxSettings: row.taxSettings }],
+        customLines: [],
+        insuranceAmount: 0,
+        deliveryFee: 0,
+        discountAmount: 0,
+        deposit: 0,
+        taxSettings: SETTINGS.tax,
+        currency: SETTINGS.currency,
+      }).total;
+    }
+
+    test("in force: the line is priced with it and records it, as the checkout prices and records it", async () => {
+      // Two for two days at 5.35, 50 % off: 10.70, not 21.40.
+      const paddles = await promoted({ percentage: 50, startsOn: today, endsOn: today });
+
+      const byHand = await moneyOf(
+        (await writtenBy(await create([{ productId: paddles, quantity: 2 }]))).reservationId,
+      );
+
+      assert.deepEqual(byHand, {
+        subtotal: "10.70",
+        total: "10.70",
+        unitPrice: "5.35",
+        totalPrice: "10.70",
+        promotion: { percentage: 50, originalSubtotal: 21.4, discountAmount: 10.7 },
+      });
+      assert.deepEqual(byHand, await bookedByCheckout(paddles, 2));
+    });
+
+    test("over, or not started: nothing changes, and the line records none", async () => {
+      for (const promotion of [
+        { percentage: 50, startsOn: dayFromToday(-10), endsOn: dayFromToday(-1) },
+        { percentage: 50, startsOn: dayFromToday(1), endsOn: null },
+      ]) {
+        const paddles = await promoted(promotion);
+
+        const byHand = await moneyOf(
+          (await writtenBy(await create([{ productId: paddles, quantity: 2 }]))).reservationId,
+        );
+
+        assert.deepEqual(byHand, {
+          subtotal: "21.40",
+          total: "21.40",
+          unitPrice: "10.70",
+          totalPrice: "21.40",
+          promotion: null,
+        });
+        assert.deepEqual(byHand, await bookedByCheckout(paddles, 2));
+      }
+    });
+
+    test("a price typed by hand is not discounted", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
+
+      const result = await actions.createManualReservation({
+        customerId: CUSTOMER,
+        startDate: START,
+        endDate: END,
+        // 8.00 a day, typed, for two days.
+        items: [{ productId: paddles, quantity: 1, priceOverride: { unitPrice: 8 } }],
+        expectedTotal: await formTotal(paddles, 1, 8),
+        sendConfirmationEmail: false,
+      });
+
+      const typed = await moneyOf((await writtenBy(result)).reservationId);
+      assert.equal(typed.totalPrice, "16.00");
+      assert.equal(typed.total, "16.00");
+      assert.ok(
+        typed.promotion === NOT_RECORDED || typed.promotion === null,
+        "no promotion applied to a typed price",
+      );
+    });
+
+    test("the total the form shows is the total written, the promotion included", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
+      const shown = await formTotal(paddles, 2);
+
+      const result = await actions.createManualReservation({
+        customerId: CUSTOMER,
+        startDate: START,
+        endDate: END,
+        items: [{ productId: paddles, quantity: 2 }],
+        expectedTotal: shown,
+        sendConfirmationEmail: false,
+      });
+
+      const written = await moneyOf((await writtenBy(result)).reservationId);
+      assert.equal(shown.toFixed(2), written.total);
+      assert.equal(written.total, (await bookedByCheckout(paddles, 2)).total);
     });
   });
 

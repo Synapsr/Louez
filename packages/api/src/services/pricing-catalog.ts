@@ -217,8 +217,8 @@ export const toPricingCatalogProduct = (
  * Price one cart line from the catalog entry, without the product's
  * promotion. Fixed-price products ignore the duration; everything else goes
  * through the seasonal-aware engine (which handles legacy tiers, rate-based
- * and strict tiers). The dashboard's edit prices its lines this way: it
- * applies no promotion yet (slice 11).
+ * and strict tiers). The dashboard's edit prices a line again this way, then
+ * applies the promotion the line recorded, not today's (slice 11).
  */
 export const priceRegularCatalogLine = (
   product: PricingCatalogProduct,

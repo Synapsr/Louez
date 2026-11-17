@@ -1,4 +1,5 @@
 import {
+  applyProductPromotion,
   calculateFixedPrice,
   calculateDurationMinutes,
   calculateRateBasedPrice,
@@ -23,18 +24,68 @@ export function durationForMode(startDate: Date, endDate: Date, mode: PricingMod
   return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
-/**
- * The price the creation form shows for a product line, over the dates
- * chosen: the amount it totals and sends as the total it showed
- * (`createManualReservation` compares it with its own).
- */
-export function productLinePricing(input: {
+interface ProductLinePricingInput {
   product: Product;
   selectedItem?: SelectedProduct;
   startDate: Date | undefined;
   endDate: Date | undefined;
   timezone: string | undefined;
-}): ProductPricingDetails {
+}
+
+/**
+ * The price the creation form shows for a product line, over the dates
+ * chosen: the amount it totals and sends as the total it showed
+ * (`createManualReservation` compares it with its own). A line priced from
+ * the catalogue applies the product's promotion in force today, by the
+ * checkout's own function (`applyProductPromotion`, as `priceCatalogLine`
+ * applies it): its price is the discounted one, shown next to the price
+ * before. A price typed by hand is never discounted; the catalogue's price it
+ * replaces, the promotion included, stays its reference.
+ */
+export function productLinePricing(
+  input: ProductLinePricingInput & { now?: Date },
+): ProductPricingDetails {
+  const regular = regularLinePricing(input);
+  const catalogue =
+    regular.hasPriceOverride && input.selectedItem
+      ? regularLinePricing({
+          ...input,
+          selectedItem: { ...input.selectedItem, priceOverride: undefined },
+        })
+      : regular;
+  const promoted = applyProductPromotion(
+    catalogue.lineSubtotal,
+    input.product.promotion,
+    input.timezone,
+    input.now,
+  );
+  if (!promoted.promotion) return regular;
+
+  const calculatedPrice =
+    promoted.subtotal /
+    Math.max(1, input.selectedItem?.quantity ?? 1) /
+    Math.max(1, catalogue.productDuration);
+  if (regular.hasPriceOverride) return { ...regular, calculatedPrice };
+
+  const lineSavings = regular.lineOriginalSubtotal - promoted.subtotal;
+  return {
+    ...regular,
+    calculatedPrice,
+    effectivePrice: calculatedPrice,
+    hasDiscount: true,
+    // The reduction shown is the whole one, from the price before to the price applied.
+    applicableTierDiscountPercent: null,
+    lineSubtotal: promoted.subtotal,
+    lineSavings,
+    reductionPercent:
+      regular.lineOriginalSubtotal > 0
+        ? Math.round((lineSavings / regular.lineOriginalSubtotal) * 100)
+        : null,
+  };
+}
+
+/** The line's price from the catalogue's rates, before any promotion. */
+function regularLinePricing(input: ProductLinePricingInput): ProductPricingDetails {
   const { product, selectedItem, startDate, endDate, timezone } = input;
   const productPricingMode = product.pricingMode ?? "day";
   const basePrice = parseFloat(product.price);
