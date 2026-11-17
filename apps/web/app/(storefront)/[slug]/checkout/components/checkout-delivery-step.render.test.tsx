@@ -5,6 +5,7 @@ import { afterEach, beforeEach, mock, test } from "node:test";
 import { useStore } from "@tanstack/react-form";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
+import { act } from "react";
 
 import type { AddressDetails, AddressSuggestion, DeliverySettings } from "@louez/types";
 
@@ -24,7 +25,9 @@ import {
 import { publicEnvSchema } from "@/lib/validators/validator.public-env";
 import messages from "@/messages/en.json";
 
+import type { StepId } from "../checkout.types";
 import { useCheckoutDelivery } from "../hooks/use-checkout-delivery";
+import { useCheckoutStepFlow } from "../hooks/use-checkout-step-flow";
 import {
   type CustomerAddressFields,
   type CustomerAddressPick,
@@ -35,7 +38,8 @@ import { CheckoutDeliveryStep } from "./checkout-delivery-step";
 
 // The delivery step of the checkout, mounted as the checkout mounts it, for a
 // store that delivers every order: the fee is computed only from an address
-// the customer chose, and the address starts from the customer's own.
+// the customer chose, and the address starts from the customer's own. It sits
+// in the checkout's form and step flow, shown while the flow is on its step.
 
 const SEARCH_DELAY = 300;
 const BLUR_DELAY = 120;
@@ -84,6 +88,7 @@ const renderStep = ({
     [];
   const distances: Destination[] = [];
   const delivery = { current: null as ReturnType<typeof useCheckoutDelivery> | null };
+  const flow = { current: null as ReturnType<typeof useCheckoutStepFlow> | null };
 
   const source = {
     search: (query: string) => {
@@ -114,6 +119,14 @@ const renderStep = ({
       },
     });
     delivery.current = state;
+    const stepFlow = useCheckoutStepFlow({
+      isDeliveryEnabled: true,
+      hasDetailsStep: false,
+      validateCurrentStep: async () => true,
+      isDeliveryReady: state.canContinue,
+      scrollTargetRef: { current: null },
+    });
+    flow.current = stepFlow;
     const values = useStore(form.store, (formState) => ({
       address: formState.values.address,
       postalCode: formState.values.postalCode,
@@ -132,23 +145,27 @@ const renderStep = ({
     };
     return (
       <form.AppForm>
-        <CheckoutDeliveryStep
-          form={form}
-          deliverySettings={DELIVERY}
-          delivery={state}
-          subtotal={100}
-          storeName="Atelier"
-          storeLatitude={STORE.latitude}
-          storeLongitude={STORE.longitude}
-          onUseCustomerAddress={useCustomerAddress}
-          onBack={() => {}}
-          onContinue={() => {}}
-          stepDirection="forward"
-          showMap={false}
-          geolocationEnabled={false}
-          addressSource={source}
-          autoFocus={false}
-        />
+        <form onKeyDown={stepFlow.handleFormKeyDown}>
+          {stepFlow.currentStep === "delivery" && (
+            <CheckoutDeliveryStep
+              form={form}
+              deliverySettings={DELIVERY}
+              delivery={state}
+              subtotal={100}
+              storeName="Atelier"
+              storeLatitude={STORE.latitude}
+              storeLongitude={STORE.longitude}
+              onUseCustomerAddress={useCustomerAddress}
+              onBack={() => {}}
+              onContinue={stepFlow.goToNextStep}
+              stepDirection="forward"
+              showMap={false}
+              geolocationEnabled={false}
+              addressSource={source}
+              autoFocus={false}
+            />
+          )}
+        </form>
       </form.AppForm>
     );
   };
@@ -168,6 +185,8 @@ const renderStep = ({
     </PublicEnvProvider>,
   );
 
+  act(() => flow.current?.goToStep("delivery"));
+
   const continueButton = () =>
     [...view.container.querySelectorAll("button")].find(
       (button) => button.textContent?.trim() === messages.storefront.checkout.continue,
@@ -179,6 +198,8 @@ const renderStep = ({
     details,
     distances,
     delivery,
+    currentStep: () => flow.current?.currentStep,
+    goToStep: (stepId: StepId) => act(() => flow.current?.goToStep(stepId)),
     get input() {
       return view.container.querySelector(
         "#fulfillment-outbound-address",
@@ -245,6 +266,74 @@ test("a delivery address picked with the keyboard is priced from the pick, and n
   assert.equal(step.input.value, carquefou.formattedAddress);
   assert.equal(step.hint(), null);
   assert.equal(step.canContinue(), true);
+});
+
+test("Enter leaves the delivery step only once its address is chosen", async () => {
+  const step = renderStep();
+  unmount = step.unmount;
+
+  typeInto(step.input, "24 rue du moulin");
+  await tick(SEARCH_DELAY);
+  step.searches.at(-1)?.answer.resolve([carquefouSuggestion]);
+  await settle();
+
+  // The list open with nothing highlighted, then closed: the step stays.
+  pressKey(step.input, "Enter");
+  await settle();
+  assert.equal(step.currentStep(), "delivery");
+  pressKey(step.input, "Escape");
+  pressKey(step.input, "Enter");
+  await settle();
+  assert.equal(step.currentStep(), "delivery");
+  step.searches.at(-1)?.answer.resolve([carquefouSuggestion]);
+  await settle();
+
+  // Enter on a highlighted suggestion picks it, and the step waits for it.
+  pressKey(step.input, "ArrowDown");
+  pressKey(step.input, "Enter");
+  await settle();
+  assert.equal(step.currentStep(), "delivery");
+  step.details[0].answer.resolve(carquefou);
+  await settle();
+  await tick(BLUR_DELAY * 2);
+  assert.equal(step.currentStep(), "delivery");
+  assert.equal(step.input.value, carquefou.formattedAddress);
+  assert.equal(step.canContinue(), true);
+
+  pressKey(step.input, "Enter");
+  await settle();
+  assert.equal(step.currentStep(), "confirm");
+});
+
+test("a jump to a later step stops on a delivery step whose address is no longer chosen", async () => {
+  const step = renderStep();
+  unmount = step.unmount;
+
+  typeInto(step.input, "24 rue du moulin");
+  await tick(SEARCH_DELAY);
+  step.searches.at(-1)?.answer.resolve([carquefouSuggestion]);
+  await settle();
+  pressKey(step.input, "ArrowDown");
+  pressKey(step.input, "Enter");
+  step.details[0].answer.resolve(carquefou);
+  await settle();
+  await tick(BLUR_DELAY * 2);
+  step.goToStep("confirm");
+  assert.equal(step.currentStep(), "confirm");
+
+  // Back on the step, the address is typed over: it is to choose again.
+  step.goToStep("delivery");
+  typeInto(step.input, "25 rue du moulin");
+  await settle();
+  assert.equal(step.canContinue(), false);
+  step.goToStep("confirm");
+  assert.equal(step.currentStep(), "delivery");
+
+  // From an earlier step too, the jump lands on the delivery step.
+  step.goToStep("contact");
+  assert.equal(step.currentStep(), "contact");
+  step.goToStep("confirm");
+  assert.equal(step.currentStep(), "delivery");
 });
 
 test("the customer's own address without a pick starts the delivery address as text to choose", async () => {
