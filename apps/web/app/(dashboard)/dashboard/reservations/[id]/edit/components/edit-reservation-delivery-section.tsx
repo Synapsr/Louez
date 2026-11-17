@@ -24,7 +24,11 @@ import { ReservationStoreLegsSummary } from '@/components/dashboard/reservation-
 import { resolveStoreLegLocation } from '@/components/dashboard/util.reservation-store-legs'
 import { AddressInput } from '@/components/ui/address-input'
 
-import type { DeliveryLegAddress, DeliveryLegState } from '../hooks/use-edit-reservation-delivery'
+import {
+  ADDRESS_NOT_CHOSEN,
+  type DeliveryLegAddress,
+  type DeliveryLegState,
+} from '../hooks/use-edit-reservation-delivery'
 import type { ReservationLocationOption } from '../types'
 
 interface DeliveryLegCardProps {
@@ -190,6 +194,8 @@ function DeliveryLegCard({
               })
             }}
             placeholder={t('addressPlaceholder')}
+            ariaInvalid={leg.error === ADDRESS_NOT_CHOSEN}
+            showChoiceHint={leg.error !== ADDRESS_NOT_CHOSEN}
           />
 
           {leg.distance !== null && !leg.error && (
@@ -214,8 +220,12 @@ function DeliveryLegCard({
           )}
 
           {leg.error && (
-            <p className="text-xs text-destructive">
-              {t('tooFar', { maxDistance: '' })}
+            <p role="alert" className="text-xs text-destructive">
+              {leg.error === ADDRESS_NOT_CHOSEN
+                ? isOutbound
+                  ? t('outboundAddressNotChosen')
+                  : t('returnAddressNotChosen')
+                : t('tooFar', { maxDistance: '' })}
             </p>
           )}
         </div>

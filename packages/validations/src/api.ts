@@ -793,10 +793,6 @@ export const addressAutocompleteInputSchema = z.object({
   query: z.string().trim().min(3).max(200),
 });
 
-export const addressResolveInputSchema = z.object({
-  query: z.string().trim().min(3).max(200),
-});
-
 export const addressDetailsInputSchema = z.object({
   placeId: z.string().trim().min(1).max(255),
 });
@@ -985,7 +981,6 @@ export type DashboardIntegrationsDisconnectTulipInput = z.infer<
   typeof dashboardIntegrationsDisconnectTulipInputSchema
 >;
 export type AddressAutocompleteInput = z.infer<typeof addressAutocompleteInputSchema>;
-export type AddressResolveInput = z.infer<typeof addressResolveInputSchema>;
 export type AddressDetailsInput = z.infer<typeof addressDetailsInputSchema>;
 export type AddressReverseGeocodeInput = z.infer<typeof addressReverseGeocodeInputSchema>;
 export type RouteDistanceInput = z.infer<typeof routeDistanceInputSchema>;

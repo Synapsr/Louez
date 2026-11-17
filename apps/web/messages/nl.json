@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Zoek een adres...",
       "coordinatesSaved": "Coördinaten opgeslagen",
-      "editLocation": "Locatie bewerken"
+      "editLocation": "Locatie bewerken",
+      "chooseFromList": "Kies het adres uit de lijst.",
+      "chooseFromListOrMap": "Kies het adres uit de lijst of plaats het op de kaart."
     },
     "addressModal": {
       "title": "Adresdetails",
@@ -2430,6 +2432,8 @@
           "included": "Inbegrepen",
           "totalFee": "Totale bezorgkosten",
           "tooFar": "Adres overschrijdt maximale afstand ({maxDistance} km)",
+          "outboundAddressNotChosen": "Kies het afleveradres uit de lijst of plaats het op de kaart.",
+          "returnAddressNotChosen": "Kies het ophaaladres uit de lijst of plaats het op de kaart.",
           "savings": "Besparing",
           "deliveryFee": "Bezorgkosten"
         }
@@ -9551,6 +9555,8 @@
     "deliveryNotEnabled": "Levering is niet ingeschakeld voor deze winkel",
     "deliveryMinimumOrderAmountNotMet": "Bezorging is beschikbaar vanaf {amount} aan huur",
     "deliveryAddressRequired": "Voer een geldig afleveradres in",
+    "deliveryAddressNotChosen": "Het afleveradres moet uit de lijst worden gekozen of op de kaart worden geplaatst.",
+    "returnAddressNotChosen": "Het ophaaladres moet uit de lijst worden gekozen of op de kaart worden geplaatst.",
     "storeCoordinatesNotConfigured": "Winkelcoördinaten zijn niet geconfigureerd",
     "deliveryTooFar": "Het afleveradres is te ver weg (maximaal {maxDistance} km)",
     "deliveryRequired": "Bezorging is verplicht voor deze winkel",

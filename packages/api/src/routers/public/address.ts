@@ -1,6 +1,5 @@
 import {
   addressAutocompleteInputSchema,
-  addressResolveInputSchema,
   addressDetailsInputSchema,
   addressReverseGeocodeInputSchema,
   routeDistanceInputSchema,
@@ -10,7 +9,6 @@ import {
   getAddressAutocomplete,
   getAddressDetails,
   getRouteDistance,
-  resolveAddressQuery,
   reverseGeocode,
 } from '../../services'
 import { toORPCError } from '../../utils/orpc-error'
@@ -33,18 +31,6 @@ const details = publicProcedure
     try {
       return await getAddressDetails({
         placeId: input.placeId,
-      })
-    } catch (error) {
-      throw toORPCError(error)
-    }
-  })
-
-const resolve = publicProcedure
-  .input(addressResolveInputSchema)
-  .handler(async ({ input }) => {
-    try {
-      return await resolveAddressQuery({
-        query: input.query,
       })
     } catch (error) {
       throw toORPCError(error)
@@ -74,7 +60,6 @@ const distance = publicProcedure
 export const publicAddressRouter = {
   autocomplete,
   details,
-  resolve,
   reverseGeocode: reverseGeocodeRoute,
   distance,
 }

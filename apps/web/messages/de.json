@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Adresse suchen...",
       "coordinatesSaved": "Koordinaten gespeichert",
-      "editLocation": "Standort bearbeiten"
+      "editLocation": "Standort bearbeiten",
+      "chooseFromList": "Wählen Sie die Adresse aus der Liste.",
+      "chooseFromListOrMap": "Wählen Sie die Adresse aus der Liste oder setzen Sie sie auf der Karte."
     },
     "addressModal": {
       "title": "Adressdetails",
@@ -2469,6 +2471,8 @@
           "included": "Inklusive",
           "totalFee": "Gesamtliefergebühr",
           "tooFar": "Adresse überschreitet maximale Entfernung ({maxDistance} km)",
+          "outboundAddressNotChosen": "Wählen Sie die Lieferadresse aus der Liste oder setzen Sie sie auf der Karte.",
+          "returnAddressNotChosen": "Wählen Sie die Abholadresse aus der Liste oder setzen Sie sie auf der Karte.",
           "savings": "Ersparnis",
           "deliveryFee": "Liefergebühr"
         }
@@ -9551,6 +9555,8 @@
     "deliveryNotEnabled": "Lieferung ist für diesen Shop nicht aktiviert",
     "deliveryMinimumOrderAmountNotMet": "Die Lieferung ist ab einem Mietbetrag von {amount} verfügbar",
     "deliveryAddressRequired": "Bitte geben Sie eine gültige Lieferadresse ein",
+    "deliveryAddressNotChosen": "Die Lieferadresse muss aus der Liste gewählt oder auf der Karte gesetzt werden.",
+    "returnAddressNotChosen": "Die Abholadresse muss aus der Liste gewählt oder auf der Karte gesetzt werden.",
     "storeCoordinatesNotConfigured": "Shop-Koordinaten sind nicht konfiguriert",
     "deliveryTooFar": "Die Lieferadresse ist zu weit entfernt (maximal {maxDistance} km)",
     "deliveryRequired": "Lieferung ist für diesen Shop erforderlich",

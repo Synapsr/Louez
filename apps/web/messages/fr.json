@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Rechercher une adresse...",
       "coordinatesSaved": "Coordonnées enregistrées",
-      "editLocation": "Modifier l'emplacement"
+      "editLocation": "Modifier l'emplacement",
+      "chooseFromList": "Choisissez l’adresse dans la liste.",
+      "chooseFromListOrMap": "Choisissez l’adresse dans la liste, ou placez-la sur la carte."
     },
     "addressModal": {
       "title": "Détails de l'adresse",
@@ -2469,6 +2471,8 @@
           "included": "Inclus",
           "totalFee": "Frais de livraison totaux",
           "tooFar": "L'adresse dépasse la distance maximale ({maxDistance} km)",
+          "outboundAddressNotChosen": "Choisissez l’adresse de livraison dans la liste ou placez-la sur la carte.",
+          "returnAddressNotChosen": "Choisissez l’adresse de récupération dans la liste ou placez-la sur la carte.",
           "savings": "Économies",
           "deliveryFee": "Frais de livraison"
         }
@@ -9551,6 +9555,8 @@
     "deliveryNotEnabled": "La livraison n'est pas activée pour cette boutique",
     "deliveryMinimumOrderAmountNotMet": "La livraison est disponible à partir de {amount} de location",
     "deliveryAddressRequired": "Veuillez saisir une adresse de livraison valide",
+    "deliveryAddressNotChosen": "L’adresse de livraison doit être choisie dans la liste ou placée sur la carte.",
+    "returnAddressNotChosen": "L’adresse de récupération doit être choisie dans la liste ou placée sur la carte.",
     "storeCoordinatesNotConfigured": "Les coordonnées de la boutique ne sont pas configurées",
     "deliveryTooFar": "L'adresse de livraison est trop éloignée (maximum {maxDistance} km)",
     "deliveryRequired": "La livraison est obligatoire pour cette boutique",

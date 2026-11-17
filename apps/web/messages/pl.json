@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Wyszukaj adres...",
       "coordinatesSaved": "Współrzędne zapisane",
-      "editLocation": "Edytuj lokalizację"
+      "editLocation": "Edytuj lokalizację",
+      "chooseFromList": "Wybierz adres z listy.",
+      "chooseFromListOrMap": "Wybierz adres z listy lub zaznacz go na mapie."
     },
     "addressModal": {
       "title": "Szczegóły adresu",
@@ -2430,6 +2432,8 @@
           "included": "W cenie",
           "totalFee": "Całkowity koszt dostawy",
           "tooFar": "Adres przekracza maksymalną odległość ({maxDistance} km)",
+          "outboundAddressNotChosen": "Wybierz adres dostawy z listy lub zaznacz go na mapie.",
+          "returnAddressNotChosen": "Wybierz adres odbioru z listy lub zaznacz go na mapie.",
           "savings": "Oszczędności",
           "deliveryFee": "Koszt dostawy"
         }
@@ -9551,6 +9555,8 @@
     "deliveryNotEnabled": "Dostawa nie jest włączona dla tego sklepu",
     "deliveryMinimumOrderAmountNotMet": "Dostawa jest dostępna od {amount} wartości wynajmu",
     "deliveryAddressRequired": "Proszę podać prawidłowy adres dostawy",
+    "deliveryAddressNotChosen": "Adres dostawy trzeba wybrać z listy lub zaznaczyć na mapie.",
+    "returnAddressNotChosen": "Adres odbioru trzeba wybrać z listy lub zaznaczyć na mapie.",
     "storeCoordinatesNotConfigured": "Współrzędne sklepu nie są skonfigurowane",
     "deliveryTooFar": "Adres dostawy jest za daleko (maksymalnie {maxDistance} km)",
     "deliveryRequired": "Dostawa jest wymagana dla tego sklepu",

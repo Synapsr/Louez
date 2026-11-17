@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Search for an address...",
       "coordinatesSaved": "Coordinates saved",
-      "editLocation": "Edit location"
+      "editLocation": "Edit location",
+      "chooseFromList": "Choose the address from the list.",
+      "chooseFromListOrMap": "Choose the address from the list, or place it on the map."
     },
     "addressModal": {
       "title": "Address details",
@@ -2469,6 +2471,8 @@
           "included": "Included",
           "totalFee": "Total delivery fee",
           "tooFar": "Address exceeds maximum distance ({maxDistance} km)",
+          "outboundAddressNotChosen": "Choose the delivery address from the list, or place it on the map.",
+          "returnAddressNotChosen": "Choose the collection address from the list, or place it on the map.",
           "savings": "Savings",
           "deliveryFee": "Delivery fee"
         }
@@ -9551,6 +9555,8 @@
     "deliveryNotEnabled": "Delivery is not enabled for this store",
     "deliveryMinimumOrderAmountNotMet": "Delivery is available from {amount} of rental",
     "deliveryAddressRequired": "Please enter a valid delivery address",
+    "deliveryAddressNotChosen": "The delivery address must be chosen from the list or placed on the map.",
+    "returnAddressNotChosen": "The collection address must be chosen from the list or placed on the map.",
     "storeCoordinatesNotConfigured": "Store coordinates are not configured",
     "deliveryTooFar": "The delivery address is too far (maximum {maxDistance} km)",
     "deliveryRequired": "Delivery is required for this store",

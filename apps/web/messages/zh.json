@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "搜索地址...",
       "coordinatesSaved": "坐标已保存",
-      "editLocation": "编辑位置"
+      "editLocation": "编辑位置",
+      "chooseFromList": "请从列表中选择地址。",
+      "chooseFromListOrMap": "请从列表中选择地址，或在地图上标出。"
     },
     "addressModal": {
       "title": "地址详情",
@@ -2469,6 +2471,8 @@
           "included": "包含",
           "totalFee": "总运费",
           "tooFar": "地址超出最大距离（{maxDistance} 公里）",
+          "outboundAddressNotChosen": "请从列表中选择配送地址，或在地图上标出。",
+          "returnAddressNotChosen": "请从列表中选择取回地址，或在地图上标出。",
           "savings": "储蓄",
           "deliveryFee": "送货费"
         }
@@ -9551,6 +9555,8 @@
     "deliveryNotEnabled": "该商店未启用送货服务",
     "deliveryMinimumOrderAmountNotMet": "租赁{amount}可送货",
     "deliveryAddressRequired": "请输入有效的送货地址",
+    "deliveryAddressNotChosen": "配送地址必须从列表中选择或在地图上标出。",
+    "returnAddressNotChosen": "取回地址必须从列表中选择或在地图上标出。",
     "storeCoordinatesNotConfigured": "商店坐标未配置",
     "deliveryTooFar": "送货地址太远（最大{maxDistance}公里）",
     "deliveryRequired": "本店需要送货上门",

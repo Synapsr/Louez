@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Cari alamat...",
       "coordinatesSaved": "Koordinat disimpan",
-      "editLocation": "Sunting lokasi"
+      "editLocation": "Sunting lokasi",
+      "chooseFromList": "Pilih alamat dari daftar.",
+      "chooseFromListOrMap": "Pilih alamat dari daftar, atau tandai di peta."
     },
     "addressModal": {
       "title": "Detail alamat",
@@ -2469,6 +2471,8 @@
           "included": "Termasuk",
           "totalFee": "Total biaya pengiriman",
           "tooFar": "Alamat melebihi jarak maksimum ({maxDistance} km)",
+          "outboundAddressNotChosen": "Pilih alamat pengiriman dari daftar, atau tandai di peta.",
+          "returnAddressNotChosen": "Pilih alamat penjemputan dari daftar, atau tandai di peta.",
           "savings": "Tabungan",
           "deliveryFee": "Biaya pengiriman"
         }
@@ -9551,6 +9555,8 @@
     "deliveryNotEnabled": "Pengiriman tidak diaktifkan untuk toko ini",
     "deliveryMinimumOrderAmountNotMet": "Pengiriman tersedia dari {amount} sewa",
     "deliveryAddressRequired": "Silakan masukkan alamat pengiriman yang valid",
+    "deliveryAddressNotChosen": "Alamat pengiriman harus dipilih dari daftar atau ditandai di peta.",
+    "returnAddressNotChosen": "Alamat penjemputan harus dipilih dari daftar atau ditandai di peta.",
     "storeCoordinatesNotConfigured": "Koordinat toko tidak dikonfigurasi",
     "deliveryTooFar": "Alamat pengiriman terlalu jauh (maksimum {maxDistance} km)",
     "deliveryRequired": "Pengiriman diperlukan untuk toko ini",
