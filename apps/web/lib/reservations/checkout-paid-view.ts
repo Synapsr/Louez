@@ -2,28 +2,27 @@ import "server-only";
 
 import { and, eq } from "drizzle-orm";
 
-import { db, payments, reservations, stores } from "@louez/db";
-import { withCustomerNotificationDefaults } from "@louez/types";
+import { db, emailLogs, payments, reservations } from "@louez/db";
 
 /** What the checkout's paid page may say: nothing of the customer. */
 export interface CheckoutPaidView {
   number: string;
-  /** `confirming` while Louez has not recorded the payment Stripe took. */
-  state: "received" | "confirming";
-  /** Whether the customer has been, or will be, sent the confirmation by e-mail. */
-  confirmationByEmail: boolean;
+  /**
+   * `received` once Louez recorded the payment; `unverified` otherwise, when
+   * the page asserts nothing about a payment having been made.
+   */
+  state: "received" | "unverified";
+  /** Whether a stored fact says this reservation's confirmation e-mail went out. */
+  confirmationEmailSent: boolean;
 }
-
-/** The statuses a reservation holds once its payment confirmed it. */
-const CONFIRMED_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing", "completed"]);
 
 /**
  * The paid page's view of a reservation of `storeId`, shown only for the
- * Stripe Checkout session of one of its own payments: the pair Stripe's
- * return carries. Any other pair answers null, as an unknown reservation
- * does, so the page tells no one whether a reservation exists or was paid.
- * The confirmation e-mail is said sent only when the completion sends it: a
- * reservation the payment confirmed, in a store that e-mails confirmations.
+ * Stripe Checkout session of one of its own payments: the pair the checkout's
+ * return handed the page. Any other pair answers null, as an unknown
+ * reservation does, so the page tells no one whether a reservation exists or
+ * was paid. The confirmation e-mail is said sent only when its `sent` log row
+ * exists: the completion does not wait for the send.
  */
 export const getCheckoutPaidView = async ({
   storeId,
@@ -35,15 +34,9 @@ export const getCheckoutPaidView = async ({
   stripeCheckoutSessionId: string;
 }): Promise<CheckoutPaidView | null> => {
   const rows = await db
-    .select({
-      number: reservations.number,
-      reservationStatus: reservations.status,
-      paymentStatus: payments.status,
-      notificationSettings: stores.customerNotificationSettings,
-    })
+    .select({ number: reservations.number, paymentStatus: payments.status })
     .from(payments)
     .innerJoin(reservations, eq(reservations.id, payments.reservationId))
-    .innerJoin(stores, eq(stores.id, reservations.storeId))
     .where(
       and(
         eq(payments.reservationId, reservationId),
@@ -55,22 +48,22 @@ export const getCheckoutPaidView = async ({
   const [row] = rows;
   if (!row) return null;
 
-  const state = rows.some((payment) => payment.paymentStatus === "completed")
-    ? "received"
-    : rows.some((payment) => payment.paymentStatus === "pending")
-      ? "confirming"
-      : null;
-  if (!state) return null;
+  if (!rows.some((payment) => payment.paymentStatus === "completed")) {
+    return { number: row.number, state: "unverified", confirmationEmailSent: false };
+  }
 
-  const confirmation = withCustomerNotificationDefaults(
-    row.notificationSettings,
-  ).customer_reservation_confirmed;
-  const emailsConfirmations = confirmation.enabled && confirmation.email;
-  const confirmationByEmail =
-    emailsConfirmations &&
-    (state === "confirming"
-      ? row.reservationStatus === "pending"
-      : CONFIRMED_STATUSES.has(row.reservationStatus));
+  const [sent] = await db
+    .select({ id: emailLogs.id })
+    .from(emailLogs)
+    .where(
+      and(
+        eq(emailLogs.storeId, storeId),
+        eq(emailLogs.reservationId, reservationId),
+        eq(emailLogs.templateType, "reservation_confirmation"),
+        eq(emailLogs.status, "sent"),
+      ),
+    )
+    .limit(1);
 
-  return { number: row.number, state, confirmationByEmail };
+  return { number: row.number, state: "received", confirmationEmailSent: sent !== undefined };
 };

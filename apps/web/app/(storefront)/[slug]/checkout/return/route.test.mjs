@@ -8,16 +8,34 @@ import { z } from "zod";
 // Stripe's return of the storefront checkout. Paying does not prove the payer
 // owns the checkout e-mail: only a customer already signed in as the
 // reservation's customer lands on the reservation; anyone else lands on the
-// paid page, which opens no session. A payment Stripe did not take goes back
-// to the resumable cancelled page.
+// paid page, which opens no session. That page's URL carries nothing: the
+// return hands it the pair in its own short-lived cookie, and only when the
+// completion answered `completed` or threw. A payment Stripe did not take goes
+// back to the resumable cancelled page; anything else to the home, cookieless.
 
 const source = readFileSync(new URL("./route.ts", import.meta.url), "utf8");
 const compiled = stripTypeScriptTypes(
   source.slice(source.indexOf("const returnQuerySchema")).replace("export const GET", "const GET"),
 );
 
-const PAID_PAGE = "https://shop.example.test/checkout/paid?reservation=booking&session_id=cs_paid";
+const PAID_PAGE = "https://shop.example.test/checkout/paid";
+const PAID_CLAIM = {
+  storeId: "store",
+  reservationId: "booking",
+  stripeCheckoutSessionId: "cs_paid",
+};
 const RESERVATION_PAGE = "https://shop.example.test/account/reservations/booking?event=paid";
+
+/** The one cookie the return may set: the paid page's claim, for this store, reservation and session. */
+const assertPaidClaim = (result) => {
+  assert.deepEqual(result.cookies, [
+    {
+      name: "louez_checkout_paid",
+      value: JSON.stringify({ slug: "shop", ...PAID_CLAIM }),
+      options: { path: "/checkout/paid" },
+    },
+  ]);
+};
 
 const runReturn = async (
   status,
@@ -27,9 +45,24 @@ const runReturn = async (
     store = { id: "store", slug: "shop" },
   } = {},
 ) => {
-  const calls = { completions: 0, sessionChecks: [] };
+  const calls = { completions: 0, sessionChecks: [], cookies: [] };
   const dependencies = {
-    "next/server": { NextResponse: { redirect: (url) => ({ url }) } },
+    "next/server": {
+      NextResponse: {
+        redirect: (url) => ({
+          url,
+          cookies: { set: (name, value, options) => calls.cookies.push({ name, value, options }) },
+        }),
+      },
+    },
+    "@/lib/reservations/checkout-paid-cookie": {
+      checkoutPaidUrl: (slug) => `https://${slug}.example.test/checkout/paid`,
+      buildCheckoutPaidCookie: (slug, claim) => ({
+        name: "louez_checkout_paid",
+        value: JSON.stringify({ slug, ...claim }),
+        options: { path: "/checkout/paid" },
+      }),
+    },
     zod: { z },
     "@/lib/evlog": { log: { error() {} } },
     "@/lib/customer-auth/reservation-session": {
@@ -62,7 +95,6 @@ const runReturn = async (
     { nextUrl: new URL(`https://shop.example.test/checkout/return${search}`) },
     { params: Promise.resolve({ slug: "shop" }) },
   );
-  assert.equal(response.cookies, undefined, "the return never sets a cookie");
   return { url: response.url, ...calls };
 };
 
@@ -70,14 +102,19 @@ test("a completed payment of the signed-in reservation customer lands on the res
   const result = await runReturn("completed", { signedIn: true });
   assert.equal(result.url, RESERVATION_PAGE);
   assert.deepEqual(result.sessionChecks, [["store", "booking"]]);
+  assert.deepEqual(result.cookies, []);
 });
 
-test("a completed payment without that customer's session lands on the paid page", async () => {
-  assert.equal((await runReturn("completed", { signedIn: false })).url, PAID_PAGE);
+test("a completed payment without that customer's session lands on the paid page, which carries nothing", async () => {
+  const result = await runReturn("completed", { signedIn: false });
+  assert.equal(result.url, PAID_PAGE);
+  assertPaidClaim(result);
 });
 
 test("a session check that fails lands on the paid page, never on the account", async () => {
-  assert.equal((await runReturn("completed", { signedIn: "throws" })).url, PAID_PAGE);
+  const result = await runReturn("completed", { signedIn: "throws" });
+  assert.equal(result.url, PAID_PAGE);
+  assertPaidClaim(result);
 });
 
 for (const signedIn of [true, false]) {
@@ -85,6 +122,7 @@ for (const signedIn of [true, false]) {
     const result = await runReturn("not_paid", { signedIn });
     assert.equal(result.url, "https://shop.example.test/checkout/cancelled?reservation=booking");
     assert.deepEqual(result.sessionChecks, []);
+    assert.deepEqual(result.cookies, []);
   });
 }
 
@@ -93,15 +131,20 @@ for (const status of ["payment_unavailable", "not_found"]) {
     const result = await runReturn(status, { signedIn: true });
     assert.equal(result.url, "https://shop.example.test/");
     assert.deepEqual(result.sessionChecks, []);
+    assert.deepEqual(result.cookies, []);
   });
 }
 
 test("a completion that throws lands the signed-in customer on the reservation's payment check", async () => {
-  assert.equal((await runReturn("throws", { signedIn: true })).url, RESERVATION_PAGE);
+  const result = await runReturn("throws", { signedIn: true });
+  assert.equal(result.url, RESERVATION_PAGE);
+  assert.deepEqual(result.cookies, []);
 });
 
-test("a completion that throws lands anyone else on the paid page", async () => {
-  assert.equal((await runReturn("throws", { signedIn: false })).url, PAID_PAGE);
+test("a completion that throws lands anyone else on the paid page, with the pair in its cookie", async () => {
+  const result = await runReturn("throws", { signedIn: false });
+  assert.equal(result.url, PAID_PAGE);
+  assertPaidClaim(result);
 });
 
 for (const search of ["?reservation=booking", "?session_id=cs_paid", ""]) {
@@ -110,6 +153,7 @@ for (const search of ["?reservation=booking", "?session_id=cs_paid", ""]) {
     assert.equal(result.url, "https://shop.example.test/");
     assert.equal(result.completions, 0);
     assert.deepEqual(result.sessionChecks, []);
+    assert.deepEqual(result.cookies, []);
   });
 }
 
@@ -118,4 +162,5 @@ test("an unknown store never calls completion", async () => {
   assert.equal(result.url, "https://shop.example.test/");
   assert.equal(result.completions, 0);
   assert.deepEqual(result.sessionChecks, []);
+  assert.deepEqual(result.cookies, []);
 });

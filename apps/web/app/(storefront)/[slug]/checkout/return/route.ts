@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { hasReservationCustomerSession } from "@/lib/customer-auth/reservation-session";
 import { log } from "@/lib/evlog";
+import { buildCheckoutPaidCookie, checkoutPaidUrl } from "@/lib/reservations/checkout-paid-cookie";
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -22,6 +23,8 @@ const describeError = (error: unknown): string =>
  * the checkout email, so the return opens no session: only a customer
  * already signed in as the reservation's customer lands on the reservation;
  * anyone else lands on the paid page, which shows nothing of the customer.
+ * That page's URL carries nothing anyone could hold: the return hands it the
+ * pair in its own short-lived cookie, set here and nowhere else.
  */
 export const GET = async (
   request: NextRequest,
@@ -44,16 +47,25 @@ export const GET = async (
 
   const { reservation: reservationId, session_id: sessionId } = query.data;
 
-  // Both landings say whether the payment is recorded yet, so a completion
-  // the webhook finishes later lands on the same page.
+  // Both landings say « reçu » only once the payment is recorded, so a
+  // completion the webhook finishes later lands on the same page.
   const paidLanding = async () => {
     const signedIn = await hasReservationCustomerSession(store.id, reservationId).catch(
       () => false,
     );
-    const path = signedIn
-      ? `/account/reservations/${reservationId}?event=paid`
-      : `/checkout/paid?reservation=${encodeURIComponent(reservationId)}&session_id=${encodeURIComponent(sessionId)}`;
-    return NextResponse.redirect(getStorefrontUrl(slug, path));
+    if (signedIn) {
+      return NextResponse.redirect(
+        getStorefrontUrl(slug, `/account/reservations/${reservationId}?event=paid`),
+      );
+    }
+    const response = NextResponse.redirect(checkoutPaidUrl(slug));
+    const cookie = buildCheckoutPaidCookie(slug, {
+      storeId: store.id,
+      reservationId,
+      stripeCheckoutSessionId: sessionId,
+    });
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+    return response;
   };
 
   try {
@@ -74,7 +86,8 @@ export const GET = async (
       return NextResponse.redirect(getStorefrontUrl(slug, "/"));
     }
   } catch (error) {
-    // The webhook finishes the job; the landing says the payment is being confirmed.
+    // The visitor came back from Stripe's success URL and Louez could not finish:
+    // the webhook does, and the landing asserts nothing until it has.
     log.error("checkout-return", `completion failed: ${describeError(error)}`);
   }
 

@@ -8158,8 +8158,8 @@
         "metaTitle": "Betaling",
         "received": "Je betaling voor boeking {number} bij {store} is ontvangen.",
         "receivedEmailed": "Je betaling voor boeking {number} bij {store} is ontvangen. Er is een bevestiging naar je e-mail gestuurd.",
-        "confirming": "De betaling voor boeking {number} bij {store} wordt bevestigd.",
-        "confirmingEmailed": "De betaling voor boeking {number} bij {store} wordt bevestigd. Je ontvangt een bevestiging per e-mail."
+        "unverifiedTitle": "Betaling nog niet gecontroleerd",
+        "unverified": "We konden de betaling voor boeking {number} bij {store} nog niet controleren. Als die gelukt is, wordt je boeking bijgewerkt."
       },
       "customFields": {
         "savedSummary": "Gegevens al opgeslagen",

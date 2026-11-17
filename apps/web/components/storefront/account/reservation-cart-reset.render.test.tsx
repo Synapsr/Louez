@@ -7,17 +7,22 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CartProvider } from "@/contexts/cart-context";
 import { StoreProvider } from "@/contexts/store-context";
 import { mount, settle } from "@/lib/testing/dom";
-import type { ReservationOutcomeEvent } from "@/lib/customer-auth/util.account-redirect";
+import { writePendingCheckout } from "@/lib/storefront/util.pending-checkout-storage";
 import { getCartStorageKey } from "@/lib/utils/util.cart-storage";
 
 import { ReservationCartReset } from "./reservation-cart-reset";
 
-// The cart lives in this browser's storage, one key per store. A page reached
-// straight from a completed payment is loaded afresh: the cart reads its
-// storage on mount, and the reset has to leave it empty all the same.
+// The cart lives in this browser's storage, one key per store. A confirmation
+// empties it only when this browser started that very checkout (its record of
+// the checkout names the reservation) and the outcome is settled; the record
+// is consumed, so it happens once. A visit alone, a link to another person's
+// checkout, or an old confirmation opened again leaves the cart as it is. The
+// page is loaded afresh: the cart reads its storage on mount, and a reset
+// that runs must leave it empty all the same.
 
+const STORE = "store";
 const CART_KEY = getCartStorageKey("shop");
-const PENDING_KEY = "louez:checkout:pending-reservation";
+const PENDING_KEY = `louez:checkout:pending-reservation:${STORE}`;
 
 const storedCart = JSON.stringify({
   storeSlug: "shop",
@@ -31,50 +36,87 @@ const storedLines = (): unknown[] => {
   return raw ? (JSON.parse(raw) as { lines: unknown[] }).lines : [];
 };
 
-const renderPage = (event: ReservationOutcomeEvent | null) => {
+let unmounts: Array<() => void> = [];
+
+const renderPage = (reservationId: string, settled: boolean) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
-  return mount(
+  const { unmount } = mount(
     <QueryClientProvider client={queryClient}>
-      <StoreProvider storeId="store" currency="EUR" storeSlug="shop" storeName="Shop">
+      <StoreProvider storeId={STORE} currency="EUR" storeSlug="shop" storeName="Shop">
         <CartProvider>
-          <ReservationCartReset event={event} />
+          <ReservationCartReset reservationId={reservationId} settled={settled} />
         </CartProvider>
       </StoreProvider>
     </QueryClientProvider>,
   );
+  unmounts.push(unmount);
+  return unmount;
 };
-
-let unmount: (() => void) | null = null;
 
 beforeEach(() => {
   // The cart's clock ticks every second: a mocked one, so nothing outlives the test.
   mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"], now: 0 });
   window.localStorage.clear();
   window.localStorage.setItem(CART_KEY, storedCart);
-  window.localStorage.setItem(
-    PENDING_KEY,
-    JSON.stringify({ storeId: "store", reservationId: "booking" }),
-  );
 });
 
 afterEach(() => {
-  unmount?.();
-  unmount = null;
+  for (const unmount of unmounts) unmount();
+  unmounts = [];
   mock.timers.reset();
 });
 
-test("a page loaded after a completed payment empties the stored cart", async () => {
-  unmount = renderPage("paid").unmount;
+test("the browser that started the checkout has its cart emptied once the payment is settled", async () => {
+  writePendingCheckout({ storeId: STORE, reservationId: "booking", resumable: true });
+  renderPage("booking", true);
   await settle();
 
   assert.deepEqual(storedLines(), []);
-  assert.equal(window.localStorage.getItem(PENDING_KEY), null);
+  assert.equal(window.localStorage.getItem(PENDING_KEY), null, "the record is consumed");
 });
 
-test("any other visit keeps the stored cart", async () => {
-  unmount = renderPage(null).unmount;
+test("a browser that did not start the checkout keeps its cart", async () => {
+  renderPage("booking", true);
+  await settle();
+
+  assert.equal(storedLines().length, 1);
+});
+
+test("a browser that started another checkout keeps its cart and its record", async () => {
+  writePendingCheckout({ storeId: STORE, reservationId: "mine", resumable: true });
+  renderPage("someone-elses", true);
   await settle();
 
   assert.equal(storedLines().length, 1);
   assert.notEqual(window.localStorage.getItem(PENDING_KEY), null);
+});
+
+test("a record of another store proves nothing here", async () => {
+  writePendingCheckout({ storeId: "other_store", reservationId: "booking", resumable: true });
+  renderPage("booking", true);
+  await settle();
+
+  assert.equal(storedLines().length, 1);
+});
+
+test("an outcome not settled yet keeps the cart and the record", async () => {
+  writePendingCheckout({ storeId: STORE, reservationId: "booking", resumable: true });
+  renderPage("booking", false);
+  await settle();
+
+  assert.equal(storedLines().length, 1);
+  assert.notEqual(window.localStorage.getItem(PENDING_KEY), null);
+});
+
+test("the confirmation opened again later leaves the new cart alone", async () => {
+  writePendingCheckout({ storeId: STORE, reservationId: "booking", resumable: true });
+  renderPage("booking", true)();
+  await settle();
+  assert.deepEqual(storedLines(), []);
+
+  window.localStorage.setItem(CART_KEY, storedCart);
+  renderPage("booking", true);
+  await settle();
+
+  assert.equal(storedLines().length, 1);
 });

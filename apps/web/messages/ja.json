@@ -8158,8 +8158,8 @@
         "metaTitle": "お支払い",
         "received": "{store}での予約{number}のお支払いを受け付けました。",
         "receivedEmailed": "{store}での予約{number}のお支払いを受け付けました。確認メールをお送りしました。",
-        "confirming": "{store}での予約{number}のお支払いを確認しています。",
-        "confirmingEmailed": "{store}での予約{number}のお支払いを確認しています。確認メールが届きます。"
+        "unverifiedTitle": "お支払いはまだ確認できていません",
+        "unverified": "{store}での予約{number}のお支払いをまだ確認できていません。お支払いが完了していれば、予約は更新されます。"
       },
       "customFields": {
         "savedSummary": "入力済みの情報",

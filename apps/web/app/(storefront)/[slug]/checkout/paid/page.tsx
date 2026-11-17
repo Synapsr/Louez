@@ -4,8 +4,6 @@ import { notFound } from "next/navigation";
 import { CheckIcon, ClockIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
-import { z } from "zod";
-
 import { Button } from "@louez/ui";
 
 import { ReservationCartReset } from "@/components/storefront/account/reservation-cart-reset";
@@ -14,19 +12,14 @@ import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
 import { buildLoginPath } from "@/lib/customer-auth/util.account-redirect";
+import { readCheckoutPaidClaim } from "@/lib/reservations/checkout-paid-cookie";
 import { getCheckoutPaidView } from "@/lib/reservations/checkout-paid-view";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 
 interface CheckoutPaidPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ reservation?: string | string[]; session_id?: string | string[] }>;
 }
-
-const paidQuerySchema = z.object({
-  reservation: z.string().trim().min(1).max(64),
-  session_id: z.string().trim().min(1).max(255),
-});
 
 export const instant = false;
 
@@ -49,26 +42,28 @@ export const generateMetadata = async ({ params }: CheckoutPaidPageProps): Promi
 
 /**
  * Where Stripe's return lands a customer who is not signed in as the
- * reservation's customer. Its URL may be held by anyone, so it opens no
- * session and shows nothing of the customer: the outcome, the reservation's
- * number, the store's name, and one way in, the sign-in by e-mail code. It
- * shows anything only for the reservation id with the Stripe session id of
- * one of its payments; any other pair is the storefront's not-found.
+ * reservation's customer. It opens no session and shows nothing of the
+ * customer: the outcome, the reservation's number, the store's name, and one
+ * way in, the sign-in by e-mail code for this reservation. Its URL carries
+ * nothing: the reservation and the Stripe session come from the cookie only
+ * the return sets, and are checked again against the reservation's payments.
+ * Without that cookie, or for a pair that is not one of its payments, it is
+ * the storefront's not-found.
  */
-const CheckoutPaidPage = async ({ params, searchParams }: CheckoutPaidPageProps) => {
-  const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const parsed = paidQuerySchema.safeParse(query);
-  const store = parsed.success ? await getStoreBySlug(slug) : null;
+const CheckoutPaidPage = async ({ params }: CheckoutPaidPageProps) => {
+  const { slug } = await params;
+  const store = await getStoreBySlug(slug);
+  const claim = store ? await readCheckoutPaidClaim(store.id) : null;
   const view =
-    parsed.success && store
+    store && claim
       ? await getCheckoutPaidView({
           storeId: store.id,
-          reservationId: parsed.data.reservation,
-          stripeCheckoutSessionId: parsed.data.session_id,
+          reservationId: claim.reservationId,
+          stripeCheckoutSessionId: claim.stripeCheckoutSessionId,
         })
       : null;
 
-  if (!parsed.success || !store || !view) {
+  if (!store || !claim || !view) {
     notFound();
   }
 
@@ -79,22 +74,24 @@ const CheckoutPaidPage = async ({ params, searchParams }: CheckoutPaidPageProps)
   ]);
   const received = view.state === "received";
   const values = { number: view.number, store: store.name };
-  const description = received
-    ? t(view.confirmationByEmail ? "receivedEmailed" : "received", values)
-    : t(view.confirmationByEmail ? "confirmingEmailed" : "confirming", values);
   const loginHref = buildLoginPath({
-    redirect: `/account/reservations/${parsed.data.reservation}?event=paid`,
+    redirect: `/account/reservations/${claim.reservationId}?event=paid`,
+    ownerOnly: true,
   });
 
   return (
     <StorefrontSection width="narrow">
-      <ReservationCartReset event="paid" />
+      <ReservationCartReset reservationId={claim.reservationId} settled={received} />
       {received ? null : <StorefrontPageRefresh renderedAt={Date.now()} />}
       <OutcomeHeader
         tone={received ? "success" : "pending"}
         icon={received ? <CheckIcon /> : <ClockIcon />}
-        title={received ? tOutcome("payment_received.title") : tOutcome("processing.title")}
-        description={description}
+        title={received ? tOutcome("payment_received.title") : t("unverifiedTitle")}
+        description={
+          received
+            ? t(view.confirmationEmailSent ? "receivedEmailed" : "received", values)
+            : t("unverified", values)
+        }
       >
         <Button
           size="xl"

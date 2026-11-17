@@ -8158,8 +8158,8 @@
         "metaTitle": "Pagamento",
         "received": "O pagamento da reserva {number} em {store} foi recebido.",
         "receivedEmailed": "O pagamento da reserva {number} em {store} foi recebido. Enviámos-lhe uma confirmação por e-mail.",
-        "confirming": "O pagamento da reserva {number} em {store} está a ser confirmado.",
-        "confirmingEmailed": "O pagamento da reserva {number} em {store} está a ser confirmado. Receberá uma confirmação por e-mail."
+        "unverifiedTitle": "Pagamento ainda não verificado",
+        "unverified": "Ainda não conseguimos verificar o pagamento da reserva {number} em {store}. Se foi efetuado, a sua reserva será atualizada."
       },
       "customFields": {
         "savedSummary": "Informações já registadas",

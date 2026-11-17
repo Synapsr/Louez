@@ -8158,8 +8158,8 @@
         "metaTitle": "Pembayaran",
         "received": "Pembayaran untuk pemesanan {number} di {store} telah diterima.",
         "receivedEmailed": "Pembayaran untuk pemesanan {number} di {store} telah diterima. Konfirmasi telah dikirim ke email Anda.",
-        "confirming": "Pembayaran untuk pemesanan {number} di {store} sedang dikonfirmasi.",
-        "confirmingEmailed": "Pembayaran untuk pemesanan {number} di {store} sedang dikonfirmasi. Anda akan menerima konfirmasi melalui email."
+        "unverifiedTitle": "Pembayaran belum diverifikasi",
+        "unverified": "Kami belum dapat memverifikasi pembayaran untuk pemesanan {number} di {store}. Jika pembayaran berhasil, pemesanan Anda akan diperbarui."
       },
       "customFields": {
         "savedSummary": "Informasi sudah tersimpan",

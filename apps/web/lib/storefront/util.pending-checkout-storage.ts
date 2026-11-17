@@ -1,16 +1,28 @@
 /**
- * Remembers, in the browser, the pending reservation a checkout just sent to
- * Stripe. When the customer backs out and submits again, the id travels with
- * the payload so the server reuses that reservation (unchanged cart) or
- * replaces it (changed cart) instead of piling up pending bookings. The
- * server validates everything; this is a hint, never a credential.
+ * Remembers, in the browser, the reservation a checkout just made, one record
+ * per store (stores can share an origin). Two uses:
+ *
+ * - The resume hint: when the customer backs out of Stripe and submits again,
+ *   the id travels with the payload so the server reuses that reservation
+ *   (unchanged cart) or replaces it (changed cart) instead of piling up
+ *   pending bookings. Only a payment checkout's record is one: a request is
+ *   never resumed. The server validates everything; this is a hint, never a
+ *   credential.
+ * - The proof that THIS browser started THAT checkout: a confirmation page
+ *   empties the cart only when it holds it, and consumes it, so a link to
+ *   someone else's checkout, or an old confirmation opened again, leaves the
+ *   cart alone.
  */
 
-const STORAGE_KEY = "louez:checkout:pending-reservation";
+const STORAGE_PREFIX = "louez:checkout:pending-reservation";
+/** The one record every store shared before records were per store. */
+const LEGACY_STORAGE_KEY = STORAGE_PREFIX;
+
+const storageKey = (storeId: string): string => `${STORAGE_PREFIX}:${storeId}`;
 
 interface PendingCheckoutRecord {
-  storeId: string;
   reservationId: string;
+  resumable: boolean;
 }
 
 const getStorage = (): Storage | null => {
@@ -21,39 +33,88 @@ const getStorage = (): Storage | null => {
   }
 };
 
-const isRecord = (value: unknown): value is PendingCheckoutRecord =>
-  typeof value === "object" &&
-  value !== null &&
-  "storeId" in value &&
-  typeof value.storeId === "string" &&
-  "reservationId" in value &&
-  typeof value.reservationId === "string";
+const parse = (raw: string | null): unknown => {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
 
+const readStoreRecord = (storage: Storage, storeId: string): PendingCheckoutRecord | null => {
+  const parsed = parse(storage.getItem(storageKey(storeId)));
+  return typeof parsed === "object" &&
+    parsed !== null &&
+    "reservationId" in parsed &&
+    typeof parsed.reservationId === "string" &&
+    "resumable" in parsed &&
+    typeof parsed.resumable === "boolean"
+    ? { reservationId: parsed.reservationId, resumable: parsed.resumable }
+    : null;
+};
+
+/** The legacy record, when it names this store: only payment checkouts wrote one. */
+const readLegacyRecord = (storage: Storage, storeId: string): PendingCheckoutRecord | null => {
+  const parsed = parse(storage.getItem(LEGACY_STORAGE_KEY));
+  return typeof parsed === "object" &&
+    parsed !== null &&
+    "storeId" in parsed &&
+    parsed.storeId === storeId &&
+    "reservationId" in parsed &&
+    typeof parsed.reservationId === "string"
+    ? { reservationId: parsed.reservationId, resumable: true }
+    : null;
+};
+
+const readRecord = (storage: Storage, storeId: string): PendingCheckoutRecord | null =>
+  readStoreRecord(storage, storeId) ?? readLegacyRecord(storage, storeId);
+
+const forget = (storage: Storage, storeId: string): void => {
+  storage.removeItem(storageKey(storeId));
+  if (readLegacyRecord(storage, storeId)) storage.removeItem(LEGACY_STORAGE_KEY);
+};
+
+/** The reservation a new checkout of this store may resume, if any. */
 export const readPendingCheckout = (storeId: string): string | undefined => {
   const storage = getStorage();
   if (!storage) return undefined;
   try {
-    const raw = storage.getItem(STORAGE_KEY);
-    if (!raw) return undefined;
-    const parsed: unknown = JSON.parse(raw);
-    return isRecord(parsed) && parsed.storeId === storeId ? parsed.reservationId : undefined;
+    const record = readRecord(storage, storeId);
+    return record?.resumable ? record.reservationId : undefined;
   } catch {
     return undefined;
   }
 };
 
-export const writePendingCheckout = (record: PendingCheckoutRecord): void => {
+export const writePendingCheckout = ({
+  storeId,
+  reservationId,
+  resumable,
+}: { storeId: string } & PendingCheckoutRecord): void => {
+  const storage = getStorage();
+  if (!storage) return;
   try {
-    getStorage()?.setItem(STORAGE_KEY, JSON.stringify(record));
+    forget(storage, storeId);
+    storage.setItem(storageKey(storeId), JSON.stringify({ reservationId, resumable }));
   } catch {
-    // Storage full or blocked: the expiry webhook still cleans up server-side.
+    // Storage full or blocked: the expiry webhook still cleans up server-side,
+    // and the confirmation leaves the cart as it is.
   }
 };
 
-export const clearPendingCheckout = (): void => {
+/**
+ * Whether this browser started the checkout of `reservationId` at this store;
+ * true once only, since the record is then forgotten.
+ */
+export const consumeStartedCheckout = (storeId: string, reservationId: string): boolean => {
+  const storage = getStorage();
+  if (!storage) return false;
   try {
-    getStorage()?.removeItem(STORAGE_KEY);
+    if (readRecord(storage, storeId)?.reservationId !== reservationId) return false;
+    forget(storage, storeId);
+    return true;
   } catch {
-    // Nothing to clear when storage is unavailable.
+    return false;
   }
 };

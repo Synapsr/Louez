@@ -8158,8 +8158,8 @@
         "metaTitle": "Płatność",
         "received": "Płatność za rezerwację {number} w {store} została otrzymana.",
         "receivedEmailed": "Płatność za rezerwację {number} w {store} została otrzymana. Potwierdzenie zostało wysłane e-mailem.",
-        "confirming": "Płatność za rezerwację {number} w {store} jest potwierdzana.",
-        "confirmingEmailed": "Płatność za rezerwację {number} w {store} jest potwierdzana. Otrzymasz potwierdzenie e-mailem."
+        "unverifiedTitle": "Płatność jeszcze niezweryfikowana",
+        "unverified": "Nie udało się jeszcze zweryfikować płatności za rezerwację {number} w {store}. Jeśli została dokonana, rezerwacja zostanie zaktualizowana."
       },
       "customFields": {
         "savedSummary": "Dane już zapisane",

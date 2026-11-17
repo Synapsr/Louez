@@ -8158,8 +8158,8 @@
         "metaTitle": "付款",
         "received": "您在{store}的预订{number}的付款已收到。",
         "receivedEmailed": "您在{store}的预订{number}的付款已收到。确认信息已通过电子邮件发送给您。",
-        "confirming": "您在{store}的预订{number}的付款正在确认中。",
-        "confirmingEmailed": "您在{store}的预订{number}的付款正在确认中。您将通过电子邮件收到确认信息。"
+        "unverifiedTitle": "付款尚未核实",
+        "unverified": "我们尚未能核实您在{store}的预订{number}的付款。如果付款已完成，您的预订将会更新。"
       },
       "customFields": {
         "savedSummary": "已填写的信息",

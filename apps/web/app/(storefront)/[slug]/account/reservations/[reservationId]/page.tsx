@@ -392,7 +392,10 @@ export default async function ReservationDetailPage({
   return (
     <>
       <StorefrontPageRefresh renderedAt={Date.now()} />
-      <ReservationCartReset event={event} />
+      <ReservationCartReset
+        reservationId={reservation.id}
+        settled={event === "requested" || (event === "paid" && paymentStatus === "paid")}
+      />
       <ReservationPageView
         number={reservation.number}
         status={status}

@@ -8158,8 +8158,8 @@
         "metaTitle": "Zahlung",
         "received": "Ihre Zahlung für die Buchung {number} bei {store} ist eingegangen.",
         "receivedEmailed": "Ihre Zahlung für die Buchung {number} bei {store} ist eingegangen. Eine Bestätigung wurde Ihnen per E-Mail gesendet.",
-        "confirming": "Die Zahlung für die Buchung {number} bei {store} wird gerade bestätigt.",
-        "confirmingEmailed": "Die Zahlung für die Buchung {number} bei {store} wird gerade bestätigt. Sie erhalten eine Bestätigung per E-Mail."
+        "unverifiedTitle": "Zahlung noch nicht bestätigt",
+        "unverified": "Wir konnten die Zahlung für die Buchung {number} bei {store} noch nicht prüfen. Wenn sie erfolgt ist, wird Ihre Buchung aktualisiert."
       },
       "customFields": {
         "savedSummary": "Bereits hinterlegte Angaben",
