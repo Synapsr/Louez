@@ -94,6 +94,8 @@ export const runPostCreationEffects = async ({
         feature: "checkout",
         surface: "storefront",
         store_id: store.id,
+        // The store owner's person: the customer's event counts on the loueur too.
+        merchant_distinct_id: store.userId,
         reservation_id: reservation.id,
         customer_id: customer.id,
         source: "storefront_checkout",

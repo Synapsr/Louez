@@ -1,7 +1,7 @@
 import { after } from 'next/server'
 import Stripe from 'stripe'
 import { stripe } from './client'
-import { db, markSubscriptionRow } from '@louez/db'
+import { db, markSubscriptionRow, type Transaction } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import {
@@ -21,6 +21,10 @@ import { log } from '@/lib/evlog'
 import { ensurePlanRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { lockPlanInForce } from '@/lib/plan-limits'
 import {
+  enqueueStoreLifecycleEvent,
+  type StoreLifecycleEventInput,
+} from '@/lib/product-analytics/lifecycle-events'
+import {
   hasLiveSubscription,
   subscriptionEnded,
   type SubscriptionRowStatus,
@@ -38,6 +42,31 @@ import { env } from '@/env'
 type SubscriptionColumns = Partial<Omit<typeof subscriptions.$inferInsert, 'id' | 'storeId'>>
 
 /**
+ * The lifecycle event a row write reports, decided in its transaction from the
+ * subscription the row held before it (docs/analytics/lifecycle.md): its outbox row
+ * commits with the write, or not at all, and the outbox's cron sends it. Null reports
+ * nothing, such as a redelivered checkout whose subscription the row already holds.
+ */
+export type SubscriptionLifecycle = (before: {
+  stripeSubscriptionId: string | null
+}) => StoreLifecycleEventInput | null
+
+/** Queues `lifecycle`'s event in `tx`, with the row locked (lockPlanInForce). */
+async function enqueueLifecycle(
+  tx: Transaction,
+  storeId: string,
+  lifecycle: SubscriptionLifecycle | undefined,
+): Promise<void> {
+  if (!lifecycle) return
+  const [before] = await tx
+    .select({ stripeSubscriptionId: subscriptions.stripeSubscriptionId })
+    .from(subscriptions)
+    .where(eq(subscriptions.storeId, storeId))
+  const event = lifecycle({ stripeSubscriptionId: before?.stripeSubscriptionId ?? null })
+  if (event) await enqueueStoreLifecycleEvent(tx, event)
+}
+
+/**
  * Updates a store's row, creating it first (ensurePlanRow): with the pricing the store
  * already pays when Louez's legacy code bills it at `at`, with no pricing when the
  * billing service does.
@@ -46,10 +75,12 @@ async function updateStoreSubscription(
   storeId: string,
   values: SubscriptionColumns,
   at: Date = new Date(),
+  lifecycle?: SubscriptionLifecycle,
 ) {
   const planChanged = await db.transaction(async (tx) => {
     await ensurePlanRow(tx, storeId, at)
     const planBefore = await lockPlanInForce(tx, storeId)
+    await enqueueLifecycle(tx, storeId, lifecycle)
     await tx
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
@@ -64,9 +95,11 @@ async function updateStoreSubscription(
 export async function updateSubscriptionRow(
   row: { id: string; storeId: string },
   values: SubscriptionColumns,
+  lifecycle?: SubscriptionLifecycle,
 ) {
   const planChanged = await db.transaction(async (tx) => {
     const planBefore = await lockPlanInForce(tx, row.storeId)
+    await enqueueLifecycle(tx, row.storeId, lifecycle)
     await tx
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
@@ -1098,16 +1131,23 @@ export async function activatePlanSubscription(input: {
   /** rowStatus of the subscription's Stripe status. */
   status: SubscriptionRowStatus
   currentPeriodEnd: Date
+  /** Its `subscription_started`, reported once the row holds the subscription. */
+  lifecycle?: SubscriptionLifecycle
 }) {
-  await updateStoreSubscription(input.storeId, {
-    planSlug: input.planSlug,
-    billingMode: 'subscription',
-    stripeSubscriptionId: input.stripeSubscriptionId,
-    stripeCustomerId: input.stripeCustomerId,
-    status: input.status,
-    currentPeriodEnd: input.currentPeriodEnd,
-    cancelAtPeriodEnd: false,
-  })
+  await updateStoreSubscription(
+    input.storeId,
+    {
+      planSlug: input.planSlug,
+      billingMode: 'subscription',
+      stripeSubscriptionId: input.stripeSubscriptionId,
+      stripeCustomerId: input.stripeCustomerId,
+      status: input.status,
+      currentPeriodEnd: input.currentPeriodEnd,
+      cancelAtPeriodEnd: false,
+    },
+    new Date(),
+    input.lifecycle,
+  )
 }
 
 /**
@@ -1120,6 +1160,7 @@ export async function activatePlanSubscription(input: {
 export async function endSubscriptionToPayAsYouGo(
   subscriptionRowId: string,
   stripeSubscriptionId?: string,
+  lifecycle?: SubscriptionLifecycle,
 ) {
   const row = await db.query.subscriptions.findFirst({
     where: and(
@@ -1131,14 +1172,18 @@ export async function endSubscriptionToPayAsYouGo(
     columns: { id: true, storeId: true },
   })
   if (!row) return
-  await updateSubscriptionRow(row, {
-    planSlug: 'pay_as_you_go',
-    billingMode: 'pay_as_you_go',
-    status: 'active',
-    stripeSubscriptionId: null,
-    cancelAtPeriodEnd: false,
-    currentPeriodEnd: null,
-  })
+  await updateSubscriptionRow(
+    row,
+    {
+      planSlug: 'pay_as_you_go',
+      billingMode: 'pay_as_you_go',
+      status: 'active',
+      stripeSubscriptionId: null,
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: null,
+    },
+    lifecycle,
+  )
 }
 
 /**

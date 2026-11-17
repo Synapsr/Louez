@@ -732,6 +732,7 @@ export async function goLive(
     await markStore(tx, storeId);
 
     const launchedStore = { id: storeId, name: store.name, slug: store.slug };
+    const launched = written(true);
     // Who set the store up, under the lock: this launch marked the store as it took it.
     const setup = await readStoreSetupSummary(tx, storeId);
     const effectIds = await enqueueEffects(tx, storeId, [
@@ -749,9 +750,22 @@ export async function goLive(
           setup,
         },
       },
+      {
+        type: "store.lifecycleAnalytics",
+        payload: {
+          ...analyticsEventIdentity(new Date()),
+          event: "store_published",
+          ownerUserId: actor.store.ownerUserId,
+          properties: {
+            reservation_mode: intended,
+            booking_mode_effective: launched.bookingMode.effective,
+            transport: actor.transport,
+            setup_by: setup.setupBy,
+          },
+        },
+      },
     ]);
 
-    const launched = written(true);
     return {
       launched: true,
       checklist: launched,

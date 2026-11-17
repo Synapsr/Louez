@@ -51,7 +51,9 @@ marge de rotation. Les deux portent `feature: reservation_management`, `reservat
 (`feature: checkout`, `surface: storefront`). Attention : l'événement serveur
 `checkout_reservation_created` est attribué au `customerId` (id BDD), pas au distinct_id
 anonyme du navigateur — d'où l'événement client `checkout_completed` qui sert de dernière
-étape aux funnels.
+étape aux funnels. `checkout_reservation_created` et `checkout_payment_completed` portent aussi
+`merchant_distinct_id`, le distinct_id du propriétaire de la boutique, et, comme tout événement
+serveur avec un `store_id`, le groupe PostHog `store` (voir [lifecycle.md](lifecycle.md)).
 
 | Événement                                                                     | Quand                                                                                               | Propriétés clés                                                                                               |
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |

@@ -51,11 +51,16 @@ export async function POST(request: Request) {
         break
 
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
+        await handleSubscriptionUpdated(event.data.object, {
+          id: event.id,
+          created: event.created,
+          subscription: event.data.object,
+          previousAttributes: event.data.previous_attributes,
+        })
         break
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        await handleSubscriptionDeleted(event.data.object, event.created)
         break
 
       case 'invoice.paid':

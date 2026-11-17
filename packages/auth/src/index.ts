@@ -105,7 +105,17 @@ export interface SessionCreatedEvent {
 }
 
 let _sessionHook: ((session: SessionCreatedEvent) => Promise<void>) | null = null;
-let _userCreatedHook: ((user: { userId: string }) => Promise<void>) | null = null;
+/**
+ * What the user-created hook gets: the new user, and the headers of the request that
+ * created it (the e-mail code's verification, the Google callback…), null for an
+ * account created without one.
+ */
+export interface UserCreatedEvent {
+  userId: string;
+  headers: Headers | null;
+}
+
+let _userCreatedHook: ((user: UserCreatedEvent) => Promise<void>) | null = null;
 let _userDeleteRequestHook: ((user: { userId: string }) => Promise<void>) | null = null;
 let _userDeleteHook:
   | ((user: {
@@ -118,7 +128,7 @@ export function setSessionHook(hook: (session: SessionCreatedEvent) => Promise<v
   _sessionHook = hook;
 }
 
-export function setUserCreatedHook(hook: (user: { userId: string }) => Promise<void>) {
+export function setUserCreatedHook(hook: (user: UserCreatedEvent) => Promise<void>) {
   _userCreatedHook = hook;
 }
 
@@ -384,9 +394,12 @@ export const authInstance = betterAuth({
             });
           }
         },
-        after: async (user) => {
+        after: async (user, context) => {
           if (_userCreatedHook) {
-            await _userCreatedHook({ userId: user.id });
+            await _userCreatedHook({
+              userId: user.id,
+              headers: context?.headers ?? context?.request?.headers ?? null,
+            });
           }
         },
       },

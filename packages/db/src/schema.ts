@@ -62,6 +62,29 @@ const id = () =>
 // Better Auth Tables
 // ============================================================================
 
+/**
+ * `users.first_touch_attribution`: the first touch a sign-up came with
+ * (apps/web lib/acquisition/first-touch.ts). Every field is optional except
+ * the channel derived from the others.
+ */
+export interface FirstTouchAttributionRecord {
+  channel: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
+  gad_source?: string;
+  fbclid?: string;
+  landing_path?: string;
+  referrer_domain?: string;
+  /** When the site saw the touch, ISO 8601. */
+  ts?: string;
+}
+
 export const users = mysqlTable("users", {
   id: id(),
   email: varchar("email", { length: 255 }).notNull().unique(),
@@ -77,6 +100,12 @@ export const users = mysqlTable("users", {
   }),
   // First-touch acquisition origin captured from the signup-origin cookie (e.g. "reeent").
   signupOrigin: varchar("signup_origin", { length: 32 }),
+  // First-touch marketing attribution, read once at sign-up from the louez.io
+  // site's `louez_attribution` cookie (apps/web lib/acquisition/first-touch.ts):
+  // the derived channel and the utm/click ids, never a name or an address.
+  // Kept for a server-side ad conversion. Null when the account was created
+  // without a request, or before the column.
+  firstTouchAttribution: json("first_touch_attribution").$type<FirstTouchAttributionRecord>(),
   // Self-reported segment ("you are: independent / established store /
   // association / individual"), optional, captured on the profile onboarding step.
   businessType: varchar("business_type", { length: 32 }),
@@ -834,6 +863,12 @@ export const stores = mysqlTable(
     stripeAccountId: varchar("stripe_account_id", { length: 255 }),
     stripeOnboardingComplete: boolean("stripe_onboarding_complete").default(false),
     stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
+    // When the store's Stripe account could first take payments: set once, by the
+    // first write that finds charges enabled (packages/api services/stripe-connect.ts),
+    // which then counts `stripe_connect_completed`. Stores chargeable before the
+    // column, or that took a Stripe payment before, got their last update time
+    // instead, so none of them counts it again.
+    stripeConnectCompletedAt: timestamp("stripe_connect_completed_at", { mode: "date" }),
 
     // Email settings
     emailSettings: json("email_settings").$type<EmailSettings>().default({
