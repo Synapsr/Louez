@@ -213,7 +213,7 @@ export default async function ReservationDetailPage({
         ),
       ),
     // Whether Stripe has settled each refund: one still processing is not money back yet.
-    listReservationOnlineRefunds(db, store.id, reservation.id),
+    listReservationOnlineRefunds(db, store.id, reservation.id, reservation.payments),
   ]);
   const refundStatuses = refundStatusByRow(onlineRefunds);
   const photoCounts =

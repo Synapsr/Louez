@@ -606,7 +606,7 @@ export async function getReservation(
 
   // What the payment rows cannot say: whether Stripe has given a refund's final word, and who approved it.
   const refunds = reader.payments
-    ? await listReservationOnlineRefunds(executor, reader.storeId, row.id)
+    ? await listReservationOnlineRefunds(executor, reader.storeId, row.id, row.payments)
     : [];
 
   const reservation: Reservation = {

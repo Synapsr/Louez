@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { type Database, apiHandoffs, paymentRefundOperations, users } from "@louez/db";
 
@@ -27,14 +27,22 @@ export interface ReservationOnlineRefund {
 
 /**
  * The reservation's refunds of online payments (`payment_refund_operations`), oldest
- * first, with the person whose approval each carries. A reader only: what the rows say
- * of the money is the payment rows'.
+ * first, with the person whose approval each carries. An operation gives money back from
+ * one of the reservation's own Stripe payments, so it is reached through them, by the
+ * table's index on the payment, within the store: no other reservation's operation is read.
+ * No query when the reservation has no payment taken online. A reader only: what the rows
+ * say of the money is the payment rows'.
  */
 export async function listReservationOnlineRefunds(
   executor: Pick<Database, "select">,
   storeId: string,
   reservationId: string,
+  payments: readonly { id: string; method: string }[],
 ): Promise<ReservationOnlineRefund[]> {
+  const onlinePaymentIds = payments.flatMap((payment) =>
+    payment.method === "stripe" ? [payment.id] : [],
+  );
+  if (onlinePaymentIds.length === 0) return [];
   const o = paymentRefundOperations;
   const rows = await executor
     .select({
@@ -52,7 +60,13 @@ export async function listReservationOnlineRefunds(
       and(eq(apiHandoffs.id, o.approvalId), eq(apiHandoffs.storeId, o.storeId)),
     )
     .leftJoin(users, eq(users.id, apiHandoffs.decidedByUserId))
-    .where(and(eq(o.storeId, storeId), eq(o.reservationId, reservationId)))
+    .where(
+      and(
+        inArray(o.paymentId, onlinePaymentIds),
+        eq(o.storeId, storeId),
+        eq(o.reservationId, reservationId),
+      ),
+    )
     .orderBy(asc(o.createdAt), asc(o.id));
   return rows.map((row) => ({
     id: row.id,

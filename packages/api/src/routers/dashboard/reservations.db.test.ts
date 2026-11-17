@@ -631,6 +631,27 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       { ...operation, id: nextId("rs_rop"), status: "requested", createdAt: now },
     ]);
 
+    // Another reservation of the store, refunded too: none of its operations is this one's.
+    const other = await reservation("confirmed");
+    const otherCharge = nextId("rs_pay");
+    await louezDb.db.insert(louezDb.payments).values({
+      id: otherCharge,
+      reservationId: other,
+      amount: "40.00",
+      type: "rental",
+      method: "stripe",
+      status: "completed",
+      stripePaymentIntentId: "pi_refunds_other",
+    });
+    await louezDb.db.insert(louezDb.paymentRefundOperations).values({
+      ...operation,
+      id: nextId("rs_rop"),
+      reservationId: other,
+      paymentId: otherCharge,
+      stripeChargeId: "ch_refunds_other",
+      status: "succeeded",
+    });
+
     const detail = await run("get", { id }, session());
     assert.deepEqual(
       detail.refunds.map(({ refundPaymentId, status, approvedBy }) => ({
@@ -643,6 +664,11 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         { refundPaymentId: null, status: "pending", approver: null },
       ],
     );
+
+    assert.equal((await run("get", { id: other }, session())).refunds.length, 1);
+    // Paid by hand only: no operation to read.
+    const byHand = await reservation("confirmed");
+    assert.deepEqual((await run("get", { id: byHand }, session())).refunds, []);
 
     const key = await apiKey({ ...everything, payments: "none" });
     assert.deepEqual((await run("get", { id }, key())).refunds, [], "payments are another right");
