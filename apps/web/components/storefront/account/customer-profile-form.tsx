@@ -17,8 +17,8 @@ import { customerProfileMutations } from "@/lib/queries/customer-profile.queries
 import type {
   CheckoutInitialCustomer,
   CheckoutFormValues,
-  DeliveryAddress,
 } from "@/app/(storefront)/[slug]/checkout/checkout.types";
+import type { CustomerAddressPick } from "@/app/(storefront)/[slug]/checkout/util.customer-address";
 import { useAppForm } from "@/hooks/form/form";
 import { createCustomerProfileSchema } from "@/lib/customer-auth/validator.customer-profile";
 
@@ -34,10 +34,7 @@ export const CustomerProfileForm = ({
   const t = useTranslations();
   const router = useRouter();
   const { storeId } = useStore();
-  const [coordinates, setCoordinates] = useState<Pick<DeliveryAddress, "latitude" | "longitude">>({
-    latitude: null,
-    longitude: null,
-  });
+  const [addressPick, setAddressPick] = useState<CustomerAddressPick | null>(null);
   const validator: z.ZodType<CheckoutFormValues, CheckoutFormValues> = z
     .custom<CheckoutFormValues>()
     .superRefine((value, ctx) => {
@@ -119,11 +116,7 @@ export const CustomerProfileForm = ({
             />
           )}
         </form.AppField>
-        <CheckoutAddressFields
-          form={form}
-          coordinates={coordinates}
-          onCoordinatesChange={setCoordinates}
-        />
+        <CheckoutAddressFields form={form} pick={addressPick} onPickChange={setAddressPick} />
         <form.AppField name="isBusinessCustomer">
           {(field) => (
             <field.Checkbox

@@ -17,7 +17,8 @@ import { buildLoginPath } from "@/lib/customer-auth/util.account-redirect";
 
 import { withForm } from "@/hooks/form/form";
 
-import type { CheckoutInitialCustomer, DeliveryAddress } from "../checkout.types";
+import type { CheckoutInitialCustomer } from "../checkout.types";
+import type { CustomerAddressPick } from "../util.customer-address";
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 import { CheckoutAddressFields } from "./checkout-address-fields";
 import { CheckoutBusinessFields } from "./checkout-business-fields";
@@ -33,8 +34,8 @@ interface CheckoutContactStepProps {
   showAddressFields: boolean;
   sessionCustomer: CheckoutInitialCustomer | null;
   onSessionCustomer: (customer: CheckoutInitialCustomer | null) => void;
-  coordinates: Pick<DeliveryAddress, "latitude" | "longitude">;
-  onCoordinatesChange: (coordinates: Pick<DeliveryAddress, "latitude" | "longitude">) => void;
+  addressPick: CustomerAddressPick | null;
+  onAddressPickChange: (pick: CustomerAddressPick | null) => void;
   /** Native profile fields this cart asks (birth date, source, links). */
   profileFields: CheckoutProfileField[];
   /** Customer-scope custom fields this cart asks the buyer's type. */
@@ -62,8 +63,8 @@ export const CheckoutContactStep = withForm({
     showAddressFields,
     sessionCustomer,
     onSessionCustomer,
-    coordinates,
-    onCoordinatesChange,
+    addressPick,
+    onAddressPickChange,
     profileFields,
     customerFields,
     customerLayout,
@@ -78,7 +79,7 @@ export const CheckoutContactStep = withForm({
     const hasNotes = useStore(form.store, (state) => state.values.notes.length > 0);
 
     const handleDevAutofill = () => {
-      onCoordinatesChange({ latitude: null, longitude: null });
+      onAddressPickChange(null);
       form.setFieldValue("firstName", "Teo");
       form.setFieldValue("lastName", "Lumy");
       form.setFieldValue("email", "teo+@lumy.bzh");
@@ -189,8 +190,8 @@ export const CheckoutContactStep = withForm({
           {showAddressFields && (
             <CheckoutAddressFields
               form={form}
-              coordinates={coordinates}
-              onCoordinatesChange={onCoordinatesChange}
+              pick={addressPick}
+              onPickChange={onAddressPickChange}
             />
           )}
 
