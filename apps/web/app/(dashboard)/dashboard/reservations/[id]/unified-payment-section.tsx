@@ -84,6 +84,7 @@ import {
   getDepositTotals,
   getRentalPaid,
   readPaymentRow,
+  refundedPaymentState,
   refundStatusByRow,
 } from "@/lib/reservations/util.payment-status";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
@@ -217,8 +218,16 @@ const VISIBLE_HISTORY_COUNT = 3;
 
 /**
  * The online tile by what it tells: money received (+), a refund made (-, the sign the
- * history gives a refund), one Stripe is still processing, or one it failed (struck).
+ * history gives a refund), one issued at Stripe whose settlement Louez does not know, one
+ * Stripe is still processing, or one it failed (struck).
  */
+/** A payment Stripe counts as refunded in full, by what Louez knows of its refunds. */
+const REFUNDED_PAYMENT_LABEL = {
+  done: "payment.statusRefunded",
+  issued: "payment.refundIssued",
+  processing: "payment.refundProcessing",
+} as const;
+
 const ONLINE_TILE = {
   received: {
     label: "onlinePayment.received",
@@ -231,6 +240,12 @@ const ONLINE_TILE = {
     sign: "-",
     box: "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20",
     amount: "text-emerald-700 dark:text-emerald-400",
+  },
+  issued: {
+    label: "payment.refundIssued",
+    sign: "-",
+    box: "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20",
+    amount: "text-blue-700 dark:text-blue-400",
   },
   processing: {
     label: "payment.refundProcessing",
@@ -1310,14 +1325,23 @@ export function UnifiedPaymentSection({
                                   {t("payment.statusFailed")}
                                 </Badge>
                               )}
+                              {/* Refunded in full as Stripe counts it: said refunded once known made */}
                               {payment.status === "refunded" && (
                                 <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
-                                  {t("payment.statusRefunded")}
+                                  {t(
+                                    REFUNDED_PAYMENT_LABEL[
+                                      refundedPaymentState(payment, payments, refundStatuses)
+                                    ],
+                                  )}
                                 </Badge>
                               )}
-                              {refundState === "processing" ? (
+                              {refundState === "processing" || refundState === "issued" ? (
                                 <Badge variant="progress" className="h-4 px-1 text-[9px] border-0">
-                                  {t("payment.refundProcessing")}
+                                  {t(
+                                    refundState === "processing"
+                                      ? "payment.refundProcessing"
+                                      : "payment.refundIssued",
+                                  )}
                                 </Badge>
                               ) : (
                                 refundState &&
@@ -1350,7 +1374,8 @@ export function UnifiedPaymentSection({
                             className={cn(
                               "font-mono font-medium",
                               refundState === "done" && "text-emerald-600 dark:text-emerald-400",
-                              refundState === "processing" && "text-muted-foreground",
+                              (refundState === "processing" || refundState === "issued") &&
+                                "text-muted-foreground",
                               payment.type === "damage" && "text-red-600 dark:text-red-400",
                               payment.type === "deposit_capture" &&
                                 "text-red-600 dark:text-red-400",

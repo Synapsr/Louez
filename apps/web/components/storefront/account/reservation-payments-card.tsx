@@ -4,6 +4,9 @@ import { Badge } from "@louez/ui";
 
 import { AccountCard } from "@/components/storefront/account/account-card";
 import { Price } from "@/components/storefront/ui/price";
+import type { PaymentRowReading, RefundState } from "@/lib/reservations/util.payment-status";
+
+import { customerPaymentBadge } from "./util.payment-badge";
 
 export interface ReservationPaymentView {
   id: string;
@@ -16,24 +19,17 @@ export interface ReservationPaymentView {
   /** A reason the store wrote for the customer (deposit capture, damage). */
   note?: string | null;
   /**
-   * Money given back (`readPaymentRow`): shown negative, labelled as a refund, `done` or
-   * still `processing` at the bank; null for money paid. A failed refund is not listed.
+   * What the row is (`readPaymentRow`): a refund is shown negative, labelled as a refund,
+   * with its own state. A failed refund is not listed (`getCustomerPaymentRows`).
    */
-  refund: "done" | "processing" | "failed" | null;
+  reading: PaymentRowReading;
+  /** On a payment refunded in full: what its refunds read (`refundedPaymentState`). */
+  refunded?: Exclude<RefundState, "failed"> | null;
 }
 
 interface ReservationPaymentsCardProps {
   payments: ReservationPaymentView[];
 }
-
-const STATUS_VARIANT: Record<string, "success" | "pending" | "failed" | "tertiary" | "info"> = {
-  completed: "success",
-  authorized: "info",
-  pending: "pending",
-  failed: "failed",
-  refunded: "tertiary",
-  cancelled: "tertiary",
-};
 
 /**
  * Payment history: type, method and date on the left, amount and state on
@@ -49,18 +45,12 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
     <AccountCard title={t("title")}>
       <ul className="flex flex-col divide-y">
         {payments.map((payment) => {
-          const isHold = payment.type === "deposit_hold";
+          const isRefund = payment.reading.kind === "refund";
           const typeLabel =
-            payment.refund && payment.type !== "deposit_return"
+            isRefund && payment.type !== "deposit_return"
               ? t("types.refund")
               : t(`types.${payment.type}`);
-          // A refund reads refunded, or pending while the bank processes it, never "paid".
-          const status =
-            payment.refund === "processing"
-              ? "pending"
-              : payment.refund === "done"
-                ? "refunded"
-                : payment.status;
+          const badge = customerPaymentBadge(payment.reading, payment.status, payment.refunded);
 
           return (
             <li
@@ -81,9 +71,9 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <Price amount={payment.refund ? -payment.amount : payment.amount} size="sm" />
-                <Badge variant={STATUS_VARIANT[status] ?? "tertiary"} size="sm">
-                  {t(`${isHold ? "holdStatus" : "status"}.${status}`)}
+                <Price amount={isRefund ? -payment.amount : payment.amount} size="sm" />
+                <Badge variant={badge.variant} size="sm">
+                  {t(badge.key)}
                 </Badge>
               </div>
             </li>

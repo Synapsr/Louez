@@ -2811,9 +2811,10 @@
         "refundDone": "退款已完成",
         "refundFailed": "退款失败",
         "refundToCheck": "请在 Stripe 中核对退款",
-        "onlineRefundTotal": "在线退款总额",
-        "onlineRefundFull": "在线付款已全额退款",
-        "approvedBy": "批准人"
+        "approvedBy": "批准人",
+        "refundIssued": "已在 Stripe 发起退款",
+        "stripeRefundCount": "Stripe 在此付款上计入 {amount} 退款",
+        "stripeRefundCountFull": "Stripe 将此付款计为全额退款"
       },
       "unitAssignment": {
         "title": "单元分配",
@@ -2979,7 +2980,8 @@
         "statusReleasePending": "正在释放",
         "requestPayment": "请求付款",
         "invoiceGenerated": "生成发票 {number}",
-        "refundProcessing": "退款处理中"
+        "refundProcessing": "退款处理中",
+        "refundIssued": "已在 Stripe 发起退款"
       },
       "requestPaymentModal": {
         "title": "请求付款",
@@ -8468,8 +8470,6 @@
         "payment_received": "已收到网上付款",
         "payment_received_amount": "已收到在线付款（{amount}）",
         "payment_failed": "在线支付被拒绝",
-        "refunded": "退款已发出",
-        "refunded_amount": "退款{amount}",
         "payment_added_rental": "已记录租金付款（{amount}）",
         "payment_added_deposit": "收到押金 ({amount})",
         "payment_added_deposit_return": "押金退还（{amount}）",
@@ -8537,6 +8537,16 @@
           "refunded": "已退款",
           "cancelled": "取消",
           "authorized": "已授权"
+        },
+        "refundStatus": {
+          "done": "已退款",
+          "issued": "已发起",
+          "processing": "处理中",
+          "failed": "失败"
+        },
+        "refundedStatus": {
+          "issued": "已发起退款",
+          "processing": "退款处理中"
         }
       },
       "reviewPrompt": {

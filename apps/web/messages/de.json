@@ -2811,9 +2811,10 @@
         "refundDone": "Rückerstattung erfolgt",
         "refundFailed": "Rückerstattung fehlgeschlagen",
         "refundToCheck": "Rückerstattung in Stripe prüfen",
-        "onlineRefundTotal": "Online insgesamt erstattet",
-        "onlineRefundFull": "Online-Zahlung vollständig erstattet",
-        "approvedBy": "Genehmigt von"
+        "approvedBy": "Genehmigt von",
+        "refundIssued": "Rückerstattung bei Stripe ausgestellt",
+        "stripeRefundCount": "Stripe zählt {amount} an Rückerstattungen auf diese Zahlung",
+        "stripeRefundCountFull": "Stripe zählt diese Zahlung als vollständig erstattet"
       },
       "unitAssignment": {
         "title": "Einheitenzuweisung",
@@ -2979,7 +2980,8 @@
         "statusReleasePending": "Wird freigegeben",
         "requestPayment": "Zahlung anfordern",
         "invoiceGenerated": "Rechnung {number} erstellt",
-        "refundProcessing": "Rückerstattung läuft"
+        "refundProcessing": "Rückerstattung läuft",
+        "refundIssued": "Rückerstattung bei Stripe ausgestellt"
       },
       "requestPaymentModal": {
         "title": "Zahlung anfordern",
@@ -8479,8 +8481,6 @@
         "payment_received": "Online-Zahlung erhalten",
         "payment_received_amount": "Online-Zahlung erhalten ({amount})",
         "payment_failed": "Online-Zahlung abgelehnt",
-        "refunded": "Rückerstattung veranlasst",
-        "refunded_amount": "Rückerstattung von {amount}",
         "payment_added_rental": "Mietzahlung erfasst ({amount})",
         "payment_added_deposit": "Kaution erhalten ({amount})",
         "payment_added_deposit_return": "Kaution zurückgezahlt ({amount})",
@@ -8548,6 +8548,16 @@
           "refunded": "Erstattet",
           "cancelled": "Storniert",
           "authorized": "Autorisiert"
+        },
+        "refundStatus": {
+          "done": "Erstattet",
+          "issued": "Ausgestellt",
+          "processing": "In Bearbeitung",
+          "failed": "Fehlgeschlagen"
+        },
+        "refundedStatus": {
+          "issued": "Rückerstattung ausgestellt",
+          "processing": "Rückerstattung läuft"
         }
       },
       "reviewPrompt": {

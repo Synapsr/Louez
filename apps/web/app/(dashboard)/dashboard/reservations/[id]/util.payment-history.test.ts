@@ -118,8 +118,15 @@ test("the online tile: a refund made after the payment is the tile, as a refund,
   for (const order of [rows, [...rows].reverse()]) {
     const tile = onlineRentalTile(order);
     assert.equal(tile?.payment.id, "second");
-    assert.deepEqual(tile?.reading, { kind: "refund", state: "done" });
+    // No operation of Louez's follows it: issued at Stripe, its settlement not known.
+    assert.deepEqual(tile?.reading, { kind: "refund", state: "issued" });
   }
+  // Asked through Louez and settled: made.
+  assert.deepEqual(
+    onlineRentalTile(rows, refundStatusByRow([{ refundPaymentId: "second", status: "succeeded" }]))
+      ?.reading,
+    { kind: "refund", state: "done" },
+  );
   // Refunded in full: the charge is `refunded` at zero, the refunds are what is told.
   assert.equal(
     onlineRentalTile([{ ...charge, status: "refunded", amount: "0.00" }, refund("all", 16)])

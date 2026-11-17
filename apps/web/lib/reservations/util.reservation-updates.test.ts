@@ -157,19 +157,24 @@ test("extensions surface once confirmed, date requests once filed", () => {
   );
 });
 
-test("cancellations remember who asked, refunds their amount", () => {
-  const [refund, byStore, byCustomer] = getReservationUpdates([
+test("cancellations remember who asked; Stripe's count of refunds is no refund for the customer", () => {
+  const updates = getReservationUpdates([
     row("1", "cancelled", "2026-09-05T10:00:00Z", { source: "customer_request_cancellation" }),
     row("2", "cancelled", "2026-09-05T11:00:00Z", { previousStatus: "pending" }),
-    row("3", "payment_updated", "2026-09-05T12:00:00Z", { refundAmount: 20, isFullRefund: false }),
+    // The webhook's line counts a refund Stripe may still fail: the customer's payments
+    // list states each refund by its own state instead.
+    row("3", "payment_updated", "2026-09-05T12:00:00Z", {
+      chargeId: "ch_1",
+      refundAmount: 20,
+      isFullRefund: false,
+    }),
     row("4", "payment_updated", "2026-09-05T13:00:00Z", { refundAmount: 0 }),
   ]);
-  assert.deepEqual(refund, {
-    id: "3",
-    at: at("2026-09-05T12:00:00Z"),
-    kind: "refunded",
-    amount: 20,
-  });
+  assert.deepEqual(
+    updates.map((update) => update.id),
+    ["2", "1"],
+  );
+  const [byStore, byCustomer] = updates;
   assert.deepEqual(byStore, {
     id: "2",
     at: at("2026-09-05T11:00:00Z"),

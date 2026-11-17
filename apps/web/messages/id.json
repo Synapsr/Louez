@@ -2811,9 +2811,10 @@
         "refundDone": "Pengembalian dana selesai",
         "refundFailed": "Pengembalian dana gagal",
         "refundToCheck": "Periksa pengembalian dana di Stripe",
-        "onlineRefundTotal": "Total dikembalikan secara online",
-        "onlineRefundFull": "Pembayaran online dikembalikan sepenuhnya",
-        "approvedBy": "Disetujui oleh"
+        "approvedBy": "Disetujui oleh",
+        "refundIssued": "Pengembalian dana diterbitkan di Stripe",
+        "stripeRefundCount": "Stripe mencatat {amount} pengembalian dana untuk pembayaran ini",
+        "stripeRefundCountFull": "Stripe mencatat pembayaran ini sebagai dikembalikan sepenuhnya"
       },
       "unitAssignment": {
         "title": "Penugasan satuan",
@@ -2979,7 +2980,8 @@
         "statusReleasePending": "Sedang dilepaskan",
         "requestPayment": "Minta pembayaran",
         "invoiceGenerated": "Faktur {number} dibuat",
-        "refundProcessing": "Pengembalian dana sedang diproses"
+        "refundProcessing": "Pengembalian dana sedang diproses",
+        "refundIssued": "Pengembalian dana diterbitkan di Stripe"
       },
       "requestPaymentModal": {
         "title": "Minta pembayaran",
@@ -8468,8 +8470,6 @@
         "payment_received": "Pembayaran online diterima",
         "payment_received_amount": "Pembayaran online diterima ({amount})",
         "payment_failed": "Pembayaran online ditolak",
-        "refunded": "Pengembalian dana dikeluarkan",
-        "refunded_amount": "Pengembalian dana {amount}",
         "payment_added_rental": "Pembayaran sewa dicatat ({amount})",
         "payment_added_deposit": "Setoran diterima ({amount})",
         "payment_added_deposit_return": "Setoran dikembalikan ({amount})",
@@ -8537,6 +8537,16 @@
           "refunded": "Dikembalikan",
           "cancelled": "Dibatalkan",
           "authorized": "Diotorisasi"
+        },
+        "refundStatus": {
+          "done": "Dikembalikan",
+          "issued": "Diterbitkan",
+          "processing": "Diproses",
+          "failed": "Gagal"
+        },
+        "refundedStatus": {
+          "issued": "Pengembalian dana diterbitkan",
+          "processing": "Pengembalian dana sedang diproses"
         }
       },
       "reviewPrompt": {

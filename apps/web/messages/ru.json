@@ -2811,9 +2811,10 @@
         "refundDone": "Возврат выполнен",
         "refundFailed": "Возврат не выполнен",
         "refundToCheck": "Проверьте возврат в Stripe",
-        "onlineRefundTotal": "Всего возвращено онлайн",
-        "onlineRefundFull": "Онлайн-платёж возвращён полностью",
-        "approvedBy": "Одобрил(а)"
+        "approvedBy": "Одобрил(а)",
+        "refundIssued": "Возврат оформлен в Stripe",
+        "stripeRefundCount": "Stripe учитывает {amount} возвратов по этому платежу",
+        "stripeRefundCountFull": "Stripe учитывает этот платёж как полностью возвращённый"
       },
       "unitAssignment": {
         "title": "Назначение единицы измерения",
@@ -2979,7 +2980,8 @@
         "statusReleasePending": "Снимается",
         "requestPayment": "Запросить оплату",
         "invoiceGenerated": "Счет {number} создан.",
-        "refundProcessing": "Возврат обрабатывается"
+        "refundProcessing": "Возврат обрабатывается",
+        "refundIssued": "Возврат оформлен в Stripe"
       },
       "requestPaymentModal": {
         "title": "Запросить оплату",
@@ -8468,8 +8470,6 @@
         "payment_received": "Онлайн-платеж получен",
         "payment_received_amount": "Получен онлайн-платеж ({amount})",
         "payment_failed": "Онлайн-платеж отклонен",
-        "refunded": "Возврат произведен",
-        "refunded_amount": "Возврат {amount}",
         "payment_added_rental": "Арендная плата зарегистрирована ({amount})",
         "payment_added_deposit": "Депозит получен ({amount})",
         "payment_added_deposit_return": "Депозит возвращен ({amount})",
@@ -8537,6 +8537,16 @@
           "refunded": "Возвращено",
           "cancelled": "Отменено",
           "authorized": "Авторизовано"
+        },
+        "refundStatus": {
+          "done": "Возвращено",
+          "issued": "Оформлен",
+          "processing": "Обрабатывается",
+          "failed": "Не выполнен"
+        },
+        "refundedStatus": {
+          "issued": "Возврат оформлен",
+          "processing": "Возврат обрабатывается"
         }
       },
       "reviewPrompt": {

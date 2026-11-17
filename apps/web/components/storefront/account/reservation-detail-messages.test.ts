@@ -111,7 +111,6 @@ for (const file of locales) {
       "payment_received_amount",
       "deposit_authorized_amount",
       "deposit_captured_amount",
-      "refunded_amount",
       "payment_added_rental",
       "payment_added_deposit",
       "payment_added_deposit_return",

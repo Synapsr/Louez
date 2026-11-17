@@ -2820,9 +2820,10 @@
         "refundDone": "Remboursement effectué",
         "refundFailed": "Remboursement échoué",
         "refundToCheck": "Remboursement à vérifier dans Stripe",
-        "onlineRefundTotal": "Total remboursé en ligne",
-        "onlineRefundFull": "Paiement en ligne intégralement remboursé",
-        "approvedBy": "Approuvé par"
+        "approvedBy": "Approuvé par",
+        "refundIssued": "Remboursement émis sur Stripe",
+        "stripeRefundCount": "Stripe compte {amount} de remboursements sur ce paiement",
+        "stripeRefundCountFull": "Stripe compte ce paiement comme entièrement remboursé"
       },
       "unitAssignment": {
         "title": "Assignation des unités",
@@ -2988,7 +2989,8 @@
         "statusReleasePending": "Libération en cours",
         "requestPayment": "Demander un paiement",
         "invoiceGenerated": "Facture {number} générée",
-        "refundProcessing": "Remboursement en cours"
+        "refundProcessing": "Remboursement en cours",
+        "refundIssued": "Remboursement émis sur Stripe"
       },
       "requestPaymentModal": {
         "title": "Demander un paiement",
@@ -8468,8 +8470,6 @@
         "payment_received": "Paiement en ligne reçu",
         "payment_received_amount": "Paiement en ligne reçu ({amount})",
         "payment_failed": "Paiement en ligne refusé",
-        "refunded": "Remboursement effectué",
-        "refunded_amount": "Remboursement de {amount}",
         "payment_added_rental": "Paiement de la location enregistré ({amount})",
         "payment_added_deposit": "Caution reçue ({amount})",
         "payment_added_deposit_return": "Caution restituée ({amount})",
@@ -8537,6 +8537,16 @@
           "refunded": "Remboursé",
           "cancelled": "Annulé",
           "authorized": "Autorisé"
+        },
+        "refundStatus": {
+          "done": "Remboursé",
+          "issued": "Émis",
+          "processing": "En cours",
+          "failed": "Échoué"
+        },
+        "refundedStatus": {
+          "issued": "Remboursement émis",
+          "processing": "Remboursement en cours"
         }
       },
       "reviewPrompt": {

@@ -2772,9 +2772,10 @@
         "refundDone": "Rimborso effettuato",
         "refundFailed": "Rimborso non riuscito",
         "refundToCheck": "Rimborso da verificare in Stripe",
-        "onlineRefundTotal": "Totale rimborsato online",
-        "onlineRefundFull": "Pagamento online rimborsato per intero",
-        "approvedBy": "Approvato da"
+        "approvedBy": "Approvato da",
+        "refundIssued": "Rimborso emesso su Stripe",
+        "stripeRefundCount": "Stripe conta {amount} di rimborsi su questo pagamento",
+        "stripeRefundCountFull": "Stripe conta questo pagamento come rimborsato per intero"
       },
       "unitAssignment": {
         "title": "Assegnazione unità",
@@ -2940,7 +2941,8 @@
         "statusReleasePending": "Rilascio in corso",
         "requestPayment": "Richiedi pagamento",
         "invoiceGenerated": "Fattura {number} generata",
-        "refundProcessing": "Rimborso in corso"
+        "refundProcessing": "Rimborso in corso",
+        "refundIssued": "Rimborso emesso su Stripe"
       },
       "requestPaymentModal": {
         "title": "Richiedi pagamento",
@@ -8468,8 +8470,6 @@
         "payment_received": "Pagamento online ricevuto",
         "payment_received_amount": "Pagamento online ricevuto ({amount})",
         "payment_failed": "Pagamento online rifiutato",
-        "refunded": "Rimborso effettuato",
-        "refunded_amount": "Rimborso di {amount}",
         "payment_added_rental": "Pagamento del noleggio registrato ({amount})",
         "payment_added_deposit": "Cauzione ricevuta ({amount})",
         "payment_added_deposit_return": "Cauzione restituita ({amount})",
@@ -8537,6 +8537,16 @@
           "refunded": "Rimborsato",
           "cancelled": "Annullato",
           "authorized": "Autorizzato"
+        },
+        "refundStatus": {
+          "done": "Rimborsato",
+          "issued": "Emesso",
+          "processing": "In corso",
+          "failed": "Non riuscito"
+        },
+        "refundedStatus": {
+          "issued": "Rimborso emesso",
+          "processing": "Rimborso in corso"
         }
       },
       "reviewPrompt": {

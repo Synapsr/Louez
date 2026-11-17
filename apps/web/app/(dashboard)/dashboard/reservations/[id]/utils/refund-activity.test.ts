@@ -106,29 +106,113 @@ describe("refundActivityView", () => {
     assert.deepEqual(refundActivityView(listed, context("failed", "failed")), { kind: "to_check" });
   });
 
-  test("the webhook's line states what came off the charge in all", () => {
-    const line = (isFullRefund: boolean) => ({
+  test("the webhook's line states what Stripe counted then, pending refunds included, never a settlement", () => {
+    const line = (refundAmount: number, isFullRefund: boolean) => ({
       activityType: "payment_updated",
-      metadata: { chargeId: "ch_1", refundAmount: 42, isFullRefund },
+      metadata: { chargeId: "ch_1", refundAmount, isFullRefund },
     });
-    assert.deepEqual(refundActivityView(line(true), context("completed", null)), {
-      kind: "online_total",
-      amount: 42,
+    // 100.00 netted to 75.00 while its 25.00 refund is pending, which then fails: the line
+    // keeps Stripe's count of that moment, next to the failed refund's own line.
+    assert.deepEqual(refundActivityView(line(25, false), context("failed", null)), {
+      kind: "stripe_count",
+      amount: 25,
+      full: false,
+    });
+    assert.deepEqual(refundActivityView(line(100, true), context("completed", null)), {
+      kind: "stripe_count",
+      amount: 100,
       full: true,
     });
-    assert.deepEqual(refundActivityView(line(false), context("completed", null)), {
-      kind: "online_total",
-      amount: 42,
-      full: false,
+    // The oldest webhook wrote the same metadata with a description of its own.
+    assert.equal(
+      refundActivityView(
+        {
+          activityType: "payment_updated",
+          metadata: { chargeId: "ch_0", refundAmount: 25, isFullRefund: false },
+        },
+        { payments: [], refunds: [] },
+      )?.kind,
+      "stripe_count",
+    );
+  });
+
+  test("an operation's line whose operation is not read follows its row: issued, as Stripe made it", () => {
+    assert.deepEqual(refundActivityView(operationLine, context("completed", null)), {
+      kind: "refund",
+      state: "issued",
+      amount: 10,
+      currency: "EUR",
+      approvedBy: null,
     });
   });
 
-  test("a refund line without its operation (made before operations, or not read) follows its row", () => {
-    assert.deepEqual(refundActivityView(operationLine, context("completed", null)), {
+  // The dashboard's Stripe refund before operations (until 2026-10) wrote this shape, with
+  // its refund row's id, by a user of the store.
+  const dashboardStripeLine = (paymentId: string | null, type = "rental_refund") => ({
+    activityType: "payment_updated",
+    metadata: { paymentId, refundId: "re_1", amount: 10, type },
+  });
+
+  test("the dashboard's Stripe refund before operations reads as a refund, issued at Stripe", () => {
+    const row = { ...refundRow("completed"), refundOfPaymentId: null, currency: "EUR" };
+    assert.deepEqual(
+      refundActivityView(dashboardStripeLine("pay_refund"), { payments: [row], refunds: [] }),
+      { kind: "refund", state: "issued", amount: 10, currency: "EUR", approvedBy: null },
+    );
+    // Its row failed since: failed.
+    assert.equal(
+      (
+        refundActivityView(dashboardStripeLine("pay_refund"), {
+          payments: [{ ...row, status: "failed" }],
+          refunds: [],
+        }) as { state?: string } | null
+      )?.state,
+      "failed",
+    );
+    // No row id on the line (its row could not be written then): found by its Stripe refund.
+    assert.equal(
+      (
+        refundActivityView(dashboardStripeLine(null), {
+          payments: [{ ...row, status: "failed" }],
+          refunds: [],
+        }) as { state?: string } | null
+      )?.state,
+      "failed",
+    );
+    // No row at all: Stripe made it, nothing says more.
+    assert.deepEqual(
+      refundActivityView(dashboardStripeLine(null, "deposit_return"), {
+        payments: [],
+        refunds: [],
+      }),
+      { kind: "refund", state: "issued", amount: 10, currency: null, approvedBy: null },
+    );
+  });
+
+  test("a refund recorded by hand from the dashboard reads as made", () => {
+    const line = {
+      activityType: "payment_updated",
+      metadata: {
+        paymentId: "pay_cash",
+        refundPaymentId: "pay_cash_refund",
+        amount: 15,
+        method: "cash",
+        action: "refunded",
+      },
+    };
+    const row = {
+      id: "pay_cash_refund",
+      type: "rental",
+      method: "cash",
+      status: "completed",
+      amount: "15.00",
+      refundOfPaymentId: "pay_cash",
+    };
+    assert.deepEqual(refundActivityView(line, { payments: [row], refunds: [] }), {
       kind: "refund",
       state: "done",
-      amount: 10,
-      currency: "EUR",
+      amount: 15,
+      currency: null,
       approvedBy: null,
     });
   });
@@ -139,6 +223,12 @@ describe("refundActivityView", () => {
       metadata: { kind: "deposit_unmatched_intent", attemptId: "a" },
     };
     assert.equal(refundActivityView(hold, context("completed", null)), null);
+    // A payment deleted from the dashboard is not a refund.
+    const deleted = {
+      activityType: "payment_updated",
+      metadata: { paymentId: "pay_cash", type: "rental", amount: "15.00", action: "deleted" },
+    };
+    assert.equal(refundActivityView(deleted, context("completed", null)), null);
     assert.equal(
       refundActivityView(
         { activityType: "payment_received", metadata: { amount: 42 } },
@@ -158,7 +248,7 @@ describe("refundActivityView", () => {
 });
 
 test("each refund line has a title of its own, never the generic payment updated", () => {
-  const refund = (state: "done" | "processing" | "failed") =>
+  const refund = (state: "done" | "issued" | "processing" | "failed") =>
     refundActivityTitleKey({
       kind: "refund",
       state,
@@ -167,15 +257,16 @@ test("each refund line has a title of its own, never the generic payment updated
       approvedBy: null,
     });
   assert.equal(refund("done"), "activity.refundDone");
+  assert.equal(refund("issued"), "activity.refundIssued");
   assert.equal(refund("processing"), "payment.refundProcessing");
   assert.equal(refund("failed"), "activity.refundFailed");
   assert.equal(refundActivityTitleKey({ kind: "to_check" }), "activity.refundToCheck");
   assert.equal(
-    refundActivityTitleKey({ kind: "online_total", amount: 42, full: true }),
-    "activity.onlineRefundFull",
+    refundActivityTitleKey({ kind: "stripe_count", amount: 100, full: true }),
+    "activity.stripeRefundCountFull",
   );
   assert.equal(
-    refundActivityTitleKey({ kind: "online_total", amount: 10, full: false }),
-    "activity.onlineRefundTotal",
+    refundActivityTitleKey({ kind: "stripe_count", amount: 25, full: false }),
+    "activity.stripeRefundCount",
   );
 });

@@ -2811,9 +2811,10 @@
         "refundDone": "返金済み",
         "refundFailed": "返金失敗",
         "refundToCheck": "Stripeで返金を確認してください",
-        "onlineRefundTotal": "オンライン返金合計",
-        "onlineRefundFull": "オンライン決済は全額返金済み",
-        "approvedBy": "承認者"
+        "approvedBy": "承認者",
+        "refundIssued": "Stripeで返金を発行済み",
+        "stripeRefundCount": "Stripeはこの支払いに{amount}の返金を計上しています",
+        "stripeRefundCountFull": "Stripeはこの支払いを全額返金として計上しています"
       },
       "unitAssignment": {
         "title": "単位の割り当て",
@@ -2979,7 +2980,8 @@
         "statusReleasePending": "解除中",
         "requestPayment": "支払いを要求する",
         "invoiceGenerated": "請求書 {number} が生成されました",
-        "refundProcessing": "返金処理中"
+        "refundProcessing": "返金処理中",
+        "refundIssued": "Stripeで返金を発行済み"
       },
       "requestPaymentModal": {
         "title": "支払いを要求する",
@@ -8468,8 +8470,6 @@
         "payment_received": "オンライン支払いを受け取りました",
         "payment_received_amount": "オンライン支払いを受け取りました ({amount})",
         "payment_failed": "オンライン支払いが拒否されました",
-        "refunded": "払い戻しが行われました",
-        "refunded_amount": "{amount}の返金",
         "payment_added_rental": "レンタル料の支払いが記録されました ({amount})",
         "payment_added_deposit": "デポジットを受け取りました ({amount})",
         "payment_added_deposit_return": "デポジットが返還されました ({amount})",
@@ -8537,6 +8537,16 @@
           "refunded": "返金されました",
           "cancelled": "キャンセルされました",
           "authorized": "承認済み"
+        },
+        "refundStatus": {
+          "done": "返金済み",
+          "issued": "発行済み",
+          "processing": "処理中",
+          "failed": "失敗"
+        },
+        "refundedStatus": {
+          "issued": "返金を発行済み",
+          "processing": "返金処理中"
         }
       },
       "reviewPrompt": {

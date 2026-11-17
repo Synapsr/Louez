@@ -56,6 +56,7 @@ import {
   getReservationPaymentStatus,
   isRentalPaid,
   readPaymentRow,
+  refundedPaymentState,
   refundStatusByRow,
 } from "@/lib/reservations/util.payment-status";
 import { getReservationActions } from "@/lib/reservations/util.reservation-actions";
@@ -533,19 +534,21 @@ export default async function ReservationDetailPage({
           payments: getCustomerPaymentRows(
             reservation.payments,
             reservation.depositPaymentIntentId,
-          ).map((payment) => {
-            const reading = readPaymentRow(payment, refundStatuses);
-            return {
-              id: payment.id,
-              type: payment.type,
-              method: payment.method,
-              status: payment.status,
-              amount: Number.parseFloat(payment.amount),
-              dateLabel: formatDate(payment.paidAt ?? payment.createdAt, "SHORT_DATE"),
-              note: ["deposit_capture", "damage"].includes(payment.type) ? payment.notes : null,
-              refund: reading.kind === "refund" ? reading.state : null,
-            };
-          }),
+            refundStatuses,
+          ).map((payment) => ({
+            id: payment.id,
+            type: payment.type,
+            method: payment.method,
+            status: payment.status,
+            amount: Number.parseFloat(payment.amount),
+            dateLabel: formatDate(payment.paidAt ?? payment.createdAt, "SHORT_DATE"),
+            note: ["deposit_capture", "damage"].includes(payment.type) ? payment.notes : null,
+            reading: readPaymentRow(payment, refundStatuses),
+            refunded:
+              payment.status === "refunded"
+                ? refundedPaymentState(payment, reservation.payments, refundStatuses)
+                : null,
+          })),
         }}
         inspections={{
           inspections: inspectionViews,

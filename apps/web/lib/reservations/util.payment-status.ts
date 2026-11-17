@@ -66,15 +66,26 @@ export const refundStatusByRow = (
 /**
  * What a payment row is, for whoever shows it: money the store took (`receipt`), a card
  * hold (`hold`), or money given back (`refund`, by hand or through Stripe, in each of its
- * shapes, `isRefundRow`). A refund is `failed` when it gave nothing back, `processing` while
- * Stripe has not given its final word (its row is already `completed`: what the money counts
- * is the row's), else `done`. The one reading of the payment card, the history and the
- * customer's page; the totals read the rows by their own rules.
+ * shapes, `isRefundRow`). Louez counts a refund as Stripe counts it (its row is `completed`
+ * from the moment Stripe made it) but states it made only when it knows: a refund is
+ * `failed` when it gave nothing back; `processing` while the operation Louez asked it with
+ * waits for Stripe's final word; `done` once that operation succeeded, or when the store
+ * recorded it by hand (its own word); `issued` for a Stripe refund no operation of Louez's
+ * follows (made in Stripe's own dashboard, by the extension, or before operations existed):
+ * Stripe made it, and nothing stored says whether it settled. The one reading of the
+ * payment card, the history and the customer's page; the totals read the rows by their own
+ * rules.
  */
+export type RefundState = "done" | "issued" | "processing" | "failed";
+
 export type PaymentRowReading =
   | { kind: "receipt" }
   | { kind: "hold" }
-  | { kind: "refund"; state: "done" | "processing" | "failed" };
+  | { kind: "refund"; state: RefundState };
+
+/** A refund that went through Stripe, in any of its shapes. */
+const isStripeRefund = (payment: PaymentLike) =>
+  payment.method === "stripe" || isStripeRefundRow(payment);
 
 export const readPaymentRow = (
   payment: PaymentLike,
@@ -87,7 +98,30 @@ export const readPaymentRow = (
   if (stated === "pending" || payment.status === "pending") {
     return { kind: "refund", state: "processing" };
   }
-  return { kind: "refund", state: "done" };
+  if (stated === "succeeded" || !isStripeRefund(payment)) return { kind: "refund", state: "done" };
+  return { kind: "refund", state: "issued" };
+};
+
+/**
+ * A payment Stripe counts as refunded in full (status `refunded`), as its refunds read: still
+ * `processing` while one is, `issued` while one is only issued at Stripe (or none of its
+ * refunds has a row: the oldest webhooks stamped it on the payment), and `done` once each is
+ * known made. A failed refund among them gave nothing back and holds nothing back.
+ */
+export const refundedPaymentState = (
+  payment: PaymentLike,
+  payments: readonly PaymentLike[],
+  refundStatuses?: RefundStatusByRow,
+): Exclude<RefundState, "failed"> => {
+  const states = payments.flatMap((candidate) => {
+    if (!payment.id || candidate.refundOfPaymentId !== payment.id) return [];
+    const read = readPaymentRow(candidate, refundStatuses);
+    return read.kind === "refund" && read.state !== "failed" ? [read.state] : [];
+  });
+  if (states.includes("processing")) return "processing";
+  if (states.includes("issued")) return "issued";
+  if (states.length > 0) return "done";
+  return isStripeRefund(payment) ? "issued" : "done";
 };
 
 /** With `currency`, the reservation's, a payment in another currency pays nothing. */
@@ -167,13 +201,16 @@ export const getDamageFees = (payments: readonly PaymentLike[]): number =>
 export const getCustomerPaymentRows = <T extends PaymentLike>(
   payments: readonly T[],
   depositPaymentIntentId: string | null | undefined,
+  refundStatuses?: RefundStatusByRow,
 ): T[] => {
   const captured = payments.some(
     (payment) => payment.type === "deposit_capture" && payment.status === "completed",
   );
   return payments.filter((payment) => {
-    // A refund that gave nothing back is no money given back to the customer.
-    if (isFailedRefundRow(payment)) return false;
+    // A refund that gave nothing back is no money given back to the customer: its row
+    // failed, or the operation that asked for it did (`readPaymentRow`).
+    const read = readPaymentRow(payment, refundStatuses);
+    if (read.kind === "refund" && read.state === "failed") return false;
     if (payment.type !== "deposit_hold") return true;
     if (!isCustomerDepositHoldRow(payment, depositPaymentIntentId)) return false;
     return !(captured && payment.status === "completed");

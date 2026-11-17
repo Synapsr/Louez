@@ -2811,9 +2811,10 @@
         "refundDone": "Refund made",
         "refundFailed": "Refund failed",
         "refundToCheck": "Refund to check in Stripe",
-        "onlineRefundTotal": "Total refunded online",
-        "onlineRefundFull": "Online payment fully refunded",
-        "approvedBy": "Approved by"
+        "approvedBy": "Approved by",
+        "refundIssued": "Refund issued at Stripe",
+        "stripeRefundCount": "Stripe counts {amount} of refunds on this payment",
+        "stripeRefundCountFull": "Stripe counts this payment as fully refunded"
       },
       "unitAssignment": {
         "title": "Unit assignment",
@@ -2979,7 +2980,8 @@
         "statusReleasePending": "Being released",
         "requestPayment": "Request payment",
         "invoiceGenerated": "Invoice {number} generated",
-        "refundProcessing": "Refund in progress"
+        "refundProcessing": "Refund in progress",
+        "refundIssued": "Refund issued at Stripe"
       },
       "requestPaymentModal": {
         "title": "Request payment",
@@ -8468,8 +8470,6 @@
         "payment_received": "Online payment received",
         "payment_received_amount": "Online payment received ({amount})",
         "payment_failed": "Online payment declined",
-        "refunded": "Refund issued",
-        "refunded_amount": "Refund of {amount}",
         "payment_added_rental": "Rental payment recorded ({amount})",
         "payment_added_deposit": "Deposit received ({amount})",
         "payment_added_deposit_return": "Deposit returned ({amount})",
@@ -8537,6 +8537,16 @@
           "refunded": "Refunded",
           "cancelled": "Cancelled",
           "authorized": "Authorized"
+        },
+        "refundStatus": {
+          "done": "Refunded",
+          "issued": "Issued",
+          "processing": "In progress",
+          "failed": "Failed"
+        },
+        "refundedStatus": {
+          "issued": "Refund issued",
+          "processing": "Refund in progress"
         }
       },
       "reviewPrompt": {

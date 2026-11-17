@@ -41,7 +41,7 @@ export type ReservationUpdate = { id: string; at: Date } & (
     }
   | { kind: "rejected"; reason: string | null }
   | { kind: "cancelled"; byCustomer: boolean }
-  | { kind: "payment_received" | "deposit_authorized" | "refunded"; amount: number | null }
+  | { kind: "payment_received" | "deposit_authorized"; amount: number | null }
   | { kind: "deposit_captured"; amount: number | null; reason: string | null }
   | { kind: "payment_added"; paymentType: ReservationUpdatePaymentType; amount: number | null }
   | { kind: "modified"; startDate: Date | null; endDate: Date | null }
@@ -73,7 +73,6 @@ const captureSchema = z
     reason: optionalText.default(null),
   })
   .catch({ amount: null, capturedAmount: null, reason: null });
-const refundSchema = z.object({ refundAmount: money.default(null) }).catch({ refundAmount: null });
 const rejectionSchema = z.object({ reason: optionalText.default(null) }).catch({ reason: null });
 const cancellationSchema = z
   .object({ source: z.string().nullable().default(null) })
@@ -140,12 +139,11 @@ const toUpdate = (row: ReservationActivityRow): ReservationUpdate | null => {
         reason: capture.reason,
       };
     }
-    case "payment_updated": {
-      const { refundAmount } = refundSchema.parse(row.metadata);
-      return refundAmount !== null && refundAmount > 0
-        ? { ...base, kind: "refunded", amount: refundAmount }
-        : null;
-    }
+    // Its lines about refunds are the store's record: Stripe's count of a payment's refunds
+    // (pending ones included) states no refund made. The customer reads each refund, with
+    // its own state, in the reservation's payments.
+    case "payment_updated":
+      return null;
     case "payment_added": {
       const parsed = manualPaymentSchema.safeParse(row.metadata);
       return parsed.success

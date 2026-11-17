@@ -15,6 +15,7 @@ import {
   isRentalPaid,
   isStripeRefundRow,
   readPaymentRow,
+  refundedPaymentState,
   refundStatusByRow,
 } from "./util.payment-status";
 
@@ -343,6 +344,19 @@ describe("a refund that failed", () => {
     assert.equal(isFailedRefundRow({ ...charge, status: "failed" }), false);
   });
 
+  test("is left out for the customer when its operation failed, though its row was read completed", () => {
+    // The row read completed, then the operation read failed: Stripe failed it in between.
+    const completed = { ...stripeRefund("25.00"), id: "pay_refund", method: "stripe" };
+    assert.deepEqual(
+      getCustomerPaymentRows(
+        [charge, completed],
+        null,
+        refundStatusByRow([{ refundPaymentId: "pay_refund", status: "failed" }]),
+      ).map((row) => row.id),
+      ["pay_charge"],
+    );
+  });
+
   test("is not shown to the customer as money given back", () => {
     assert.deepEqual(
       getCustomerPaymentRows([charge, failed, stripeRefund("10.00")], null).map(
@@ -397,8 +411,9 @@ describe("readPaymentRow: what a row is, the one reading of the card, the histor
     assert.deepEqual(readPaymentRow({ ...charge, stripeRefundId: "re_old" }), { kind: "receipt" });
   });
 
-  test("each shape of refund reads as money given back", () => {
+  test("each shape of refund reads as a refund: made when the store gave it, issued when Stripe holds the word", () => {
     const done = { kind: "refund", state: "done" };
+    const issued = { kind: "refund", state: "issued" };
     // Given by hand: a row pointing at the payment it gives back.
     assert.deepEqual(
       readPaymentRow({
@@ -411,10 +426,12 @@ describe("readPaymentRow: what a row is, the one reading of the card, the histor
       }),
       done,
     );
-    // The dashboard's Stripe refund before 2026-08: its own row, with no link to the charge.
-    assert.deepEqual(readPaymentRow({ ...stripeRefund("10.00"), method: "stripe" }), done);
+    // The dashboard's Stripe refund before 2026-08: its own row, with no link to the charge,
+    // and no operation: Stripe made it, whether it settled Louez does not know.
+    assert.deepEqual(readPaymentRow({ ...stripeRefund("10.00"), method: "stripe" }), issued);
     // Since 2026-08: its own row linked to the charge.
-    assert.deepEqual(readPaymentRow(linked()), done);
+    assert.deepEqual(readPaymentRow(linked()), issued);
+    assert.deepEqual(readPaymentRow(linked(), statuses("succeeded")), done);
     // A deposit given back by hand, and through Stripe.
     assert.deepEqual(
       readPaymentRow({
@@ -426,7 +443,7 @@ describe("readPaymentRow: what a row is, the one reading of the card, the histor
       }),
       done,
     );
-    assert.deepEqual(readPaymentRow(linked({ type: "deposit_return" })), done);
+    assert.deepEqual(readPaymentRow(linked({ type: "deposit_return" })), issued);
   });
 
   test("a refund Stripe has not settled is in progress, not done, though its row is completed", () => {
@@ -438,11 +455,35 @@ describe("readPaymentRow: what a row is, the one reading of the card, the histor
       kind: "refund",
       state: "done",
     });
-    // A refund made outside Louez has no operation: its row says it.
+  });
+
+  test("a refund made in Stripe's own dashboard is issued, not made, while Stripe says nothing more", () => {
+    // Recorded by the webhook as a completed row, with no operation of Louez's: Stripe may
+    // still call it pending. Nothing stored tells it settled.
     assert.deepEqual(readPaymentRow(linked(), refundStatusByRow([])), {
       kind: "refund",
-      state: "done",
+      state: "issued",
     });
+    // When Stripe fails it, its row is failed, and it reads failed.
+    assert.deepEqual(readPaymentRow(linked({ status: "failed" }), refundStatusByRow([])), {
+      kind: "refund",
+      state: "failed",
+    });
+    // A refund the store records by hand is its own word: made.
+    assert.deepEqual(
+      readPaymentRow(
+        {
+          id: "h",
+          type: "rental",
+          method: "transfer",
+          status: "completed",
+          amount: "5.00",
+          refundOfPaymentId: "p",
+        },
+        refundStatusByRow([]),
+      ),
+      { kind: "refund", state: "done" },
+    );
   });
 
   test("a refund Stripe failed afterwards gave nothing back", () => {
@@ -462,5 +503,67 @@ describe("readPaymentRow: what a row is, the one reading of the card, the histor
 
   test("an operation that has not made its row yet names no row", () => {
     assert.equal(refundStatusByRow([{ refundPaymentId: null, status: "pending" }]).size, 0);
+  });
+});
+
+describe("refundedPaymentState: a payment Stripe counts as refunded in full", () => {
+  const charge = {
+    id: "pay_charge",
+    type: "rental",
+    method: "stripe",
+    status: "refunded",
+    amount: "0.00",
+    stripePaymentIntentId: "pi_1",
+    stripeCheckoutSessionId: null,
+    stripeRefundId: null,
+  };
+  const refund = (id: string, fields: Record<string, unknown> = {}) => ({
+    ...stripeRefund("50.00"),
+    id,
+    method: "stripe",
+    refundOfPaymentId: "pay_charge",
+    ...fields,
+  });
+  const ops = (...rows: [string, "pending" | "succeeded" | "failed"][]) =>
+    refundStatusByRow(rows.map(([refundPaymentId, status]) => ({ refundPaymentId, status })));
+
+  test("is refunded once each of its refunds is known settled", () => {
+    const rows = [charge, refund("r1"), refund("r2")];
+    assert.equal(
+      refundedPaymentState(charge, rows, ops(["r1", "succeeded"], ["r2", "succeeded"])),
+      "done",
+    );
+  });
+
+  test("is not stated refunded while one of its refunds is in progress or only issued", () => {
+    const rows = [charge, refund("r1"), refund("r2")];
+    assert.equal(
+      refundedPaymentState(charge, rows, ops(["r1", "succeeded"], ["r2", "pending"])),
+      "processing",
+    );
+    assert.equal(refundedPaymentState(charge, rows, ops(["r1", "succeeded"])), "issued");
+    // The oldest webhooks left no refund row: Stripe counted it, nothing says it settled.
+    assert.equal(refundedPaymentState(charge, [charge], new Map()), "issued");
+  });
+
+  test("a failed refund among them is no money back, and does not hold the state back", () => {
+    const rows = [charge, refund("r1"), refund("r2", { status: "failed" })];
+    assert.equal(
+      refundedPaymentState(charge, rows, ops(["r1", "succeeded"], ["r2", "failed"])),
+      "done",
+    );
+  });
+
+  test("refunds given by hand are the store's word", () => {
+    const cash = { ...charge, method: "cash", stripePaymentIntentId: null };
+    const back = {
+      id: "h",
+      type: "rental",
+      method: "cash",
+      status: "completed",
+      amount: "50.00",
+      refundOfPaymentId: "pay_charge",
+    };
+    assert.equal(refundedPaymentState(cash, [cash, back], new Map()), "done");
   });
 });

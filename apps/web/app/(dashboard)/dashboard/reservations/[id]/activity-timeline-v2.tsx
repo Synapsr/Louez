@@ -185,6 +185,14 @@ function getPaymentAmountVariant(
   return 'success'
 }
 
+/** A refund line's amount badge, by the reader's state: made, issued at Stripe, in progress, failed. */
+const REFUND_BADGE = {
+  done: { variant: 'review', sign: '-' },
+  issued: { variant: 'progress', sign: '-' },
+  processing: { variant: 'progress', sign: '-' },
+  failed: { variant: 'failed', sign: '' },
+} as const
+
 const ACTIVITY_CONFIG: Record<
   ActivityType,
   {
@@ -499,13 +507,16 @@ export function ActivityTimelineV2({
     // A refund of an online payment, told as one, by the shape its writer gave the line.
     const refundView = refundActivityView(activity, { payments, refunds })
     const refundApprover = refundView?.kind === 'refund' ? refundView.approvedBy : null
-    const refundAmount =
-      refundView && refundView.kind !== 'to_check' ? refundView.amount : null
-    const refundState = refundView?.kind === 'refund' ? refundView.state : null
+    // A refund's amount, as a badge; Stripe's count is written in its title, as information.
+    const refundLine = refundView?.kind === 'refund' ? refundView : null
+    const stripeCount =
+      refundView?.kind === 'stripe_count' && refundView.amount !== null
+        ? formatCurrency(refundView.amount, paymentCurrency, formatLocale)
+        : ''
     const activityTitle = isPaymentRequest
       ? t('requestPaymentModal.success')
       : refundView
-        ? t(refundActivityTitleKey(refundView))
+        ? t(refundActivityTitleKey(refundView), { amount: stripeCount })
         : t(`activity.${activity.activityType}`)
     const showPositivePaymentPrefix =
       paymentAmount !== null &&
@@ -522,12 +533,16 @@ export function ActivityTimelineV2({
     const isLastVisibleBeforeFade =
       !isExpanded && index === initialVisibleCount - 1 && hasMoreActivities
     const isTechnicalDetailExpanded = Boolean(expandedTechnicalDetails[activity.id])
-    const formattedDescription = formatPaymentFailureDescription({
-      activityType: activity.activityType,
-      description: activity.description,
-      metadata: activity.metadata,
-      t: (key, values) => t(key, values),
-    })
+    // A refund line says what it is in its title: an older writer's text ("Refund of …
+    // processed") would state a settlement Louez does not know.
+    const formattedDescription = refundView
+      ? null
+      : formatPaymentFailureDescription({
+          activityType: activity.activityType,
+          description: activity.description,
+          metadata: activity.metadata,
+          t: (key, values) => t(key, values),
+        })
 
     return (
       <div
@@ -601,25 +616,19 @@ export function ActivityTimelineV2({
                     Stripe
                   </Badge>
                 )}
-              {/* Money given back: its sign, struck when Stripe failed it */}
-              {refundView && refundAmount !== null && (
+              {/* A refund's amount: counted off (-), struck when Stripe failed it */}
+              {refundLine && refundLine.amount !== null && (
                 <Badge
-                  variant={
-                    refundState === 'failed'
-                      ? 'failed'
-                      : refundState === 'processing'
-                        ? 'progress'
-                        : 'review'
-                  }
+                  variant={REFUND_BADGE[refundLine.state].variant}
                   className={cn(
                     'h-4 px-1.5 py-0 font-mono text-[10px]',
-                    refundState === 'failed' && 'line-through'
+                    refundLine.state === 'failed' && 'line-through'
                   )}
                 >
-                  {refundState === 'done' || refundState === 'processing' ? '-' : ''}
+                  {REFUND_BADGE[refundLine.state].sign}
                   {formatCurrency(
-                    refundAmount,
-                    (refundView.kind === 'refund' && refundView.currency) || paymentCurrency,
+                    refundLine.amount,
+                    refundLine.currency || paymentCurrency,
                     formatLocale,
                   )}
                 </Badge>
