@@ -47,7 +47,8 @@ const RELEASE = [
   "0108_deposit_out_of_total",
   "0109_refund_operation_pending",
   "0110_lifecycle_analytics",
-  "0111_plan_offer",
+  "0111_reservation_sales_channel",
+  "0112_plan_offer",
 ];
 
 interface Journal {

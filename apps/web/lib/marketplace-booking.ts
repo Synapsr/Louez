@@ -14,6 +14,7 @@ import { createReservation } from "@/lib/reservations/create-reservation";
 import { createReservationPaymentSessionForCustomer } from "@/lib/reservations/payment-session";
 import { getCheckoutSession } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
+import { MARKETPLACE_SALES_CHANNEL } from "@/lib/util.sales-channel";
 
 import { useLogger } from "./evlog";
 
@@ -47,6 +48,7 @@ export const marketplaceHoldAdapter: MarketplaceHoldAdapter = {
       totalAmount: input.total,
       locale: input.locale,
       source: "marketplace",
+      salesChannel: MARKETPLACE_SALES_CHANNEL,
       marketplaceSecret: env.MARKETPLACE_CATALOG_SECRET,
     });
 

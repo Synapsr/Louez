@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "1ab33cf9-871a-44fe-b4c2-1951af2b1efd",
+  "id": "1ec35fc5-e9e8-4935-b991-4f3783d1f4d2",
   "prevId": "448790d2-cbbc-4c5d-93ed-664b51133bf9",
   "tables": {
     "account_departure_reason_counters": {
@@ -11704,6 +11704,13 @@
           "autoincrement": false,
           "default": "'online'"
         },
+        "sales_channel": {
+          "name": "sales_channel",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "tulip_insurance_opt_in": {
           "name": "tulip_insurance_opt_in",
           "type": "boolean",
@@ -14046,20 +14053,6 @@
         "stripe_coupon_id": {
           "name": "stripe_coupon_id",
           "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "plan_offer_dismissed_at": {
-          "name": "plan_offer_dismissed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "plan_offer_notified_at": {
-          "name": "plan_offer_notified_at",
-          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

@@ -1,0 +1,1 @@
+ALTER TABLE `reservations` ADD `sales_channel` varchar(20);
