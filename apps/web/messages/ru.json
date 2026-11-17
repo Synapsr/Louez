@@ -2972,7 +2972,8 @@
         "statusFailed": "Не удалось",
         "statusReleasePending": "Снимается",
         "requestPayment": "Запросить оплату",
-        "invoiceGenerated": "Счет {number} создан."
+        "invoiceGenerated": "Счет {number} создан.",
+        "refundProcessing": "Возврат обрабатывается"
       },
       "requestPaymentModal": {
         "title": "Запросить оплату",

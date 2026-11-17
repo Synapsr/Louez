@@ -15,8 +15,11 @@ export interface ReservationPaymentView {
   dateLabel: string;
   /** A reason the store wrote for the customer (deposit capture, damage). */
   note?: string | null;
-  /** Money given back: shown negative, labelled as a refund. */
-  isRefund: boolean;
+  /**
+   * Money given back (`readPaymentRow`): shown negative, labelled as a refund, `done` or
+   * still `processing` at the bank; null for money paid. A failed refund is not listed.
+   */
+  refund: "done" | "processing" | "failed" | null;
 }
 
 interface ReservationPaymentsCardProps {
@@ -48,9 +51,16 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
         {payments.map((payment) => {
           const isHold = payment.type === "deposit_hold";
           const typeLabel =
-            payment.isRefund && payment.type !== "deposit_return"
+            payment.refund && payment.type !== "deposit_return"
               ? t("types.refund")
               : t(`types.${payment.type}`);
+          // A refund reads refunded, or pending while the bank processes it, never "paid".
+          const status =
+            payment.refund === "processing"
+              ? "pending"
+              : payment.refund === "done"
+                ? "refunded"
+                : payment.status;
 
           return (
             <li
@@ -71,9 +81,9 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <Price amount={payment.isRefund ? -payment.amount : payment.amount} size="sm" />
-                <Badge variant={STATUS_VARIANT[payment.status] ?? "tertiary"} size="sm">
-                  {t(`${isHold ? "holdStatus" : "status"}.${payment.status}`)}
+                <Price amount={payment.refund ? -payment.amount : payment.amount} size="sm" />
+                <Badge variant={STATUS_VARIANT[status] ?? "tertiary"} size="sm">
+                  {t(`${isHold ? "holdStatus" : "status"}.${status}`)}
                 </Badge>
               </div>
             </li>

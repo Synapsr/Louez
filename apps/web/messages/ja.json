@@ -2972,7 +2972,8 @@
         "statusFailed": "失敗",
         "statusReleasePending": "解除中",
         "requestPayment": "支払いを要求する",
-        "invoiceGenerated": "請求書 {number} が生成されました"
+        "invoiceGenerated": "請求書 {number} が生成されました",
+        "refundProcessing": "返金処理中"
       },
       "requestPaymentModal": {
         "title": "支払いを要求する",

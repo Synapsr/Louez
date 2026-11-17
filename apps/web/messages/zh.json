@@ -2972,7 +2972,8 @@
         "statusFailed": "失败",
         "statusReleasePending": "正在释放",
         "requestPayment": "请求付款",
-        "invoiceGenerated": "生成发票 {number}"
+        "invoiceGenerated": "生成发票 {number}",
+        "refundProcessing": "退款处理中"
       },
       "requestPaymentModal": {
         "title": "请求付款",

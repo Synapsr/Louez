@@ -48,6 +48,48 @@ export const isRefundRow = (payment: PaymentLike): boolean =>
 export const isFailedRefundRow = (payment: PaymentLike): boolean =>
   isRefundRow(payment) && (payment.status === "failed" || payment.status === "cancelled");
 
+/** Stripe's word on a refund asked through Louez, by the refund row it made (`reservation.refunds`). */
+export type RefundStatusByRow = ReadonlyMap<string, "pending" | "succeeded" | "failed">;
+
+export const refundStatusByRow = (
+  refunds: readonly {
+    refundPaymentId: string | null;
+    status: "pending" | "succeeded" | "failed";
+  }[],
+): RefundStatusByRow =>
+  new Map(
+    refunds.flatMap((refund) =>
+      refund.refundPaymentId ? [[refund.refundPaymentId, refund.status] as const] : [],
+    ),
+  );
+
+/**
+ * What a payment row is, for whoever shows it: money the store took (`receipt`), a card
+ * hold (`hold`), or money given back (`refund`, by hand or through Stripe, in each of its
+ * shapes, `isRefundRow`). A refund is `failed` when it gave nothing back, `processing` while
+ * Stripe has not given its final word (its row is already `completed`: what the money counts
+ * is the row's), else `done`. The one reading of the payment card, the history and the
+ * customer's page; the totals read the rows by their own rules.
+ */
+export type PaymentRowReading =
+  | { kind: "receipt" }
+  | { kind: "hold" }
+  | { kind: "refund"; state: "done" | "processing" | "failed" };
+
+export const readPaymentRow = (
+  payment: PaymentLike,
+  refundStatuses: RefundStatusByRow = new Map(),
+): PaymentRowReading => {
+  if (payment.type === "deposit_hold") return { kind: "hold" };
+  if (!isRefundRow(payment)) return { kind: "receipt" };
+  const stated = payment.id ? refundStatuses.get(payment.id) : undefined;
+  if (isFailedRefundRow(payment) || stated === "failed") return { kind: "refund", state: "failed" };
+  if (stated === "pending" || payment.status === "pending") {
+    return { kind: "refund", state: "processing" };
+  }
+  return { kind: "refund", state: "done" };
+};
+
 /** With `currency`, the reservation's, a payment in another currency pays nothing. */
 export const isRentalPaid = (payments: readonly PaymentLike[], currency?: string): boolean =>
   payments.some(

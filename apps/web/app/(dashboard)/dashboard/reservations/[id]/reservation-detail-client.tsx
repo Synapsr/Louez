@@ -642,6 +642,7 @@ export function ReservationDetailClient({
             depositAmount={reservation.depositAmount}
             totalAmount={reservation.totalAmount}
             payments={reservation.payments}
+            refunds={reservation.refunds}
             status={status}
             currency={currency}
             depositStatus={reservation.depositStatus as DepositStatus | null}

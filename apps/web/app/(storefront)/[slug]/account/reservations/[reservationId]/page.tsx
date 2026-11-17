@@ -1,4 +1,5 @@
 import { listReservationItemDetails } from "@louez/api/services/customer-fields-online";
+import { listReservationOnlineRefunds } from "@louez/api/services/reservation-refunds";
 import { canCustomerEditReservationDetails, toAccountCustomerField } from "@louez/validations";
 
 import { ReservationPageView } from "@/components/storefront/account/reservation-page-view";
@@ -53,8 +54,9 @@ import {
   getDamageFees,
   getRentalPaid,
   getReservationPaymentStatus,
-  isRefundRow,
   isRentalPaid,
+  readPaymentRow,
+  refundStatusByRow,
 } from "@/lib/reservations/util.payment-status";
 import { getReservationActions } from "@/lib/reservations/util.reservation-actions";
 import { getReservationUpdates } from "@/lib/reservations/util.reservation-updates";
@@ -189,7 +191,7 @@ export default async function ReservationDetailPage({
 
   if (!reservation) notFound();
 
-  const [insuredProductIds, rentalDetails, inspectionRows] = await Promise.all([
+  const [insuredProductIds, rentalDetails, inspectionRows, onlineRefunds] = await Promise.all([
     getReservationInsuredProductIds(reservation),
     getRentalDetails(store.id, reservation),
     db
@@ -210,7 +212,10 @@ export default async function ReservationDetailPage({
           inArray(inspections.status, ["completed", "signed"]),
         ),
       ),
+    // Whether Stripe has settled each refund: one still processing is not money back yet.
+    listReservationOnlineRefunds(db, store.id, reservation.id),
   ]);
+  const refundStatuses = refundStatusByRow(onlineRefunds);
   const photoCounts =
     inspectionRows.length > 0
       ? await db
@@ -528,16 +533,19 @@ export default async function ReservationDetailPage({
           payments: getCustomerPaymentRows(
             reservation.payments,
             reservation.depositPaymentIntentId,
-          ).map((payment) => ({
-            id: payment.id,
-            type: payment.type,
-            method: payment.method,
-            status: payment.status,
-            amount: Number.parseFloat(payment.amount),
-            dateLabel: formatDate(payment.paidAt ?? payment.createdAt, "SHORT_DATE"),
-            note: ["deposit_capture", "damage"].includes(payment.type) ? payment.notes : null,
-            isRefund: isRefundRow(payment),
-          })),
+          ).map((payment) => {
+            const reading = readPaymentRow(payment, refundStatuses);
+            return {
+              id: payment.id,
+              type: payment.type,
+              method: payment.method,
+              status: payment.status,
+              amount: Number.parseFloat(payment.amount),
+              dateLabel: formatDate(payment.paidAt ?? payment.createdAt, "SHORT_DATE"),
+              note: ["deposit_capture", "damage"].includes(payment.type) ? payment.notes : null,
+              refund: reading.kind === "refund" ? reading.state : null,
+            };
+          }),
         }}
         inspections={{
           inspections: inspectionViews,

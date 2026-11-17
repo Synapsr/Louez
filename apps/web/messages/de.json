@@ -2972,7 +2972,8 @@
         "statusFailed": "Fehlgeschlagen",
         "statusReleasePending": "Wird freigegeben",
         "requestPayment": "Zahlung anfordern",
-        "invoiceGenerated": "Rechnung {number} erstellt"
+        "invoiceGenerated": "Rechnung {number} erstellt",
+        "refundProcessing": "Rückerstattung läuft"
       },
       "requestPaymentModal": {
         "title": "Zahlung anfordern",

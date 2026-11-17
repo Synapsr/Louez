@@ -2972,7 +2972,8 @@
         "statusFailed": "실패",
         "statusReleasePending": "해제 중",
         "requestPayment": "결제 요청",
-        "invoiceGenerated": "송장 {number}가 생성되었습니다."
+        "invoiceGenerated": "송장 {number}가 생성되었습니다.",
+        "refundProcessing": "환불 진행 중"
       },
       "requestPaymentModal": {
         "title": "결제 요청",

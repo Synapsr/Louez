@@ -2981,7 +2981,8 @@
         "statusFailed": "Échoué",
         "statusReleasePending": "Libération en cours",
         "requestPayment": "Demander un paiement",
-        "invoiceGenerated": "Facture {number} générée"
+        "invoiceGenerated": "Facture {number} générée",
+        "refundProcessing": "Remboursement en cours"
       },
       "requestPaymentModal": {
         "title": "Demander un paiement",

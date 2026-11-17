@@ -2972,7 +2972,8 @@
         "statusFailed": "Gagal",
         "statusReleasePending": "Sedang dilepaskan",
         "requestPayment": "Minta pembayaran",
-        "invoiceGenerated": "Faktur {number} dibuat"
+        "invoiceGenerated": "Faktur {number} dibuat",
+        "refundProcessing": "Pengembalian dana sedang diproses"
       },
       "requestPaymentModal": {
         "title": "Minta pembayaran",

@@ -49,6 +49,7 @@
     "./services/reservation-editable": "./src/services/reservation-editable.ts",
     "./services/reservation-inventory": "./src/services/reservation-inventory.ts",
     "./services/reservation-number": "./src/services/reservation-number.ts",
+    "./services/reservation-refunds": "./src/services/reservation-refunds.ts",
     "./services/reservation-status": "./src/services/reservation-status.ts",
     "./services/reservation-totals": "./src/services/reservation-totals.ts",
     "./services/sales-analytics": "./src/services/sales-analytics.ts",

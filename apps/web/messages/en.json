@@ -2972,7 +2972,8 @@
         "statusFailed": "Failed",
         "statusReleasePending": "Being released",
         "requestPayment": "Request payment",
-        "invoiceGenerated": "Invoice {number} generated"
+        "invoiceGenerated": "Invoice {number} generated",
+        "refundProcessing": "Refund in progress"
       },
       "requestPaymentModal": {
         "title": "Request payment",

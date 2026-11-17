@@ -14,6 +14,8 @@ import {
   isRefundRow,
   isRentalPaid,
   isStripeRefundRow,
+  readPaymentRow,
+  refundStatusByRow,
 } from "./util.payment-status";
 
 /** A Stripe refund as the webhook records it: its own positive row carrying only the refund id. */
@@ -348,5 +350,117 @@ describe("a refund that failed", () => {
       ),
       ["completed", "completed"],
     );
+  });
+});
+
+describe("readPaymentRow: what a row is, the one reading of the card, the history and the customer's page", () => {
+  const charge = {
+    id: "pay_charge",
+    type: "rental",
+    method: "stripe",
+    status: "completed",
+    amount: "32.00",
+    stripePaymentIntentId: "pi_1",
+    stripeCheckoutSessionId: "cs_1",
+    stripeRefundId: null,
+    refundOfPaymentId: null,
+  };
+  // Since 2026-08: the charge netted, the refund a row of its own linked to it.
+  const linked = (fields: Record<string, unknown> = {}) => ({
+    ...stripeRefund("10.00"),
+    id: "pay_refund",
+    method: "stripe",
+    refundOfPaymentId: "pay_charge",
+    ...fields,
+  });
+  const statuses = (status: "pending" | "succeeded" | "failed") =>
+    refundStatusByRow([{ refundPaymentId: "pay_refund", status }]);
+
+  test("money the store took is a receipt, a deposit hold a hold", () => {
+    assert.deepEqual(readPaymentRow(charge), { kind: "receipt" });
+    assert.deepEqual(
+      readPaymentRow({
+        ...charge,
+        method: "cash",
+        stripePaymentIntentId: null,
+        stripeCheckoutSessionId: null,
+      }),
+      { kind: "receipt" },
+    );
+    assert.deepEqual(readPaymentRow({ ...charge, type: "deposit_capture" }), { kind: "receipt" });
+    assert.deepEqual(readPaymentRow({ ...charge, type: "deposit_hold", status: "authorized" }), {
+      kind: "hold",
+    });
+  });
+
+  test("the oldest webhooks' charge, stamped with its refund's id and netted, is still the charge", () => {
+    assert.deepEqual(readPaymentRow({ ...charge, stripeRefundId: "re_old" }), { kind: "receipt" });
+  });
+
+  test("each shape of refund reads as money given back", () => {
+    const done = { kind: "refund", state: "done" };
+    // Given by hand: a row pointing at the payment it gives back.
+    assert.deepEqual(
+      readPaymentRow({
+        id: "r",
+        type: "rental",
+        method: "cash",
+        status: "completed",
+        amount: "10.00",
+        refundOfPaymentId: "p",
+      }),
+      done,
+    );
+    // The dashboard's Stripe refund before 2026-08: its own row, with no link to the charge.
+    assert.deepEqual(readPaymentRow({ ...stripeRefund("10.00"), method: "stripe" }), done);
+    // Since 2026-08: its own row linked to the charge.
+    assert.deepEqual(readPaymentRow(linked()), done);
+    // A deposit given back by hand, and through Stripe.
+    assert.deepEqual(
+      readPaymentRow({
+        id: "d",
+        type: "deposit_return",
+        method: "cash",
+        status: "completed",
+        amount: "50.00",
+      }),
+      done,
+    );
+    assert.deepEqual(readPaymentRow(linked({ type: "deposit_return" })), done);
+  });
+
+  test("a refund Stripe has not settled is in progress, not done, though its row is completed", () => {
+    assert.deepEqual(readPaymentRow(linked(), statuses("pending")), {
+      kind: "refund",
+      state: "processing",
+    });
+    assert.deepEqual(readPaymentRow(linked(), statuses("succeeded")), {
+      kind: "refund",
+      state: "done",
+    });
+    // A refund made outside Louez has no operation: its row says it.
+    assert.deepEqual(readPaymentRow(linked(), refundStatusByRow([])), {
+      kind: "refund",
+      state: "done",
+    });
+  });
+
+  test("a refund Stripe failed afterwards gave nothing back", () => {
+    assert.deepEqual(readPaymentRow(linked({ status: "failed" }), statuses("failed")), {
+      kind: "refund",
+      state: "failed",
+    });
+    assert.deepEqual(readPaymentRow(linked({ status: "failed" })), {
+      kind: "refund",
+      state: "failed",
+    });
+    assert.deepEqual(readPaymentRow({ ...stripeRefund("10.00"), status: "cancelled" }), {
+      kind: "refund",
+      state: "failed",
+    });
+  });
+
+  test("an operation that has not made its row yet names no row", () => {
+    assert.equal(refundStatusByRow([{ refundPaymentId: null, status: "pending" }]).size, 0);
   });
 });

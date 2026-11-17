@@ -2972,7 +2972,8 @@
         "statusFailed": "Fallido",
         "statusReleasePending": "Liberación en curso",
         "requestPayment": "Solicitar pago",
-        "invoiceGenerated": "Factura {number} generada"
+        "invoiceGenerated": "Factura {number} generada",
+        "refundProcessing": "Reembolso en curso"
       },
       "requestPaymentModal": {
         "title": "Solicitar pago",

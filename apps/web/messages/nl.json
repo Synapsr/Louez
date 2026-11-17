@@ -2933,7 +2933,8 @@
         "statusFailed": "Mislukt",
         "statusReleasePending": "Wordt vrijgegeven",
         "requestPayment": "Betaling aanvragen",
-        "invoiceGenerated": "Factuur {number} aangemaakt"
+        "invoiceGenerated": "Factuur {number} aangemaakt",
+        "refundProcessing": "Terugbetaling bezig"
       },
       "requestPaymentModal": {
         "title": "Betaling aanvragen",

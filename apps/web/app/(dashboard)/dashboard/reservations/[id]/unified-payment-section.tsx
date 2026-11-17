@@ -83,9 +83,8 @@ import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
   getDepositTotals,
   getRentalPaid,
-  isFailedRefundRow,
-  isRefundRow,
-  isStripeRefundRow,
+  readPaymentRow,
+  refundStatusByRow,
 } from "@/lib/reservations/util.payment-status";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
@@ -102,7 +101,7 @@ import {
   isManualPaymentMethod,
   isManualPaymentRefundEligible,
 } from "./util.payment-refunds";
-import { paymentHistoryRows } from "./util.payment-history";
+import { onlineRentalTile, paymentHistoryRows } from "./util.payment-history";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface Payment {
@@ -172,6 +171,11 @@ interface UnifiedPaymentSectionProps {
   depositAmount: string;
   totalAmount: string;
   payments: Payment[];
+  /** The refunds asked through Louez (`reservation.refunds`): whether Stripe settled each. */
+  refunds: readonly {
+    refundPaymentId: string | null;
+    status: "pending" | "succeeded" | "failed";
+  }[];
   status: string;
   currency?: string;
   // Deposit authorization props
@@ -211,12 +215,44 @@ const CARD_BRANDS: Record<string, string> = {
 
 const VISIBLE_HISTORY_COUNT = 3;
 
+/**
+ * The online tile by what it tells: money received (+), a refund made (-, the sign the
+ * history gives a refund), one Stripe is still processing, or one it failed (struck).
+ */
+const ONLINE_TILE = {
+  received: {
+    label: "onlinePayment.received",
+    sign: "+",
+    box: "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20",
+    amount: "text-emerald-700 dark:text-emerald-400",
+  },
+  done: {
+    label: "payment.refundBadge",
+    sign: "-",
+    box: "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20",
+    amount: "text-emerald-700 dark:text-emerald-400",
+  },
+  processing: {
+    label: "payment.refundProcessing",
+    sign: "-",
+    box: "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20",
+    amount: "text-blue-700 dark:text-blue-400",
+  },
+  failed: {
+    label: "payment.refundBadge",
+    sign: "",
+    box: "bg-muted/50",
+    amount: "text-muted-foreground line-through",
+  },
+} as const;
+
 export function UnifiedPaymentSection({
   reservationId,
   reservationNumber,
   depositAmount,
   totalAmount,
   payments,
+  refunds,
   status,
   currency = "EUR",
   depositStatus: depositStatusProp,
@@ -333,10 +369,14 @@ export function UnifiedPaymentSection({
 
   const isReservationFinished = ["completed", "cancelled", "rejected"].includes(status);
 
-  // Stripe payment info
-  const stripeRentalPayment = payments.find(
-    (p) => p.method === "stripe" && p.type === "rental" && p.status === "completed",
-  );
+  // What each row is (a refund in progress or failed says so), by the one reader.
+  const refundStatuses = refundStatusByRow(refunds);
+  const readRow = (payment: Payment) => readPaymentRow(payment, refundStatuses);
+
+  // The latest of the rental's online money: the payment received, or a refund of it.
+  const onlineTile = onlineRentalTile(payments, refundStatuses);
+  const onlineTileState =
+    onlineTile?.reading.kind === "refund" ? onlineTile.reading.state : "received";
   const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes (matches Stripe expires_at)
   const stripePendingPayment = payments.find(
     (p) =>
@@ -816,7 +856,7 @@ export function UnifiedPaymentSection({
 
         <CardContent className="space-y-4">
           {/* Stripe Payment Pending */}
-          {stripePendingPayment && !stripeRentalPayment && (
+          {stripePendingPayment && !onlineTile && (
             <div className="p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -837,20 +877,27 @@ export function UnifiedPaymentSection({
             </div>
           )}
 
-          {/* Stripe Payment Completed */}
-          {stripeRentalPayment && (
-            <div className="p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+          {/* The rental's latest online money: received, or given back (in progress, failed). */}
+          {onlineTile && (
+            <div className={cn("p-3 rounded-lg border", ONLINE_TILE[onlineTileState].box)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50">
                     <Wifi className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{t("onlinePayment.received")}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium">{t(ONLINE_TILE[onlineTileState].label)}</p>
+                      {onlineTileState === "failed" && (
+                        <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                          {t("payment.statusFailed")}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      {stripeRentalPayment.paidAt
+                      {onlineTile.payment.paidAt
                         ? formatStoreDate(
-                            new Date(stripeRentalPayment.paidAt),
+                            new Date(onlineTile.payment.paidAt),
                             timezone,
                             "SHORT_DATE_AT_TIME",
                             formatLocale,
@@ -859,8 +906,9 @@ export function UnifiedPaymentSection({
                     </p>
                   </div>
                 </div>
-                <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                  +{money(stripeRentalPayment.amount)}
+                <span className={cn("text-sm font-semibold", ONLINE_TILE[onlineTileState].amount)}>
+                  {ONLINE_TILE[onlineTileState].sign}
+                  {money(onlineTile.payment.amount)}
                 </span>
               </div>
             </div>
@@ -1213,148 +1261,161 @@ export function UnifiedPaymentSection({
 
               <div className="relative">
                 <div className="space-y-1.5">
-                  {visiblePayments.map((payment, index) => (
-                    <div
-                      key={payment.id}
-                      className={cn(
-                        "flex items-center justify-between p-2 rounded-lg border bg-card text-xs transition-opacity",
-                        payment.method === "stripe" && "border-l-2 border-l-[#635BFF]",
-                        !historyExpanded &&
-                          index === VISIBLE_HISTORY_COUNT - 1 &&
-                          hasMorePayments &&
-                          "opacity-50",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cn(
-                            "flex items-center justify-center w-6 h-6 rounded-full",
-                            payment.method === "stripe" ? "bg-[#635BFF]/10" : "bg-muted",
-                          )}
-                        >
-                          {METHOD_ICONS[payment.method]}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium">{getTypeLabel(payment.type)}</span>
-                            {payment.method === "stripe" && (
-                              <Badge variant="submitted" className="h-4 px-1 text-[9px] border-0">
-                                Stripe
-                              </Badge>
+                  {visiblePayments.map((payment, index) => {
+                    const reading = readRow(payment);
+                    const refundState = reading.kind === "refund" ? reading.state : null;
+                    return (
+                      <div
+                        key={payment.id}
+                        className={cn(
+                          "flex items-center justify-between p-2 rounded-lg border bg-card text-xs transition-opacity",
+                          payment.method === "stripe" && "border-l-2 border-l-[#635BFF]",
+                          !historyExpanded &&
+                            index === VISIBLE_HISTORY_COUNT - 1 &&
+                            hasMorePayments &&
+                            "opacity-50",
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "flex items-center justify-center w-6 h-6 rounded-full",
+                              payment.method === "stripe" ? "bg-[#635BFF]/10" : "bg-muted",
                             )}
-                            {payment.status === "authorized" &&
-                              depositHoldRowKind(payment) !== "release_pending" && (
-                                <Badge variant="pending" className="h-4 px-1 text-[9px] border-0">
-                                  {t("payment.statusAuthorized")}
+                          >
+                            {METHOD_ICONS[payment.method]}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium">{getTypeLabel(payment.type)}</span>
+                              {payment.method === "stripe" && (
+                                <Badge variant="submitted" className="h-4 px-1 text-[9px] border-0">
+                                  Stripe
                                 </Badge>
                               )}
-                            {depositHoldRowKind(payment) === "release_pending" && (
-                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
-                                {t("payment.statusReleasePending")}
-                              </Badge>
-                            )}
-                            {(depositHoldRowKind(payment) === "failed" ||
-                              isFailedRefundRow(payment)) && (
-                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
-                                {t("payment.statusFailed")}
-                              </Badge>
-                            )}
-                            {payment.status === "refunded" && (
-                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
-                                {t("payment.statusRefunded")}
-                              </Badge>
-                            )}
-                            {(payment.refundOfPaymentId || isStripeRefundRow(payment)) && (
-                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
-                                {t("payment.refundBadge")}
-                              </Badge>
-                            )}
-                            {payment.status === "cancelled" && (
-                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
-                                {t("payment.statusCancelled")}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            {payment.paidAt
-                              ? formatStoreDate(
-                                  new Date(payment.paidAt),
-                                  timezone,
-                                  "TIMESTAMP",
-                                  formatLocale,
+                              {payment.status === "authorized" &&
+                                depositHoldRowKind(payment) !== "release_pending" && (
+                                  <Badge variant="pending" className="h-4 px-1 text-[9px] border-0">
+                                    {t("payment.statusAuthorized")}
+                                  </Badge>
+                                )}
+                              {depositHoldRowKind(payment) === "release_pending" && (
+                                <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                  {t("payment.statusReleasePending")}
+                                </Badge>
+                              )}
+                              {(depositHoldRowKind(payment) === "failed" ||
+                                refundState === "failed") && (
+                                <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                  {t("payment.statusFailed")}
+                                </Badge>
+                              )}
+                              {payment.status === "refunded" && (
+                                <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                  {t("payment.statusRefunded")}
+                                </Badge>
+                              )}
+                              {refundState === "processing" ? (
+                                <Badge variant="progress" className="h-4 px-1 text-[9px] border-0">
+                                  {t("payment.refundProcessing")}
+                                </Badge>
+                              ) : (
+                                refundState &&
+                                payment.type !== "deposit_return" && (
+                                  <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                    {t("payment.refundBadge")}
+                                  </Badge>
                                 )
-                              : "-"}
-                          </p>
+                              )}
+                              {payment.status === "cancelled" && (
+                                <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                  {t("payment.statusCancelled")}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              {payment.paidAt
+                                ? formatStoreDate(
+                                    new Date(payment.paidAt),
+                                    timezone,
+                                    "TIMESTAMP",
+                                    formatLocale,
+                                  )
+                                : "-"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "font-mono font-medium",
+                              refundState === "done" && "text-emerald-600 dark:text-emerald-400",
+                              refundState === "processing" && "text-muted-foreground",
+                              payment.type === "damage" && "text-red-600 dark:text-red-400",
+                              payment.type === "deposit_capture" &&
+                                "text-red-600 dark:text-red-400",
+                              payment.type === "adjustment" &&
+                                parseFloat(payment.amount) < 0 &&
+                                "text-red-600 dark:text-red-400",
+                              payment.type === "adjustment" &&
+                                parseFloat(payment.amount) > 0 &&
+                                "text-emerald-600 dark:text-emerald-400",
+                              (payment.status === "cancelled" ||
+                                depositHoldRowKind(payment) === "failed" ||
+                                refundState === "failed") &&
+                                "text-muted-foreground line-through",
+                              depositHoldRowKind(payment) === "release_pending" &&
+                                "text-muted-foreground",
+                            )}
+                          >
+                            {refundState === "failed"
+                              ? ""
+                              : refundState
+                                ? "-"
+                                : payment.type === "adjustment"
+                                  ? parseFloat(payment.amount) < 0
+                                    ? ""
+                                    : "+"
+                                  : "+"}
+                            {money(payment.amount)}
+                          </span>
+                          {isManualPaymentRefundEligible(payment, payments) && (
+                            <Button
+                              disabled={readOnly}
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => setPaymentToRefund(payment)}
+                            >
+                              {t("payment.refundAction")}
+                            </Button>
+                          )}
+                          {payment.method !== "stripe" && (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    disabled={readOnly}
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                    aria-label={tCommon("delete")}
+                                    onClick={() => {
+                                      setPaymentToDelete(payment);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                  />
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </TooltipTrigger>
+                              <TooltipContent>{tCommon("delete")}</TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "font-mono font-medium",
-                            isRefundRow(payment) &&
-                              !isFailedRefundRow(payment) &&
-                              "text-emerald-600 dark:text-emerald-400",
-                            payment.type === "damage" && "text-red-600 dark:text-red-400",
-                            payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
-                            payment.type === "adjustment" &&
-                              parseFloat(payment.amount) < 0 &&
-                              "text-red-600 dark:text-red-400",
-                            payment.type === "adjustment" &&
-                              parseFloat(payment.amount) > 0 &&
-                              "text-emerald-600 dark:text-emerald-400",
-                            (payment.status === "cancelled" ||
-                              depositHoldRowKind(payment) === "failed" ||
-                              isFailedRefundRow(payment)) &&
-                              "text-muted-foreground line-through",
-                            depositHoldRowKind(payment) === "release_pending" &&
-                              "text-muted-foreground",
-                          )}
-                        >
-                          {isRefundRow(payment)
-                            ? "-"
-                            : payment.type === "adjustment"
-                              ? parseFloat(payment.amount) < 0
-                                ? ""
-                                : "+"
-                              : "+"}
-                          {money(payment.amount)}
-                        </span>
-                        {isManualPaymentRefundEligible(payment, payments) && (
-                          <Button
-                            disabled={readOnly}
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => setPaymentToRefund(payment)}
-                          >
-                            {t("payment.refundAction")}
-                          </Button>
-                        )}
-                        {payment.method !== "stripe" && (
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  disabled={readOnly}
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                  aria-label={tCommon("delete")}
-                                  onClick={() => {
-                                    setPaymentToDelete(payment);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                />
-                              }
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </TooltipTrigger>
-                            <TooltipContent>{tCommon("delete")}</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Fade overlay when collapsed and has more */}
