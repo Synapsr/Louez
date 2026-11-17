@@ -302,7 +302,8 @@ describe(
         type: "rental",
         method,
         status: "completed",
-        paidAt: new Date(),
+        // Whole seconds: MySQL rounds a fraction up, past the `now` a test reads with.
+        paidAt: new Date(Math.floor(Date.now() / 1000) * 1000),
       });
     }
 

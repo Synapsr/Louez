@@ -194,6 +194,47 @@ describe("test reservations (database)", { skip: skipWithoutTestDatabase() }, ()
     });
   });
 
+  test("deletes the unit events that name the test reservation or only its line, never a real one's", async () => {
+    const storeId = await store();
+    const testRow = await reservation(storeId, await customer(storeId, true), { isTest: true });
+    const realRow = await reservation(storeId, await customer(storeId, false), { isTest: false });
+    const event = (payload: Record<string, unknown>) => ({
+      id: nextId("evt"),
+      storeId,
+      productUnitId: null,
+      type: "assigned" as const,
+      payload,
+    });
+    await louezDb.db
+      .insert(louezDb.productUnitEvents)
+      .values([
+        event({ reservationId: testRow.id, reservationItemId: testRow.itemId }),
+        event({ reservationItemId: testRow.itemId }),
+        event({ reservationId: realRow.id, reservationItemId: realRow.itemId }),
+        event({ reservationItemId: realRow.itemId }),
+      ]);
+
+    await service.deleteTestReservation({
+      storeId,
+      reservationId: testRow.id,
+      analytics: { distinctId: "user", trigger: "manual" },
+    });
+
+    const left = await louezDb.db
+      .select({ payload: louezDb.productUnitEvents.payload })
+      .from(louezDb.productUnitEvents)
+      .where(eq(louezDb.productUnitEvents.storeId, storeId));
+    assert.deepEqual(
+      left
+        .map((row) => row.payload)
+        .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+      [
+        { reservationId: realRow.id, reservationItemId: realRow.itemId },
+        { reservationItemId: realRow.itemId },
+      ].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+    );
+  });
+
   test("refuses a real reservation as not found and leaves it whole", async () => {
     const storeId = await store();
     const real = await reservation(storeId, await customer(storeId, false), { isTest: false });

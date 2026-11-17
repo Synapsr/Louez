@@ -41,7 +41,7 @@ import {
   verificationCodes,
 } from "@louez/db";
 import { DEFAULT_INSPECTION_SETTINGS } from "@louez/types";
-import { and, asc, eq, inArray, isNotNull, lt, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 
 import { reservationErrors } from "../contracts/reservations";
 import type { GetTestReservationOutput } from "../contracts/test-reservations";
@@ -303,16 +303,24 @@ async function deleteReservationRows(
         eq(inboxAcknowledgements.recordId, reservationId),
       ),
     );
-  // A unit's history names the reservation it was assigned to in its payload.
-  await tx
-    .delete(productUnitEvents)
-    .where(
-      and(
-        eq(productUnitEvents.storeId, storeId),
-        inArray(productUnitEvents.type, ["assigned", "unassigned"]),
-        sql`JSON_UNQUOTE(JSON_EXTRACT(${productUnitEvents.payload}, '$.reservationId')) = ${reservationId}`,
-      ),
-    );
+  // A unit's history names the reservation it was assigned to in its payload, or
+  // only the reservation's line.
+  const namesThisReservation = sql`JSON_UNQUOTE(JSON_EXTRACT(${productUnitEvents.payload}, '$.reservationId')) = ${reservationId}`;
+  await tx.delete(productUnitEvents).where(
+    and(
+      eq(productUnitEvents.storeId, storeId),
+      inArray(productUnitEvents.type, ["assigned", "unassigned"]),
+      itemIds.length > 0
+        ? or(
+            namesThisReservation,
+            sql`JSON_UNQUOTE(JSON_EXTRACT(${productUnitEvents.payload}, '$.reservationItemId')) IN (${sql.join(
+              itemIds.map((id) => sql`${id}`),
+              sql`, `,
+            )})`,
+          )
+        : namesThisReservation,
+    ),
+  );
   // The storefront advisor's conversation stays, as when a customer is deleted.
   await tx
     .update(aiAdvisorConversations)

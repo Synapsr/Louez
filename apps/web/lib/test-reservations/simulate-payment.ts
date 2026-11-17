@@ -57,6 +57,15 @@ export const simulatedPaymentAmount = (input: {
 /** How long a simulated payment waits for another one of the same reservation to finish. */
 const LOCK_WAIT_SECONDS = 5;
 
+/**
+ * Simulated payments in progress in this process. Each holds a pooled connection for
+ * its named lock and borrows others for its steps: past this bound, a call answers
+ * `busy` before taking a connection, so lock holders never fill the pool and wait on
+ * each other (the pool holds ten).
+ */
+const MAX_SIMULATIONS_IN_PROGRESS = 2;
+let simulationsInProgress = 0;
+
 /** The MySQL named lock a reservation's simulated payment runs under. */
 export const simulatedPaymentLockName = (reservationId: string): string =>
   `louez:test-payment:${reservationId}`;
@@ -86,12 +95,18 @@ export async function simulateTestReservationPayment(input: {
   storeId: string;
   reservationId: string;
 }): Promise<SimulatedPaymentResult> {
-  const run = await withNamedLock(
-    simulatedPaymentLockName(input.reservationId),
-    LOCK_WAIT_SECONDS,
-    (lockedDb) => simulateUnderLock(lockedDb, input),
-  );
-  return run.ran ? run.value : { ok: false, error: "busy" };
+  if (simulationsInProgress >= MAX_SIMULATIONS_IN_PROGRESS) return { ok: false, error: "busy" };
+  simulationsInProgress += 1;
+  try {
+    const run = await withNamedLock(
+      simulatedPaymentLockName(input.reservationId),
+      LOCK_WAIT_SECONDS,
+      (lockedDb) => simulateUnderLock(lockedDb, input),
+    );
+    return run.ran ? run.value : { ok: false, error: "busy" };
+  } finally {
+    simulationsInProgress -= 1;
+  }
 }
 
 async function simulateUnderLock(
