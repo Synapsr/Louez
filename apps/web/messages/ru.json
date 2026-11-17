@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "игнорировать",
         "lockPrice": "Цена блокировки",
         "unlockPrice": "Возврат к автоматическому ценообразованию (заменяет введенную цену)",
-        "adjustmentPositive": "Необходимо будет собрать дополнительный {amount}.",
         "adjustmentNegative": "Возможен возврат средств в размере {amount}.",
         "warningDialogTitle": "Подтвердить исключительное изменение",
         "warningDialogDescription": "Это обновление не соответствует обычным правилам бронирования. Перед сохранением просмотрите предупреждения.",
@@ -2808,7 +2807,14 @@
             "generic": "Авторизация депозита не удалась. Попросите клиента повторить попытку или использовать другую карту.",
             "closedByStore": "Запрос закрыт магазином: в Stripe авторизация не найдена."
           }
-        }
+        },
+        "refundDone": "Возврат выполнен",
+        "refundFailed": "Возврат не выполнен",
+        "refundToCheck": "Проверьте возврат в Stripe",
+        "approvedBy": "Одобрил(а)",
+        "refundIssued": "Возврат оформлен в Stripe",
+        "stripeRefundCount": "Stripe учитывает {amount} возвратов по этому платежу",
+        "stripeRefundCountFull": "Stripe учитывает этот платёж как полностью возвращённый"
       },
       "unitAssignment": {
         "title": "Назначение единицы измерения",
@@ -2973,7 +2979,9 @@
         "statusFailed": "Не удалось",
         "statusReleasePending": "Снимается",
         "requestPayment": "Запросить оплату",
-        "invoiceGenerated": "Счет {number} создан."
+        "invoiceGenerated": "Счет {number} создан.",
+        "refundProcessing": "Возврат обрабатывается",
+        "refundIssued": "Возврат оформлен в Stripe"
       },
       "requestPaymentModal": {
         "title": "Запросить оплату",
@@ -8462,8 +8470,6 @@
         "payment_received": "Онлайн-платеж получен",
         "payment_received_amount": "Получен онлайн-платеж ({amount})",
         "payment_failed": "Онлайн-платеж отклонен",
-        "refunded": "Возврат произведен",
-        "refunded_amount": "Возврат {amount}",
         "payment_added_rental": "Арендная плата зарегистрирована ({amount})",
         "payment_added_deposit": "Депозит получен ({amount})",
         "payment_added_deposit_return": "Депозит возвращен ({amount})",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "Отчет о состоянии самовывоза завершен",
         "inspection_return_completed": "Отчет об условиях возврата завершен",
         "inspection_damage_detected": "Повреждения отмечены в отчете о состоянии",
-        "inspection_signed": "Отчет о состоянии подписан"
+        "inspection_signed": "Отчет о состоянии подписан",
+        "stripe_refund_count": "{amount} возврата учтено Stripe по этому платежу"
       },
       "inspections": {
         "title": "Отчеты о состоянии",
@@ -8531,6 +8538,15 @@
           "refunded": "Возвращено",
           "cancelled": "Отменено",
           "authorized": "Авторизовано"
+        },
+        "refundStatus": {
+          "done": "Возвращено",
+          "issued": "Оформлен",
+          "processing": "Обрабатывается",
+          "failed": "Не выполнен"
+        },
+        "refundedStatus": {
+          "issued": "Возврат оформлен"
         }
       },
       "reviewPrompt": {

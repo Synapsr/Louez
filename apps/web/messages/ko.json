@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "무시",
         "lockPrice": "가격 고정",
         "unlockPrice": "자동 가격 책정으로 돌아가기(입력된 가격 대체)",
-        "adjustmentPositive": "{amount}를 추가로 수집해야 합니다.",
         "adjustmentNegative": "{amount}의 환불이 가능합니다.",
         "warningDialogTitle": "예외적인 변경 확인",
         "warningDialogDescription": "이번 업데이트는 일반적인 예약 규정과 일치하지 않습니다. 저장하기 전에 경고를 검토하세요.",
@@ -2808,7 +2807,14 @@
             "generic": "입금 승인에 실패했습니다. 고객에게 다시 시도하거나 다른 카드를 사용하도록 요청하세요.",
             "closedByStore": "매장에서 요청을 닫음: Stripe에서 승인을 찾지 못했습니다."
           }
-        }
+        },
+        "refundDone": "환불 완료",
+        "refundFailed": "환불 실패",
+        "refundToCheck": "Stripe에서 환불 확인 필요",
+        "approvedBy": "승인자",
+        "refundIssued": "Stripe에서 환불 발행됨",
+        "stripeRefundCount": "Stripe가 이 결제에 {amount}의 환불을 집계함",
+        "stripeRefundCountFull": "Stripe가 이 결제를 전액 환불로 집계함"
       },
       "unitAssignment": {
         "title": "단위 할당",
@@ -2973,7 +2979,9 @@
         "statusFailed": "실패",
         "statusReleasePending": "해제 중",
         "requestPayment": "결제 요청",
-        "invoiceGenerated": "송장 {number}가 생성되었습니다."
+        "invoiceGenerated": "송장 {number}가 생성되었습니다.",
+        "refundProcessing": "환불 진행 중",
+        "refundIssued": "Stripe에서 환불 발행됨"
       },
       "requestPaymentModal": {
         "title": "결제 요청",
@@ -8462,8 +8470,6 @@
         "payment_received": "온라인 결제 접수됨",
         "payment_received_amount": "온라인 결제 완료 ({amount})",
         "payment_failed": "온라인 결제가 거부되었습니다.",
-        "refunded": "환불 처리됨",
-        "refunded_amount": "{amount} 환불",
         "payment_added_rental": "렌탈 지불 기록({amount})",
         "payment_added_deposit": "입금 완료 ({amount})",
         "payment_added_deposit_return": "보증금 반환됨 ({amount})",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "픽업상태 보고 완료",
         "inspection_return_completed": "반품조건 신고 완료",
         "inspection_damage_detected": "상태 보고서에 명시된 손상",
-        "inspection_signed": "상태 보고서 서명됨"
+        "inspection_signed": "상태 보고서 서명됨",
+        "stripe_refund_count": "이 결제에 대해 Stripe가 집계한 환불: {amount}"
       },
       "inspections": {
         "title": "상태 보고서",
@@ -8531,6 +8538,15 @@
           "refunded": "환불됨",
           "cancelled": "취소됨",
           "authorized": "승인 완료"
+        },
+        "refundStatus": {
+          "done": "환불됨",
+          "issued": "발행됨",
+          "processing": "진행 중",
+          "failed": "실패"
+        },
+        "refundedStatus": {
+          "issued": "환불 발행됨"
         }
       },
       "reviewPrompt": {

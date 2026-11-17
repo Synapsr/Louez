@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, MapPin, Search, X } from 'lucide-react';
@@ -18,6 +24,7 @@ import {
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
+import { resolveTypedText } from '@/components/ui/util.address-input';
 
 import { orpc } from '@/lib/orpc/react';
 
@@ -48,6 +55,12 @@ interface AddressInputProps {
   showMapPicker?: boolean;
   onBlur?: () => void;
   onAddressResolved?: (details: AddressDetails) => void;
+  /**
+   * Whether leaving the field, or pressing Enter with no suggestion list open,
+   * replaces the typed text by the lookup's best match. Off, the typed text
+   * stays as typed and only a suggestion picked from the list replaces it.
+   */
+  resolvesTypedText?: boolean;
   /** Supplied address service; when present, no remote lookup is performed. */
   source?: AddressInputSource;
   /** Whether clearing the field may return focus to the input. */
@@ -57,6 +70,11 @@ interface AddressInputProps {
    * password managers are kept away so they do not cover the suggestions.
    */
   autoComplete?: string;
+  /**
+   * Values that go with the address, such as its postal code and city: a
+   * change from anywhere voids the answers still pending, as an edit does.
+   */
+  relatedValues?: readonly string[];
 }
 
 export const AddressInput = ({
@@ -75,15 +93,20 @@ export const AddressInput = ({
   showMapPicker = true,
   onBlur,
   onAddressResolved,
+  resolvesTypedText = true,
   source,
   autoFocus = true,
   autoComplete,
+  relatedValues,
 }: AddressInputProps) => {
   const t = useTranslations('common.addressInput');
   const queryClient = useQueryClient();
-  const [inputValue, setInputValue] = useState(value);
+  const [inputValue, setInputValueState] = useState(value);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // The spinner belongs to the request that last started one: an earlier
+  // request that settles later never hides it.
+  const [loadingRequest, setLoadingRequest] = useState<number | null>(null);
+  const isLoading = loadingRequest !== null;
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,7 +114,71 @@ export const AddressInput = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const shouldSkipBlurResolveRef = useRef(false);
+  const lastRequestRef = useRef(0);
+  // Every write to the field (an edit, a clear, a pick, a lookup, a value or a
+  // related value set from outside, the field unmounting) moves this on; an
+  // answer asked before it moved on is dropped, success or failure.
+  const writeGenerationRef = useRef(0);
+  const pickInFlightRef = useRef<number | null>(null);
+  // The text the field shows, and whether it is still there: a suggestion
+  // list answers one text of a mounted field.
+  const inputTextRef = useRef(value);
+  const unmountedRef = useRef(false);
+  /** Writes the text the field shows; the ref moves at once, before React commits. */
+  const setInputValue = (text: string) => {
+    inputTextRef.current = text;
+    setInputValueState(text);
+  };
+  const emittedTextRef = useRef<string | null>(null);
+  const relatedKey = JSON.stringify(relatedValues ?? []);
+  const relatedKeyRef = useRef(relatedKey);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const startLoading = () => {
+    const request = ++lastRequestRef.current;
+    setLoadingRequest(request);
+    return request;
+  };
+  const stopLoading = (request: number) =>
+    setLoadingRequest((current) => (current === request ? null : current));
+
+  /** Marks a write: answers asked before it no longer apply. */
+  const claimWrite = () => {
+    const generation = ++writeGenerationRef.current;
+    return () => writeGenerationRef.current === generation;
+  };
+
+  const emitChange: typeof onChange = (address, lat, lng, display, info) => {
+    emittedTextRef.current = display || address;
+    onChange(address, lat, lng, display, info);
+  };
+
+  // A text or a related value set from outside (a located address, a reset)
+  // is a write too, counted as soon as it is committed.
+  useLayoutEffect(() => {
+    const text = displayAddress || value;
+    if (text !== emittedTextRef.current) {
+      emittedTextRef.current = text;
+      writeGenerationRef.current += 1;
+    }
+  }, [value, displayAddress]);
+  useLayoutEffect(() => {
+    if (relatedKey !== relatedKeyRef.current) {
+      relatedKeyRef.current = relatedKey;
+      writeGenerationRef.current += 1;
+    }
+  }, [relatedKey]);
+  // Once unmounted, the field waits for nothing: its pending answers are void.
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      writeGenerationRef.current += 1;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    inputTextRef.current = inputValue;
+  }, [inputValue]);
 
   // Sync with external value
   useEffect(() => {
@@ -147,7 +234,11 @@ export const AddressInput = ({
         return;
       }
 
-      setIsLoading(true);
+      // A suggestion list answers one text: it changes the list only while
+      // the field, still mounted, shows that text. A related value changing
+      // does not void it: the street's suggestions are still the street's.
+      const isCurrent = () => !unmountedRef.current && inputTextRef.current === query;
+      const request = startLoading();
       try {
         const data = source
           ? { suggestions: await source.search(query) }
@@ -156,14 +247,15 @@ export const AddressInput = ({
                 input: { query },
               }),
             );
+        if (!isCurrent()) return;
         setSuggestions(data.suggestions || []);
         setIsOpen((data.suggestions || []).length > 0);
         setSelectedIndex(-1);
       } catch (error) {
         console.error('Address search error:', error);
-        setSuggestions([]);
+        if (isCurrent()) setSuggestions([]);
       } finally {
-        setIsLoading(false);
+        stopLoading(request);
       }
     },
     [queryClient, source],
@@ -172,44 +264,51 @@ export const AddressInput = ({
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
 
   const resolveTypedAddress = useCallback(async () => {
-    const query = inputValue.trim();
-    const hasCoordinates =
-      latitude !== null &&
-      latitude !== undefined &&
-      longitude !== null &&
-      longitude !== undefined;
+    // A pick still answering speaks for the field.
+    if (pickInFlightRef.current === writeGenerationRef.current) return;
 
-    if (
-      query.length < 3 ||
-      (hasCoordinates && query === displayAddress) ||
-      disabled
-    ) {
-      return;
-    }
-
-    setIsLoading(true);
+    let request: number | null = null;
+    let isCurrent = () => true;
     try {
-      const data = source
-        ? { details: await source.resolve(query) }
-        : await queryClient.fetchQuery(
-            orpc.public.address.resolve.queryOptions({
-              input: { query },
-            }),
-          );
+      const details = await resolveTypedText(
+        {
+          resolvesTypedText,
+          text: inputValue,
+          displayAddress,
+          hasCoordinates:
+            latitude !== null &&
+            latitude !== undefined &&
+            longitude !== null &&
+            longitude !== undefined,
+          disabled: Boolean(disabled),
+        },
+        async (query) => {
+          isCurrent = claimWrite();
+          request = startLoading();
+          const data = source
+            ? { details: await source.resolve(query) }
+            : await queryClient.fetchQuery(
+                orpc.public.address.resolve.queryOptions({
+                  input: { query },
+                }),
+              );
+          return data.details;
+        },
+      );
 
-      if (!data.details) {
+      if (!details || !isCurrent()) {
         return;
       }
 
-      const { formattedAddress, latitude: lat, longitude: lng } = data.details;
+      const { formattedAddress, latitude: lat, longitude: lng } = details;
 
       setInputValue(formattedAddress);
-      onChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
-      onAddressResolved?.(data.details);
+      emitChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
+      onAddressResolved?.(details);
     } catch (error) {
       console.error('Address resolve error:', error);
     } finally {
-      setIsLoading(false);
+      if (request !== null) stopLoading(request);
     }
   }, [
     additionalInfo,
@@ -221,23 +320,38 @@ export const AddressInput = ({
     onChange,
     onAddressResolved,
     queryClient,
+    resolvesTypedText,
     source,
   ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    claimWrite();
     setInputValue(newValue);
     debouncedSearch(newValue);
 
     // If user types manually, clear coordinates
     if (newValue !== value) {
-      onChange(newValue, null, null, newValue, '');
+      emitChange(newValue, null, null, newValue, '');
     }
   };
 
   const handleSelect = useCallback(
     async (suggestion: AddressSuggestion) => {
-      setIsLoading(true);
+      const isCurrent = claimWrite();
+      const generation = writeGenerationRef.current;
+      pickInFlightRef.current = generation;
+      const request = startLoading();
+      const keepDescription = () => {
+        setInputValue(suggestion.description);
+        emitChange(
+          suggestion.description,
+          null,
+          null,
+          suggestion.description,
+          '',
+        );
+      };
       try {
         const data = source
           ? { details: await source.resolve(suggestion.placeId) }
@@ -247,6 +361,7 @@ export const AddressInput = ({
               }),
             );
 
+        if (!isCurrent()) return;
         if (data.details) {
           const {
             formattedAddress,
@@ -254,41 +369,33 @@ export const AddressInput = ({
             longitude: lng,
           } = data.details;
           setInputValue(formattedAddress);
-          onChange(formattedAddress, lat, lng, formattedAddress, '');
+          emitChange(formattedAddress, lat, lng, formattedAddress, '');
           onAddressResolved?.(data.details);
         } else {
-          setInputValue(suggestion.description);
-          onChange(
-            suggestion.description,
-            null,
-            null,
-            suggestion.description,
-            '',
-          );
+          keepDescription();
         }
       } catch (error) {
         console.error('Error fetching address details:', error);
-        setInputValue(suggestion.description);
-        onChange(
-          suggestion.description,
-          null,
-          null,
-          suggestion.description,
-          '',
-        );
+        if (isCurrent()) keepDescription();
       } finally {
-        setSuggestions([]);
-        setIsOpen(false);
-        setIsLoading(false);
-        inputRef.current?.blur();
+        stopLoading(request);
+        if (pickInFlightRef.current === generation) {
+          pickInFlightRef.current = null;
+        }
+        if (isCurrent()) {
+          setSuggestions([]);
+          setIsOpen(false);
+          inputRef.current?.blur();
+        }
       }
     },
     [onAddressResolved, onChange, queryClient, source],
   );
 
   const handleClear = () => {
+    claimWrite();
     setInputValue('');
-    onChange('', null, null, '', '');
+    emitChange('', null, null, '', '');
     setSuggestions([]);
     setIsOpen(false);
     if (autoFocus) inputRef.current?.focus();
@@ -296,7 +403,7 @@ export const AddressInput = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && resolvesTypedText) {
         e.preventDefault();
         void resolveTypedAddress();
       }
@@ -329,6 +436,7 @@ export const AddressInput = ({
 
   const handleBlur = () => {
     onBlur?.();
+    const generationAtBlur = writeGenerationRef.current;
 
     window.setTimeout(() => {
       if (shouldSkipBlurResolveRef.current) {
@@ -337,6 +445,8 @@ export const AddressInput = ({
       }
 
       setIsOpen(false);
+      // Typed on since: that text is not the one left behind.
+      if (writeGenerationRef.current !== generationAtBlur) return;
       void resolveTypedAddress();
     }, 120);
   };
@@ -348,8 +458,9 @@ export const AddressInput = ({
     latitude: number | null;
     longitude: number | null;
   }) => {
+    claimWrite();
     setInputValue(data.displayAddress || data.address);
-    onChange(
+    emitChange(
       data.address,
       data.latitude,
       data.longitude,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { answerPageInput } from "../platform/answer-pages";
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
+import { STRIPE_REFUND_STATUSES } from "./stripe-refunds";
 
 /**
  * The reservations follow-up contract: lists, detail, counters, calendar,
@@ -458,6 +459,29 @@ export const reservationSchema = z.object({
         .describe(
           "On a rental payment's Checkout Session: when Louez learnt from Stripe that it can no longer be paid. Null while that is not known, and on every other row.",
         ),
+    }),
+  ),
+  /**
+   * The refunds of its online payments asked through Louez (`refund_payment`), oldest
+   * first; empty when the caller may not read payments. Each is read again by `get_refund`.
+   */
+  refunds: z.array(
+    z.object({
+      id: z.string().describe("The refund's ID, as `get_refund` reads it."),
+      paymentId: z.string().describe("The payment it gives money back from."),
+      refundPaymentId: z
+        .string()
+        .nullable()
+        .describe("Its own row among `payments`, once Stripe made the refund; null before."),
+      status: z
+        .enum(STRIPE_REFUND_STATUSES)
+        .describe(
+          "`pending` until Stripe gives the final outcome (its row may already be among the payments: the customer has not received it yet, and it may still fail); `succeeded`; `failed`, its row then failed.",
+        ),
+      approvedBy: z
+        .object({ name: z.string().nullable(), email: z.string(), image: z.string().nullable() })
+        .nullable()
+        .describe("The person who approved it, when one did."),
     }),
   ),
   documents: z.array(

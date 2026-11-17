@@ -1,5 +1,6 @@
 "use client";
 
+import { useStore } from "@tanstack/react-form";
 import { useTranslations } from "next-intl";
 
 import { Label } from "@louez/ui";
@@ -8,22 +9,31 @@ import { AddressInput } from "@/components/ui/address-input";
 import { withForm } from "@/hooks/form/form";
 import { getFieldError } from "@/hooks/form/form-context";
 
-import type { DeliveryAddress } from "../checkout.types";
-import { getCustomerAddressFields } from "../util.customer-address";
+import {
+  CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT,
+  type CustomerAddressPick,
+  getCustomerAddressFields,
+  getLocalityAfterStreetEdit,
+  getPickedCoordinates,
+} from "../util.customer-address";
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 
 interface CheckoutAddressFieldsProps {
-  /** Coordinates of the typed address; kept outside the form (not submitted). */
-  coordinates: Pick<DeliveryAddress, "latitude" | "longitude">;
-  onCoordinatesChange: (coordinates: Pick<DeliveryAddress, "latitude" | "longitude">) => void;
+  /** The suggestion last picked, with its coordinates; kept outside the form (not submitted). */
+  pick: CustomerAddressPick | null;
+  onPickChange: (pick: CustomerAddressPick | null) => void;
 }
 
-/** Customer address: autocomplete line, then postal code and city filled from it. */
+/** Customer address: autocomplete line, then postal code and city, filled from a picked suggestion. */
 export const CheckoutAddressFields = withForm({
   ...checkoutFormOptions,
   props: checkoutStepProps<CheckoutAddressFieldsProps>(),
-  render: ({ form, coordinates, onCoordinatesChange }) => {
+  render: ({ form, pick, onPickChange }) => {
     const t = useTranslations("storefront.checkout");
+    const address = useStore(form.store, (state) => state.values.address);
+    const postalCode = useStore(form.store, (state) => state.values.postalCode);
+    const city = useStore(form.store, (state) => state.values.city);
+    const coordinates = getPickedCoordinates(pick, { address, postalCode, city });
 
     return (
       <div className="flex flex-col gap-3">
@@ -42,23 +52,35 @@ export const CheckoutAddressFields = withForm({
                   displayAddress={field.state.value}
                   latitude={coordinates.latitude}
                   longitude={coordinates.longitude}
-                  onChange={(address, latitude, longitude) => {
-                    field.handleChange(address);
-                    onCoordinatesChange({ latitude, longitude });
-                    // Postal code and city that came from a picked address go
-                    // stale once it is edited. Typed or autofilled ones stay.
-                    const wasResolved = coordinates.latitude != null;
-                    if (wasResolved && latitude === null && longitude === null) {
-                      form.setFieldValue("postalCode", "");
-                      form.setFieldValue("city", "");
-                    }
+                  onChange={(nextAddress, latitude) => {
+                    field.handleChange(nextAddress);
+                    // With coordinates, a pick is landing: onAddressResolved fills the fields.
+                    if (latitude !== null) return;
+                    // The street was edited: postal code and city the pick filled go
+                    // stale; typed or autofilled ones stay.
+                    const locality = getLocalityAfterStreetEdit(pick, {
+                      address: nextAddress,
+                      postalCode: form.getFieldValue("postalCode"),
+                      city: form.getFieldValue("city"),
+                    });
+                    form.setFieldValue("postalCode", locality.postalCode);
+                    form.setFieldValue("city", locality.city);
+                    if (pick) onPickChange(null);
                   }}
                   onAddressResolved={(details) => {
-                    const addressFields = getCustomerAddressFields(details);
-                    field.handleChange(addressFields.address);
-                    form.setFieldValue("postalCode", addressFields.postalCode);
-                    form.setFieldValue("city", addressFields.city);
+                    const fields = getCustomerAddressFields(details);
+                    field.handleChange(fields.address);
+                    form.setFieldValue("postalCode", fields.postalCode);
+                    form.setFieldValue("city", fields.city);
+                    onPickChange({
+                      fields,
+                      latitude: details.latitude,
+                      longitude: details.longitude,
+                    });
                   }}
+                  resolvesTypedText={CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT}
+                  // A pick still answering loses to any change of the locality.
+                  relatedValues={[postalCode, city]}
                   onBlur={field.handleBlur}
                   placeholder={t("addressPlaceholder")}
                   ariaInvalid={hasError}

@@ -604,6 +604,50 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
         assert.equal(context.editable, true, status);
       }
     });
+
+    test("the edit page reads what was paid by the payment section's rule, for its hint", async () => {
+      const bikes = await product("Bike", 5);
+      const booking = await reservation({ productId: bikes, quantity: 1 });
+      const paid = nextId("pay");
+      const row = {
+        reservationId: booking.id,
+        status: "completed" as const,
+        method: "cash" as const,
+      };
+      await louezDb.db.insert(louezDb.payments).values([
+        { ...row, id: paid, type: "rental", amount: "42.00" },
+        // Given back by hand: comes off what was paid.
+        { ...row, id: nextId("pay"), type: "rental", amount: "10.00", refundOfPaymentId: paid },
+        // The deposit is not the rental's.
+        { ...row, id: nextId("pay"), type: "deposit", amount: "100.00" },
+        // Still at Stripe, and in another currency than the reservation's: neither paid it.
+        {
+          ...row,
+          id: nextId("pay"),
+          type: "rental",
+          amount: "30.00",
+          method: "stripe",
+          status: "pending",
+          stripeCheckoutSessionId: "cs_edit_hint",
+        },
+        {
+          ...row,
+          id: nextId("pay"),
+          type: "rental",
+          amount: "5.00",
+          method: "stripe",
+          currency: "USD",
+          stripePaymentIntentId: "pi_edit_hint",
+        },
+      ]);
+
+      const context = await editContext.getDashboardReservationEditContext({
+        reservationId: booking.id,
+        storeId: STORE,
+      });
+
+      assert.equal(context.editable && context.reservation.rentalPaid, 32);
+    });
   });
 
   describe("a real window (T5)", () => {

@@ -225,7 +225,7 @@ export const createDemoPortalDetail = (
               status: "completed",
               amount: reservation.total,
               dateLabel: paymentDate,
-              isRefund: false,
+              reading: { kind: "receipt" },
             },
             {
               id: `${reservation.id}-deposit`,
@@ -234,7 +234,7 @@ export const createDemoPortalDetail = (
               status: depositKind === "released" ? "cancelled" : "authorized",
               amount: reservation.deposit,
               dateLabel: paymentDate,
-              isRefund: false,
+              reading: { kind: "receipt" },
             },
           ]
         : [],

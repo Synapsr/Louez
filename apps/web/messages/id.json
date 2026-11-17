@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "Abaikan",
         "lockPrice": "Harga kunci",
         "unlockPrice": "Kembali ke penetapan harga otomatis (menggantikan harga yang dimasukkan)",
-        "adjustmentPositive": "{amount} tambahan perlu dikumpulkan.",
         "adjustmentNegative": "Pengembalian dana sebesar {amount} dapat diberikan.",
         "warningDialogTitle": "Konfirmasikan perubahan luar biasa",
         "warningDialogDescription": "Pembaruan ini tidak sesuai dengan aturan reservasi biasanya. Tinjau peringatan sebelum menyimpan.",
@@ -2808,7 +2807,14 @@
             "generic": "Otorisasi setoran gagal. Minta pelanggan untuk mencoba lagi atau menggunakan kartu lain.",
             "closedByStore": "Permintaan ditutup oleh toko: tidak ada otorisasi yang ditemukan di Stripe."
           }
-        }
+        },
+        "refundDone": "Pengembalian dana selesai",
+        "refundFailed": "Pengembalian dana gagal",
+        "refundToCheck": "Periksa pengembalian dana di Stripe",
+        "approvedBy": "Disetujui oleh",
+        "refundIssued": "Pengembalian dana diterbitkan di Stripe",
+        "stripeRefundCount": "Stripe mencatat {amount} pengembalian dana untuk pembayaran ini",
+        "stripeRefundCountFull": "Stripe mencatat pembayaran ini sebagai dikembalikan sepenuhnya"
       },
       "unitAssignment": {
         "title": "Penugasan satuan",
@@ -2973,7 +2979,9 @@
         "statusFailed": "Gagal",
         "statusReleasePending": "Sedang dilepaskan",
         "requestPayment": "Minta pembayaran",
-        "invoiceGenerated": "Faktur {number} dibuat"
+        "invoiceGenerated": "Faktur {number} dibuat",
+        "refundProcessing": "Pengembalian dana sedang diproses",
+        "refundIssued": "Pengembalian dana diterbitkan di Stripe"
       },
       "requestPaymentModal": {
         "title": "Minta pembayaran",
@@ -8462,8 +8470,6 @@
         "payment_received": "Pembayaran online diterima",
         "payment_received_amount": "Pembayaran online diterima ({amount})",
         "payment_failed": "Pembayaran online ditolak",
-        "refunded": "Pengembalian dana dikeluarkan",
-        "refunded_amount": "Pengembalian dana {amount}",
         "payment_added_rental": "Pembayaran sewa dicatat ({amount})",
         "payment_added_deposit": "Setoran diterima ({amount})",
         "payment_added_deposit_return": "Setoran dikembalikan ({amount})",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "Laporan kondisi penjemputan selesai",
         "inspection_return_completed": "Laporan kondisi pengembalian selesai",
         "inspection_damage_detected": "Kerusakan dicatat dalam laporan kondisi",
-        "inspection_signed": "Laporan kondisi ditandatangani"
+        "inspection_signed": "Laporan kondisi ditandatangani",
+        "stripe_refund_count": "{amount} pengembalian dana dicatat oleh Stripe untuk pembayaran ini"
       },
       "inspections": {
         "title": "Laporan kondisi",
@@ -8531,6 +8538,15 @@
           "refunded": "Dikembalikan",
           "cancelled": "Dibatalkan",
           "authorized": "Diotorisasi"
+        },
+        "refundStatus": {
+          "done": "Dikembalikan",
+          "issued": "Diterbitkan",
+          "processing": "Diproses",
+          "failed": "Gagal"
+        },
+        "refundedStatus": {
+          "issued": "Pengembalian dana diterbitkan"
         }
       },
       "reviewPrompt": {

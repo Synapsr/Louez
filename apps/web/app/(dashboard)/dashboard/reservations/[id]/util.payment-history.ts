@@ -1,5 +1,12 @@
 import { type DepositHoldRowLike, withLatestFailedHoldOnly } from "@louez/utils";
 
+import {
+  type PaymentLike,
+  type PaymentRowReading,
+  type RefundStatusByRow,
+  readPaymentRow,
+} from "@/lib/reservations/util.payment-status";
+
 /** A payment row as the reservation's payment history reads it. */
 export interface PaymentHistoryRow extends DepositHoldRowLike {
   type: string;
@@ -38,3 +45,36 @@ export const paymentHistoryRows = <T extends PaymentHistoryRow>(payments: readon
       !(payment.method === "stripe" && payment.status === "pending") &&
       !isSettledCheckoutAttempt(payment),
   );
+
+/** A payment row as the card's online payment tile reads it. */
+export interface OnlinePaymentRow extends PaymentLike {
+  id: string;
+  amount: string;
+  method: string;
+  createdAt: Date | string;
+  paidAt: Date | string | null;
+}
+
+const movedAt = (payment: OnlinePaymentRow) =>
+  new Date(payment.paidAt ?? payment.createdAt).getTime();
+
+/**
+ * What the card's online payment tile tells: the latest of the rental's money that moved
+ * through Stripe, the payment received (`completed`) or a refund of it, read by
+ * `readPaymentRow` (a refund in progress or failed says so). A deposit's refund, money taken
+ * by hand and a checkout still open are not it. Null when there is none.
+ */
+export const onlineRentalTile = <T extends OnlinePaymentRow>(
+  payments: readonly T[],
+  refundStatuses?: RefundStatusByRow,
+): { payment: T; reading: PaymentRowReading } | null => {
+  let latest: { payment: T; reading: PaymentRowReading } | null = null;
+  for (const payment of payments) {
+    if (payment.method !== "stripe" || payment.type !== "rental") continue;
+    const reading = readPaymentRow(payment, refundStatuses);
+    if (reading.kind === "hold") continue;
+    if (reading.kind === "receipt" && payment.status !== "completed") continue;
+    if (!latest || movedAt(payment) > movedAt(latest.payment)) latest = { payment, reading };
+  }
+  return latest;
+};

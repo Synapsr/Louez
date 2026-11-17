@@ -41,7 +41,6 @@ const TONE: Partial<Record<ReservationUpdate["kind"], Tone>> = {
   deposit_authorized: "success",
   deposit_released: "success",
   extension_confirmed: "success",
-  refunded: "success",
   rejected: "failed",
   cancelled: "failed",
   quote_declined: "failed",
@@ -76,8 +75,10 @@ export const ReservationUpdatesCard = ({ updates }: ReservationUpdatesCardProps)
       case "payment_received":
       case "deposit_authorized":
       case "deposit_captured":
-      case "refunded":
         return amount ? t(`${update.kind}_amount`, { amount }) : t(update.kind);
+      // Stripe's count, as information: no sign, no word that the money arrived.
+      case "stripe_refund_count":
+        return t("stripe_refund_count", { amount: amount ?? "" });
       default:
         return t(update.kind);
     }
