@@ -87,12 +87,13 @@ const DeliveryField = ({
 }: {
   source: ReturnType<typeof controlledSource>["source"];
   state: { current: FieldState };
-  controls: { setShown: (shown: boolean) => void };
+  controls: { setShown: (shown: boolean) => void; setField: (field: FieldState) => void };
 }) => {
   const [field, setField] = useState<FieldState>({ address: "", latitude: null, longitude: null });
   const [shown, setShown] = useState(true);
   state.current = field;
   controls.setShown = setShown;
+  controls.setField = setField;
   if (!shown) return null;
   return (
     <AddressInput
@@ -109,7 +110,7 @@ const DeliveryField = ({
 const renderField = () => {
   const control = controlledSource();
   const state = { current: { address: "", latitude: null, longitude: null } as FieldState };
-  const controls = { setShown: (_shown: boolean) => {} };
+  const controls = { setShown: (_shown: boolean) => {}, setField: (_field: FieldState) => {} };
   const view = mount(
     <QueryClientProvider client={new QueryClient()}>
       <NextIntlClientProvider locale="en" messages={messages}>
@@ -141,6 +142,8 @@ const renderField = () => {
     shownSuggestions,
     remount,
     hide: () => act(() => controls.setShown(false)),
+    /** An address set from outside, as a located address or a prefill sets it. */
+    locate: (field: FieldState) => act(() => controls.setField(field)),
   };
 };
 
@@ -344,6 +347,21 @@ test("a search answering after the text changed shows no list", async () => {
   field.searches[0].answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
   await settle();
 
+  assert.deepEqual(field.shownSuggestions(), []);
+});
+
+test("a search queued before an address was set from outside shows no list under it", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  typeInto(field.input, "8 quai");
+  field.locate({ address: "1 Place de la Liberté, Brest", latitude: 48.39, longitude: -4.48 });
+  await tick(SEARCH_DELAY);
+  for (const search of field.searches)
+    search.answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
+  await settle();
+
+  assert.equal(field.input.value, "1 Place de la Liberté, Brest");
   assert.deepEqual(field.shownSuggestions(), []);
 });
 

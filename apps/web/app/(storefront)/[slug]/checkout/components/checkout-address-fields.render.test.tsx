@@ -243,6 +243,25 @@ test("a suggestion list arriving after the customer moved on writes no field", a
   assert.deepEqual(view.snapshot.current.values, TYPED);
 });
 
+test("the street's suggestions still show when the postal code was typed while they were searched", async () => {
+  const view = renderAddress();
+  unmount = view.unmount;
+
+  typeInto(view.street, "2 rue volt");
+  await tick(SEARCH_DELAY);
+  typeInto(view.postalCode, "93400");
+  view.requests
+    .findLast((request) => request.endpoint === "autocomplete")
+    ?.answer.resolve({ suggestions: [voltaireSuggestion] });
+  await settle();
+
+  assert.ok(
+    document.querySelector('[data-address-suggestion="voltaire"]'),
+    "the suggestion for the street the field still shows is offered",
+  );
+  assert.equal(view.postalCode.value, "93400");
+});
+
 test("picking a suggestion fills the street, the postal code and the city", async () => {
   const view = renderAddress();
   unmount = view.unmount;

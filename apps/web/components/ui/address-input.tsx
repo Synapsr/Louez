@@ -120,6 +120,10 @@ export const AddressInput = ({
   // answer asked before it moved on is dropped, success or failure.
   const writeGenerationRef = useRef(0);
   const pickInFlightRef = useRef<number | null>(null);
+  // The text the field shows, and whether it is still there: a suggestion
+  // list answers one text of a mounted field.
+  const inputTextRef = useRef(value);
+  const unmountedRef = useRef(false);
   const emittedTextRef = useRef<string | null>(null);
   const relatedKey = JSON.stringify(relatedValues ?? []);
   const relatedKeyRef = useRef(relatedKey);
@@ -160,12 +164,16 @@ export const AddressInput = ({
     }
   }, [relatedKey]);
   // Once unmounted, the field waits for nothing: its pending answers are void.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
       writeGenerationRef.current += 1;
-    },
-    [],
-  );
+    };
+  }, []);
+  useLayoutEffect(() => {
+    inputTextRef.current = inputValue;
+  }, [inputValue]);
 
   // Sync with external value
   useEffect(() => {
@@ -221,9 +229,10 @@ export const AddressInput = ({
         return;
       }
 
-      // Only the latest search of the text still shown may change the list.
-      const generation = writeGenerationRef.current;
-      const isCurrent = () => writeGenerationRef.current === generation;
+      // A suggestion list answers one text: it changes the list only while
+      // the field, still mounted, shows that text. A related value changing
+      // does not void it: the street's suggestions are still the street's.
+      const isCurrent = () => !unmountedRef.current && inputTextRef.current === query;
       const request = startLoading();
       try {
         const data = source
@@ -313,6 +322,7 @@ export const AddressInput = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     claimWrite();
+    inputTextRef.current = newValue;
     setInputValue(newValue);
     debouncedSearch(newValue);
 
