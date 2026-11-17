@@ -9476,6 +9476,7 @@
     "testReservationExists": "Du hast bereits eine Testreservierung. Lösche sie im Dashboard, um eine neue zu erstellen.",
     "testReservationRefused": "Bei einer Testreservierung nicht möglich: Es wird nichts berechnet.",
     "testModeRequired": "Der Testmodus ist nicht mehr aktiv. Starte ihn im Dashboard neu.",
+    "testPaymentBusy": "Die simulierte Zahlung läuft bereits. Versuche es gleich noch einmal.",
     "storeNotAcceptingReservations": "Dieser Shop nimmt gerade keine Online-Reservierungen an. {hasContact, select, yes {Kontaktieren Sie den Shop: {contact}} other {Bitte kontaktieren Sie den Shop direkt.}}",
     "generic": "Ein Fehler ist aufgetreten",
     "contractNotSignable": "Dieser Vertrag kann nicht mehr unterschrieben werden.",

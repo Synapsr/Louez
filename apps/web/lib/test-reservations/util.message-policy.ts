@@ -26,14 +26,8 @@ export interface DispatchPlan {
   mark: TestEmailMark | null;
 }
 
-/**
- * The plan of a one-shot send. A policy that could not be read (`unknown`) still
- * sends the e-mail, as it is, rather than lose a real customer's or owner's
- * message, but nothing else: an SMS, a push or a Discord message to someone a test
- * must never reach costs more than one e-mail that lacks its mark.
- */
-export function planDispatch(policy: ReservationMessagePolicy | "unknown"): DispatchPlan {
-  if (policy === "unknown") return { send: true, emailOnly: true, mark: null };
+/** The plan of a one-shot send, from its reservation's policy. */
+export function planDispatch(policy: ReservationMessagePolicy): DispatchPlan {
   switch (policy.kind) {
     case "real":
       return { send: true, emailOnly: false, mark: null };
@@ -42,6 +36,42 @@ export function planDispatch(policy: ReservationMessagePolicy | "unknown"): Disp
     case "test":
       return { send: true, emailOnly: true, mark: policy.mark };
   }
+}
+
+/** The waits before the second and the third read of a one-shot send's policy. */
+export const DISPATCH_POLICY_RETRY_DELAYS_MS: readonly number[] = [100, 400];
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The plan of a one-shot send (the dispatchers), which no outbox retries: its
+ * policy is read, then read again after each of `delaysMs` while a read fails.
+ * When none succeeds the send is planned as a real reservation's, every channel
+ * the store chose and no mark, and `onUnreadable` gets the last error: a test is
+ * rare and a failed read rarer, and a real customer's or owner's SMS, push or
+ * Discord message is never lost for it.
+ */
+export async function planDispatchWithRetries(
+  read: () => Promise<ReservationMessagePolicy>,
+  options: {
+    onUnreadable: (error: unknown) => void;
+    delaysMs?: readonly number[];
+    wait?: (ms: number) => Promise<void>;
+  },
+): Promise<DispatchPlan> {
+  const delaysMs = options.delaysMs ?? DISPATCH_POLICY_RETRY_DELAYS_MS;
+  const wait = options.wait ?? sleep;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= delaysMs.length; attempt++) {
+    if (attempt > 0) await wait(delaysMs[attempt - 1] ?? 0);
+    try {
+      return planDispatch(await read());
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  options.onUnreadable(lastError);
+  return planDispatch({ kind: "real" });
 }
 
 /** What an outbox row does: skipped, or sent with or without the test mark. */

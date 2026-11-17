@@ -9476,6 +9476,7 @@
     "testReservationExists": "You already have a test reservation. Delete it from the dashboard to make a new one.",
     "testReservationRefused": "Not possible on a test reservation: nothing is charged on it.",
     "testModeRequired": "Test mode is no longer active. Start it again from the dashboard.",
+    "testPaymentBusy": "The simulated payment is already in progress. Try again in a moment.",
     "storeNotAcceptingReservations": "This store isn't taking reservations online right now. {hasContact, select, yes {Contact the store: {contact}} other {Please contact the store directly.}}",
     "generic": "An error occurred",
     "contractNotSignable": "This contract can no longer be signed.",

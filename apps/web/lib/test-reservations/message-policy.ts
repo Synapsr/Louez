@@ -8,7 +8,8 @@ import { log } from "@/lib/evlog";
 
 import { runWithTestEmailMark, type TestEmailMark } from "./email-mark";
 import {
-  planDispatch,
+  DISPATCH_POLICY_RETRY_DELAYS_MS,
+  planDispatchWithRetries,
   planOutboxRow,
   type DispatchPlan,
   type ReservationMessagePolicy,
@@ -62,22 +63,20 @@ export async function readReservationMessagePolicy(
 
 /**
  * The plan of a send made once, outside the outbox (the dispatchers): a read that
- * fails still sends the e-mail, unmarked, rather than lose a real customer's or
- * owner's message, but no other channel (`planDispatch`). The outbox's senders read
- * the policy strictly, and retry.
+ * fails is made again twice, then the send goes out as a real reservation's, and
+ * the failure is logged (`planDispatchWithRetries`). The outbox's senders read the
+ * policy strictly, and retry.
  */
-export async function planReservationDispatch(
+export function planReservationDispatch(
   reservationId: string | null | undefined,
 ): Promise<DispatchPlan> {
-  try {
-    return planDispatch(await readReservationMessagePolicy(reservationId));
-  } catch (error) {
-    log.error(
-      "test-reservations",
-      `message policy read failed for ${reservationId}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return planDispatch("unknown");
-  }
+  return planDispatchWithRetries(() => readReservationMessagePolicy(reservationId), {
+    onUnreadable: (error) =>
+      log.error(
+        "test-reservations",
+        `message policy of ${reservationId} unreadable after ${DISPATCH_POLICY_RETRY_DELAYS_MS.length + 1} reads, sent as a real reservation's: ${error instanceof Error ? error.message : String(error)}`,
+      ),
+  });
 }
 
 /** Runs a send, its e-mails marked and sent to the test's member when there is a mark. */

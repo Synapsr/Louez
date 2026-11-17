@@ -9476,6 +9476,7 @@
     "testReservationExists": "Já tem uma reserva de teste. Elimine-a no painel para fazer outra.",
     "testReservationRefused": "Não é possível numa reserva de teste: nada é cobrado nela.",
     "testModeRequired": "O modo de teste já não está ativo. Reinicie-o a partir do painel.",
+    "testPaymentBusy": "O pagamento simulado já está em andamento. Tente novamente em instantes.",
     "storeNotAcceptingReservations": "Esta loja não está aceitando reservas online no momento. {hasContact, select, yes {Entre em contato com a loja: {contact}} other {Entre em contato diretamente com a loja.}}",
     "generic": "Ocorreu um erro",
     "contractNotSignable": "Este contrato já não pode ser assinado.",

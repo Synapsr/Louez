@@ -9476,6 +9476,7 @@
     "testReservationExists": "Vous avez déjà une réservation test. Supprimez-la depuis le tableau de bord pour en refaire une.",
     "testReservationRefused": "Impossible sur une réservation test : rien n'y est encaissé.",
     "testModeRequired": "Le mode test n'est plus actif. Relancez-le depuis le tableau de bord.",
+    "testPaymentBusy": "Le paiement simulé est déjà en cours. Réessayez dans un instant.",
     "storeNotAcceptingReservations": "Cette boutique ne prend pas de réservations en ligne pour le moment. {hasContact, select, yes {Contactez-la : {contact}} other {Contactez-la directement.}}",
     "generic": "Une erreur est survenue",
     "contractNotSignable": "Ce contrat ne peut plus être signé.",

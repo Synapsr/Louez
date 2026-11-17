@@ -9476,6 +9476,7 @@
     "testReservationExists": "Hai già una prenotazione di test. Eliminala dalla dashboard per farne un'altra.",
     "testReservationRefused": "Non è possibile su una prenotazione di test: non viene addebitato nulla.",
     "testModeRequired": "La modalità test non è più attiva. Riavviala dalla dashboard.",
+    "testPaymentBusy": "Il pagamento simulato è già in corso. Riprova tra un istante.",
     "storeNotAcceptingReservations": "Questo negozio non accetta prenotazioni online al momento. {hasContact, select, yes {Contatta il negozio: {contact}} other {Contatta direttamente il negozio.}}",
     "generic": "Si è verificato un errore",
     "contractNotSignable": "Questo contratto non può più essere firmato.",

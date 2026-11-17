@@ -6,6 +6,7 @@ import {
   addTestReservationSubjectPrefix,
   isWithheldForTestReservation,
   planDispatch,
+  planDispatchWithRetries,
   planOutboxRow,
   type ReservationMessagePolicy,
 } from "./util.message-policy";
@@ -58,9 +59,58 @@ describe("a one-shot send, by its reservation", () => {
   test("of a test reservation sends e-mail only, marked to its member", () => {
     assert.deepEqual(planDispatch(testPolicy), { send: true, emailOnly: true, mark });
   });
+});
 
-  test("whose reservation could not be read sends the e-mail only, unmarked", () => {
-    assert.deepEqual(planDispatch("unknown"), { send: true, emailOnly: true, mark: null });
+describe("a one-shot send whose policy read fails", () => {
+  const reads = (outcomes: Array<ReservationMessagePolicy | Error>) => {
+    const state = { calls: 0, waits: [] as number[], unreadable: [] as unknown[] };
+    const read = async () => {
+      const outcome = outcomes[state.calls++];
+      if (!outcome || outcome instanceof Error) throw outcome ?? new Error("no outcome");
+      return outcome;
+    };
+    const options = {
+      onUnreadable: (error: unknown) => state.unreadable.push(error),
+      wait: async (ms: number) => {
+        state.waits.push(ms);
+      },
+    };
+    return { state, read, options };
+  };
+
+  test("reads it again after 100 then 400 ms, and follows the read that succeeds", async () => {
+    const { state, read, options } = reads([
+      new Error("lost connection"),
+      new Error("lost connection"),
+      testPolicy,
+    ]);
+    assert.deepEqual(await planDispatchWithRetries(read, options), {
+      send: true,
+      emailOnly: true,
+      mark,
+    });
+    assert.equal(state.calls, 3);
+    assert.deepEqual(state.waits, [100, 400]);
+    assert.deepEqual(state.unreadable, []);
+  });
+
+  test("reads it once when the first read succeeds", async () => {
+    const { state, read, options } = reads([missing]);
+    assert.equal((await planDispatchWithRetries(read, options)).send, false);
+    assert.equal(state.calls, 1);
+    assert.deepEqual(state.waits, []);
+  });
+
+  test("unreadable three times, goes out as a real reservation's, every channel, and is reported", async () => {
+    const last = new Error("third failure");
+    const { state, read, options } = reads([new Error("first"), new Error("second"), last]);
+    assert.deepEqual(await planDispatchWithRetries(read, options), {
+      send: true,
+      emailOnly: false,
+      mark: null,
+    });
+    assert.equal(state.calls, 3);
+    assert.deepEqual(state.unreadable, [last]);
   });
 });
 

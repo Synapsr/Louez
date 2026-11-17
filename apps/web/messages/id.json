@@ -9476,6 +9476,7 @@
     "testReservationExists": "Anda sudah memiliki reservasi uji. Hapus dari dasbor untuk membuat yang baru.",
     "testReservationRefused": "Tidak bisa untuk reservasi uji: tidak ada yang ditagih.",
     "testModeRequired": "Mode uji sudah tidak aktif. Mulai lagi dari dasbor.",
+    "testPaymentBusy": "Pembayaran simulasi sedang diproses. Coba lagi sebentar lagi.",
     "storeNotAcceptingReservations": "Toko ini sedang tidak menerima reservasi online. {hasContact, select, yes {Hubungi toko: {contact}} other {Silakan hubungi toko secara langsung.}}",
     "generic": "Terjadi kesalahan",
     "contractNotSignable": "Kontrak ini tidak dapat ditandatangani lagi.",

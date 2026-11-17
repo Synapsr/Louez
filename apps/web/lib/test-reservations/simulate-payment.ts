@@ -8,7 +8,8 @@ import { confirmPaidReservation } from "@louez/api/services/payment-reservation-
 import { ReservationInventoryError } from "@louez/api/services/reservation-inventory";
 import {
   ConsumableStockError,
-  db,
+  type DatabaseOnConnection,
+  documents,
   payments,
   reservationActivity,
   reservations,
@@ -17,6 +18,7 @@ import {
 import { normalizeCurrency } from "@louez/utils";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { withNamedLock } from "@/lib/billing-sync/locks";
 import { log } from "@/lib/evlog";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { getCheckoutChargeAmount } from "@/lib/reservations/build-stripe-line-items";
@@ -30,7 +32,7 @@ export const SIMULATED_PAYMENT_NOTE = "Paiement simulé (réservation test)";
 
 export type SimulatedPaymentResult =
   | { ok: true; confirmed: boolean }
-  | { ok: false; error: "not_found" | "not_pending" };
+  | { ok: false; error: "not_found" | "not_pending" | "busy" };
 
 /**
  * What a test reservation's payment is worth: what the real checkout would have
@@ -52,14 +54,29 @@ export const simulatedPaymentAmount = (input: {
   return { amount: finalChargeAmount, currency };
 };
 
+/** How long a simulated payment waits for another one of the same reservation to finish. */
+const LOCK_WAIT_SECONDS = 5;
+
+/** The MySQL named lock a reservation's simulated payment runs under. */
+export const simulatedPaymentLockName = (reservationId: string): string =>
+  `louez:test-payment:${reservationId}`;
+
 /**
  * The simulated payment of a test reservation (packages/db test-reservations.ts):
  * the confirmation a paid checkout gets, with nothing asked of Stripe and nothing
- * billed. Under the reservation's lock it writes one completed `other` rental
- * payment, once; then the call that wrote it validates the contract, the
- * reservation is confirmed as paid (no deposit is taken), and the confirmation's
- * messages sent, by whichever call confirmed it. A second call finds the payment,
- * generates no contract, and confirms nothing more.
+ * billed. One call at a time per reservation, under a MySQL named lock: a call that
+ * waits `LOCK_WAIT_SECONDS` without it answers `busy`, and the page asks to try
+ * again. Under it, each step finishes what an earlier call left undone and does no
+ * more, so a call that failed halfway is completed by the next:
+ *
+ * 1. the payment, one completed `other` rental row, written once (not for a
+ *    reservation no longer pending that has none);
+ * 2. the contract's validation (`validateReservationContract`, which validates a
+ *    contract once);
+ * 3. the contract's document, generated only when the reservation has none
+ *    (`tryGenerateInvoiceForPayment`, which never throws);
+ * 4. the confirmation as paid, of a pending reservation only (no deposit is taken);
+ * 5. its messages, sent by the call that confirmed it alone.
  *
  * Never a Stripe call, a fee, a referral or marketplace effect, or an invoice (the
  * invoicing service refuses a test reservation, and attaches its watermarked
@@ -69,11 +86,22 @@ export async function simulateTestReservationPayment(input: {
   storeId: string;
   reservationId: string;
 }): Promise<SimulatedPaymentResult> {
+  const run = await withNamedLock(
+    simulatedPaymentLockName(input.reservationId),
+    LOCK_WAIT_SECONDS,
+    (lockedDb) => simulateUnderLock(lockedDb, input),
+  );
+  return run.ran ? run.value : { ok: false, error: "busy" };
+}
+
+async function simulateUnderLock(
+  lockedDb: DatabaseOnConnection,
+  input: { storeId: string; reservationId: string },
+): Promise<SimulatedPaymentResult> {
   const paidAt = toWholeSeconds(new Date());
 
-  // `created`: this call wrote the payment, and alone generates the contract.
-  type Claim = { paymentId: string; created: boolean } | { error: "not_found" | "not_pending" };
-  const claim = await db.transaction(async (tx): Promise<Claim> => {
+  type Claim = { paymentId: string } | { error: "not_found" | "not_pending" };
+  const claim = await lockedDb.transaction(async (tx): Promise<Claim> => {
     const [locked] = await tx
       .select({
         isTest: reservations.isTest,
@@ -97,7 +125,7 @@ export async function simulateTestReservationPayment(input: {
         ),
       )
       .limit(1);
-    if (existing) return { paymentId: existing.id, created: false };
+    if (existing) return { paymentId: existing.id };
     if (locked.status !== "pending") return { error: "not_pending" };
 
     const store = await tx.query.stores.findFirst({
@@ -132,15 +160,20 @@ export async function simulateTestReservationPayment(input: {
       metadata: { amount, currency, method: "other", type: "rental", simulated: true },
       createdAt: paidAt,
     });
-    return { paymentId, created: true };
+    return { paymentId };
   });
   if (!("paymentId" in claim)) return { ok: false, error: claim.error };
 
-  // Only the call that wrote the payment: two clicks at once generate one contract.
-  if (claim.created) {
-    await db.transaction((tx) =>
-      validateReservationContract(tx, input.reservationId, input.storeId, "payment"),
-    );
+  await lockedDb.transaction((tx) =>
+    validateReservationContract(tx, input.reservationId, input.storeId, "payment"),
+  );
+
+  const [contract] = await lockedDb
+    .select({ id: documents.id })
+    .from(documents)
+    .where(and(eq(documents.reservationId, input.reservationId), eq(documents.type, "contract")))
+    .limit(1);
+  if (!contract) {
     // Refused for a test reservation: it only generates the watermarked contract
     // where the store would attach documents to the confirmation.
     await tryGenerateInvoiceForPayment(claim.paymentId, "test_reservation_simulated_payment");
@@ -148,6 +181,7 @@ export async function simulateTestReservationPayment(input: {
 
   // Its items hold no stock, but its capacity is still checked: one past it stays
   // pending, as a paid checkout does, and the owner confirms it from the dashboard.
+  // A reservation no longer pending is not confirmed again (false).
   const confirmed = await confirmPaidReservation(
     {
       reservationId: input.reservationId,

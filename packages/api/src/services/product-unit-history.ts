@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 
 import {
   customers,
@@ -29,58 +29,35 @@ const getDowntimeStatus = (
   return downtime.startsAt > now ? "upcoming" : "past";
 };
 
-const payloadId = (payload: Record<string, unknown> | null, key: string): string | null => {
-  const value = payload?.[key];
-  return typeof value === "string" && value.length > 0 ? value : null;
-};
+/** A unit event's payload id (`$.reservationId`, `$.reservationItemId`), NULL when absent or empty. */
+const eventPayloadId = (key: "reservationId" | "reservationItemId") =>
+  sql`NULLIF(JSON_UNQUOTE(JSON_EXTRACT(${productUnitEvents.payload}, ${`$.${key}`})), '')`;
 
 /**
- * The events that name a test reservation (`assigned`, `unassigned`: their
- * payload carries its `reservationId` and `reservationItemId`), for a caller
- * that may not see one (platform/test-reservation-visibility.ts).
+ * The unit events a caller that may not see a test reservation sees
+ * (platform/test-reservation-visibility.ts): the `assigned` and `unassigned`
+ * events name their reservation and its line in their payload, and one that names
+ * a test reservation, a line of one, or a reservation that no longer exists is
+ * left out. Only a test reservation's purge deletes a reservation
+ * (services/test-reservations.ts), and it deletes these events with it: a
+ * reservation gone can only be a purged test one. In the events query itself, so
+ * one statement reads the events and the reservations at the same instant, and a
+ * purge that commits meanwhile leaves none of its events behind.
  */
-async function findTestReservationEventIds(
-  events: ReadonlyArray<{ id: string; payload: Record<string, unknown> | null }>,
-): Promise<Set<string>> {
-  const reservationIds = new Set<string>();
-  const itemIds = new Set<string>();
-  for (const event of events) {
-    const reservationId = payloadId(event.payload, "reservationId");
-    const itemId = payloadId(event.payload, "reservationItemId");
-    if (reservationId) reservationIds.add(reservationId);
-    if (itemId) itemIds.add(itemId);
-  }
-  if (reservationIds.size === 0 && itemIds.size === 0) return new Set();
-
-  const rows = await db
-    .select({ reservationId: reservations.id, itemId: reservationItems.id })
-    .from(reservations)
-    .leftJoin(reservationItems, eq(reservationItems.reservationId, reservations.id))
-    .where(
-      and(
-        eq(reservations.isTest, true),
-        or(
-          reservationIds.size > 0 ? inArray(reservations.id, [...reservationIds]) : undefined,
-          itemIds.size > 0 ? inArray(reservationItems.id, [...itemIds]) : undefined,
-        ),
-      ),
-    );
-  const testReservationIds = new Set(rows.map((row) => row.reservationId));
-  const testItemIds = new Set(rows.flatMap((row) => (row.itemId ? [row.itemId] : [])));
-
-  return new Set(
-    events
-      .filter((event) => {
-        const reservationId = payloadId(event.payload, "reservationId");
-        const itemId = payloadId(event.payload, "reservationItemId");
-        return (
-          (reservationId !== null && testReservationIds.has(reservationId)) ||
-          (itemId !== null && testItemIds.has(itemId))
-        );
-      })
-      .map((event) => event.id),
+const visibleWithoutTestReservations = () => {
+  const reservationId = eventPayloadId("reservationId");
+  const itemId = eventPayloadId("reservationItemId");
+  return and(
+    or(
+      sql`${reservationId} IS NULL`,
+      sql`EXISTS (SELECT 1 FROM ${reservations} WHERE ${reservations.id} = ${reservationId} AND ${reservations.isTest} = false)`,
+    ),
+    or(
+      sql`${itemId} IS NULL`,
+      sql`NOT EXISTS (SELECT 1 FROM ${reservationItems} INNER JOIN ${reservations} ON ${reservations.id} = ${reservationItems.reservationId} WHERE ${reservationItems.id} = ${itemId} AND ${reservations.isTest} = true)`,
+    ),
   );
-}
+};
 
 const getDowntimeStatusOrder = (status: ProductUnitDowntimeStatus) => {
   if (status === "current") {
@@ -124,7 +101,11 @@ export const getProductUnitHistory = async ({
       .from(productUnitEvents)
       .leftJoin(users, eq(productUnitEvents.actorUserId, users.id))
       .where(
-        and(eq(productUnitEvents.productUnitId, unitId), eq(productUnitEvents.storeId, storeId)),
+        and(
+          eq(productUnitEvents.productUnitId, unitId),
+          eq(productUnitEvents.storeId, storeId),
+          testReservations ? undefined : visibleWithoutTestReservations(),
+        ),
       )
       .orderBy(desc(productUnitEvents.createdAt), desc(productUnitEvents.id)),
     db
@@ -169,23 +150,16 @@ export const getProductUnitHistory = async ({
       ),
   ]);
 
-  // A test reservation's assignment events stay hidden as its assignments do.
-  const hiddenEventIds = testReservations
-    ? new Set<string>()
-    : await findTestReservationEventIds(events);
-
   const timeline = [
-    ...events
-      .filter((event) => !hiddenEventIds.has(event.id))
-      .map((event) => ({
-        kind: "event" as const,
-        id: event.id,
-        type: event.type,
-        actorUserId: event.actorUserId,
-        actorName: event.actorName,
-        payload: event.payload ?? null,
-        createdAt: event.createdAt.toISOString(),
-      })),
+    ...events.map((event) => ({
+      kind: "event" as const,
+      id: event.id,
+      type: event.type,
+      actorUserId: event.actorUserId,
+      actorName: event.actorName,
+      payload: event.payload ?? null,
+      createdAt: event.createdAt.toISOString(),
+    })),
     ...assignments.map((assignment) => ({
       kind: "assignment" as const,
       id: assignment.id,

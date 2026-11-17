@@ -9476,6 +9476,7 @@
     "testReservationExists": "이미 테스트 예약이 있습니다. 새로 만들려면 대시보드에서 삭제하세요.",
     "testReservationRefused": "테스트 예약에서는 할 수 없습니다: 아무것도 청구되지 않습니다.",
     "testModeRequired": "테스트 모드가 더 이상 활성화되어 있지 않습니다. 대시보드에서 다시 시작하세요.",
+    "testPaymentBusy": "모의 결제가 이미 진행 중입니다. 잠시 후 다시 시도하세요.",
     "storeNotAcceptingReservations": "이 매장은 현재 온라인 예약을 받지 않습니다. {hasContact, select, yes {매장 연락처: {contact}} other {매장에 직접 문의해 주세요.}}",
     "generic": "오류가 발생했습니다",
     "contractNotSignable": "이 계약서는 더 이상 서명할 수 없습니다.",

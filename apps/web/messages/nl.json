@@ -9476,6 +9476,7 @@
     "testReservationExists": "Je hebt al een testreservering. Verwijder die in het dashboard om een nieuwe te maken.",
     "testReservationRefused": "Niet mogelijk bij een testreservering: er wordt niets afgerekend.",
     "testModeRequired": "De testmodus is niet meer actief. Start hem opnieuw vanuit het dashboard.",
+    "testPaymentBusy": "De gesimuleerde betaling is al bezig. Probeer het zo meteen opnieuw.",
     "storeNotAcceptingReservations": "Deze winkel neemt op dit moment geen online reserveringen aan. {hasContact, select, yes {Neem contact op met de winkel: {contact}} other {Neem rechtstreeks contact op met de winkel.}}",
     "generic": "Er is een fout opgetreden",
     "contractNotSignable": "Dit contract kan niet meer worden ondertekend.",

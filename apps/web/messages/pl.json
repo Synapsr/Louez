@@ -9476,6 +9476,7 @@
     "testReservationExists": "Masz już rezerwację testową. Usuń ją w panelu, aby utworzyć nową.",
     "testReservationRefused": "Niemożliwe przy rezerwacji testowej: nic nie jest pobierane.",
     "testModeRequired": "Tryb testowy nie jest już aktywny. Uruchom go ponownie w panelu.",
+    "testPaymentBusy": "Symulowana płatność jest już w toku. Spróbuj ponownie za chwilę.",
     "storeNotAcceptingReservations": "Ten sklep nie przyjmuje teraz rezerwacji online. {hasContact, select, yes {Skontaktuj się ze sklepem: {contact}} other {Skontaktuj się bezpośrednio ze sklepem.}}",
     "generic": "Wystąpił błąd",
     "contractNotSignable": "Tej umowy nie można już podpisać.",

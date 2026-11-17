@@ -9476,6 +9476,7 @@
     "testReservationExists": "テスト予約がすでにあります。新しく作成するにはダッシュボードから削除してください。",
     "testReservationRefused": "テスト予約ではできません：料金は請求されません。",
     "testModeRequired": "テストモードは無効になりました。ダッシュボードから再開してください。",
+    "testPaymentBusy": "シミュレーション決済はすでに処理中です。しばらくしてからもう一度お試しください。",
     "storeNotAcceptingReservations": "このストアは現在オンライン予約を受け付けていません。{hasContact, select, yes {ストアの連絡先：{contact}} other {ストアに直接お問い合わせください。}}",
     "generic": "エラーが発生しました",
     "contractNotSignable": "この契約はもう署名できません。",

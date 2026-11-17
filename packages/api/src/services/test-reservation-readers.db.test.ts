@@ -469,7 +469,7 @@ describe(
       );
     });
 
-    test("a unit's history shows the test reservation's assignment events only to a session", async () => {
+    test("a unit's history shows the test reservation's assignment events, and a reservation gone's, only to a session", async () => {
       const seeded = await seed();
       const unitId = seeded.unitIds[0] ?? "";
       const event = (reservation: { id: string; itemId: string }) => ({
@@ -486,9 +486,13 @@ describe(
         ...event(seeded.test),
         payload: { reservationItemId: seeded.test.itemId },
       };
+      // An event naming a reservation gone: only a test reservation's purge deletes one.
+      const goneEvent = event({ id: "tr_gone_reservation", itemId: "tr_gone_item" });
+      // An event naming no reservation, as a downtime's.
+      const unitEvent = { ...event(seeded.test), type: "downtime_declared" as const, payload: {} };
       await louezDb.db
         .insert(louezDb.productUnitEvents)
-        .values([realEvent, testEvent, itemOnlyEvent]);
+        .values([realEvent, testEvent, itemOnlyEvent, goneEvent, unitEvent]);
 
       const ids = (history: Awaited<ReturnType<typeof unitHistory.getProductUnitHistory>>) =>
         (history?.timeline ?? [])
@@ -500,7 +504,10 @@ describe(
         unitId,
         testReservations: false,
       });
-      assert.deepEqual(ids(hidden), [`asg:${seeded.real?.id}`, realEvent.id].sort());
+      assert.deepEqual(
+        ids(hidden),
+        [`asg:${seeded.real?.id}`, realEvent.id, unitEvent.id].sort(),
+      );
 
       const seen = await unitHistory.getProductUnitHistory({
         storeId: seeded.storeId,
@@ -515,6 +522,8 @@ describe(
           realEvent.id,
           testEvent.id,
           itemOnlyEvent.id,
+          goneEvent.id,
+          unitEvent.id,
         ].sort(),
       );
     });

@@ -9476,6 +9476,7 @@
     "testReservationExists": "您已有一个测试预订。请在控制台中删除后再创建新的。",
     "testReservationRefused": "测试预订无法执行此操作：不会收取任何费用。",
     "testModeRequired": "测试模式已失效。请从控制台重新开启。",
+    "testPaymentBusy": "模拟付款正在处理中，请稍后重试。",
     "storeNotAcceptingReservations": "该商店目前不接受在线预订。{hasContact, select, yes {商店联系方式：{contact}} other {请直接联系商店。}}",
     "generic": "发生错误",
     "contractNotSignable": "此合同已无法签署。",

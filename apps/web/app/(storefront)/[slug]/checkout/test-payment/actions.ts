@@ -27,9 +27,9 @@ export type SimulateTestPaymentResult = { ok: true; url: string } | { ok: false;
 /**
  * The button of the simulated payment page (lib/test-reservations): only in this
  * browser's test mode, only for the store's test reservation that this member
- * started. A pending one is paid
- * and confirmed (`simulateTestReservationPayment`, once, whatever the clicks); then
- * the owner lands on it signed in, without a code, as a paying customer does.
+ * started. A pending one is paid and confirmed (`simulateTestReservationPayment`,
+ * once, whatever the clicks; busy while another call pays it); then the owner
+ * lands on it signed in, without a code, as a paying customer does.
  */
 export async function simulateTestPayment(input: unknown): Promise<SimulateTestPaymentResult> {
   const parsed = inputSchema.safeParse(input);
@@ -61,6 +61,10 @@ export async function simulateTestPayment(input: unknown): Promise<SimulateTestP
         : null;
     if (paid && !paid.ok && paid.error === "not_found") {
       return { ok: false, error: "errors.reservationNotFound" };
+    }
+    // Another call is paying it right now: the owner tries again in a moment.
+    if (paid && !paid.ok && paid.error === "busy") {
+      return { ok: false, error: "errors.testPaymentBusy" };
     }
 
     const url = await createReservationInstantAccessUrl({
