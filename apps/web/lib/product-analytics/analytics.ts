@@ -13,6 +13,17 @@ import {
   type ReservationAnalyticsAction,
 } from '@/lib/product-analytics/analytics-events';
 
+/**
+ * PostHog's store group for an event about a store: `$groups` from its
+ * `store_id`, so a store's events (its owner's, its customers') read together.
+ * An event without a store_id is left as it is.
+ */
+export function withStoreGroup(properties: Record<string, unknown>): Record<string, unknown> {
+  const storeId = properties.store_id;
+  if (typeof storeId !== 'string' || storeId.length === 0) return properties;
+  return { ...properties, $groups: { store: storeId } };
+}
+
 type ProductServerEvent = {
   distinctId: string | null | undefined;
   event: ProductAnalyticsEvent;
@@ -24,7 +35,8 @@ type ProductServerEvent = {
  * outbox row: throws when PostHog did not take it (the SDK's flush swallows
  * HTTP failures), answers `skipped` when analytics is not set up here. It
  * honours an outbox sender's abort (lib/api/effect-signal.ts). The caller
- * gives every property, its area's base ones included. `identity` is the
+ * gives every property, its area's base ones included; one with a `store_id`
+ * gets its store group (`withStoreGroup`). `identity` is the
  * row's: the same event id and time on every retry, so PostHog keeps one
  * event (its `uuid` and `timestamp`, as posthog-node sends them).
  */
@@ -52,7 +64,7 @@ export async function captureServerEventOrThrow({
       // What posthog-node adds to a server event: no GeoIP from the server's
       // address, and the library that sent it.
       properties: {
-        ...properties,
+        ...withStoreGroup(properties),
         $lib: 'posthog-node',
         $geoip_disable: true,
       },
@@ -94,10 +106,10 @@ export async function captureProductServerEvent({
     posthog.capture({
       distinctId,
       event,
-      properties: {
+      properties: withStoreGroup({
         ...productAnalyticsBaseProperties,
         ...properties,
-      },
+      }),
     });
     await shutdownPostHogServer();
   } catch {

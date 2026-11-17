@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import {
   apiEffects,
@@ -98,6 +98,40 @@ export const analyticsEventIdentity = (occurredAt: Date): AnalyticsEventIdentity
   eventUuid: randomUUID(),
   occurredAt: occurredAt.toISOString(),
 });
+
+/**
+ * The identity of an event that something outside Louez may report more than
+ * once (a Stripe event redelivered, a webhook and a page that both see the
+ * same payment): a UUID derived from `key`, so every report of it carries the
+ * same id, and the provider's own time of it. PostHog keeps one event.
+ */
+export const stableAnalyticsEventIdentity = (
+  key: string,
+  occurredAt: Date,
+): AnalyticsEventIdentity => {
+  const hex = createHash("sha256").update(`louez-analytics:${key}`).digest("hex");
+  // A version 5 layout (name-based), with the variant bits RFC 9562 sets.
+  const variant = ((Number.parseInt(hex.charAt(16), 16) & 0x3) | 0x8).toString(16);
+  return {
+    eventUuid: `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`,
+    occurredAt: occurredAt.toISOString(),
+  };
+};
+
+/**
+ * The account's lifecycle steps a store goes through, counted on its owner
+ * (docs/analytics/lifecycle.md says what each means).
+ */
+export const STORE_LIFECYCLE_EVENTS = [
+  "store_published",
+  "stripe_connect_completed",
+  "subscription_started",
+  "subscription_changed",
+  "subscription_canceled",
+  "payg_fee_charged",
+] as const;
+
+export type StoreLifecycleEvent = (typeof STORE_LIFECYCLE_EVENTS)[number];
 
 export interface ApiEffectPayloads {
   /**
@@ -254,6 +288,16 @@ export interface ApiEffectPayloads {
     ownerUserId: string;
     transport: "rpc" | "openapi" | "mcp";
     /** The event's own facts; the sender adds the referral program's settings. */
+    properties: Record<string, string | number | boolean | null>;
+  };
+  /**
+   * One lifecycle event of a store, on its owner's person: codes, amounts and
+   * yes/no only, never a value a person typed. The sender adds the store_id
+   * and the store group.
+   */
+  "store.lifecycleAnalytics": AnalyticsEventIdentity & {
+    event: StoreLifecycleEvent;
+    ownerUserId: string;
     properties: Record<string, string | number | boolean | null>;
   };
   /** The platform's notice that a store went live, on one channel. */

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 
 import { toPricingCatalogProduct } from '@louez/api/services/catalogue-line-pricing'
 import type { PricingBreakdown, PricingKind, PricingMode } from '@louez/types'
+import { getRentalPaid } from '@louez/utils'
 
 import type { EditableItem } from '../types'
 import {
@@ -317,6 +318,7 @@ const summaryOf = (
       currency,
     }),
     discountAmount: 0,
+    rentalPaid: 0,
     currency,
   })
 
@@ -360,8 +362,64 @@ test('the summary keeps the stored discount as a line of its own', () => {
     storedTotal: 100,
     preview: { subtotal: 150, taxAmount: null, total: 140, taxOnTop: false },
     discountAmount: 10,
+    rentalPaid: 0,
     currency: 'EUR',
   })
   assert.equal(figures.discount, 10)
   assert.equal(figures.difference, 40)
+})
+
+// What the hint under the difference says: what was paid beyond the new total is to
+// give back; what the new total still asks of the customer is left to pay. "Paid" is
+// the one rule of the payment section (`getRentalPaid`): completed rental payments in
+// the reservation's currency, less the refunds made, the deposit apart.
+const editedTo = (after: number, rentalPaid: number, storedTotal = 72, currency = 'EUR') =>
+  editSummaryFigures({
+    storedTotal,
+    preview: { subtotal: after, taxAmount: null, total: after, taxOnTop: false },
+    discountAmount: 0,
+    rentalPaid,
+    currency,
+  })
+
+test('the balance: lowered below the total but above what was paid, the customer still owes, nothing is given back', () => {
+  // 72.00, 42.00 paid, edited down to 56.00: 14.00 left to pay.
+  const figures = editedTo(56, 42)
+  assert.equal(figures.difference, -16)
+  assert.deepEqual(figures.balance, { kind: 'due', amount: 14 })
+})
+
+test('the balance: lowered below what was paid, only the excess is given back', () => {
+  assert.deepEqual(editedTo(56, 72).balance, { kind: 'refund', amount: 16 })
+  assert.deepEqual(editedTo(56, 60).balance, { kind: 'refund', amount: 4 })
+})
+
+test('the balance: lowered to exactly what was paid, nothing to give back nor to pay', () => {
+  assert.equal(editedTo(42, 42).balance, null)
+})
+
+test('the balance: raised, what is left to pay, not the difference', () => {
+  // Nothing paid yet: the whole new total is owed, not only the 8.00 added.
+  assert.deepEqual(editedTo(80, 0).balance, { kind: 'due', amount: 80 })
+  assert.deepEqual(editedTo(80, 72).balance, { kind: 'due', amount: 8 })
+})
+
+test("the balance reads what was paid by the payment section's rule: refunds off, deposit apart", () => {
+  const rentalPaid = getRentalPaid(
+    [
+      { id: 'p1', type: 'rental', status: 'completed', amount: '72.00', method: 'cash' },
+      // Given back by hand: 72.00 paid, 20.00 refunded.
+      { id: 'r1', type: 'rental', status: 'completed', amount: '20.00', method: 'cash', refundOfPaymentId: 'p1' },
+      { id: 'd1', type: 'deposit', status: 'completed', amount: '300.00', method: 'cash' },
+      { id: 'p2', type: 'rental', status: 'pending', amount: '30.00', method: 'stripe', stripePaymentIntentId: null, stripeCheckoutSessionId: 'cs_1' },
+    ],
+    'EUR',
+  )
+  assert.equal(rentalPaid, 52)
+  assert.deepEqual(editedTo(56, rentalPaid).balance, { kind: 'due', amount: 4 })
+  assert.deepEqual(editedTo(40, rentalPaid).balance, { kind: 'refund', amount: 12 })
+})
+
+test('the balance in yen: whole yen', () => {
+  assert.deepEqual(editedTo(5600, 7200, 7200, 'JPY').balance, { kind: 'refund', amount: 1600 })
 })

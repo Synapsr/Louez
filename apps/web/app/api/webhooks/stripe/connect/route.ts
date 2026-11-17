@@ -40,6 +40,9 @@ import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
 import { env } from "@/env";
 import { dispatchApiEffects } from "@/lib/api/effects";
+import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
+import { paygFeeOfPayment } from "@/lib/pay-as-you-go/payg-fee-analytics";
+import { queueStoreLifecycleEvent } from "@/lib/product-analytics/lifecycle-events";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
@@ -635,6 +638,36 @@ async function handleCheckoutCompleted(
     }
   }
 
+  // The pay-as-you-go commission of this charge, on the store owner, from the fee facts
+  // the payment was created with, whoever bills the store (Louez's legacy metering or
+  // the billing service) and whatever its billing mode is now. Keyed on the
+  // PaymentIntent, at Stripe's time of the charge (or of the session): the webhook's
+  // redeliveries count it once. An extension's payment takes its own commission too.
+  const paygFee = paygFeeOfPayment({
+    feeFacts: readFeeMetadata(paymentIntentMetadata),
+    applicationFeeCents: applicationFeeCollectedCents,
+    isPayAsYouGoStore,
+  });
+  if (paymentIntentId && paygFee) {
+    dispatchApiEffects(
+      await queueStoreLifecycleEvent({
+        storeId: reservation.store.id,
+        event: "payg_fee_charged",
+        properties: {
+          reservation_id: reservationId,
+          fee_cents: paygFee.feeCents,
+          currency,
+          collection: "application_fee",
+          application_fee_cents: applicationFeeCollectedCents,
+          payment_amount_cents: session.amount_total ?? null,
+          policy_scope: paygFee.policyScope,
+        },
+        dedupKey: `payg_fee_charged:${paymentIntentId}`,
+        occurredAt: chargeCreatedAt ?? new Date(session.created * 1000),
+      }),
+    );
+  }
+
   // Claim → confirm → effects, shared with the customer's return from Stripe
   // (lib/reservations/complete-checkout-payment.ts). Idempotent per session.
   if (session.metadata?.extensionId) {
@@ -930,10 +963,12 @@ async function handleAccountUpdated(account: Stripe.Account) {
   const chargesEnabled = account.charges_enabled ?? false;
   const detailsSubmitted = account.details_submitted ?? false;
 
-  await writeConnectColumns(store.id, {
+  // The first write that finds charges enabled queues `stripe_connect_completed`.
+  const effectIds = await writeConnectColumns(store.id, {
     stripeChargesEnabled: chargesEnabled,
     stripeOnboardingComplete: chargesEnabled && detailsSubmitted,
   });
+  dispatchApiEffects(effectIds);
   // The user finished Stripe's form: a handoff an agent gave them for it is done.
   if (detailsSubmitted) await completeActiveHandoff(store.id, "stripe_connect_onboarding");
 

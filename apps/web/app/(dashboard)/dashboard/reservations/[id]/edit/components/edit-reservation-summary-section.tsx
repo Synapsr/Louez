@@ -49,7 +49,7 @@ export const EditReservationSummarySection = ({
   const t = useTranslations("dashboard.reservations");
   const { intl: formatLocale } = useFormatLocale();
   const money = (amount: number) => formatCurrency(amount, currency, formatLocale);
-  const { difference } = figures;
+  const { difference, balance } = figures;
 
   const scrollToFirstConflict = () => {
     const target = document.getElementById(
@@ -140,11 +140,12 @@ export const EditReservationSummarySection = ({
             </span>
           </div>
 
-          {difference !== 0 && (
+          {/* What the edit leaves to give back or to pay, from what was paid, not the difference. */}
+          {difference !== 0 && balance && (
             <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-              {difference > 0
-                ? t("edit.adjustmentPositive", { amount: money(difference) })
-                : t("edit.adjustmentNegative", { amount: money(Math.abs(difference)) })}
+              {balance.kind === "refund"
+                ? t("edit.adjustmentNegative", { amount: money(balance.amount) })
+                : t("payment.rentalRemaining", { formattedAmount: money(balance.amount) })}
             </p>
           )}
 

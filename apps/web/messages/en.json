@@ -2501,7 +2501,6 @@
         "ignoreEmailFailure": "Ignore",
         "lockPrice": "Lock price",
         "unlockPrice": "Back to automatic pricing (replaces the entered price)",
-        "adjustmentPositive": "An additional {amount} will need to be collected.",
         "adjustmentNegative": "A refund of {amount} can be issued.",
         "warningDialogTitle": "Confirm exceptional change",
         "warningDialogDescription": "This update does not match the usual reservation rules. Review the warnings before saving.",
@@ -2862,7 +2861,14 @@
             "generic": "Deposit authorization failed. Ask the customer to retry or use another card.",
             "closedByStore": "Request closed by the store: no authorization found in Stripe."
           }
-        }
+        },
+        "refundDone": "Refund made",
+        "refundFailed": "Refund failed",
+        "refundToCheck": "Refund to check in Stripe",
+        "approvedBy": "Approved by",
+        "refundIssued": "Refund issued at Stripe",
+        "stripeRefundCount": "Stripe counts {amount} of refunds on this payment",
+        "stripeRefundCountFull": "Stripe counts this payment as fully refunded"
       },
       "unitAssignment": {
         "title": "Unit assignment",
@@ -3027,7 +3033,9 @@
         "statusFailed": "Failed",
         "statusReleasePending": "Being released",
         "requestPayment": "Request payment",
-        "invoiceGenerated": "Invoice {number} generated"
+        "invoiceGenerated": "Invoice {number} generated",
+        "refundProcessing": "Refund in progress",
+        "refundIssued": "Refund issued at Stripe"
       },
       "requestPaymentModal": {
         "title": "Request payment",
@@ -8534,8 +8542,6 @@
         "payment_received": "Online payment received",
         "payment_received_amount": "Online payment received ({amount})",
         "payment_failed": "Online payment declined",
-        "refunded": "Refund issued",
-        "refunded_amount": "Refund of {amount}",
         "payment_added_rental": "Rental payment recorded ({amount})",
         "payment_added_deposit": "Deposit received ({amount})",
         "payment_added_deposit_return": "Deposit returned ({amount})",
@@ -8553,7 +8559,8 @@
         "inspection_departure_completed": "Pickup condition report completed",
         "inspection_return_completed": "Return condition report completed",
         "inspection_damage_detected": "Damage noted in the condition report",
-        "inspection_signed": "Condition report signed"
+        "inspection_signed": "Condition report signed",
+        "stripe_refund_count": "{amount} in refunds counted by Stripe on this payment"
       },
       "inspections": {
         "title": "Condition reports",
@@ -8603,6 +8610,15 @@
           "refunded": "Refunded",
           "cancelled": "Cancelled",
           "authorized": "Authorized"
+        },
+        "refundStatus": {
+          "done": "Refunded",
+          "issued": "Issued",
+          "processing": "In progress",
+          "failed": "Failed"
+        },
+        "refundedStatus": {
+          "issued": "Refund issued"
         }
       },
       "reviewPrompt": {

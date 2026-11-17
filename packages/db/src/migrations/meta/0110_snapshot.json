@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "a82a73af-a03d-4603-956a-694a65c9e47c",
+  "id": "448790d2-cbbc-4c5d-93ed-664b51133bf9",
   "prevId": "db9ae3ea-2afa-46dd-bcfb-baea1bc66c3d",
   "tables": {
     "account_departure_reason_counters": {
@@ -3629,14 +3629,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "is_test": {
-          "name": "is_test",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
         },
         "notes": {
           "name": "notes",
@@ -11712,25 +11704,6 @@
           "autoincrement": false,
           "default": "'online'"
         },
-        "is_test": {
-          "name": "is_test",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "test_store_id": {
-          "name": "test_store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "generated": {
-            "as": "(case when `is_test` then `store_id` else null end)",
-            "type": "virtual"
-          }
-        },
         "tulip_insurance_opt_in": {
           "name": "tulip_insurance_opt_in",
           "type": "boolean",
@@ -11832,14 +11805,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "reservations_one_test_per_store": {
-          "name": "reservations_one_test_per_store",
-          "columns": [
-            "test_store_id"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "review_request_logs": {
@@ -13954,6 +13920,13 @@
           "autoincrement": false,
           "default": false
         },
+        "stripe_connect_completed_at": {
+          "name": "stripe_connect_completed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "email_settings": {
           "name": "email_settings",
           "type": "json",
@@ -14370,6 +14343,13 @@
         "signup_origin": {
           "name": "signup_origin",
           "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "first_touch_attribution": {
+          "name": "first_touch_attribution",
+          "type": "json",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

@@ -12,7 +12,7 @@ import {
   stores,
 } from "@louez/db";
 import type { LegMethod } from "@louez/types";
-import type { SeasonalPricingConfig } from "@louez/utils";
+import { getRentalPaid, normalizeCurrency, type SeasonalPricingConfig } from "@louez/utils";
 
 import {
   buildSeasonalPricingConfigs,
@@ -195,6 +195,21 @@ export async function getDashboardReservationEditContext(params: {
         orderBy: (activity, { desc }) => [desc(activity.createdAt)],
       },
       customer: { columns: { firstName: true, lastName: true } },
+      // Read for what settles the rental (`getRentalPaid`), as the payment section reads it.
+      payments: {
+        columns: {
+          id: true,
+          amount: true,
+          currency: true,
+          type: true,
+          method: true,
+          status: true,
+          refundOfPaymentId: true,
+          stripeRefundId: true,
+          stripePaymentIntentId: true,
+          stripeCheckoutSessionId: true,
+        },
+      },
       items: {
         with: {
           product: {
@@ -218,7 +233,7 @@ export async function getDashboardReservationEditContext(params: {
     return { editable: false as const };
   }
 
-  const [availableProducts, existingReservations] = await Promise.all([
+  const [availableProducts, [existingReservations, storeCurrency]] = await Promise.all([
     db.query.products.findMany({
       where: and(eq(products.storeId, storeId), eq(products.status, "active")),
       with: {
@@ -232,12 +247,16 @@ export async function getDashboardReservationEditContext(params: {
     }),
     db.query.stores
       .findFirst({ where: eq(stores.id, storeId), columns: { settings: true } })
-      .then((store) =>
-        getActiveReservations(
-          storeId,
-          reservationId,
-          store?.settings?.pendingBlocksAvailability ?? true,
-        ),
+      .then(
+        async (store) =>
+          [
+            await getActiveReservations(
+              storeId,
+              reservationId,
+              store?.settings?.pendingBlocksAvailability ?? true,
+            ),
+            normalizeCurrency(store?.settings?.currency),
+          ] as const,
       ),
   ]);
 
@@ -272,6 +291,11 @@ export async function getDashboardReservationEditContext(params: {
       subtotalAmount: reservation.subtotalAmount,
       depositAmount: reservation.depositAmount,
       totalAmount: reservation.totalAmount,
+      // What settles the rental now, in the reservation's currency, as the payment section reads it.
+      rentalPaid: getRentalPaid(
+        reservation.payments,
+        normalizeCurrency(reservation.currency, storeCurrency),
+      ),
       deliveryFee: reservation.deliveryFee,
       discountAmount: reservation.discountAmount,
       taxDisplayMode: reservation.taxDisplayMode,

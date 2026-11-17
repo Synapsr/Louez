@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -17,6 +17,7 @@ import { getCustomerSession } from "@/lib/customer-auth/session";
 import { log } from "@/lib/evlog";
 import { getClientIp } from "@/lib/request";
 import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-mode";
+import { SALES_CHANNEL_COOKIE, salesChannelFromCookie } from "@/lib/util.sales-channel";
 import { getTulipCoverageSummary } from "@/lib/integrations/tulip/contracts";
 import {
   searchFrenchCompanies,
@@ -244,7 +245,9 @@ const isSignedInAs = async (storeId: string, email: string): Promise<boolean> =>
  * Public checkout submission. The payload is validated with Zod, the source
  * is always "online" (trusted callers use the internal function), and the
  * result keeps the shape the current client reads: `error`/`errorParams`/
- * `details` on failure, `success` plus ids and URLs otherwise.
+ * `details` on failure, `success` plus ids and URLs otherwise. A renter who
+ * came from reeent books as "online" too; the storefront's channel cookie
+ * only records the sales channel, never the fee.
  */
 export async function createReservation(input: unknown): Promise<CreateReservationActionResult> {
   const parsed = createReservationInputSchema.safeParse(input);
@@ -257,6 +260,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
   const result = await createReservationInternal({
     ...parsed.data,
     source: "online",
+    salesChannel: salesChannelFromCookie((await cookies()).get(SALES_CHANNEL_COOKIE)?.value),
     customerSignedIn: testMode
       ? false
       : await isSignedInAs(parsed.data.storeId, parsed.data.customer.email),

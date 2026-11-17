@@ -36,6 +36,7 @@ import {
   claimCompletedCheckoutPayment,
   paymentInsuranceShareMinor,
 } from "@/lib/stripe/payment-completion";
+import { reservationChannelAnalyticsProperties } from "@/lib/util.sales-channel";
 import { evaluateReservationRules } from "@louez/utils";
 
 import { checkoutSessionAccount, isSessionCreationRow } from "./checkout-session-account";
@@ -438,9 +439,12 @@ const runCheckoutPaymentCompletion = async ({
         feature: "checkout",
         surface: "storefront",
         store_id: store.id,
+        // The store owner's person: the customer's event counts on the loueur too.
+        merchant_distinct_id: store.userId,
         reservation_id: reservationId,
         customer_id: reservation.customerId,
         source: source === "webhook" ? "stripe_connect_webhook" : "success_page_verification",
+        ...reservationChannelAnalyticsProperties(reservation),
         payment_provider: "stripe",
         amount_cents: toAnalyticsAmountCents(totalAmount),
         deposit_amount_cents: toAnalyticsAmountCents(depositAmount),

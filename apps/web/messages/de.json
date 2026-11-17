@@ -2501,7 +2501,6 @@
         "ignoreEmailFailure": "Ignorieren",
         "lockPrice": "Preis sperren",
         "unlockPrice": "Zurück zum automatischen Preis (ersetzt den eingegebenen Preis)",
-        "adjustmentPositive": "Ein Aufpreis von {amount} muss erhoben werden.",
         "adjustmentNegative": "Eine Rückerstattung von {amount} kann gewährt werden.",
         "warningDialogTitle": "Ausnahmeänderung bestätigen",
         "warningDialogDescription": "Diese Aktualisierung entspricht nicht den üblichen Reservierungsregeln. Überprüfen Sie die Warnungen vor dem Speichern.",
@@ -2862,7 +2861,14 @@
             "generic": "Kautionsautorisierung fehlgeschlagen. Bitten Sie den Kunden, es erneut zu versuchen oder eine andere Karte zu verwenden.",
             "closedByStore": "Anfrage vom Shop geschlossen: keine Autorisierung in Stripe gefunden."
           }
-        }
+        },
+        "refundDone": "Rückerstattung erfolgt",
+        "refundFailed": "Rückerstattung fehlgeschlagen",
+        "refundToCheck": "Rückerstattung in Stripe prüfen",
+        "approvedBy": "Genehmigt von",
+        "refundIssued": "Rückerstattung bei Stripe ausgestellt",
+        "stripeRefundCount": "Stripe zählt {amount} an Rückerstattungen auf diese Zahlung",
+        "stripeRefundCountFull": "Stripe zählt diese Zahlung als vollständig erstattet"
       },
       "unitAssignment": {
         "title": "Einheitenzuweisung",
@@ -3027,7 +3033,9 @@
         "statusFailed": "Fehlgeschlagen",
         "statusReleasePending": "Wird freigegeben",
         "requestPayment": "Zahlung anfordern",
-        "invoiceGenerated": "Rechnung {number} erstellt"
+        "invoiceGenerated": "Rechnung {number} erstellt",
+        "refundProcessing": "Rückerstattung läuft",
+        "refundIssued": "Rückerstattung bei Stripe ausgestellt"
       },
       "requestPaymentModal": {
         "title": "Zahlung anfordern",
@@ -8545,8 +8553,6 @@
         "payment_received": "Online-Zahlung erhalten",
         "payment_received_amount": "Online-Zahlung erhalten ({amount})",
         "payment_failed": "Online-Zahlung abgelehnt",
-        "refunded": "Rückerstattung veranlasst",
-        "refunded_amount": "Rückerstattung von {amount}",
         "payment_added_rental": "Mietzahlung erfasst ({amount})",
         "payment_added_deposit": "Kaution erhalten ({amount})",
         "payment_added_deposit_return": "Kaution zurückgezahlt ({amount})",
@@ -8564,7 +8570,8 @@
         "inspection_departure_completed": "Übergabeprotokoll erstellt",
         "inspection_return_completed": "Rücknahmeprotokoll erstellt",
         "inspection_damage_detected": "Schäden im Protokoll festgestellt",
-        "inspection_signed": "Protokoll unterschrieben"
+        "inspection_signed": "Protokoll unterschrieben",
+        "stripe_refund_count": "{amount} an Rückerstattungen von Stripe auf diese Zahlung gezählt"
       },
       "inspections": {
         "title": "Zustandsprotokolle",
@@ -8614,6 +8621,15 @@
           "refunded": "Erstattet",
           "cancelled": "Storniert",
           "authorized": "Autorisiert"
+        },
+        "refundStatus": {
+          "done": "Erstattet",
+          "issued": "Ausgestellt",
+          "processing": "In Bearbeitung",
+          "failed": "Fehlgeschlagen"
+        },
+        "refundedStatus": {
+          "issued": "Rückerstattung ausgestellt"
         }
       },
       "reviewPrompt": {

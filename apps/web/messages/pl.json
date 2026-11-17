@@ -2462,7 +2462,6 @@
         "ignoreEmailFailure": "Ignoruj",
         "lockPrice": "Zablokuj cenę",
         "unlockPrice": "Powrót do ceny automatycznej (zastępuje wprowadzoną cenę)",
-        "adjustmentPositive": "Należy pobrać dopłatę w wysokości {amount}.",
         "adjustmentNegative": "Można dokonać zwrotu w wysokości {amount}.",
         "warningDialogTitle": "Potwierdź wyjątkową zmianę",
         "warningDialogDescription": "Ta aktualizacja nie odpowiada standardowym zasadom rezerwacji. Przejrzyj ostrzeżenia przed zapisaniem.",
@@ -2823,7 +2822,14 @@
             "generic": "Autoryzacja kaucji nie powiodła się. Poproś klienta o ponowienie próby lub użycie innej karty.",
             "closedByStore": "Prośba zamknięta przez sklep: w Stripe nie znaleziono autoryzacji."
           }
-        }
+        },
+        "refundDone": "Zwrot wykonany",
+        "refundFailed": "Zwrot nieudany",
+        "refundToCheck": "Zwrot do sprawdzenia w Stripe",
+        "approvedBy": "Zatwierdził(a)",
+        "refundIssued": "Zwrot wystawiony w Stripe",
+        "stripeRefundCount": "Stripe liczy {amount} zwrotów dla tej płatności",
+        "stripeRefundCountFull": "Stripe liczy tę płatność jako zwróconą w całości"
       },
       "unitAssignment": {
         "title": "Przypisanie jednostek",
@@ -2988,7 +2994,9 @@
         "statusFailed": "Nieudana",
         "statusReleasePending": "Zwalnianie w toku",
         "requestPayment": "Poproś o płatność",
-        "invoiceGenerated": "Faktura {number} wygenerowana"
+        "invoiceGenerated": "Faktura {number} wygenerowana",
+        "refundProcessing": "Zwrot w toku",
+        "refundIssued": "Zwrot wystawiony w Stripe"
       },
       "requestPaymentModal": {
         "title": "Poproś o płatność",
@@ -8534,8 +8542,6 @@
         "payment_received": "Otrzymano płatność online",
         "payment_received_amount": "Otrzymano płatność online ({amount})",
         "payment_failed": "Płatność online odrzucona",
-        "refunded": "Dokonano zwrotu",
-        "refunded_amount": "Zwrot {amount}",
         "payment_added_rental": "Zarejestrowano płatność za wynajem ({amount})",
         "payment_added_deposit": "Otrzymano kaucję ({amount})",
         "payment_added_deposit_return": "Zwrócono kaucję ({amount})",
@@ -8553,7 +8559,8 @@
         "inspection_departure_completed": "Sporządzono protokół wydania",
         "inspection_return_completed": "Sporządzono protokół zwrotu",
         "inspection_damage_detected": "W protokole stwierdzono szkody",
-        "inspection_signed": "Protokół podpisany"
+        "inspection_signed": "Protokół podpisany",
+        "stripe_refund_count": "{amount} zwrotu naliczonego przez Stripe dla tej płatności"
       },
       "inspections": {
         "title": "Protokoły stanu",
@@ -8603,6 +8610,15 @@
           "refunded": "Zwrócone",
           "cancelled": "Anulowane",
           "authorized": "Autoryzowane"
+        },
+        "refundStatus": {
+          "done": "Zwrócono",
+          "issued": "Wystawiony",
+          "processing": "W toku",
+          "failed": "Nieudany"
+        },
+        "refundedStatus": {
+          "issued": "Zwrot wystawiony"
         }
       },
       "reviewPrompt": {

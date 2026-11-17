@@ -15,6 +15,7 @@ import type {
 } from "../platform/ports";
 import { recordOperationTarget } from "../platform/operations";
 import { refundOnlinePresentation } from "./approval-presentations";
+import { onlineRefundStatus } from "./reservation-refunds";
 import { currencyFit, currencyMinorOf, paymentAmount } from "./payment-amount";
 import {
   type PaymentWriteCaller,
@@ -109,8 +110,7 @@ export function refundAnswer(
   return {
     refund: {
       id: view.id,
-      status:
-        view.status === "succeeded" ? "succeeded" : view.status === "failed" ? "failed" : "pending",
+      status: onlineRefundStatus(view.status),
       detail:
         view.status === "requested"
           ? "sending"

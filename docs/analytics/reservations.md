@@ -51,7 +51,9 @@ marge de rotation. Les deux portent `feature: reservation_management`, `reservat
 (`feature: checkout`, `surface: storefront`). Attention : l'événement serveur
 `checkout_reservation_created` est attribué au `customerId` (id BDD), pas au distinct_id
 anonyme du navigateur — d'où l'événement client `checkout_completed` qui sert de dernière
-étape aux funnels.
+étape aux funnels. `checkout_reservation_created` et `checkout_payment_completed` portent aussi
+`merchant_distinct_id`, le distinct_id du propriétaire de la boutique, et, comme tout événement
+serveur avec un `store_id`, le groupe PostHog `store` (voir [lifecycle.md](lifecycle.md)).
 
 | Événement                                                                     | Quand                                                                                               | Propriétés clés                                                                                               |
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -60,7 +62,30 @@ anonyme du navigateur — d'où l'événement client `checkout_completed` qui se
 | `checkout_submit_failed`                                                      | Échec pendant la soumission ; `failure_source` distingue une précondition client d'un refus serveur | `error_code`, `failure_source`, `store_id`                                                                    |
 | `checkout_validation_recovered`                                               | Correction réussie après une validation bloquante du checkout                                       | `error_code`, `original_failure_source`, `recovery_action`, `store_id`                                        |
 | `checkout_completed`                                                          | Réservation soumise avec succès (avant redirect Stripe éventuel)                                    | `reservation_id`, `reservation_mode`, `item_count`, `subtotal_amount_cents`, `total_amount_cents`, `store_id` |
-| `checkout_reservation_created` / `checkout_payment_*` (serveur, préexistants) | Création + paiement                                                                                 | voir `checkout/actions.ts`                                                                                    |
+| `checkout_reservation_created` / `checkout_payment_*` (serveur, préexistants) | Création + paiement                                                                                 | voir `reservations/post-creation-effects.ts` et `reservations/complete-checkout-payment.ts`                   |
+
+## Canal de vente — réservations venues de reeent
+
+reeent envoie ses visiteurs sur la boutique avec `?channel=marketplace`. Le proxy pose alors le
+cookie httpOnly `louez_channel=marketplace` (retiré par `?channel=direct`) ; l'action serveur du
+checkout le lit et écrit `reservations.sales_channel = "marketplace"`. La réservation reste
+`source: "online"` : la commission marketplace (1 €) ne suit que `source`. Une réservation de la
+Booking API de reeent porte `source: "marketplace"` et `sales_channel: "marketplace"`.
+`sales_channel` est null partout ailleurs, et sur les lignes antérieures à la colonne (migration
+0111, sans rattrapage).
+
+`checkout_reservation_created` et `checkout_payment_completed` portent :
+
+| Propriété            | Valeur                                                       |
+| -------------------- | ------------------------------------------------------------ |
+| `reservation_source` | la colonne `source` (`online`, `marketplace`, `phone`)       |
+| `sales_channel`      | `marketplace` ou `null`                                      |
+| `marketplace`        | `reeent`, seulement quand `sales_channel` vaut `marketplace` |
+
+Une réservation de la Booking API émet aussi `checkout_reservation_created` (le reste de sa
+création reste silencieux), avec `surface: marketplace` et `source: marketplace_booking_api` :
+les funnels filtrés sur `surface: storefront` ne la comptent pas. Pour compter les réservations
+venues de reeent : `sales_channel = marketplace`.
 
 ## Notes
 

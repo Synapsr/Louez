@@ -17,6 +17,7 @@ import { createStripeRefundEffectSenders } from "@/lib/reservations/stripe-refun
 import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
 import { createStoreLaunchEffectSenders } from "@/lib/stores/store-launch-effects";
+import { createStoreLifecycleEffectSenders } from "@/lib/stores/store-lifecycle-effects";
 import { createStoreSetupEffectSenders } from "@/lib/stores/store-setup-effects";
 import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-effects";
 import { createTestReservationEffectSenders } from "@/lib/test-reservations/lifecycle-effects";
@@ -36,6 +37,7 @@ export const apiEffectSenders: ApiEffectSenders = withTestReservationMessagePoli
   ...createSmsEffectSenders(),
   ...createStoreCreationEffectSenders(),
   ...createStoreLaunchEffectSenders(),
+  ...createStoreLifecycleEffectSenders(),
   ...createStoreSetupEffectSenders(),
   ...createTeamInvitationEffectSenders(),
   ...createTestReservationEffectSenders(),

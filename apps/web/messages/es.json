@@ -2501,7 +2501,6 @@
         "ignoreEmailFailure": "Ignorar",
         "lockPrice": "Bloquear precio",
         "unlockPrice": "Volver al precio automático (reemplaza el precio introducido)",
-        "adjustmentPositive": "Se deberá cobrar un complemento de {amount}.",
         "adjustmentNegative": "Se puede emitir un reembolso de {amount}.",
         "warningDialogTitle": "Confirmar cambio excepcional",
         "warningDialogDescription": "Esta modificación no cumple con las reglas habituales de reserva. Revise las advertencias antes de guardar.",
@@ -2862,7 +2861,14 @@
             "generic": "La autorización del depósito falló. Pida al cliente que reintente o utilice otra tarjeta.",
             "closedByStore": "Solicitud cerrada por la tienda: no se encontró ninguna autorización en Stripe."
           }
-        }
+        },
+        "refundDone": "Reembolso realizado",
+        "refundFailed": "Reembolso fallido",
+        "refundToCheck": "Reembolso por revisar en Stripe",
+        "approvedBy": "Aprobado por",
+        "refundIssued": "Reembolso emitido en Stripe",
+        "stripeRefundCount": "Stripe cuenta {amount} de reembolsos en este pago",
+        "stripeRefundCountFull": "Stripe cuenta este pago como reembolsado por completo"
       },
       "unitAssignment": {
         "title": "Asignación de unidades",
@@ -3027,7 +3033,9 @@
         "statusFailed": "Fallido",
         "statusReleasePending": "Liberación en curso",
         "requestPayment": "Solicitar pago",
-        "invoiceGenerated": "Factura {number} generada"
+        "invoiceGenerated": "Factura {number} generada",
+        "refundProcessing": "Reembolso en curso",
+        "refundIssued": "Reembolso emitido en Stripe"
       },
       "requestPaymentModal": {
         "title": "Solicitar pago",
@@ -8545,8 +8553,6 @@
         "payment_received": "Pago en línea recibido",
         "payment_received_amount": "Pago en línea recibido ({amount})",
         "payment_failed": "Pago en línea rechazado",
-        "refunded": "Reembolso realizado",
-        "refunded_amount": "Reembolso de {amount}",
         "payment_added_rental": "Pago del alquiler registrado ({amount})",
         "payment_added_deposit": "Fianza recibida ({amount})",
         "payment_added_deposit_return": "Fianza devuelta ({amount})",
@@ -8564,7 +8570,8 @@
         "inspection_departure_completed": "Inspección de salida realizada",
         "inspection_return_completed": "Inspección de devolución realizada",
         "inspection_damage_detected": "Daños constatados en la inspección",
-        "inspection_signed": "Inspección firmada"
+        "inspection_signed": "Inspección firmada",
+        "stripe_refund_count": "{amount} de reembolso contado por Stripe en este pago"
       },
       "inspections": {
         "title": "Inspecciones",
@@ -8614,6 +8621,15 @@
           "refunded": "Reembolsado",
           "cancelled": "Cancelado",
           "authorized": "Autorizado"
+        },
+        "refundStatus": {
+          "done": "Reembolsado",
+          "issued": "Emitido",
+          "processing": "En curso",
+          "failed": "Fallido"
+        },
+        "refundedStatus": {
+          "issued": "Reembolso emitido"
         }
       },
       "reviewPrompt": {

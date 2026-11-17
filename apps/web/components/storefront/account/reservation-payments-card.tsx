@@ -4,6 +4,9 @@ import { Badge } from "@louez/ui";
 
 import { AccountCard } from "@/components/storefront/account/account-card";
 import { Price } from "@/components/storefront/ui/price";
+import type { PaymentRowReading } from "@/lib/reservations/util.payment-status";
+
+import { customerPaymentBadge } from "./util.payment-badge";
 
 export interface ReservationPaymentView {
   id: string;
@@ -15,22 +18,18 @@ export interface ReservationPaymentView {
   dateLabel: string;
   /** A reason the store wrote for the customer (deposit capture, damage). */
   note?: string | null;
-  /** Money given back: shown negative, labelled as a refund. */
-  isRefund: boolean;
+  /**
+   * What the row is (`readPaymentRow`): a refund is shown negative, labelled as a refund,
+   * with its own state. A failed refund is not listed (`getCustomerPaymentRows`).
+   */
+  reading: PaymentRowReading;
+  /** On a payment refunded in full: what its refunds read (`refundedPaymentState`). */
+  refunded?: "done" | "issued" | null;
 }
 
 interface ReservationPaymentsCardProps {
   payments: ReservationPaymentView[];
 }
-
-const STATUS_VARIANT: Record<string, "success" | "pending" | "failed" | "tertiary" | "info"> = {
-  completed: "success",
-  authorized: "info",
-  pending: "pending",
-  failed: "failed",
-  refunded: "tertiary",
-  cancelled: "tertiary",
-};
 
 /**
  * Payment history: type, method and date on the left, amount and state on
@@ -46,11 +45,12 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
     <AccountCard title={t("title")}>
       <ul className="flex flex-col divide-y">
         {payments.map((payment) => {
-          const isHold = payment.type === "deposit_hold";
+          const isRefund = payment.reading.kind === "refund";
           const typeLabel =
-            payment.isRefund && payment.type !== "deposit_return"
+            isRefund && payment.type !== "deposit_return"
               ? t("types.refund")
               : t(`types.${payment.type}`);
+          const badge = customerPaymentBadge(payment.reading, payment.status, payment.refunded);
 
           return (
             <li
@@ -71,9 +71,9 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <Price amount={payment.isRefund ? -payment.amount : payment.amount} size="sm" />
-                <Badge variant={STATUS_VARIANT[payment.status] ?? "tertiary"} size="sm">
-                  {t(`${isHold ? "holdStatus" : "status"}.${payment.status}`)}
+                <Price amount={isRefund ? -payment.amount : payment.amount} size="sm" />
+                <Badge variant={badge.variant} size="sm">
+                  {t(badge.key)}
                 </Badge>
               </div>
             </li>

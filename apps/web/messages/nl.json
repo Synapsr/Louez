@@ -2462,7 +2462,6 @@
         "ignoreEmailFailure": "Negeren",
         "lockPrice": "Prijs vergrendelen",
         "unlockPrice": "Terug naar automatische prijs (vervangt de ingevoerde prijs)",
-        "adjustmentPositive": "Er moet een toeslag van {amount} worden geïnd.",
         "adjustmentNegative": "Er kan een terugbetaling van {amount} worden verstrekt.",
         "warningDialogTitle": "Uitzonderlijke wijziging bevestigen",
         "warningDialogDescription": "Deze update komt niet overeen met de gebruikelijke reserveringsregels. Controleer de waarschuwingen voordat u opslaat.",
@@ -2823,7 +2822,14 @@
             "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken.",
             "closedByStore": "Verzoek gesloten door de winkel: geen autorisatie gevonden in Stripe."
           }
-        }
+        },
+        "refundDone": "Terugbetaling uitgevoerd",
+        "refundFailed": "Terugbetaling mislukt",
+        "refundToCheck": "Terugbetaling controleren in Stripe",
+        "approvedBy": "Goedgekeurd door",
+        "refundIssued": "Terugbetaling uitgegeven bij Stripe",
+        "stripeRefundCount": "Stripe telt {amount} aan terugbetalingen op deze betaling",
+        "stripeRefundCountFull": "Stripe telt deze betaling als volledig terugbetaald"
       },
       "unitAssignment": {
         "title": "Eenheid toewijzing",
@@ -2988,7 +2994,9 @@
         "statusFailed": "Mislukt",
         "statusReleasePending": "Wordt vrijgegeven",
         "requestPayment": "Betaling aanvragen",
-        "invoiceGenerated": "Factuur {number} aangemaakt"
+        "invoiceGenerated": "Factuur {number} aangemaakt",
+        "refundProcessing": "Terugbetaling bezig",
+        "refundIssued": "Terugbetaling uitgegeven bij Stripe"
       },
       "requestPaymentModal": {
         "title": "Betaling aanvragen",
@@ -8545,8 +8553,6 @@
         "payment_received": "Online betaling ontvangen",
         "payment_received_amount": "Online betaling ontvangen ({amount})",
         "payment_failed": "Online betaling geweigerd",
-        "refunded": "Terugbetaling uitgevoerd",
-        "refunded_amount": "Terugbetaling van {amount}",
         "payment_added_rental": "Huurbetaling geregistreerd ({amount})",
         "payment_added_deposit": "Borg ontvangen ({amount})",
         "payment_added_deposit_return": "Borg terugbetaald ({amount})",
@@ -8564,7 +8570,8 @@
         "inspection_departure_completed": "Staat van oplevering bij ophalen opgemaakt",
         "inspection_return_completed": "Staat van oplevering bij inleveren opgemaakt",
         "inspection_damage_detected": "Schade vastgesteld bij de inspectie",
-        "inspection_signed": "Staat van oplevering ondertekend"
+        "inspection_signed": "Staat van oplevering ondertekend",
+        "stripe_refund_count": "{amount} aan terugbetalingen door Stripe geteld op deze betaling"
       },
       "inspections": {
         "title": "Staten van oplevering",
@@ -8614,6 +8621,15 @@
           "refunded": "Terugbetaald",
           "cancelled": "Geannuleerd",
           "authorized": "Geautoriseerd"
+        },
+        "refundStatus": {
+          "done": "Terugbetaald",
+          "issued": "Uitgegeven",
+          "processing": "Bezig",
+          "failed": "Mislukt"
+        },
+        "refundedStatus": {
+          "issued": "Terugbetaling uitgegeven"
         }
       },
       "reviewPrompt": {

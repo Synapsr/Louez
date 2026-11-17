@@ -56,6 +56,7 @@ import { analyticsEventIdentity, enqueueEffects } from "../platform/effects";
 import { platformErrors } from "../platform/errors";
 import type { ApiEventStore, ApiPorts } from "../platform/ports";
 import { customerFieldSearchCondition } from "./customer-fields";
+import { listReservationOnlineRefunds } from "./reservation-refunds";
 
 /**
  * The reservations follow-up reads: the list, the detail, the counters, the
@@ -621,8 +622,14 @@ export async function getReservation(
           )
       : [];
 
+  // What the payment rows cannot say: whether Stripe has given a refund's final word, and who approved it.
+  const refunds = reader.payments
+    ? await listReservationOnlineRefunds(executor, reader.storeId, row.id, row.payments)
+    : [];
+
   const reservation: Reservation = {
     ...row,
+    refunds,
     rentalPaid: rentalPaidOf(row.payments, row.currency ?? reader.currency),
     currency: row.currency ?? reader.currency,
     insuredProductIds: insured.map((mapping) => mapping.productId),
@@ -645,6 +652,7 @@ function withoutPayments(reservation: Reservation): Reservation {
   return {
     ...reservation,
     payments: [],
+    refunds: [],
     stripePaymentMethodId: null,
     activity: reservation.activity.map((entry) => ({
       ...entry,

@@ -19,6 +19,13 @@ import {
   subscriptionHoldsPlan,
 } from "@/lib/stripe/subscription-status";
 import {
+  type AnalyticsSubscription,
+  type PlanOfPrice,
+  subscriptionCanceled,
+  subscriptionChanged,
+  subscriptionStarted,
+} from "@/lib/stripe/subscription-analytics";
+import {
   activatePlanSubscription,
   endSubscriptionToPayAsYouGo,
   updateSubscriptionRow,
@@ -38,6 +45,22 @@ import {
 
 /** The Stripe subscription an event is about. */
 type SubscriptionRef = { readonly id: string };
+
+/** The plan a price bills, for analytics. */
+const planOfPrice: PlanOfPrice = (priceId) => {
+  const billed = findPlanPrice(getPlans(), priceId);
+  return billed ? { plan: billed.plan.slug, interval: billed.interval } : null;
+};
+
+/** What `customer.subscription.updated` says changed, for `subscription_changed`. */
+export type SubscriptionUpdateEvent = {
+  readonly id: string;
+  /** Seconds since the epoch, Stripe's time of the event. */
+  readonly created: number;
+  /** The event's copy of the subscription, after the change. */
+  readonly subscription: AnalyticsSubscription;
+  readonly previousAttributes?: Parameters<typeof subscriptionChanged>[1];
+};
 
 /** What the checkout handler reads of a completed Checkout Session in subscription mode. */
 export type SubscriptionCheckoutSession = {
@@ -150,6 +173,19 @@ export async function handleSubscriptionCheckoutCompleted(
     stripeCustomerId: customerId,
     status: rowStatus(stripeSubscription.status, serviceBills),
     currentPeriodEnd,
+    // Once, when the row takes the subscription: a checkout redelivered after a plan
+    // change finds it there and reports nothing, rather than the plan billed now.
+    lifecycle: (before) => {
+      if (before.stripeSubscriptionId === stripeSubscription.id) return null;
+      const event = { storeId, ...subscriptionStarted(stripeSubscription, planOfPrice) };
+      return Number.isFinite(stripeSubscription.start_date)
+        ? {
+            ...event,
+            dedupKey: `subscription_started:${stripeSubscription.id}`,
+            occurredAt: new Date(stripeSubscription.start_date * 1000),
+          }
+        : event;
+    },
   });
 
   // Platform admin notification
@@ -177,7 +213,10 @@ export async function handleSubscriptionCheckoutCompleted(
  * the event is handled, whatever the event carried. A price no plan has leaves the plan
  * as it is.
  */
-export async function handleSubscriptionUpdated(event: SubscriptionRef): Promise<void> {
+export async function handleSubscriptionUpdated(
+  event: SubscriptionRef,
+  update?: SubscriptionUpdateEvent,
+): Promise<void> {
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.stripeSubscriptionId, event.id),
     columns: { id: true, storeId: true },
@@ -201,13 +240,31 @@ export async function handleSubscriptionUpdated(event: SubscriptionRef): Promise
     );
   }
 
+  // What the event says changed, from the event's own copy, which says what it changed;
+  // the row is written from Stripe's current state. Keyed on the event: a redelivery
+  // counts it once.
+  const changed =
+    update && subscriptionChanged(update.subscription, update.previousAttributes, planOfPrice);
+
   // Most updates, such as a renewal, keep the plan in force: then no early sync.
-  await updateSubscriptionRow(subscription, {
-    ...(billed ? { planSlug: billed.plan.slug } : {}),
-    status,
-    currentPeriodEnd,
-    cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-  });
+  await updateSubscriptionRow(
+    subscription,
+    {
+      ...(billed ? { planSlug: billed.plan.slug } : {}),
+      status,
+      currentPeriodEnd,
+      cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+    },
+    () =>
+      update && changed
+        ? {
+            storeId: subscription.storeId,
+            ...changed,
+            dedupKey: `stripe_event:${update.id}`,
+            occurredAt: new Date(update.created * 1000),
+          }
+        : null,
+  );
 
   log.info(
     "billing",
@@ -222,7 +279,17 @@ export async function handleSubscriptionUpdated(event: SubscriptionRef): Promise
  * the pricing already stored on the store's row.
  */
 export async function handleSubscriptionDeleted(
-  stripeSubscription: SubscriptionRef & { readonly metadata: Stripe.Metadata | null },
+  stripeSubscription: SubscriptionRef & {
+    readonly metadata: Stripe.Metadata | null;
+    readonly items?: AnalyticsSubscription["items"];
+    readonly status?: string;
+    readonly cancel_at_period_end?: boolean;
+    readonly cancellation_details?: AnalyticsSubscription["cancellation_details"];
+    /** Seconds since the epoch. */
+    readonly ended_at?: number | null;
+  },
+  /** Seconds since the epoch, Stripe's time of the event: the end's time without `ended_at`. */
+  eventCreated?: number,
 ): Promise<void> {
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.stripeSubscriptionId, stripeSubscription.id),
@@ -236,7 +303,33 @@ export async function handleSubscriptionDeleted(
 
   const scheduledPaygSwitch = stripeSubscription.metadata?.pendingBillingMode === "pay_as_you_go";
 
-  await endSubscriptionToPayAsYouGo(subscription.id);
+  const canceled = subscriptionCanceled(
+    {
+      id: stripeSubscription.id,
+      status: stripeSubscription.status ?? "canceled",
+      cancel_at_period_end: stripeSubscription.cancel_at_period_end ?? false,
+      items: stripeSubscription.items ?? { data: [] },
+      cancellation_details: stripeSubscription.cancellation_details ?? null,
+      metadata: stripeSubscription.metadata,
+    },
+    planOfPrice,
+  );
+  const endedAt = Number.isFinite(stripeSubscription.ended_at)
+    ? stripeSubscription.ended_at
+    : eventCreated;
+  // In the end's own transaction, while the row still holds the subscription: the event
+  // commits with the end, and a redelivery, which finds the row ended, reports nothing.
+  await endSubscriptionToPayAsYouGo(subscription.id, undefined, (before) => {
+    if (before.stripeSubscriptionId !== stripeSubscription.id) return null;
+    const event = { storeId: subscription.storeId, ...canceled };
+    return endedAt
+      ? {
+          ...event,
+          dedupKey: `subscription_canceled:${stripeSubscription.id}`,
+          occurredAt: new Date(endedAt * 1000),
+        }
+      : event;
+  });
 
   // Platform admin notification
   const store = await db.query.stores.findFirst({
