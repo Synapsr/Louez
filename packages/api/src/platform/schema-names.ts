@@ -545,6 +545,8 @@ export const SCHEMA_NAMES = {
     "pickup_location_id",
     "pickup_location_snapshot",
     "place_id",
+    "plan_offer_dismissed_at",
+    "plan_offer_notified_at",
     "plan_slug",
     "platform_fee_source",
     "platform_fee_status",

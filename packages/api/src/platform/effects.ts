@@ -13,6 +13,7 @@ import {
 import { and, asc, eq, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+import type { PlanOfferView } from "../contracts/billing";
 import type { ReportServerError } from "./error-reporting";
 import type { AgentClient, SetupActor, SetupFacts, StoreSetupSummary } from "./setup-analytics";
 
@@ -79,6 +80,9 @@ type Status =
   | "rejected"
   | "quote"
   | "declined";
+
+/** The figures of a plan offer, as the card shows them. */
+export type PlanOfferFacts = PlanOfferView;
 
 /** Every effect, by type, with its payload. Dates are ISO 8601 strings: payloads are JSON. */
 /**
@@ -300,6 +304,24 @@ export interface ApiEffectPayloads {
     ownerUserId: string;
     properties: Record<string, string | number | boolean | null>;
   };
+  /**
+   * The analytics event of the dashboard's plan offer, closed or clicked by the store's
+   * owner (services/plan-offer.ts), with the figures the card showed. Its shown event is
+   * sent at once, best effort (apps/web lib/billing/plan-offer.ts).
+   */
+  "billing.planOfferAnalytics": AnalyticsEventIdentity & {
+    event: "plan_offer_dismissed" | "plan_offer_clicked";
+    /** The owner who acted: the event's person. */
+    userId: string;
+    storeId: string;
+    offer: PlanOfferFacts;
+  };
+  /**
+   * The owner's one e-mail about the plan offer, the first time the store paid Louez
+   * more in a month than a plan with VAT (apps/web lib/billing/plan-offer-email.ts),
+   * with the figures of that day. Nothing is sent once a plan is in force.
+   */
+  "billing.planOfferEmail": { storeId: string; offer: PlanOfferFacts };
   /** The platform's notice that a store went live, on one channel. */
   "store.launchNotification": {
     channel: "discord" | "fromhello";

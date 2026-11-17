@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "8e14cf65-09ba-45cc-91e0-4fa986e582b9",
+  "id": "8638195c-0a05-42f8-a755-e68cea478b98",
   "prevId": "1ec35fc5-e9e8-4935-b991-4f3783d1f4d2",
   "tables": {
     "account_departure_reason_counters": {
@@ -3629,14 +3629,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "is_test": {
-          "name": "is_test",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
         },
         "notes": {
           "name": "notes",
@@ -11719,25 +11711,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "is_test": {
-          "name": "is_test",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "test_store_id": {
-          "name": "test_store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "generated": {
-            "as": "(case when `is_test` then `store_id` else null end)",
-            "type": "virtual"
-          }
-        },
         "tulip_insurance_opt_in": {
           "name": "tulip_insurance_opt_in",
           "type": "boolean",
@@ -11839,14 +11812,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "reservations_one_test_per_store": {
-          "name": "reservations_one_test_per_store",
-          "columns": [
-            "test_store_id"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "review_request_logs": {
@@ -14087,6 +14053,20 @@
         "stripe_coupon_id": {
           "name": "stripe_coupon_id",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "plan_offer_dismissed_at": {
+          "name": "plan_offer_dismissed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "plan_offer_notified_at": {
+          "name": "plan_offer_notified_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

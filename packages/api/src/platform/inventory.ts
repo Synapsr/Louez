@@ -2110,6 +2110,40 @@ export const capabilities = [
     plan: { handoff: "stripe", lot: "6" },
   },
   {
+    // The home's card that offers a plan cheaper than what the store paid: the
+    // dashboard only, as the plans page is.
+    id: "billing.getPlanOffer",
+    sources: [procedure("billing", "getPlanOffer")],
+    kind: "read",
+    plan: {
+      exclude:
+        "A card of the dashboard's home; billing_get_status gives an agent what the store pays",
+    },
+    actors: ["session"],
+  },
+  {
+    id: "billing.recordPlanOfferShown",
+    sources: [procedure("billing", "recordPlanOfferShown")],
+    kind: "read",
+    plan: { exclude: UI_ONLY },
+    actors: ["session"],
+  },
+  {
+    id: "billing.dismissPlanOffer",
+    sources: [procedure("billing", "dismissPlanOffer")],
+    kind: "write",
+    plan: { exclude: UI_ONLY },
+    actors: ["session"],
+  },
+  {
+    id: "billing.startPlanOffer",
+    sources: [procedure("billing", "startPlanOffer")],
+    kind: "write",
+    sensitive: "money",
+    plan: { exclude: "The plan is bought by the user on Stripe's page, as from the plans page" },
+    actors: ["session"],
+  },
+  {
     id: "billing.createCheckout",
     sources: [action(SA.subscription, "createCheckoutSession")],
     kind: "write",

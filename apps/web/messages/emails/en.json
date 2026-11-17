@@ -390,5 +390,22 @@
   },
   "customMessage": {
     "subject": "About your reservation #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: the {plan} plan would cost you less this month",
+    "subjectPrevious": "{storeName}: the {plan} plan would have cost you less last month",
+    "title": "{plan} would have saved you {savings}",
+    "bodyCurrentCommission": "This month, {storeName} has already paid Louez {paid} in commission. On the {plan} plan, you pay no commission on your rentals.",
+    "bodyPreviousCommission": "Last month, {storeName} paid Louez {paid} in commission. On the {plan} plan, you pay no commission on your rentals.",
+    "bodyCurrentFees": "This month, {storeName} has already paid Louez {paid} in booking fees. On the {plan} plan, you pay no fee per booking.",
+    "bodyPreviousFees": "Last month, {storeName} paid Louez {paid} in booking fees. On the {plan} plan, you pay no fee per booking.",
+    "monthLabel": "Month:",
+    "paidLabel": "Paid to Louez:",
+    "planLabel": "{plan} plan:",
+    "planPrice": "{price} excl. VAT per month",
+    "planPriceWithVat": "{price} excl. VAT per month ({priceWithVat} incl. VAT)",
+    "savingsLabel": "Savings:",
+    "cta": "See the offer",
+    "footer": "Monthly plan, no commitment, cancel anytime. Stripe fees and reeent marketplace fees still apply."
   }
 }

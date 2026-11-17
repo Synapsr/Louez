@@ -1171,6 +1171,26 @@
         "hideQR": "Ocultar código QR",
         "qrDescription": "Escanea este código para acceder a la tienda",
         "downloadQR": "Descargar"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "Este mes has pagado {paid} de comisión.",
+        "titlePreviousCommission": "El mes pasado pagaste {paid} de comisión.",
+        "titleCurrentFees": "Este mes has pagado {paid} en tarifas por reserva.",
+        "titlePreviousFees": "El mes pasado pagaste {paid} en tarifas por reserva.",
+        "comparisonWithVat": "Con {plan} habrías pagado {price} sin IVA ({priceWithVat} con IVA).",
+        "comparison": "Con {plan} habrías pagado {price} sin IVA.",
+        "cta": "Cambiar a {plan}",
+        "noCommitment": "Sin permanencia, cancela cuando quieras.",
+        "dismiss": "Ocultar durante 30 días",
+        "detailsToggle": "Cómo se calcula",
+        "detailsMonth": "Mes",
+        "detailsPaidCommission": "Comisión pagada, con IVA",
+        "detailsPaidFees": "Tarifas por reserva pagadas",
+        "detailsPlan": "Suscripción {plan}",
+        "detailsPlanPrice": "{price} sin IVA al mes",
+        "detailsPlanPriceWithVat": "{price} sin IVA al mes, es decir {priceWithVat} con el IVA al {vatRate}",
+        "detailsSavings": "Ahorro",
+        "detailsNote": "Calculado con las tarifas de tu tienda. Con una suscripción, las comisiones de Stripe y del marketplace reeent siguen aplicándose."
       }
     },
     "products": {
@@ -9719,7 +9739,8 @@
     "depositAttempt": {
       "needsStripe": "Louez encontró en Stripe una autorización para esta solicitud, pero no corresponde a lo que se pidió (importe, tarjeta o referencia modificados): Louez no la registró y la solicitud sigue abierta. Cancélela desde el panel de Stripe y luego haga clic en «Cerrar la solicitud». Si en su lugar la cobra en Stripe, Louez no registra ese importe y la solicitud sigue abierta: contacte con el soporte de Louez.",
       "none": "Esta reserva ya no tiene ninguna autorización sin confirmar."
-    }
+    },
+    "planOfferUnavailable": "Esta oferta ya no se aplica a tu tienda. Encontrarás las suscripciones en la página Suscripción."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

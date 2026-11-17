@@ -5,7 +5,7 @@ import { customers, reservations } from "./schema";
 
 /**
  * Test reservations: a store owner rehearses the customer journey on their own
- * store (`reservations.is_test`, `customers.is_test`, migration 0112). A test
+ * store (`reservations.is_test`, `customers.is_test`, migration 0113). A test
  * reservation:
  *
  * - holds no stock: it is left out of the availability rule and takes or gives

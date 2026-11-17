@@ -914,6 +914,12 @@ export const stores = mysqlTable(
     discountDurationMonths: int("discount_duration_months").default(0).notNull(),
     stripeCouponId: varchar("stripe_coupon_id", { length: 255 }),
 
+    // The dashboard's offer of a Louez plan to a store a plan would have cost less
+    // (apps/web lib/billing/plan-offer.ts): when its card was last closed (hidden 30
+    // days), and when the owner was emailed about it (once, ever). Null until then.
+    planOfferDismissedAt: timestamp("plan_offer_dismissed_at", { mode: "date" }),
+    planOfferNotifiedAt: timestamp("plan_offer_notified_at", { mode: "date" }),
+
     // When the rules that decide what a unit holds last changed (the turnover
     // buffer, whether pending bookings block): a unit conflict they make
     // counts from then in the inbox. Null until the first change.

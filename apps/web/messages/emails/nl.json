@@ -380,5 +380,22 @@
   },
   "customMessage": {
     "subject": "Over uw reservering #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: het abonnement {plan} is deze maand goedkoper",
+    "subjectPrevious": "{storeName}: het abonnement {plan} was vorige maand goedkoper geweest",
+    "title": "Met {plan} had je {savings} bespaard",
+    "bodyCurrentCommission": "Deze maand betaalde {storeName} al {paid} aan commissie aan Louez. Met het abonnement {plan} betaal je geen commissie op je verhuur.",
+    "bodyPreviousCommission": "Vorige maand betaalde {storeName} {paid} aan commissie aan Louez. Met het abonnement {plan} betaal je geen commissie op je verhuur.",
+    "bodyCurrentFees": "Deze maand betaalde {storeName} al {paid} aan reserveringskosten aan Louez. Met het abonnement {plan} betaal je geen kosten per reservering.",
+    "bodyPreviousFees": "Vorige maand betaalde {storeName} {paid} aan reserveringskosten aan Louez. Met het abonnement {plan} betaal je geen kosten per reservering.",
+    "monthLabel": "Maand:",
+    "paidLabel": "Betaald aan Louez:",
+    "planLabel": "Abonnement {plan}:",
+    "planPrice": "{price} excl. btw per maand",
+    "planPriceWithVat": "{price} excl. btw per maand ({priceWithVat} incl. btw)",
+    "savingsLabel": "Besparing:",
+    "cta": "Bekijk het aanbod",
+    "footer": "Maandabonnement, geen verplichting, altijd opzegbaar. Stripe-kosten en kosten van de reeent-marktplaats blijven verschuldigd."
   }
 }

@@ -380,5 +380,22 @@
   },
   "customMessage": {
     "subject": "Zu Ihrer Reservierung #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: Das Abo {plan} wäre diesen Monat günstiger",
+    "subjectPrevious": "{storeName}: Das Abo {plan} wäre letzten Monat günstiger gewesen",
+    "title": "Mit {plan} hätten Sie {savings} gespart",
+    "bodyCurrentCommission": "Diesen Monat hat {storeName} bereits {paid} Provision an Louez gezahlt. Mit dem Abo {plan} zahlen Sie keine Provision auf Ihre Vermietungen.",
+    "bodyPreviousCommission": "Letzten Monat hat {storeName} {paid} Provision an Louez gezahlt. Mit dem Abo {plan} zahlen Sie keine Provision auf Ihre Vermietungen.",
+    "bodyCurrentFees": "Diesen Monat hat {storeName} bereits {paid} Buchungsgebühren an Louez gezahlt. Mit dem Abo {plan} zahlen Sie keine Gebühr pro Buchung.",
+    "bodyPreviousFees": "Letzten Monat hat {storeName} {paid} Buchungsgebühren an Louez gezahlt. Mit dem Abo {plan} zahlen Sie keine Gebühr pro Buchung.",
+    "monthLabel": "Monat:",
+    "paidLabel": "An Louez gezahlt:",
+    "planLabel": "Abo {plan}:",
+    "planPrice": "{price} zzgl. MwSt. pro Monat",
+    "planPriceWithVat": "{price} zzgl. MwSt. pro Monat ({priceWithVat} inkl. MwSt.)",
+    "savingsLabel": "Ersparnis:",
+    "cta": "Angebot ansehen",
+    "footer": "Monatliches Abo, ohne Vertragsbindung, jederzeit kündbar. Stripe-Gebühren und Gebühren des reeent-Marktplatzes bleiben fällig."
   }
 }

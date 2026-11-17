@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { auth } from "@/lib/auth";
 import { env } from "@/env";
 import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
@@ -31,6 +33,7 @@ import {
   AdaptiveStats,
   TodayActivity,
   PendingRequests,
+  PlanOfferSection,
   QuickActions,
   ReservationsCalendarPrefetch,
   StorefrontWidget,
@@ -138,6 +141,8 @@ interface DashboardContentProps {
   dismissedNoticeIds: DismissibleNoticeId[];
   /** The test reservation's card, or null when the store does not need it. */
   testReservation: GetTestReservationOutput | null;
+  /** The user owns the store, so may be offered a plan (the billing pages are the owner's). */
+  isStoreOwner: boolean;
 }
 
 async function DashboardContent({
@@ -151,6 +156,7 @@ async function DashboardContent({
   hasStripeAccount,
   dismissedNoticeIds,
   testReservation,
+  isStoreOwner,
 }: DashboardContentProps) {
   // Stores that want online payments track the Stripe KYC left pending during
   // onboarding (payment mode degrades to request mode until Stripe can charge).
@@ -212,6 +218,14 @@ async function DashboardContent({
           remaining={cohort.remaining}
           dismissedNoticeIds={dismissedNoticeIds}
         />
+      )}
+
+      {/* A plan that would have cost the store less than what it paid Louez, for its
+          owner. Streamed: the billing figures never hold the home back. */}
+      {isStoreOwner && (
+        <Suspense fallback={null}>
+          <PlanOfferSection />
+        </Suspense>
       )}
 
       {/* Setup Checklist for new stores (floating widget) */}
@@ -280,6 +294,7 @@ export default async function DashboardHomePage() {
       hasStripeAccount={store.stripeAccountId !== null}
       dismissedNoticeIds={parseDismissedNotices(userRow?.dismissedNotices)}
       testReservation={testReservation}
+      isStoreOwner={store.role === "owner"}
     />
   );
 }

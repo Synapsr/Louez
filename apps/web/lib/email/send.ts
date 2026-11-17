@@ -39,6 +39,7 @@ import {
   ContactMessageEmail,
   VoiceNumberBillingEmail,
   BalanceLimitEmail,
+  PlanOfferEmail,
   TeamInvitationEmail,
   RewardUnlockedEmail,
   ThankYouReviewEmail,
@@ -1501,6 +1502,88 @@ export async function sendBalanceLimitEmail({
       to,
       subject,
       templateType: `balance_limit_${variant}`,
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Plan offer email: a Louez plan would have cost the store less than what it paid Louez
+// in a month (lib/billing/plan-offer.ts). Sent once per store, from an outbox row whose
+// id keys the log row, so a retry after a lost outcome sends nothing again.
+export async function sendPlanOfferEmail({
+  id,
+  to,
+  storeId,
+  storeName,
+  primaryColor,
+  plan,
+  source,
+  period,
+  month,
+  paid,
+  price,
+  priceWithVat,
+  savings,
+  ctaUrl,
+  locale = 'fr',
+}: {
+  id: string
+  to: string
+  storeId: string
+  storeName: string
+  primaryColor?: string
+  plan: string
+  source: 'legacy' | 'service'
+  period: 'current' | 'previous'
+  month: string
+  paid: string
+  price: string
+  priceWithVat: string | null
+  savings: string
+  ctaUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = (period === 'current' ? t.planOffer.subjectCurrent : t.planOffer.subjectPrevious)
+    .replace('{storeName}', storeName)
+    .replace('{plan}', plan)
+  const html = await render(
+    PlanOfferEmail({
+      storeName,
+      primaryColor: primaryColor || '#0066FF',
+      plan,
+      source,
+      period,
+      month,
+      paid,
+      price,
+      priceWithVat,
+      savings,
+      ctaUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: 'Louez.io' })
+    await logEmail({
+      id,
+      storeId,
+      to,
+      subject,
+      templateType: 'plan_offer',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: 'plan_offer',
       status: 'failed',
       error: String(error),
     })

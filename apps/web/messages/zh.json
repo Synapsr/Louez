@@ -1171,6 +1171,26 @@
         "hideQR": "隐藏二维码",
         "qrDescription": "扫描此码即可进入店铺",
         "downloadQR": "下载"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "本月您已支付 {paid} 的佣金。",
+        "titlePreviousCommission": "上月您支付了 {paid} 的佣金。",
+        "titleCurrentFees": "本月您已支付 {paid} 的预订费用。",
+        "titlePreviousFees": "上月您支付了 {paid} 的预订费用。",
+        "comparisonWithVat": "使用 {plan}，您只需支付 {price}（不含增值税），含税 {priceWithVat}。",
+        "comparison": "使用 {plan}，您只需支付 {price}（不含税）。",
+        "cta": "切换到 {plan}",
+        "noCommitment": "无需长期合约，可随时取消。",
+        "dismiss": "30 天内不再显示",
+        "detailsToggle": "计算方式",
+        "detailsMonth": "月份",
+        "detailsPaidCommission": "已付佣金（含增值税）",
+        "detailsPaidFees": "已付预订费用",
+        "detailsPlan": "{plan} 套餐",
+        "detailsPlanPrice": "每月 {price}（不含税）",
+        "detailsPlanPriceWithVat": "每月 {price}（不含增值税），按 {vatRate} 增值税计为 {priceWithVat}",
+        "detailsSavings": "节省",
+        "detailsNote": "按您店铺的实际费率计算。订阅套餐后，Stripe 手续费和 reeent 市场费用仍需支付。"
       }
     },
     "products": {
@@ -9719,7 +9739,8 @@
     "depositAttempt": {
       "needsStripe": "Louez 在 Stripe 中找到了此请求的授权，但它与所请求的内容不符（金额、卡片或参考信息已更改）：Louez 未记录它，请求仍保持打开。请在 Stripe 控制台中取消，然后点击“关闭请求”。如果您改为在 Stripe 中扣款，Louez 不会记录这笔金额，请求仍保持打开：请联系 Louez 客服。",
       "none": "此预订已没有未确认的授权。"
-    }
+    },
+    "planOfferUnavailable": "此优惠已不再适用于您的店铺。请在订阅页面查看套餐。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

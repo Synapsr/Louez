@@ -380,5 +380,22 @@
   },
   "customMessage": {
     "subject": "Riguardo alla tua prenotazione #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: l'abbonamento {plan} ti costerebbe meno questo mese",
+    "subjectPrevious": "{storeName}: l'abbonamento {plan} ti sarebbe costato meno il mese scorso",
+    "title": "Con {plan} avresti risparmiato {savings}",
+    "bodyCurrentCommission": "Questo mese {storeName} ha già pagato {paid} di commissione a Louez. Con l'abbonamento {plan} non paghi commissioni sui tuoi noleggi.",
+    "bodyPreviousCommission": "Il mese scorso {storeName} ha pagato {paid} di commissione a Louez. Con l'abbonamento {plan} non paghi commissioni sui tuoi noleggi.",
+    "bodyCurrentFees": "Questo mese {storeName} ha già pagato {paid} di costi per prenotazione a Louez. Con l'abbonamento {plan} non paghi costi per prenotazione.",
+    "bodyPreviousFees": "Il mese scorso {storeName} ha pagato {paid} di costi per prenotazione a Louez. Con l'abbonamento {plan} non paghi costi per prenotazione.",
+    "monthLabel": "Mese:",
+    "paidLabel": "Pagato a Louez:",
+    "planLabel": "Abbonamento {plan}:",
+    "planPrice": "{price} IVA esclusa al mese",
+    "planPriceWithVat": "{price} IVA esclusa al mese ({priceWithVat} IVA inclusa)",
+    "savingsLabel": "Risparmio:",
+    "cta": "Vedi l'offerta",
+    "footer": "Abbonamento mensile, senza vincoli, disdici quando vuoi. Restano dovute le commissioni Stripe e quelle del marketplace reeent."
   }
 }

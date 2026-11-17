@@ -390,5 +390,22 @@
   },
   "customMessage": {
     "subject": "Tentang reservasi Anda #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: paket {plan} akan lebih hemat bulan ini",
+    "subjectPrevious": "{storeName}: paket {plan} akan lebih hemat bulan lalu",
+    "title": "Dengan {plan}, Anda bisa hemat {savings}",
+    "bodyCurrentCommission": "Bulan ini, {storeName} sudah membayar komisi {paid} kepada Louez. Dengan paket {plan}, Anda tidak membayar komisi atas penyewaan.",
+    "bodyPreviousCommission": "Bulan lalu, {storeName} membayar komisi {paid} kepada Louez. Dengan paket {plan}, Anda tidak membayar komisi atas penyewaan.",
+    "bodyCurrentFees": "Bulan ini, {storeName} sudah membayar biaya pemesanan {paid} kepada Louez. Dengan paket {plan}, tidak ada biaya per pemesanan.",
+    "bodyPreviousFees": "Bulan lalu, {storeName} membayar biaya pemesanan {paid} kepada Louez. Dengan paket {plan}, tidak ada biaya per pemesanan.",
+    "monthLabel": "Bulan:",
+    "paidLabel": "Dibayar ke Louez:",
+    "planLabel": "Paket {plan}:",
+    "planPrice": "{price} per bulan, belum termasuk pajak",
+    "planPriceWithVat": "{price} per bulan belum termasuk PPN ({priceWithVat} termasuk PPN)",
+    "savingsLabel": "Penghematan:",
+    "cta": "Lihat penawaran",
+    "footer": "Paket bulanan, tanpa ikatan, bisa dibatalkan kapan saja. Biaya Stripe dan biaya marketplace reeent tetap berlaku."
   }
 }

@@ -1132,6 +1132,26 @@
         "hideQR": "Ukryj kod QR",
         "qrDescription": "Zeskanuj ten kod, aby uzyskać dostęp do sklepu",
         "downloadQR": "Pobierz"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "W tym miesiącu zapłacono {paid} prowizji.",
+        "titlePreviousCommission": "W zeszłym miesiącu zapłacono {paid} prowizji.",
+        "titleCurrentFees": "W tym miesiącu zapłacono {paid} opłat za rezerwacje.",
+        "titlePreviousFees": "W zeszłym miesiącu zapłacono {paid} opłat za rezerwacje.",
+        "comparisonWithVat": "Z planem {plan} zapłacono by {price} netto ({priceWithVat} brutto).",
+        "comparison": "Z planem {plan} zapłacono by {price} netto.",
+        "cta": "Przejdź na {plan}",
+        "noCommitment": "Bez zobowiązań, rezygnacja w każdej chwili.",
+        "dismiss": "Ukryj na 30 dni",
+        "detailsToggle": "Jak to obliczono",
+        "detailsMonth": "Miesiąc",
+        "detailsPaidCommission": "Zapłacona prowizja, brutto",
+        "detailsPaidFees": "Zapłacone opłaty za rezerwacje",
+        "detailsPlan": "Abonament {plan}",
+        "detailsPlanPrice": "{price} netto miesięcznie",
+        "detailsPlanPriceWithVat": "{price} netto miesięcznie, czyli {priceWithVat} z VAT {vatRate}",
+        "detailsSavings": "Oszczędność",
+        "detailsNote": "Obliczono według stawek Twojego sklepu. W abonamencie nadal obowiązują opłaty Stripe i opłaty marketplace'u reeent."
       }
     },
     "products": {
@@ -9719,7 +9739,8 @@
     "depositAttempt": {
       "needsStripe": "Louez znalazł w Stripe autoryzację dla tej prośby, ale nie odpowiada ona temu, o co proszono (zmieniona kwota, karta lub referencja): Louez jej nie zapisał, a prośba pozostaje otwarta. Anuluj ją w panelu Stripe, a następnie kliknij „Zamknij prośbę”. Jeśli zamiast tego pobierzesz ją w Stripe, Louez nie zapisze tej kwoty, a prośba pozostanie otwarta: skontaktuj się z pomocą techniczną Louez.",
       "none": "Ta rezerwacja nie ma już niepotwierdzonej autoryzacji."
-    }
+    },
+    "planOfferUnavailable": "Ta oferta nie dotyczy już Twojego sklepu. Abonamenty znajdziesz na stronie Abonament."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

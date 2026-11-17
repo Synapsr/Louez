@@ -390,5 +390,22 @@
   },
   "customMessage": {
     "subject": "ご予約について #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}：今月は{plan}プランの方がお得です",
+    "subjectPrevious": "{storeName}：先月は{plan}プランの方がお得でした",
+    "title": "{plan}なら{savings}節約できました",
+    "bodyCurrentCommission": "今月、{storeName}はすでにLouezに手数料{paid}をお支払いいただいています。{plan}プランなら、レンタルの手数料はかかりません。",
+    "bodyPreviousCommission": "先月、{storeName}はLouezに手数料{paid}をお支払いいただきました。{plan}プランなら、レンタルの手数料はかかりません。",
+    "bodyCurrentFees": "今月、{storeName}はすでにLouezに予約手数料{paid}をお支払いいただいています。{plan}プランなら、予約ごとの手数料はかかりません。",
+    "bodyPreviousFees": "先月、{storeName}はLouezに予約手数料{paid}をお支払いいただきました。{plan}プランなら、予約ごとの手数料はかかりません。",
+    "monthLabel": "対象月：",
+    "paidLabel": "Louezへの支払い：",
+    "planLabel": "{plan}プラン：",
+    "planPrice": "月額{price}（税抜）",
+    "planPriceWithVat": "月額{price}（税抜、税込{priceWithVat}）",
+    "savingsLabel": "節約額：",
+    "cta": "オファーを見る",
+    "footer": "月額プラン、契約期間の縛りなし、いつでも解約できます。Stripeの手数料とreeentマーケットプレイスの手数料はかかります。"
   }
 }

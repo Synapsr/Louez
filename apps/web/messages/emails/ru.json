@@ -390,5 +390,22 @@
   },
   "customMessage": {
     "subject": "О вашем бронировании #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: в этом месяце тариф {plan} обошёлся бы дешевле",
+    "subjectPrevious": "{storeName}: в прошлом месяце тариф {plan} обошёлся бы дешевле",
+    "title": "С тарифом {plan} вы сэкономили бы {savings}",
+    "bodyCurrentCommission": "В этом месяце {storeName} уже заплатил Louez {paid} комиссии. С тарифом {plan} вы не платите комиссию с аренды.",
+    "bodyPreviousCommission": "В прошлом месяце {storeName} заплатил Louez {paid} комиссии. С тарифом {plan} вы не платите комиссию с аренды.",
+    "bodyCurrentFees": "В этом месяце {storeName} уже заплатил Louez {paid} сборов за бронирования. С тарифом {plan} сбора за бронирование нет.",
+    "bodyPreviousFees": "В прошлом месяце {storeName} заплатил Louez {paid} сборов за бронирования. С тарифом {plan} сбора за бронирование нет.",
+    "monthLabel": "Месяц:",
+    "paidLabel": "Оплачено Louez:",
+    "planLabel": "Тариф {plan}:",
+    "planPrice": "{price} без НДС в месяц",
+    "planPriceWithVat": "{price} без НДС в месяц ({priceWithVat} с НДС)",
+    "savingsLabel": "Экономия:",
+    "cta": "Посмотреть предложение",
+    "footer": "Ежемесячная подписка без обязательств, отмена в любой момент. Комиссии Stripe и маркетплейса reeent сохраняются."
   }
 }

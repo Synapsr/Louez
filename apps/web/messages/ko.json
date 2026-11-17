@@ -1171,6 +1171,26 @@
         "hideQR": "QR 코드 숨기기",
         "qrDescription": "매장에 액세스하려면 이 코드를 스캔하세요.",
         "downloadQR": "다운로드"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "이번 달 수수료로 {paid}를 지불하셨습니다.",
+        "titlePreviousCommission": "지난달 수수료로 {paid}를 지불하셨습니다.",
+        "titleCurrentFees": "이번 달 예약 수수료로 {paid}를 지불하셨습니다.",
+        "titlePreviousFees": "지난달 예약 수수료로 {paid}를 지불하셨습니다.",
+        "comparisonWithVat": "{plan} 요금제였다면 {price}(부가세 별도), 부가세 포함 {priceWithVat}만 지불했을 것입니다.",
+        "comparison": "{plan} 요금제였다면 {price}(세금 별도)만 지불했을 것입니다.",
+        "cta": "{plan}(으)로 전환",
+        "noCommitment": "약정 없음, 언제든 해지할 수 있습니다.",
+        "dismiss": "30일 동안 숨기기",
+        "detailsToggle": "계산 방법",
+        "detailsMonth": "기준 월",
+        "detailsPaidCommission": "지불한 수수료(부가세 포함)",
+        "detailsPaidFees": "지불한 예약 수수료",
+        "detailsPlan": "{plan} 요금제",
+        "detailsPlanPrice": "월 {price}(세금 별도)",
+        "detailsPlanPriceWithVat": "월 {price}(부가세 별도), 부가세 {vatRate} 포함 시 {priceWithVat}",
+        "detailsSavings": "절약액",
+        "detailsNote": "스토어의 실제 요금으로 계산했습니다. 요금제를 사용해도 Stripe 수수료와 reeent 마켓플레이스 수수료는 계속 부과됩니다."
       }
     },
     "products": {
@@ -9719,7 +9739,8 @@
     "depositAttempt": {
       "needsStripe": "Louez가 Stripe에서 이 요청에 대한 승인을 찾았지만 요청한 내용과 일치하지 않습니다(금액, 카드 또는 참조가 변경됨). Louez는 이를 기록하지 않았으며 요청은 열린 상태로 유지됩니다. Stripe 대시보드에서 취소한 다음 '요청 닫기'를 클릭하세요. 대신 Stripe에서 회수하면 Louez는 그 금액을 기록하지 않으며 요청은 열린 상태로 유지됩니다. Louez 지원팀에 문의하세요.",
       "none": "이 예약에는 더 이상 확인되지 않은 승인이 없습니다."
-    }
+    },
+    "planOfferUnavailable": "이 제안은 더 이상 스토어에 적용되지 않습니다. 요금제는 구독 페이지에서 확인하세요."
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",

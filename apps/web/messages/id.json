@@ -1171,6 +1171,26 @@
         "hideQR": "Sembunyikan kode QR",
         "qrDescription": "Pindai kode ini untuk mengakses toko",
         "downloadQR": "Unduh"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "Bulan ini, Anda membayar komisi {paid}.",
+        "titlePreviousCommission": "Bulan lalu, Anda membayar komisi {paid}.",
+        "titleCurrentFees": "Bulan ini, Anda membayar biaya pemesanan {paid}.",
+        "titlePreviousFees": "Bulan lalu, Anda membayar biaya pemesanan {paid}.",
+        "comparisonWithVat": "Dengan {plan}, Anda akan membayar {price} belum termasuk PPN ({priceWithVat} termasuk PPN).",
+        "comparison": "Dengan {plan}, Anda akan membayar {price} belum termasuk pajak.",
+        "cta": "Beralih ke {plan}",
+        "noCommitment": "Tanpa ikatan, bisa dibatalkan kapan saja.",
+        "dismiss": "Sembunyikan selama 30 hari",
+        "detailsToggle": "Cara menghitungnya",
+        "detailsMonth": "Bulan",
+        "detailsPaidCommission": "Komisi yang dibayar, termasuk PPN",
+        "detailsPaidFees": "Biaya pemesanan yang dibayar",
+        "detailsPlan": "Paket {plan}",
+        "detailsPlanPrice": "{price} per bulan, belum termasuk pajak",
+        "detailsPlanPriceWithVat": "{price} per bulan belum termasuk PPN, atau {priceWithVat} dengan PPN {vatRate}",
+        "detailsSavings": "Penghematan",
+        "detailsNote": "Dihitung dengan tarif toko Anda. Dengan paket langganan, biaya Stripe dan biaya marketplace reeent tetap berlaku."
       }
     },
     "products": {
@@ -9719,7 +9739,8 @@
     "depositAttempt": {
       "needsStripe": "Louez menemukan otorisasi di Stripe untuk permintaan ini, tetapi tidak sesuai dengan yang diminta (jumlah, kartu, atau referensi berubah): Louez tidak mencatatnya dan permintaan tetap terbuka. Batalkan dari dasbor Stripe, lalu klik “Tutup permintaan”. Jika Anda malah mengambilnya di Stripe, Louez tidak mencatat jumlah itu dan permintaan tetap terbuka: hubungi dukungan Louez.",
       "none": "Reservasi ini tidak lagi memiliki otorisasi yang belum dikonfirmasi."
-    }
+    },
+    "planOfferUnavailable": "Penawaran ini tidak berlaku lagi untuk toko Anda. Paket tersedia di halaman Langganan."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

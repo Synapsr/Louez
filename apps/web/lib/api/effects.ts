@@ -7,6 +7,7 @@ import {
   type ApiEffectSenders,
 } from "@louez/api/platform/effects";
 
+import { createPlanOfferEffectSenders } from "@/lib/billing/plan-offer-effects";
 import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
 import { createRefundCreditNoteEffectSenders } from "@/lib/invoicing/refund-credit-note-effects";
@@ -29,6 +30,7 @@ import { withTestReservationMessagePolicy } from "@/lib/test-reservations/messag
  * reservation's rows follow its message policy (lib/test-reservations).
  */
 export const apiEffectSenders: ApiEffectSenders = withTestReservationMessagePolicy({
+  ...createPlanOfferEffectSenders(),
   ...createDepositHoldEffectSenders(),
   ...createRefundCreditNoteEffectSenders(),
   ...createReservationEffectSenders(),
