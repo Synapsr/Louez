@@ -106,6 +106,8 @@ export interface Reservation {
   subtotalAmount: string;
   depositAmount: string;
   totalAmount: string;
+  /** What settles the rental now (`getRentalPaid`), in the reservation's currency. */
+  rentalPaid: number;
   deliveryFee: string | null;
   discountAmount: string | null;
   taxDisplayMode?: "inclusive" | "exclusive" | null;

@@ -37,6 +37,7 @@ export const getRefundInput = z
 export type GetRefundInput = z.infer<typeof getRefundInput>;
 
 export const STRIPE_REFUND_STATUSES = ["pending", "succeeded", "failed"] as const;
+export type StripeRefundStatus = (typeof STRIPE_REFUND_STATUSES)[number];
 
 export const refundPaymentOutput = z.object({
   refund: z.object({

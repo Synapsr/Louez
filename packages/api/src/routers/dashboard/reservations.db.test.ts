@@ -168,6 +168,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     await louezDb.db.delete(louezDb.apiOperations);
     await louezDb.db.delete(louezDb.apiConfirmations);
     await louezDb.db.delete(louezDb.apiHandoffs);
+    await louezDb.db.delete(louezDb.paymentRefundOperations);
     await louezDb.db.delete(louezDb.payments);
     await louezDb.db.delete(louezDb.reservationActivity);
     await louezDb.db.delete(louezDb.reservationItems);
@@ -562,6 +563,122 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.equal(full.payments[0]?.stripePaymentIntentId, "pi_secret");
     assert.equal(full.payments[0]?.notes, "Paid by phone");
     assert.equal(full.stripePaymentMethodId, "pm_secret");
+  });
+
+  test("the detail states whether Stripe settled each online refund, and who approved it", async () => {
+    const id = await reservation("confirmed");
+    const chargeId = nextId("rs_pay");
+    const refundRowId = nextId("rs_pay");
+    await louezDb.db.insert(louezDb.payments).values([
+      {
+        id: chargeId,
+        reservationId: id,
+        amount: "32.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripePaymentIntentId: "pi_refunds",
+      },
+      {
+        id: refundRowId,
+        reservationId: id,
+        amount: "10.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripeRefundId: "re_refunds",
+        refundOfPaymentId: chargeId,
+      },
+    ]);
+    const approvalId = nextId("rs_appr");
+    const now = new Date();
+    await louezDb.db.insert(louezDb.apiHandoffs).values({
+      id: approvalId,
+      storeId: STORE,
+      kind: "operation_approval",
+      userId: OWNER,
+      credentialKind: "api_key",
+      linkIssuedAt: now,
+      expiresAt: new Date(now.getTime() + 3_600_000),
+      status: "completed",
+      decision: "approved",
+      decidedAt: now,
+      decidedByUserId: OWNER,
+    });
+    const operation = {
+      storeId: STORE,
+      reservationId: id,
+      paymentId: chargeId,
+      stripeAccountId: "acct_refunds",
+      stripeChargeId: "ch_refunds",
+      amountMinor: 1000,
+      currency: "EUR",
+      refundType: "rental" as const,
+      reason: "requested_by_customer" as const,
+    };
+    await louezDb.db.insert(louezDb.paymentRefundOperations).values([
+      // Made by Stripe, the bank still processing it: its row is already completed.
+      {
+        ...operation,
+        id: nextId("rs_rop"),
+        status: "pending",
+        stripeRefundId: "re_refunds",
+        refundPaymentId: refundRowId,
+        approvalId,
+        createdAt: new Date(now.getTime() - 60_000),
+      },
+      // Still being sent: no row of its own yet.
+      { ...operation, id: nextId("rs_rop"), status: "requested", createdAt: now },
+    ]);
+
+    // Another reservation of the store, refunded too: none of its operations is this one's.
+    const other = await reservation("confirmed");
+    const otherCharge = nextId("rs_pay");
+    await louezDb.db.insert(louezDb.payments).values({
+      id: otherCharge,
+      reservationId: other,
+      amount: "40.00",
+      type: "rental",
+      method: "stripe",
+      status: "completed",
+      stripePaymentIntentId: "pi_refunds_other",
+    });
+    await louezDb.db.insert(louezDb.paymentRefundOperations).values({
+      ...operation,
+      id: nextId("rs_rop"),
+      reservationId: other,
+      paymentId: otherCharge,
+      stripeChargeId: "ch_refunds_other",
+      status: "succeeded",
+    });
+
+    const detail = await run("get", { id }, session());
+    assert.deepEqual(
+      detail.refunds.map(({ refundPaymentId, status, approvedBy }) => ({
+        refundPaymentId,
+        status,
+        approver: approvedBy?.email ?? null,
+      })),
+      [
+        { refundPaymentId: refundRowId, status: "pending", approver: "owner@rs.test" },
+        { refundPaymentId: null, status: "pending", approver: null },
+      ],
+    );
+
+    assert.equal((await run("get", { id: other }, session())).refunds.length, 1);
+    // Paid by hand only: no operation to read.
+    const byHand = await reservation("confirmed");
+    assert.deepEqual((await run("get", { id: byHand }, session())).refunds, []);
+
+    // The operations are reached by the payment: the predicate on it is what the table's
+    // index on the payment serves; without it, every operation is scanned.
+    const { reservationOnlineRefundsQuery } = await import("../../services/reservation-refunds");
+    const query = reservationOnlineRefundsQuery(louezDb.db, STORE, id, [chargeId]).toSQL();
+    assert.match(query.sql, /`payment_refund_operations`\.`payment_id` in \(\?\)/);
+    assert.ok(query.params.includes(chargeId));
+
+    const key = await apiKey({ ...everything, payments: "none" });
+    assert.deepEqual((await run("get", { id }, key())).refunds, [], "payments are another right");
   });
 
   test("without customers read, no free text that may name the customer", async () => {
