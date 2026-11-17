@@ -1,4 +1,9 @@
-import type { AppliedProductPromotion, PricingBreakdown, TaxSettings } from "@louez/types";
+import type {
+  AppliedProductPromotion,
+  PricingBreakdown,
+  PricingKind,
+  TaxSettings,
+} from "@louez/types";
 
 /**
  * The facts a reservation was priced with (docs/domain/reservation-changes.md,
@@ -6,8 +11,9 @@ import type { AppliedProductPromotion, PricingBreakdown, TaxSettings } from "@lo
  * promotion on each line. A fact that was not recorded reads as
  * `"not_recorded"`, never as zero, false or none: rows written before
  * migration 0107 hold none, nor does a line's promotion where its creator
- * did not price it with the checkout's engine (the dashboard's creation and
- * edit, a custom line).
+ * did not price it with the checkout's engine (a price typed by hand, a
+ * custom line, a line the dashboard's edit added before it applied the
+ * promotion in force).
  *
  * Pure, with no runtime import.
  */
@@ -44,6 +50,26 @@ export const taxSettingsForRepricing = (
 export const pricingBasisOf = (
   breakdown: PricingBreakdown | null | undefined,
 ): PricingBreakdown | null => (breakdown && !breakdown.factsOnly ? breakdown : null);
+
+const toPricingKind = (value: unknown): PricingKind | null =>
+  value === "fixed" || value === "duration" ? value : null;
+
+/**
+ * Whether a line's price is one fixed amount or an amount per period: its
+ * product says it while it exists; once the product is gone, the kind the
+ * line's breakdown recorded, whatever else that breakdown is for (a
+ * breakdown written only to record facts included: the kind is one of them).
+ * A line that recorded none is priced per period, as before. So a price
+ * typed on a fixed-price line whose product was deleted stays one amount,
+ * not an amount a day.
+ */
+export const linePricingKind = (line: {
+  product?: { pricingKind?: unknown } | null;
+  pricingBreakdown?: PricingBreakdown | null;
+}): PricingKind =>
+  toPricingKind(line.product?.pricingKind) ??
+  toPricingKind(line.pricingBreakdown?.pricingKind) ??
+  "duration";
 
 /** How the reservation's prices were entered, tax included or not. */
 export const recordedTaxDisplayMode = (reservation: {

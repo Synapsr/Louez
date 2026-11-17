@@ -6,6 +6,7 @@ import type {
   DeliverySettings,
   PricingKind,
   PricingMode,
+  ProductPromotion,
   ProductTaxSettings,
   Rate,
   StockKind,
@@ -54,6 +55,8 @@ export interface Product {
   seasonalPricings?: SeasonalPricingConfig[];
   /** The product's own rate, or null for the store's: the summary totals with the tax engine. */
   taxSettings?: ProductTaxSettings | null;
+  /** Its promotion: a line priced from the catalogue applies it while it is in force, as the checkout does. */
+  promotion?: ProductPromotion | null;
 }
 
 export interface SelectedProduct {
@@ -160,6 +163,12 @@ export interface NewReservationFormProps {
   /** The store's tax settings and the currency the reservation is written in, as the server totals it. */
   taxSettings?: TaxSettings;
   currency?: string;
+  /**
+   * The server's instant when it loaded the page: a promotion is in force at
+   * it, never at the browser's clock. A creation the server refuses as
+   * changed meanwhile reloads the page, and with it this instant.
+   */
+  pricedAt: Date;
 }
 
 export type StepFieldName = "customerId" | "startDate" | "endDate";
@@ -196,6 +205,8 @@ export interface ProductPricingDetails {
   hasTieredPricing: boolean;
   isRateBased: boolean;
   lineSubtotal: number;
+  /** The line's price for one unit over the whole rental, as the server gives it to the tax engine. */
+  lineUnitPrice: number;
   lineOriginalSubtotal: number;
   lineSavings: number;
   reductionPercent: number | null;

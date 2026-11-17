@@ -8,8 +8,8 @@ import { creationTotals } from "./creation-totals";
 // product at 10.00 a day for two days (40.00, at the store's rate), a custom
 // line of 20.00, 4.00 off, 12.50 of insurance.
 const cart = {
-  productLines: [{ amount: 40, taxSettings: null }],
-  customLines: [{ amount: 20 }],
+  productLines: [{ subtotal: 40, unitPrice: 20, typed: false, taxSettings: null }],
+  customLines: [{ subtotal: 20, unitPrice: 20 }],
   insuranceAmount: 12.5,
   deliveryFee: 0,
   discountAmount: 4,
@@ -40,7 +40,7 @@ test("taxes off: what the prices add up to", () => {
 
 test("a line of 150.00 before tax at 20 % shows 180.00", () => {
   const totals = creationTotals({
-    productLines: [{ amount: 150, taxSettings: null }],
+    productLines: [{ subtotal: 150, unitPrice: 150, typed: false, taxSettings: null }],
     customLines: [],
     insuranceAmount: 0,
     deliveryFee: 0,

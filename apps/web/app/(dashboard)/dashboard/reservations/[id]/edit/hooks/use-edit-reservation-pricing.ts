@@ -9,6 +9,7 @@ import {
   TAX_OF_TODAY,
   type EditedLineTax,
 } from "@louez/api/services/edit-line-pricing";
+import { priceCatalogLine } from "@louez/api/services/catalogue-line-pricing";
 import { taxSettingsForRepricing, type TaxDisplayMode } from "@louez/api/services/pricing-facts";
 import { computeReservationTotals } from "@louez/api/services/reservation-totals";
 import type { PricingKind, PricingMode, TaxSettings } from "@louez/types";
@@ -29,6 +30,7 @@ import type {
   Product,
   ReservationCalculations,
 } from "../types";
+import { isAddedLine } from "../utils/editable-items";
 
 function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
@@ -89,8 +91,11 @@ function buildTierLabel(
  * product that the edit does not change keeps its stored price; priced again,
  * it goes through `calculateCartItemPrice` (seasonal, rate-based, tier-based
  * and fixed pricing), with the promotion it recorded; a line whose product
- * is gone follows what it recorded. Manual-price items use the user-set unit
- * price directly. `windowChanged`: the window is not the one stored.
+ * is gone follows what it recorded. A line the edit adds is priced as the
+ * server prices it (`priceCatalogLine`, on the product as the server's
+ * catalogue holds it), with the promotion in force at `pricedAt`, the
+ * server's instant. Manual-price items use the user-set unit price
+ * directly. `windowChanged`: the window is not the one stored.
  */
 export function calculateEditableItemPrice(
   item: EditableItem,
@@ -100,6 +105,8 @@ export function calculateEditableItemPrice(
   windowChanged = false,
   /** The reservation's currency: a typed price's total rounded once in its minor unit, as the server rounds it. */
   currency?: string,
+  /** The server's instant: a line the edit adds takes the promotion in force at it. */
+  pricedAt?: Date,
 ): {
   totalPrice: number;
   effectiveUnitPrice: number;
@@ -149,8 +156,7 @@ export function calculateEditableItemPrice(
   };
 
   const mode = item.pricingMode;
-  const duration =
-    item.product?.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, mode);
+  const duration = item.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, mode);
 
   // A line priced from its product, kept at its stored price, or its product gone.
   if (!item.isManualPrice && item.productId) {
@@ -214,11 +220,22 @@ export function calculateEditableItemPrice(
   const startIso = startDate.toISOString();
   const endIso = endDate.toISOString();
   const durationMinutes = calculateDurationMinutes(startDate, endDate);
+  // A line the edit adds: the server's price, the promotion in force at the server's instant.
+  const added =
+    isAddedLine(item) && pricedAt
+      ? priceCatalogLine(
+          { ...product.catalogue, ...(timezone ? { timezone } : {}) },
+          { productId: product.id, quantity: item.quantity, startDate: startIso, endDate: endIso },
+          pricedAt,
+        )
+      : null;
 
   // Delegate to the shared pricing utility — same logic as the storefront
   const result = calculateCartItemPrice(
     {
       timezone,
+      // What the line shows of a promotion: only a line the edit adds takes today's.
+      promotion: added ? product.catalogue.promotion : null,
       price: parseFloat(product.price),
       deposit: parseFloat(product.deposit),
       quantity: item.quantity,
@@ -240,10 +257,13 @@ export function calculateEditableItemPrice(
     },
     null,
     null,
+    pricedAt,
   );
 
-  // Priced again: the promotion the line recorded, applied as recorded.
-  const subtotal = subtotalWithRecordedPromotion(result.subtotal, item.stored).subtotal;
+  // Added: the server's price. Priced again: the promotion the line recorded, applied as recorded.
+  const subtotal = added
+    ? added.subtotal
+    : subtotalWithRecordedPromotion(result.subtotal, item.stored).subtotal;
   const tierLabel = buildTierLabel(item, result.discountPercent, duration);
 
   const displayPricingMode = isRateBasedProduct({
@@ -372,6 +392,8 @@ interface UseEditReservationPricingParams {
   storedWindow?: { start: Date; end: Date };
   /** The reservation's currency, in whose minor unit a typed price's total is rounded. */
   currency?: string;
+  /** The server's instant when it read the reservation (`EditReservationFormProps.pricedAt`). */
+  pricedAt: Date;
 }
 
 export function useEditReservationPricing({
@@ -381,6 +403,7 @@ export function useEditReservationPricing({
   fixedChargesTotal = 0,
   storedWindow,
   currency,
+  pricedAt,
 }: UseEditReservationPricingParams) {
   const timezone = useStoreTimezone();
   const getDurationForMode = (mode: PricingMode) => {
@@ -435,6 +458,7 @@ export function useEditReservationPricing({
         timezone,
         windowChanged,
         currency,
+        pricedAt,
       );
 
       calculatedItems.push({
@@ -466,7 +490,17 @@ export function useEditReservationPricing({
       deposit,
       totalSavings,
     };
-  }, [items, startDate, endDate, fixedChargesTotal, timezone, storedStart, storedEnd, currency]);
+  }, [
+    items,
+    startDate,
+    endDate,
+    fixedChargesTotal,
+    timezone,
+    storedStart,
+    storedEnd,
+    currency,
+    pricedAt,
+  ]);
 
   return {
     getDurationForMode,
