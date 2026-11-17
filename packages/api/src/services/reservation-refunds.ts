@@ -26,25 +26,18 @@ export interface ReservationOnlineRefund {
 }
 
 /**
- * The reservation's refunds of online payments (`payment_refund_operations`), oldest
- * first, with the person whose approval each carries. An operation gives money back from
- * one of the reservation's own Stripe payments, so it is reached through them, by the
- * table's index on the payment, within the store: no other reservation's operation is read.
- * No query when the reservation has no payment taken online. A reader only: what the rows
- * say of the money is the payment rows'.
+ * The query of a reservation's refund operations, through its payments taken online: the
+ * payment's predicate is what lets the table's index on the payment serve it (the store and
+ * the reservation are conditions on what it finds). Built apart so a test can read its SQL.
  */
-export async function listReservationOnlineRefunds(
+export const reservationOnlineRefundsQuery = (
   executor: Pick<Database, "select">,
   storeId: string,
   reservationId: string,
-  payments: readonly { id: string; method: string }[],
-): Promise<ReservationOnlineRefund[]> {
-  const onlinePaymentIds = payments.flatMap((payment) =>
-    payment.method === "stripe" ? [payment.id] : [],
-  );
-  if (onlinePaymentIds.length === 0) return [];
+  onlinePaymentIds: readonly string[],
+) => {
   const o = paymentRefundOperations;
-  const rows = await executor
+  return executor
     .select({
       id: o.id,
       paymentId: o.paymentId,
@@ -62,12 +55,38 @@ export async function listReservationOnlineRefunds(
     .leftJoin(users, eq(users.id, apiHandoffs.decidedByUserId))
     .where(
       and(
-        inArray(o.paymentId, onlinePaymentIds),
+        inArray(o.paymentId, [...onlinePaymentIds]),
         eq(o.storeId, storeId),
         eq(o.reservationId, reservationId),
       ),
     )
     .orderBy(asc(o.createdAt), asc(o.id));
+};
+
+/**
+ * The reservation's refunds of online payments (`payment_refund_operations`), oldest
+ * first, with the person whose approval each carries. An operation gives money back from
+ * one of the reservation's own Stripe payments, so it is reached through them, by the
+ * table's index on the payment, within the store: no other reservation's operation is read.
+ * No query when the reservation has no payment taken online. A reader only: what the rows
+ * say of the money is the payment rows'.
+ */
+export async function listReservationOnlineRefunds(
+  executor: Pick<Database, "select">,
+  storeId: string,
+  reservationId: string,
+  payments: readonly { id: string; method: string }[],
+): Promise<ReservationOnlineRefund[]> {
+  const onlinePaymentIds = payments.flatMap((payment) =>
+    payment.method === "stripe" ? [payment.id] : [],
+  );
+  if (onlinePaymentIds.length === 0) return [];
+  const rows = await reservationOnlineRefundsQuery(
+    executor,
+    storeId,
+    reservationId,
+    onlinePaymentIds,
+  );
   return rows.map((row) => ({
     id: row.id,
     paymentId: row.paymentId,

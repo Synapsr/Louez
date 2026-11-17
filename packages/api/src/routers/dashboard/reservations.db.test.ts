@@ -670,6 +670,13 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     const byHand = await reservation("confirmed");
     assert.deepEqual((await run("get", { id: byHand }, session())).refunds, []);
 
+    // The operations are reached by the payment: the predicate on it is what the table's
+    // index on the payment serves; without it, every operation is scanned.
+    const { reservationOnlineRefundsQuery } = await import("../../services/reservation-refunds");
+    const query = reservationOnlineRefundsQuery(louezDb.db, STORE, id, [chargeId]).toSQL();
+    assert.match(query.sql, /`payment_refund_operations`\.`payment_id` in \(\?\)/);
+    assert.ok(query.params.includes(chargeId));
+
     const key = await apiKey({ ...everything, payments: "none" });
     assert.deepEqual((await run("get", { id }, key())).refunds, [], "payments are another right");
   });
