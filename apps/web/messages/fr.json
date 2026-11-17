@@ -8154,6 +8154,13 @@
           "sessionFailed": "Le paiement n'a pas pu être relancé. Réessayez dans un instant."
         }
       },
+      "paid": {
+        "metaTitle": "Paiement",
+        "received": "Votre paiement pour la réservation {number} chez {store} a bien été reçu.",
+        "receivedEmailed": "Votre paiement pour la réservation {number} chez {store} a bien été reçu. Une confirmation vous a été envoyée par e-mail.",
+        "confirming": "Le paiement de la réservation {number} chez {store} est en cours de confirmation.",
+        "confirmingEmailed": "Le paiement de la réservation {number} chez {store} est en cours de confirmation. Vous recevrez une confirmation par e-mail."
+      },
       "customFields": {
         "savedSummary": "Informations déjà renseignées",
         "detailsIntro": "Ces informations aident {store} à préparer votre matériel."

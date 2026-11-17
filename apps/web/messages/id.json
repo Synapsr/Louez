@@ -8154,6 +8154,13 @@
           "sessionFailed": "Pembayaran tidak dapat dimulai ulang. Coba lagi sebentar lagi."
         }
       },
+      "paid": {
+        "metaTitle": "Pembayaran",
+        "received": "Pembayaran untuk pemesanan {number} di {store} telah diterima.",
+        "receivedEmailed": "Pembayaran untuk pemesanan {number} di {store} telah diterima. Konfirmasi telah dikirim ke email Anda.",
+        "confirming": "Pembayaran untuk pemesanan {number} di {store} sedang dikonfirmasi.",
+        "confirmingEmailed": "Pembayaran untuk pemesanan {number} di {store} sedang dikonfirmasi. Anda akan menerima konfirmasi melalui email."
+      },
       "customFields": {
         "savedSummary": "Informasi sudah tersimpan",
         "detailsIntro": "Informasi ini membantu {store} menyiapkan peralatan Anda."

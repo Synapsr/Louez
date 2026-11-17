@@ -8154,6 +8154,13 @@
           "sessionFailed": "Nie udało się wznowić płatności. Spróbuj ponownie za chwilę."
         }
       },
+      "paid": {
+        "metaTitle": "Płatność",
+        "received": "Płatność za rezerwację {number} w {store} została otrzymana.",
+        "receivedEmailed": "Płatność za rezerwację {number} w {store} została otrzymana. Potwierdzenie zostało wysłane e-mailem.",
+        "confirming": "Płatność za rezerwację {number} w {store} jest potwierdzana.",
+        "confirmingEmailed": "Płatność za rezerwację {number} w {store} jest potwierdzana. Otrzymasz potwierdzenie e-mailem."
+      },
       "customFields": {
         "savedSummary": "Dane już zapisane",
         "detailsIntro": "Dzięki temu {store} przygotuje Twój sprzęt."

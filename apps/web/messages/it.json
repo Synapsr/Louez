@@ -8154,6 +8154,13 @@
           "sessionFailed": "Non è stato possibile riavviare il pagamento. Riprova tra poco."
         }
       },
+      "paid": {
+        "metaTitle": "Pagamento",
+        "received": "Il pagamento della prenotazione {number} presso {store} è stato ricevuto.",
+        "receivedEmailed": "Il pagamento della prenotazione {number} presso {store} è stato ricevuto. Ti abbiamo inviato una conferma via e-mail.",
+        "confirming": "Il pagamento della prenotazione {number} presso {store} è in corso di conferma.",
+        "confirmingEmailed": "Il pagamento della prenotazione {number} presso {store} è in corso di conferma. Riceverai una conferma via e-mail."
+      },
       "customFields": {
         "savedSummary": "Informazioni già registrate",
         "detailsIntro": "Queste informazioni aiutano {store} a preparare la tua attrezzatura."

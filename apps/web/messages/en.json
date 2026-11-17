@@ -8154,6 +8154,13 @@
           "sessionFailed": "Payment could not be restarted. Try again in a moment."
         }
       },
+      "paid": {
+        "metaTitle": "Payment",
+        "received": "Your payment for booking {number} at {store} has been received.",
+        "receivedEmailed": "Your payment for booking {number} at {store} has been received. A confirmation has been sent to you by email.",
+        "confirming": "The payment for booking {number} at {store} is being confirmed.",
+        "confirmingEmailed": "The payment for booking {number} at {store} is being confirmed. You will receive a confirmation by email."
+      },
       "customFields": {
         "savedSummary": "Details already on file",
         "detailsIntro": "This helps {store} get your equipment ready."
