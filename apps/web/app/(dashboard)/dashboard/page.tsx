@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-
 import { auth } from "@/lib/auth";
 import { env } from "@/env";
 import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
@@ -15,28 +13,30 @@ import { determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import type { GetTestReservationOutput } from "@louez/api/contracts/test-reservations";
 import type { VisibilityView } from "@louez/api/contracts/visibility";
-import { TestReservationHomeCard } from "@/components/dashboard/test-reservation/test-reservation-home-card";
-import { shouldOfferVisibilityGuide } from "@/components/dashboard/visibility/util.visibility-steps";
-import { VisibilityHomeCard } from "@/components/dashboard/visibility/visibility-home-card";
+import {
+  nextVisibilityStep,
+  shouldOfferVisibilityGuide,
+} from "@/components/dashboard/visibility/util.visibility-steps";
 import { serverApi } from "@/lib/api/server-api";
 import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
-import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
+import { isBillingEnabled } from "@/lib/billing/mode";
 import {
   parseDismissedNotices,
   type DismissibleNoticeId,
 } from "@louez/api/contracts/dismissed-notices";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import {
-  AgentAssistantNotice,
   DashboardAlert,
-  ReeentStripeSetupCard,
+  HomeNextStep,
   SetupChecklist,
+  TEST_RESERVATION_NOTICE_ID,
+  cohortNoticeOf,
   onlinePaymentsStepOf,
+  pickHomeNextStep,
   AdaptiveHeader,
   AdaptiveStats,
   TodayActivity,
   PendingRequests,
-  PlanOfferSection,
   QuickActions,
   ReservationsCalendarPrefetch,
   StorefrontWidget,
@@ -186,6 +186,29 @@ async function DashboardContent({
   const storeState = determineStoreState(metrics);
   const timeOfDay = getTimeOfDay();
   const lifetimeFeeWaiverAt = channelState.channel?.lifetimeFeeWaiverAt ?? null;
+  const billingEnabled = isBillingEnabled();
+  const assistant = shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection })
+    ? getMcpEndpoint()
+    : null;
+  const cohortNotice = cohortNoticeOf({
+    billingEnabled,
+    isFromReeent,
+    hasLifetimeFeeWaiver: lifetimeFeeWaiverAt !== null,
+    remainingSeats: cohort.remaining,
+    dismissedNoticeIds,
+  });
+  // One guidance card at a time (docs/product/accueil-prochaine-etape.md).
+  const nextStep = pickHomeNextStep({
+    dismissedNoticeIds,
+    reeentAwaitsStripe: isFromReeent && onlinePaymentsStep === "todo",
+    hasActiveProduct: launchChecklist.catalog.hasActiveProduct,
+    hasRealReservation: launchChecklist.milestones?.firstReservation ?? false,
+    testReservationStatus: testReservation?.reservation?.status ?? null,
+    canOfferPlan: isStoreOwner && billingEnabled,
+    visibilityHasNextStep: visibility !== null && nextVisibilityStep(visibility.steps) !== null,
+    agentAssistantOffered: assistant !== null,
+    cohortNotice,
+  });
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -199,45 +222,24 @@ async function DashboardContent({
         metrics={metrics}
       />
 
-      {/* Priority Alert for pending requests */}
+      {/* Priority Alert for pending requests: today's work, not guidance. */}
       <DashboardAlert pendingCount={metrics.pendingReservations} />
 
-      {/* The offer to let an AI assistant set up and run the store: first of
-          the setup notices, under the alert that asks for an action. */}
-      {shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection }) && (
-        <AgentAssistantNotice {...getMcpEndpoint()} />
-      )}
-
-      {testReservation && <TestReservationHomeCard initialState={testReservation} />}
-
-      {/* Bring the first customers: the next step of "Se faire connaître". */}
-      {visibility && <VisibilityHomeCard storeId={storeId} view={visibility} />}
-
-      {/* Stores from reeent are not published there until Stripe can charge. */}
-      {isFromReeent && onlinePaymentsStep === "todo" && (
-        <ReeentStripeSetupCard hasStripeAccount={hasStripeAccount} />
-      )}
-
-      {/* Launch-cohort status: the earned waiver, or the seats still open. The
-          seats pitch is dropped for a reeent store that has not earned the
-          waiver yet — it already signed up, and the card above carries the
-          offer. The earned badge still shows everywhere. */}
-      {(lifetimeFeeWaiverAt !== null || !isFromReeent) && (
-        <MarketplaceCohortNotice
-          lifetimeFeeWaiverAt={lifetimeFeeWaiverAt}
-          cohortRank={channelState.channel?.cohortRank ?? null}
-          remaining={cohort.remaining}
-          dismissedNoticeIds={dismissedNoticeIds}
-        />
-      )}
-
-      {/* A plan that would have cost the store less than what it paid Louez, for its
-          owner. Streamed: the billing figures never hold the home back. */}
-      {isStoreOwner && (
-        <Suspense fallback={null}>
-          <PlanOfferSection />
-        </Suspense>
-      )}
+      <HomeNextStep
+        choice={nextStep}
+        storeId={storeId}
+        hasStripeAccount={hasStripeAccount}
+        assistant={assistant}
+        testReservation={testReservation}
+        visibility={visibility}
+        launchOfferSeats={cohortNotice === "seats" ? cohort.remaining : null}
+        cohort={{
+          lifetimeFeeWaiverAt,
+          cohortRank: channelState.channel?.cohortRank ?? null,
+          remaining: cohort.remaining,
+        }}
+        dismissedNoticeIds={dismissedNoticeIds}
+      />
 
       {/* Setup Checklist for new stores (floating widget) */}
       {(storeState === "virgin" || storeState === "building") && (
@@ -245,6 +247,7 @@ async function DashboardContent({
           initialChecklist={launchChecklist}
           storeSlug={storeSlug}
           onlinePaymentsContext={isFromReeent ? "reeent" : "default"}
+          assistant={assistant}
         />
       )}
 
@@ -289,8 +292,10 @@ export default async function DashboardHomePage() {
   const launchChecklist = await api.stores.getLaunchChecklist({});
   const dismissedNoticeIds = parseDismissedNotices(userRow?.dismissedNotices);
   const [testReservation, visibility] = await Promise.all([
-    // The test reservation's card: a product to book, no real reservation yet.
-    launchChecklist.catalog.hasActiveProduct && !launchChecklist.milestones?.firstReservation
+    // The test reservation's card: a product to book, no real reservation yet, not closed.
+    launchChecklist.catalog.hasActiveProduct &&
+    !launchChecklist.milestones?.firstReservation &&
+    !dismissedNoticeIds.includes(TEST_RESERVATION_NOTICE_ID)
       ? api.testReservations.get({})
       : null,
     shouldOfferVisibilityGuide({

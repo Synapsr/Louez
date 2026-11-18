@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "First step",
-        "description": "Book on your store as a customer would, then manage the booking here. Nothing is paid or billed."
+        "description": "Book on your store as a customer would, then manage the booking here. Nothing is paid or billed.",
+        "dismiss": "Hide"
       },
       "guide": {
         "title": "Test booking",
@@ -1174,6 +1175,12 @@
         "detailsPlanPriceWithVat": "{price} excl. VAT per month, or {priceWithVat} with {vatRate} VAT",
         "detailsSavings": "Savings",
         "detailsNote": "Calculated with your store's own rates. On a plan, Stripe fees and reeent marketplace fees still apply."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Add your first product",
+          "description": "What you rent and at what price: your customers can then book it online."
+        }
       }
     },
     "products": {

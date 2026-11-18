@@ -110,7 +110,10 @@ servi, et pour nous une mesure directe.
 
 **Une carte sur l'accueil**, quand la boutique est en ligne et a un produit actif : la
 **prochaine action seulement** et un bouton. Elle se ferme pour de bon
-(`users.dismissed_notices`) et disparaît quand les trois étapes sont faites ou écartées.
+(`users.dismissed_notices`) et disparaît quand les trois étapes sont faites ou écartées. Elle
+est l'une des cartes « prochaine étape » de l'accueil, qui n'en montre qu'une
+([accueil-prochaine-etape.md](accueil-prochaine-etape.md)) : elle vient après la réservation
+test et porte la ligne de l'offre de lancement reeent.
 
 **Une seule fenêtre de partage** dans le dashboard : celle de la carte « Votre boutique »
 devient l'outil de `share_contacts` (liens marqués, Facebook en plus ; le QR nu laisse place à

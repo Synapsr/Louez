@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "第一步",
-        "description": "像客户一样在您的店铺下单，然后在这里管理这笔预订。不会产生任何付款或账单。"
+        "description": "像客户一样在您的店铺下单，然后在这里管理这笔预订。不会产生任何付款或账单。",
+        "dismiss": "隐藏"
       },
       "guide": {
         "title": "测试预订",
@@ -1174,6 +1175,12 @@
         "detailsPlanPriceWithVat": "每月 {price}（不含增值税），按 {vatRate} 增值税计为 {priceWithVat}",
         "detailsSavings": "节省",
         "detailsNote": "按您店铺的实际费率计算。订阅套餐后，Stripe 手续费和 reeent 市场费用仍需支付。"
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "添加您的第一个商品",
+          "description": "您出租的物品及其价格：之后客户即可在线预订。"
+        }
       }
     },
     "products": {

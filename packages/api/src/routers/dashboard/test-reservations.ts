@@ -10,6 +10,8 @@ import {
 } from "../../contracts/test-reservations";
 import type { ApiPorts } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
+import { sanitizeError } from "../../platform/sanitize-error";
+import { dismissNotice } from "../../services/dismissed-notices";
 import {
   deleteTestReservation,
   getTestReservationState,
@@ -22,6 +24,25 @@ function dispatch(ports: ApiPorts, effectIds: string[]) {
     ports.dispatchEffects(effectIds);
   } catch (error) {
     console.error("Dispatching a test reservation's effects failed:", error);
+  }
+}
+
+/**
+ * Deleting the test's data ends the test for this user: the home's test card
+ * is closed, so it does not come back offering a new one. The deletion is
+ * done already; a failed close is logged, never thrown.
+ */
+async function closeHomeCard(ports: ApiPorts, userId: string, storeId: string) {
+  try {
+    await dismissNotice({ userId, noticeId: "test-reservation" });
+  } catch (error) {
+    const event = {
+      event: "test_reservation.home_card_close_failed",
+      storeId,
+      error: sanitizeError(error),
+    };
+    if (ports.log) ports.log.error(event);
+    else console.error(JSON.stringify(event));
   }
 }
 
@@ -81,6 +102,7 @@ const remove = testReservations
       analytics: { distinctId: context.actor.credential.userId, trigger: "manual" },
     });
     dispatch(context.ports, effectIds);
+    if (deleted) await closeHomeCard(context.ports, context.actor.credential.userId, storeId);
     return { deleted };
   });
 
