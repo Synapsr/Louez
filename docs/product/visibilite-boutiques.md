@@ -1,6 +1,7 @@
 # Visibilité des boutiques — trouver ses premiers clients
 
-Statut : spec, phase 1 en cours (novembre 2026). Propriétaire : Téo.
+Statut : spec ; phase 1 livrée, phase 3 « Être trouvé par les IA » avancée et en revue (novembre 2026).
+Propriétaire : Téo.
 
 ## Problème
 
@@ -152,15 +153,109 @@ part ; la table et `page_views.source` suffisent à mesurer.
 - **Lecture par les agents** : `visibility.get` exposée en lecture (MCP), pour qu'un assistant
   aide le loueur à faire les étapes.
 
-### Phase 3 — Moteurs et assistants (à décider sur les données de phase 2)
+### Phase 3 — Moteurs et assistants
 
-- `llms.txt` par boutique (résumé, produits, prix, liens) si la phase 2 montre des visites
-  venues d'assistants IA ; aujourd'hui son effet n'est pas démontré, le JSON-LD et le sitemap
-  couvrent l'essentiel.
+- **« Être trouvé par les IA »** : avancé avant la phase 2 à la demande de Téo (18 novembre
+  2026), décrit dans la section suivante.
 - Avis Google : relier le Review Booster existant à la fiche Google du loueur.
 - Google Business Profile par API : l'API ne permet pas de gérer les liens de réservation
   locaux (aide Google), donc pas d'intégration ; le guide manuel reste la voie.
 - Annuaires locaux et offices de tourisme (liste par pays).
+
+## « Être trouvé par les IA » (phase 3, avancée)
+
+Les assistants (ChatGPT, Perplexity, Claude, Gemini, Copilot) répondent de plus en plus à
+« où louer un vélo à Vannes ? ». Ils citent ce qu'ils comprennent : une boutique dont les
+données sont complètes et lisibles par une machine. Cette partie rend chaque boutique lisible,
+mesure ce qui en vient, et dit au loueur ce qui manque.
+
+### Ce que lisent les machines
+
+- **`/llms.txt` et `/llms-full.txt`** à la racine de chaque boutique (format llmstxt.org), dans la
+  langue de la boutique (`settings.locale`) : résumé, adresse, plan, contact, horaires, règles de
+  réservation (paiement ou demande, acompte, durées minimale et maximale, délai de
+  prévenance), retrait et livraison, devise, puis le catalogue par catégorie avec chaque tarif
+  de la grille (« 25 € / 1 jour ; 120 € / 1 semaine », promotion comprise, comme la page) et la
+  caution, chaque produit lié à sa page. `llms-full.txt` ajoute les descriptions. Plafond :
+  300 produits (1 000 dans le fichier complet), au-delà le fichier renvoie au catalogue.
+  `X-Robots-Tag: noindex` : le fichier sert aux assistants, la page à citer reste la boutique.
+  404 hors d'un hôte de boutique, avec `LOUEZ_SEARCH_INDEXING=off`, ou pour une boutique sans
+  le droit (`canUseAiVisibility`). Une boutique pas encore en ligne n'a ni page ni fichier.
+- **JSON-LD produit** : une `Offer` par tarif de la grille (au lieu du seul tarif de base),
+  chacune avec sa `UnitPriceSpecification` et sa période, prix arrondis au centime ; la caution
+  en `additionalProperty`. Aucune note ni avis inventés. Le `priceRange: "$$"` codé en dur du
+  `LocalBusiness` est retiré : une valeur fausse est pire que rien.
+- **Métadonnées** : plus de description par défaut en français dans `generateStoreMetadata`
+  (la description traduite du layout s'applique) ; titre et description d'une page produit
+  toujours traduits.
+- **`hreflang`** : non émis, volontairement. Une page de boutique a une seule URL, servie dans la
+  langue du visiteur (`Accept-Language`) ou celle de la boutique ; `hreflang` exige une URL par
+  langue. Les robots lisent la langue de la boutique.
+- **robots.txt** : un groupe nomme les robots des assistants (GPTBot, OAI-SearchBot,
+  ChatGPT-User, ClaudeBot, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User,
+  Google-Extended, Applebot-Extended, …) avec les mêmes chemins privés que `*` : un robot ne
+  suit que son groupe. Avec `LOUEZ_SEARCH_INDEXING=off`, tout reste interdit.
+- **Sitemap** : déjà complet (accueil, catalogue, catégories non vides, produits actifs, pages
+  d'information) ; inchangé.
+
+### Ce qu'on mesure
+
+- **Visites venues d'un assistant** : la boutique lit, à la première page de la visite, le
+  référent (chatgpt.com, perplexity.ai, claude.ai, gemini.google.com, copilot.microsoft.com,
+  chat.mistral.ai, …) ou le `utm_source` que l'assistant ajoute au lien (ChatGPT met
+  `chatgpt.com` et n'envoie souvent pas de référent), et le garde pour la visite
+  (`page_views.ai_assistant`, `aiAssistant` dans les métadonnées des `storefront_events`). Une
+  valeur d'une liste fermée, jamais l'URL.
+- **Lectures par les robots des IA** : la boutique compte les requêtes dont l'agent est celui
+  d'un robot connu, par jour, robot et ressource (`page` ou `llms_txt`) dans `store_ai_crawls`.
+  Un compteur seulement : ni adresse IP, ni agent complet, ni page.
+- **Dans le dashboard**, section « Être trouvé par les IA » de « Se faire connaître » : visites
+  venues d'un assistant et lectures sur 28 jours ; le détail par assistant et le nombre de
+  lectures de `llms.txt` restent repliés.
+- **PostHog** : `visibility_ai_viewed` et `visibility_ai_fix_opened`
+  (`docs/analytics/visibility.md`).
+- **Correctif lié** : la page produit envoyait son slug comme `productId` ; `/api/track` le
+  refusait (400) et aucune vue de page produit n'était comptée. Elle envoie l'id.
+
+### Ce qui manque au loueur
+
+Quatre points, dans la section du guide, chacun avec un bouton vers la page qui le règle :
+description de la boutique (au moins 40 caractères avec l'accroche, Boutique en ligne →
+Identité), adresse (Boutique en ligne → Contact), horaires d'ouverture (au moins un jour ouvert,
+Réglages → Horaires), produits actifs avec photo et prix (« 3 produits sur 4 », Produits). Pas
+de carte de plus sur l'accueil : l'accueil ne montre qu'une prochaine étape.
+
+### Droit d'usage
+
+`canUseAiVisibility(store)` (`apps/web/lib/ai-visibility/entitlement.ts`) décide seule, et
+répond oui pour toutes les boutiques. L'API la consulte par `ApiPorts.aiVisibility` (procédure
+`visibility.getAi`, refus `AI_VISIBILITY_NOT_INCLUDED`), la boutique pour `llms.txt`, la page du
+guide pour sa section. Pour la lier à une offre ou à une option payante, seule cette fonction
+change (par exemple un drapeau `aiVisibility` dans `PlanFeatures`, lu par `getStorePlan`).
+Restent hors du droit, exprès : le JSON-LD, les titres, le sitemap et le robots.txt de toutes
+les boutiques (le référencement de base), et le comptage des visites et lectures, pour qu'une
+boutique qui prend l'option voie son passé.
+
+### Décisions
+
+| Décision                                                        | Pourquoi                                                                                             |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `llms.txt` dans la langue de la boutique                        | C'est la langue que lisent déjà les robots ; un assistant traduit sans peine                         |
+| Tous les tarifs de la grille, promotion comprise                | Un assistant répond « combien pour une semaine ? » ; le fichier dit ce que la page affiche           |
+| Lien vers la page produit, pas de disponibilité dans le fichier | La disponibilité dépend des dates ; la page la calcule, un fichier en cache la tromperait            |
+| Compter les robots en base, pas dans PostHog                    | Un événement par requête de robot coûterait cher et n'apprend rien de plus qu'un compteur journalier |
+| Pas de score chiffré                                            | Comme pour la phase 1 : quatre faits vérifiables, pas une note sans mesure derrière                  |
+| Section dans « Se faire connaître », pas de carte d'accueil     | L'accueil montre une seule prochaine étape (PR « prochaine étape »)                                  |
+
+### Ce qu'on ne sait pas
+
+- **Les assistants lisent-ils `llms.txt` ?** Aucun éditeur ne s'est engagé publiquement à le lire
+  pour répondre ; le format est une proposition. Le compteur `llms_txt` de `store_ai_crawls`
+  le dira boutique par boutique. Le JSON-LD, les pages et le sitemap restent la base.
+- **Le référent est incomplet** : certaines applications d'assistant n'envoient ni référent ni
+  `utm_source` ; ces visites comptent comme directes. Les chiffres sont un minimum.
+- **Agent déclaré** : un robot peut se faire passer pour un autre ; le compteur ne vérifie pas
+  les adresses IP des éditeurs.
 
 ## Hors périmètre
 

@@ -7507,6 +7507,56 @@
         "next": "Próximo passo: {step}",
         "action": "Continuar",
         "dismiss": "Ocultar"
+      },
+      "ai": {
+        "title": "Ser encontrado pelas IA",
+        "description": "O ChatGPT, o Claude, o Perplexity e o Gemini leem a sua loja para responder aos seus futuros clientes.",
+        "readyCount": "{ready} de {total} prontos",
+        "indexingOff": "Esta instância esconde as suas lojas dos motores de busca e dos assistentes de IA (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "Uma descrição da sua loja",
+            "missing": "Algumas frases sobre o que aluga e onde: é o que um assistente repete."
+          },
+          "address": {
+            "title": "O seu endereço",
+            "missing": "Sem endereço, um assistente não o pode sugerir a quem procura perto."
+          },
+          "businessHours": {
+            "title": "O seu horário",
+            "missing": "Um assistente responde a «está aberto?» com o seu horário."
+          },
+          "products": {
+            "title": "Produtos com foto e preço",
+            "count": "{ready} de {total} produtos têm foto e preço",
+            "none": "Ainda não há produtos online"
+          }
+        },
+        "status": {
+          "ready": "pronto",
+          "missing": "por completar"
+        },
+        "fix": "Completar",
+        "stats": {
+          "visits": "Visitas vindas de um assistente de IA",
+          "crawls": "Leituras pelos robôs de IA",
+          "period": "Últimos 28 dias"
+        },
+        "details": "Detalhes",
+        "table": {
+          "assistant": "Assistente",
+          "visits": "Visitas",
+          "reads": "Leituras"
+        },
+        "assistants": {
+          "other": "Outras IA"
+        },
+        "empty": "Ainda sem visitas nem leituras: os assistentes de IA demoram muitas vezes algumas semanas a descobrir uma loja nova.",
+        "llmsTxt": {
+          "reads": "A sua página para as IA (llms.txt): {count, plural, =0 {ainda não lida} one {lida uma vez} other {lida # vezes}}",
+          "open": "Ver a página"
+        },
+        "note": "Um assistente nem sempre indica de onde vem um visitante: estes números são um mínimo."
       }
     }
   },
@@ -9123,6 +9173,48 @@
         "acquisitionSourceDetail": "Especifique",
         "socialLinks": "Redes e links"
       }
+    },
+    "llms": {
+      "summary": "Aluguer de material na {store}.",
+      "intro": "{store} aluga online: reserve em {url}.",
+      "practicalTitle": "Informações práticas",
+      "address": "Endereço: {address}",
+      "map": "Mapa: {url}",
+      "phone": "Telefone: {phone}",
+      "email": "E-mail: {email}",
+      "hours": "Horário: {hours}",
+      "closed": "fechado",
+      "bookingPayment": "Reserva e pagamento online, confirmados de imediato",
+      "bookingPartialPayment": "Reserva online com um sinal de {percent}%; o resto paga-se na loja",
+      "bookingRequest": "Reserva online mediante pedido: a loja confirma cada reserva",
+      "minDuration": "Aluguer mínimo: {duration}",
+      "maxDuration": "Aluguer máximo: {duration}",
+      "advanceNotice": "Reservar com pelo menos {duration} de antecedência",
+      "pickup": "Levantamento e devolução na loja",
+      "pickupLocations": "Levantamento e devolução na loja ou num dos seus pontos de recolha",
+      "delivery": {
+        "optional": "Entrega disponível",
+        "required": "Apenas entrega, sem levantamento",
+        "included": "Entrega incluída"
+      },
+      "currency": "Preços em {currency}",
+      "catalogTitle": "Catálogo",
+      "pricesNote": "Tarifas por período de aluguer; o preço exato e a disponibilidade para datas precisas estão na página de cada produto.",
+      "noProducts": "Ainda não há produtos online.",
+      "otherProducts": "Outros produtos",
+      "deposit": "Caução: {amount}",
+      "truncated": "O catálogo completo está online: {url}",
+      "pagesTitle": "Páginas",
+      "pages": {
+        "home": "Início",
+        "catalog": "Catálogo",
+        "about": "Sobre nós",
+        "contact": "Contacto",
+        "terms": "Termos e condições",
+        "legal": "Informação legal"
+      },
+      "fullFile": "Todos os produtos com a sua descrição",
+      "footer": "Dados da loja online, atualizados a {date}."
     }
   },
   "onboarding": {
@@ -9830,7 +9922,8 @@
       "needsStripe": "O Louez encontrou no Stripe uma autorização para este pedido, mas não corresponde ao que foi pedido (montante, cartão ou referência alterados): o Louez não a registou e o pedido continua aberto. Cancele-a a partir do painel do Stripe e depois clique em «Fechar o pedido». Se, em vez disso, a cobrar no Stripe, o Louez não regista esse montante e o pedido continua aberto: contacte o suporte do Louez.",
       "none": "Esta reserva já não tem nenhuma autorização por confirmar."
     },
-    "planOfferUnavailable": "Esta oferta já não se aplica à sua loja. Encontra as assinaturas na página Assinatura."
+    "planOfferUnavailable": "Esta oferta já não se aplica à sua loja. Encontra as assinaturas na página Assinatura.",
+    "aiVisibilityNotIncluded": "O seu plano não inclui a visibilidade junto dos assistentes de IA."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

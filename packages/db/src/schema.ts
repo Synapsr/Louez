@@ -1198,6 +1198,32 @@ export const storeVisibilitySteps = mysqlTable(
   }),
 );
 
+/**
+ * How often AI crawlers read a storefront, per day: a count only, never an
+ * address, a user agent or a page (docs/product/visibilite-boutiques.md, phase 3).
+ * `crawler` is an AI_CRAWLERS key (packages/api contracts/ai-visibility.ts),
+ * `resource` what it read: a page, or the store's llms.txt files.
+ */
+export const storeAiCrawls = mysqlTable(
+  "store_ai_crawls",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    day: date("day", { mode: "string" }).notNull(),
+    crawler: varchar("crawler", { length: 32 }).notNull(),
+    resource: mysqlEnum("resource", ["page", "llms_txt"]).notNull(),
+    hits: int("hits").default(0).notNull(),
+  },
+  (table) => ({
+    storeDayCrawlerUnique: unique("store_ai_crawls_store_day_crawler_resource_unique").on(
+      table.storeId,
+      table.day,
+      table.crawler,
+      table.resource,
+    ),
+  }),
+);
+
 export const marketplaceCatalogTombstones = mysqlTable(
   "marketplace_catalog_tombstones",
   {
@@ -3976,6 +4002,9 @@ export const pageViews = mysqlTable(
     // The link's `via` parameter, set by the dashboard's share tools (VISIT_SOURCES
     // in packages/api contracts/visibility.ts): the channel the visit came from.
     source: varchar("source", { length: 20 }),
+    // The AI assistant whose answer the visit came from (AI_ASSISTANTS in packages/api
+    // contracts/ai-visibility.ts), read from the referrer or the link's utm_source.
+    aiAssistant: varchar("ai_assistant", { length: 20 }),
     device: deviceType.default("desktop"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },

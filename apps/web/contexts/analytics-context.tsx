@@ -10,6 +10,11 @@ import {
   type ReactNode,
 } from "react";
 
+import {
+  classifyAiReferral,
+  parseAiAssistant,
+  type AiAssistant,
+} from "@louez/api/contracts/ai-visibility";
 import { parseVisitSource, type VisitSource } from "@louez/api/contracts/visibility";
 
 import { readVisitSource } from "@/lib/visibility/util.visit-source";
@@ -65,12 +70,15 @@ interface AnalyticsSession {
   device: DeviceType;
   /** The channel of the link the visit came in by (`?via=`), kept for the whole visit. */
   source: VisitSource | null;
+  /** The AI assistant whose answer the visit came from, kept for the whole visit. */
+  aiAssistant: AiAssistant | null;
 }
 
 const AnalyticsContext = createContext<AnalyticsContextValue | undefined>(undefined);
 
 const SESSION_STORAGE_KEY = "louez_analytics_session";
 const SOURCE_STORAGE_KEY = "louez_analytics_source";
+const AI_ASSISTANT_STORAGE_KEY = "louez_analytics_ai_assistant";
 const TRACK_ENDPOINT = "/api/track";
 
 const NOOP_ANALYTICS: AnalyticsContextValue = {
@@ -136,6 +144,26 @@ const getOrCaptureVisitSource = (): VisitSource | null => {
 };
 
 /**
+ * The AI assistant the visit came from: read on the tab's first page, from
+ * its referrer or the cited link's `utm_source` (ChatGPT adds one), so the
+ * pages after it, whose referrer is the store itself, keep it.
+ */
+const getOrCaptureAiAssistant = (): AiAssistant | null => {
+  const fromLanding = classifyAiReferral({
+    referrer: document.referrer,
+    utmSource: new URLSearchParams(window.location.search).get("utm_source"),
+  });
+  try {
+    const stored = parseAiAssistant(sessionStorage.getItem(AI_ASSISTANT_STORAGE_KEY));
+    if (stored) return stored;
+    if (fromLanding) sessionStorage.setItem(AI_ASSISTANT_STORAGE_KEY, fromLanding);
+  } catch {
+    // sessionStorage can be unavailable in strict privacy modes.
+  }
+  return fromLanding;
+};
+
+/**
  * Fire-and-forget delivery: `sendBeacon` survives navigation and unload;
  * the fetch fallback keeps `keepalive` for the same reason. Analytics never
  * throws into the page.
@@ -178,6 +206,7 @@ export const AnalyticsProvider = ({
       sessionId: getOrCreateSessionId(),
       device: getDeviceType(),
       source: getOrCaptureVisitSource(),
+      aiAssistant: getOrCaptureAiAssistant(),
     });
   }, []);
 
@@ -195,6 +224,7 @@ export const AnalyticsProvider = ({
         referrer: document.referrer.slice(0, 500) || undefined,
         device: session.device,
         source: session.source ?? undefined,
+        aiAssistant: session.aiAssistant ?? undefined,
       });
     },
     [enabled, session, storeSlug],
@@ -211,11 +241,12 @@ export const AnalyticsProvider = ({
         customerId: data.customerId,
         eventType: data.eventType,
         metadata:
-          channel || session.source
+          channel || session.source || session.aiAssistant
             ? {
                 ...data.metadata,
                 ...(channel && { channel }),
                 ...(session.source && { source: session.source }),
+                ...(session.aiAssistant && { aiAssistant: session.aiAssistant }),
               }
             : data.metadata,
       });

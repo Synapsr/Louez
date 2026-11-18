@@ -7507,6 +7507,56 @@
         "next": "Prochaine étape : {step}",
         "action": "Continuer",
         "dismiss": "Masquer"
+      },
+      "ai": {
+        "title": "Être trouvé par les IA",
+        "description": "ChatGPT, Claude, Perplexity et Gemini lisent votre boutique pour répondre à vos futurs clients.",
+        "readyCount": "{ready} sur {total} prêts",
+        "indexingOff": "Cette instance cache ses boutiques aux moteurs de recherche et aux assistants IA (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "Une description de votre boutique",
+            "missing": "Quelques phrases sur ce que vous louez et où : c'est ce qu'un assistant reprend."
+          },
+          "address": {
+            "title": "Votre adresse",
+            "missing": "Sans elle, un assistant ne peut pas vous proposer à qui cherche près de chez vous."
+          },
+          "businessHours": {
+            "title": "Vos horaires d'ouverture",
+            "missing": "Un assistant répond « est-ce ouvert ? » avec vos horaires."
+          },
+          "products": {
+            "title": "Des produits avec photo et prix",
+            "count": "{ready} produits sur {total} ont une photo et un prix",
+            "none": "Aucun produit en ligne pour l'instant"
+          }
+        },
+        "status": {
+          "ready": "prêt",
+          "missing": "à compléter"
+        },
+        "fix": "Compléter",
+        "stats": {
+          "visits": "Visites venues d'un assistant IA",
+          "crawls": "Lectures par les robots des IA",
+          "period": "28 derniers jours"
+        },
+        "details": "Détails",
+        "table": {
+          "assistant": "Assistant",
+          "visits": "Visites",
+          "reads": "Lectures"
+        },
+        "assistants": {
+          "other": "Autres IA"
+        },
+        "empty": "Pas encore de visite ni de lecture : les assistants IA mettent souvent quelques semaines à découvrir une nouvelle boutique.",
+        "llmsTxt": {
+          "reads": "Votre page pour les IA (llms.txt) : {count, plural, =0 {pas encore lue} one {lue une fois} other {lue # fois}}",
+          "open": "Voir la page"
+        },
+        "note": "Un assistant n'indique pas toujours d'où vient un visiteur : ces chiffres sont un minimum."
       }
     }
   },
@@ -9123,6 +9173,48 @@
         "acquisitionSourceDetail": "Précisez",
         "socialLinks": "Réseaux et liens"
       }
+    },
+    "llms": {
+      "summary": "Location de matériel chez {store}.",
+      "intro": "{store} loue en ligne : réservation sur {url}.",
+      "practicalTitle": "Informations pratiques",
+      "address": "Adresse : {address}",
+      "map": "Plan : {url}",
+      "phone": "Téléphone : {phone}",
+      "email": "E-mail : {email}",
+      "hours": "Horaires : {hours}",
+      "closed": "fermé",
+      "bookingPayment": "Réservation et paiement en ligne, confirmés tout de suite",
+      "bookingPartialPayment": "Réservation en ligne avec un acompte de {percent} % ; le reste se règle à la boutique",
+      "bookingRequest": "Réservation en ligne sur demande : la boutique confirme chaque réservation",
+      "minDuration": "Durée minimale de location : {duration}",
+      "maxDuration": "Durée maximale de location : {duration}",
+      "advanceNotice": "À réserver au moins {duration} à l'avance",
+      "pickup": "Retrait et retour à la boutique",
+      "pickupLocations": "Retrait et retour à la boutique ou dans un de ses points de retrait",
+      "delivery": {
+        "optional": "Livraison possible",
+        "required": "Livraison uniquement, pas de retrait",
+        "included": "Livraison incluse"
+      },
+      "currency": "Prix en {currency}",
+      "catalogTitle": "Catalogue",
+      "pricesNote": "Tarifs par durée de location ; le prix exact et la disponibilité pour des dates précises sont sur la page de chaque produit.",
+      "noProducts": "Aucun produit en ligne pour l'instant.",
+      "otherProducts": "Autres produits",
+      "deposit": "Caution : {amount}",
+      "truncated": "Le catalogue complet est en ligne : {url}",
+      "pagesTitle": "Pages",
+      "pages": {
+        "home": "Accueil",
+        "catalog": "Catalogue",
+        "about": "À propos",
+        "contact": "Contact",
+        "terms": "Conditions générales",
+        "legal": "Mentions légales"
+      },
+      "fullFile": "Tous les produits, avec leur description",
+      "footer": "Données de la boutique en ligne, à jour au {date}."
     }
   },
   "onboarding": {
@@ -9830,7 +9922,8 @@
       "needsStripe": "Louez a trouvé chez Stripe une autorisation pour cette demande d'empreinte, mais elle ne correspond pas à ce qui a été demandé (montant, carte ou référence modifiés) : Louez ne l'a pas enregistrée et la demande reste ouverte. Annulez-la depuis le tableau de bord Stripe, puis cliquez sur « Clore la demande ». Si vous la prélevez dans Stripe à la place, Louez n'enregistre pas ce montant et la demande reste ouverte : contactez le support Louez.",
       "none": "Cette réservation n'a plus d'empreinte non confirmée."
     },
-    "planOfferUnavailable": "Cette offre ne s'applique plus à votre boutique. Retrouvez les abonnements sur la page Abonnement."
+    "planOfferUnavailable": "Cette offre ne s'applique plus à votre boutique. Retrouvez les abonnements sur la page Abonnement.",
+    "aiVisibilityNotIncluded": "Votre offre n'inclut pas la visibilité auprès des assistants IA."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

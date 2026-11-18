@@ -7507,6 +7507,56 @@
         "next": "Nächster Schritt: {step}",
         "action": "Weiter",
         "dismiss": "Ausblenden"
+      },
+      "ai": {
+        "title": "Von KI-Assistenten gefunden werden",
+        "description": "ChatGPT, Claude, Perplexity und Gemini lesen Ihren Shop, um Ihren künftigen Kunden zu antworten.",
+        "readyCount": "{ready} von {total} bereit",
+        "indexingOff": "Diese Instanz verbirgt ihre Shops vor Suchmaschinen und KI-Assistenten (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "Eine Beschreibung Ihres Shops",
+            "missing": "Ein paar Sätze dazu, was Sie wo vermieten: Das gibt ein Assistent wieder."
+          },
+          "address": {
+            "title": "Ihre Adresse",
+            "missing": "Ohne Adresse kann ein Assistent Sie niemandem in der Nähe empfehlen."
+          },
+          "businessHours": {
+            "title": "Ihre Öffnungszeiten",
+            "missing": "Ein Assistent beantwortet „Ist geöffnet?“ mit Ihren Öffnungszeiten."
+          },
+          "products": {
+            "title": "Produkte mit Foto und Preis",
+            "count": "{ready} von {total} Produkten haben ein Foto und einen Preis",
+            "none": "Noch kein Produkt online"
+          }
+        },
+        "status": {
+          "ready": "bereit",
+          "missing": "zu ergänzen"
+        },
+        "fix": "Ergänzen",
+        "stats": {
+          "visits": "Besuche über einen KI-Assistenten",
+          "crawls": "Abrufe durch KI-Crawler",
+          "period": "Letzte 28 Tage"
+        },
+        "details": "Details",
+        "table": {
+          "assistant": "Assistent",
+          "visits": "Besuche",
+          "reads": "Abrufe"
+        },
+        "assistants": {
+          "other": "Andere KI"
+        },
+        "empty": "Noch keine Besuche oder Abrufe: KI-Assistenten brauchen oft einige Wochen, um einen neuen Shop zu entdecken.",
+        "llmsTxt": {
+          "reads": "Ihre Seite für KI-Assistenten (llms.txt): {count, plural, =0 {noch nicht abgerufen} one {einmal abgerufen} other {# Mal abgerufen}}",
+          "open": "Seite ansehen"
+        },
+        "note": "Ein Assistent gibt nicht immer an, woher ein Besucher kommt: Diese Zahlen sind ein Mindestwert."
       }
     }
   },
@@ -9123,6 +9173,48 @@
         "acquisitionSourceDetail": "Bitte genauer angeben",
         "socialLinks": "Netzwerke und Links"
       }
+    },
+    "llms": {
+      "summary": "Ausrüstungsverleih bei {store}.",
+      "intro": "{store} vermietet online: Buchung unter {url}.",
+      "practicalTitle": "Praktische Informationen",
+      "address": "Adresse: {address}",
+      "map": "Karte: {url}",
+      "phone": "Telefon: {phone}",
+      "email": "E-Mail: {email}",
+      "hours": "Öffnungszeiten: {hours}",
+      "closed": "geschlossen",
+      "bookingPayment": "Buchung und Zahlung online, sofort bestätigt",
+      "bookingPartialPayment": "Online-Buchung mit {percent} % Anzahlung; der Rest wird beim Shop bezahlt",
+      "bookingRequest": "Online-Buchung auf Anfrage: Der Shop bestätigt jede Buchung",
+      "minDuration": "Mindestmietdauer: {duration}",
+      "maxDuration": "Höchstmietdauer: {duration}",
+      "advanceNotice": "Mindestens {duration} im Voraus buchen",
+      "pickup": "Abholung und Rückgabe im Shop",
+      "pickupLocations": "Abholung und Rückgabe im Shop oder an einer seiner Abholstellen",
+      "delivery": {
+        "optional": "Lieferung möglich",
+        "required": "Nur Lieferung, keine Abholung",
+        "included": "Lieferung inklusive"
+      },
+      "currency": "Preise in {currency}",
+      "catalogTitle": "Katalog",
+      "pricesNote": "Preise pro Mietdauer; der genaue Preis und die Verfügbarkeit für bestimmte Daten stehen auf der Seite jedes Produkts.",
+      "noProducts": "Noch kein Produkt online.",
+      "otherProducts": "Weitere Produkte",
+      "deposit": "Kaution: {amount}",
+      "truncated": "Der vollständige Katalog ist online: {url}",
+      "pagesTitle": "Seiten",
+      "pages": {
+        "home": "Startseite",
+        "catalog": "Katalog",
+        "about": "Über uns",
+        "contact": "Kontakt",
+        "terms": "AGB",
+        "legal": "Impressum"
+      },
+      "fullFile": "Alle Produkte mit ihrer Beschreibung",
+      "footer": "Daten aus dem Online-Shop, Stand {date}."
     }
   },
   "onboarding": {
@@ -9830,7 +9922,8 @@
       "needsStripe": "Louez hat bei Stripe eine Autorisierung für diese Anfrage gefunden, die aber nicht dem Angefragten entspricht (Betrag, Karte oder Referenz geändert): Louez hat sie nicht erfasst, und die Anfrage bleibt offen. Stornieren Sie sie im Stripe-Dashboard und klicken Sie dann auf „Anfrage schließen“. Ziehen Sie sie stattdessen in Stripe ein, erfasst Louez diesen Betrag nicht und die Anfrage bleibt offen: Wenden Sie sich an den Louez-Support.",
       "none": "Diese Reservierung hat keine unbestätigte Autorisierung mehr."
     },
-    "planOfferUnavailable": "Dieses Angebot gilt nicht mehr für Ihren Shop. Die Abos finden Sie auf der Seite Abonnement."
+    "planOfferUnavailable": "Dieses Angebot gilt nicht mehr für Ihren Shop. Die Abos finden Sie auf der Seite Abonnement.",
+    "aiVisibilityNotIncluded": "Ihr Tarif enthält keine Sichtbarkeit bei KI-Assistenten."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

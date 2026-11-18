@@ -4,6 +4,7 @@ import { useCallback } from "react";
 
 import { usePostHog } from "posthog-js/react";
 
+import type { AiReadinessItemKey } from "@louez/api/contracts/ai-visibility";
 import type { VisitSource, VisibilityStepKey } from "@louez/api/contracts/visibility";
 
 import {
@@ -51,6 +52,23 @@ export const useVisibilityAnalytics = (storeId: string) => {
     stepCompleted: useCallback(
       (step: VisibilityStepKey, status: "todo" | "done" | "skipped") =>
         capture(productAnalyticsEvents.visibilityStepCompleted, { step, status }),
+      [capture],
+    ),
+    aiViewed: useCallback(
+      (facts: { readyCount: number; itemCount: number; aiVisits: number; aiCrawls: number }) =>
+        capture(productAnalyticsEvents.visibilityAiViewed, {
+          placement: "page",
+          ready_count: facts.readyCount,
+          item_count: facts.itemCount,
+          ai_visits: facts.aiVisits,
+          ai_crawls: facts.aiCrawls,
+        }),
+      [capture],
+    ),
+    /** `llms_txt`: the owner opened the file assistants read. */
+    aiFixOpened: useCallback(
+      (item: AiReadinessItemKey | "llms_txt") =>
+        capture(productAnalyticsEvents.visibilityAiFixOpened, { placement: "page", item }),
       [capture],
     ),
   };

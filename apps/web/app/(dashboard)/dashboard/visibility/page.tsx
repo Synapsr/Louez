@@ -11,7 +11,9 @@ import { Button, Card } from "@louez/ui";
 import { DashboardEmptyState } from "@/components/dashboard/shared/dashboard-empty-state";
 import { VisibilityGuide } from "@/components/dashboard/visibility/visibility-guide";
 import { env } from "@/env";
+import { canUseAiVisibility } from "@/lib/ai-visibility/entitlement";
 import { serverApi } from "@/lib/api/server-api";
+import { isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { getProductPath } from "@/lib/seo";
 import { getCurrentStore } from "@/lib/store-context";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -30,9 +32,11 @@ export default async function VisibilityPage() {
 
   const t = await getTranslations("dashboard.visibility");
   const api = await serverApi();
-  const [checklist, view, activeProducts] = await Promise.all([
+  const aiIncluded = await canUseAiVisibility(store);
+  const [checklist, view, aiView, activeProducts] = await Promise.all([
     api.stores.getLaunchChecklist({}),
     api.visibility.get({}),
+    aiIncluded ? api.visibility.getAi({}) : null,
     db.query.products.findMany({
       columns: { id: true, name: true, slug: true },
       where: and(eq(products.storeId, store.id), eq(products.status, "active")),
@@ -70,6 +74,13 @@ export default async function VisibilityPage() {
         url: getStorefrontUrl(store.slug, getProductPath(product)),
       }))}
       initialView={view}
+      ai={
+        aiView && {
+          initialView: aiView,
+          llmsTxtUrl: getStorefrontUrl(store.slug, "/llms.txt"),
+          indexingEnabled: isSearchIndexingEnabled(),
+        }
+      }
       marketplaceAvailable={Boolean(env.MARKETPLACE_URL)}
     />
   );

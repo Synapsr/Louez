@@ -27,7 +27,10 @@ import {
   buildCategoryBrowseHref,
   getCategoryToken,
 } from "@/lib/utils/util.category-browse-entries";
-import { getStorefrontPricingSummary } from "@/lib/utils/util.storefront-pricing";
+import {
+  getStorefrontPricingSummary,
+  getStorefrontRateRows,
+} from "@/lib/utils/util.storefront-pricing";
 
 import { ProductRentalInformation } from "@/components/storefront/product/product-rental-information";
 import { BookingPanel } from "./booking-panel";
@@ -125,9 +128,8 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
       ),
     );
   }
-  const { displayPrice } = getStorefrontPricingSummary(product, {
-    timezone: store.settings.timezone,
-  });
+  const pricingOptions = { timezone: store.settings.timezone };
+  const { displayPrice } = getStorefrontPricingSummary(product, pricingOptions);
   const storeForSchema = {
     id: store.id,
     name: store.name,
@@ -146,6 +148,11 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     pricingKind: product.pricingKind,
     pricingMode: product.pricingMode,
     basePeriodMinutes: product.basePeriodMinutes,
+    // Every rate the page prints, promotion included: one Offer each.
+    rates: getStorefrontRateRows(product, pricingOptions).map((row) => ({
+      price: row.price,
+      periodMinutes: row.periodMinutes,
+    })),
     category: product.category,
   };
   const breadcrumbItems = [
@@ -165,7 +172,8 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
 
   return (
     <>
-      <PageTracker page="product" productId={productId} />
+      {/* The product's id: the URL segment is its slug, which /api/track refuses. */}
+      <PageTracker page="product" productId={product.id} />
       <JsonLd
         data={[
           generateProductSchema(storeForSchema, productForSchema),

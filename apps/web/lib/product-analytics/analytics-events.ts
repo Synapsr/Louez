@@ -63,6 +63,8 @@ export const productAnalyticsEvents = {
   visibilityViewed: 'visibility_viewed',
   visibilityShareUsed: 'visibility_share_used',
   visibilityStepCompleted: 'visibility_step_completed',
+  visibilityAiViewed: 'visibility_ai_viewed',
+  visibilityAiFixOpened: 'visibility_ai_fix_opened',
 } as const;
 
 export type ProductAnalyticsEvent =

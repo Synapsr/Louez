@@ -17,6 +17,7 @@ import { reportServerError } from "@/lib/error-tracking";
 import { getHostedBy } from "@/lib/hosting";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
+import { canUseAiVisibility } from "@/lib/ai-visibility/entitlement";
 import { apiStorage } from "@/lib/storage/api-storage";
 import { isSmsConfigured } from "@/lib/sms/client";
 import { getStripe, isConnectConfigured } from "@/lib/stripe/client";
@@ -31,6 +32,7 @@ export const apiPorts: ApiPorts = {
     const plan = await getStorePlan(storeId);
     return { apiAccess: plan.features.apiAccess };
   },
+  aiVisibility: (storeId) => canUseAiVisibility({ id: storeId }),
   storage: apiStorage,
   afterCommit: runAfterCommit,
   urls: apiUrls,

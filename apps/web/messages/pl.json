@@ -7507,6 +7507,56 @@
         "next": "Następny krok: {step}",
         "action": "Dalej",
         "dismiss": "Ukryj"
+      },
+      "ai": {
+        "title": "Bądź widoczny dla AI",
+        "description": "ChatGPT, Claude, Perplexity i Gemini czytają Twój sklep, by odpowiadać Twoim przyszłym klientom.",
+        "readyCount": "{ready} z {total} gotowe",
+        "indexingOff": "Ta instancja ukrywa swoje sklepy przed wyszukiwarkami i asystentami AI (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "Opis Twojego sklepu",
+            "missing": "Kilka zdań o tym, co i gdzie wynajmujesz: to powtarza asystent."
+          },
+          "address": {
+            "title": "Twój adres",
+            "missing": "Bez adresu asystent nie poleci Cię komuś, kto szuka w pobliżu."
+          },
+          "businessHours": {
+            "title": "Twoje godziny otwarcia",
+            "missing": "Asystent odpowiada na pytanie „czy jest otwarte?” Twoimi godzinami."
+          },
+          "products": {
+            "title": "Produkty ze zdjęciem i ceną",
+            "count": "{ready} z {total} produktów ma zdjęcie i cenę",
+            "none": "Brak produktów online"
+          }
+        },
+        "status": {
+          "ready": "gotowe",
+          "missing": "do uzupełnienia"
+        },
+        "fix": "Uzupełnij",
+        "stats": {
+          "visits": "Wizyty z asystenta AI",
+          "crawls": "Odczyty przez roboty AI",
+          "period": "Ostatnie 28 dni"
+        },
+        "details": "Szczegóły",
+        "table": {
+          "assistant": "Asystent",
+          "visits": "Wizyty",
+          "reads": "Odczyty"
+        },
+        "assistants": {
+          "other": "Inne AI"
+        },
+        "empty": "Brak wizyt i odczytów: asystenci AI często potrzebują kilku tygodni, by odkryć nowy sklep.",
+        "llmsTxt": {
+          "reads": "Twoja strona dla AI (llms.txt): {count, plural, =0 {jeszcze nieodczytana} one {odczytana raz} few {odczytana # razy} many {odczytana # razy} other {odczytana # razy}}",
+          "open": "Zobacz stronę"
+        },
+        "note": "Asystent nie zawsze podaje, skąd przychodzi odwiedzający: te liczby to minimum."
       }
     }
   },
@@ -9123,6 +9173,48 @@
         "acquisitionSourceDetail": "Doprecyzuj",
         "socialLinks": "Social media i linki"
       }
+    },
+    "llms": {
+      "summary": "Wypożyczalnia sprzętu {store}.",
+      "intro": "{store} wypożycza online: rezerwacja na {url}.",
+      "practicalTitle": "Informacje praktyczne",
+      "address": "Adres: {address}",
+      "map": "Mapa: {url}",
+      "phone": "Telefon: {phone}",
+      "email": "E-mail: {email}",
+      "hours": "Godziny otwarcia: {hours}",
+      "closed": "zamknięte",
+      "bookingPayment": "Rezerwacja i płatność online, potwierdzone od razu",
+      "bookingPartialPayment": "Rezerwacja online z zaliczką {percent}%; resztę płaci się w sklepie",
+      "bookingRequest": "Rezerwacja online na zapytanie: sklep potwierdza każdą rezerwację",
+      "minDuration": "Minimalny czas wynajmu: {duration}",
+      "maxDuration": "Maksymalny czas wynajmu: {duration}",
+      "advanceNotice": "Rezerwuj co najmniej {duration} wcześniej",
+      "pickup": "Odbiór i zwrot w sklepie",
+      "pickupLocations": "Odbiór i zwrot w sklepie lub w jednym z jego punktów odbioru",
+      "delivery": {
+        "optional": "Dostawa dostępna",
+        "required": "Tylko dostawa, bez odbioru",
+        "included": "Dostawa w cenie"
+      },
+      "currency": "Ceny w {currency}",
+      "catalogTitle": "Katalog",
+      "pricesNote": "Stawki za okres wynajmu; dokładna cena i dostępność w wybranych terminach są na stronie każdego produktu.",
+      "noProducts": "Brak produktów online.",
+      "otherProducts": "Inne produkty",
+      "deposit": "Kaucja: {amount}",
+      "truncated": "Pełny katalog jest online: {url}",
+      "pagesTitle": "Strony",
+      "pages": {
+        "home": "Strona główna",
+        "catalog": "Katalog",
+        "about": "O nas",
+        "contact": "Kontakt",
+        "terms": "Regulamin",
+        "legal": "Informacje prawne"
+      },
+      "fullFile": "Wszystkie produkty z opisami",
+      "footer": "Dane ze sklepu internetowego, aktualne na dzień {date}."
     }
   },
   "onboarding": {
@@ -9830,7 +9922,8 @@
       "needsStripe": "Louez znalazł w Stripe autoryzację dla tej prośby, ale nie odpowiada ona temu, o co proszono (zmieniona kwota, karta lub referencja): Louez jej nie zapisał, a prośba pozostaje otwarta. Anuluj ją w panelu Stripe, a następnie kliknij „Zamknij prośbę”. Jeśli zamiast tego pobierzesz ją w Stripe, Louez nie zapisze tej kwoty, a prośba pozostanie otwarta: skontaktuj się z pomocą techniczną Louez.",
       "none": "Ta rezerwacja nie ma już niepotwierdzonej autoryzacji."
     },
-    "planOfferUnavailable": "Ta oferta nie dotyczy już Twojego sklepu. Abonamenty znajdziesz na stronie Abonament."
+    "planOfferUnavailable": "Ta oferta nie dotyczy już Twojego sklepu. Abonamenty znajdziesz na stronie Abonament.",
+    "aiVisibilityNotIncluded": "Twój plan nie obejmuje widoczności w asystentach AI."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

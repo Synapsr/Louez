@@ -9,6 +9,12 @@ export const visibilityQueries = {
       ...orpc.dashboard.visibility.get.queryOptions({ input: {} }),
       staleTime: 30_000,
     }),
+  /** « Être trouvé par les IA »: readiness, visits from assistants, AI crawler reads. */
+  getAi: () =>
+    queryOptions({
+      ...orpc.dashboard.visibility.getAi.queryOptions({ input: {} }),
+      staleTime: 30_000,
+    }),
   /** Broad key, for invalidating after a step changes. */
   key: () => orpc.dashboard.visibility.key(),
 };

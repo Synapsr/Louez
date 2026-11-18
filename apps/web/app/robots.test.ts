@@ -21,8 +21,22 @@ test("without the switch, a storefront's robots.txt allows crawling and names it
   const { default: robots } = await import("./robots");
   const result = await robots();
   assert.equal(result.sitemap, "https://shop.louez.io/sitemap.xml");
-  assert.ok(!Array.isArray(result.rules));
-  assert.equal(result.rules.allow, "/");
+  assert.ok(Array.isArray(result.rules));
+  const everyone = result.rules.find((rule) => rule.userAgent === "*");
+  assert.equal(everyone?.allow, "/");
+});
+
+test("a storefront's robots.txt names AI crawlers, allowed with the same private paths", async () => {
+  const { default: robots } = await import("./robots");
+  const result = await robots();
+  assert.ok(Array.isArray(result.rules));
+  const [ai, everyone] = result.rules;
+  assert.ok(Array.isArray(ai.userAgent));
+  for (const token of ["GPTBot", "OAI-SearchBot", "ClaudeBot", "PerplexityBot", "Google-Extended"]) {
+    assert.ok(ai.userAgent.includes(token), token);
+  }
+  assert.equal(ai.allow, "/");
+  assert.deepEqual(ai.disallow, everyone.disallow);
 });
 
 test("with LOUEZ_SEARCH_INDEXING=off, robots.txt disallows everything and names no sitemap", async () => {

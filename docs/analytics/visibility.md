@@ -7,7 +7,7 @@ mesurent pas la même chose :
 - **la base**, source de vérité, insensible aux bloqueurs de pub : `store_visibility_steps`
   (une ligne par étape décidée) et `page_views.source` (le canal du lien par lequel une visite
   est arrivée, plus `source` dans les métadonnées des `storefront_events` de la visite) ;
-- **PostHog**, pour les funnels : trois événements envoyés par le navigateur du dashboard.
+- **PostHog**, pour les funnels : des événements envoyés par le navigateur du dashboard.
 
 ## Événements PostHog
 
@@ -30,6 +30,16 @@ codes : jamais un nom, un message ni un lien.
 - `step` : `share_contacts`, `qr_poster`, `google_business`.
 - `status` : `done`, `skipped` (« Pas pour moi »), `todo` (étape rouverte).
 
+### « Être trouvé par les IA »
+
+| Événement                  | Quand                                                         | Propriétés propres                                                 |
+| -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `visibility_ai_viewed`     | La section est montrée sur la page (une fois par affichage)   | `placement`, `ready_count`, `item_count`, `ai_visits`, `ai_crawls` |
+| `visibility_ai_fix_opened` | Le loueur ouvre la page qui règle un point, ou son `llms.txt` | `placement`, `item`                                                |
+
+- `item` : `description`, `address`, `businessHours`, `products`, ou `llms_txt`.
+- `ai_visits`, `ai_crawls` : les compteurs des 28 jours affichés, pas un détail.
+
 Sans `NEXT_PUBLIC_POSTHOG_KEY`, rien ne part ; la base suffit.
 
 ## Source des visites (`?via=`)
@@ -42,6 +52,18 @@ chaque page vue l'envoie à `/api/track`, qui ne garde qu'une valeur de la liste
 
 La page du guide affiche les visites (sessions distinctes) par source sur 28 jours
 (`visibility.get`, `packages/api/src/services/visibility.ts`).
+
+## Assistants IA (`page_views.ai_assistant`, `store_ai_crawls`)
+
+- **Visites** : à la première page de l'onglet, la boutique classe le référent ou le
+  `utm_source` du lien (`classifyAiReferral`, `packages/api/src/contracts/ai-visibility.ts`) et
+  garde l'assistant pour la visite (`sessionStorage`) ; `/api/track` n'accepte qu'une valeur
+  de `AI_ASSISTANTS`. Il part aussi dans les métadonnées des `storefront_events`
+  (`aiAssistant`), donc sur le checkout.
+- **Robots** : le layout de la boutique et les routes `llms.txt` comptent, après la réponse,
+  les requêtes dont l'agent porte le jeton d'un robot connu (`AI_CRAWLERS`) : une ligne par
+  boutique, jour (UTC), robot et ressource, dont `hits` augmente. Rien d'autre n'est gardé.
+- Lecture : `visibility.getAi` (28 jours), `packages/api/src/services/ai-visibility.ts`.
 
 ## Analyses visées
 
