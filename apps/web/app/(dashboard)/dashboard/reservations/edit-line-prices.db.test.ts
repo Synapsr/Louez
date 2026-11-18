@@ -1462,7 +1462,13 @@ describe(
             credential: { kind: "session", id: null },
             transport: "rpc",
             customers: true,
-            reader: { storeId: STORE, currency: "EUR", customers: true, payments: true },
+            reader: {
+              storeId: STORE,
+              currency: "EUR",
+              customers: true,
+              payments: true,
+              testReservations: true,
+            },
             store: {
               id: STORE,
               name: "Edit line prices",

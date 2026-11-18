@@ -331,6 +331,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Test",
+      "start": "Testreservering maken",
+      "resume": "Testreservering hervatten",
+      "startError": "Je winkel kon niet in testmodus openen. Probeer het opnieuw.",
+      "toast": {
+        "description": "Je winkel is klaar. Maak een testreservering om te zien wat je klanten meemaken."
+      },
+      "homeCard": {
+        "title": "Eerste stap",
+        "description": "Reserveer in je winkel zoals een klant, en beheer de reservering daarna hier. Er wordt niets betaald of gefactureerd."
+      },
+      "guide": {
+        "title": "Testreservering",
+        "description": "Beheer haar als een echte reservering, met de knoppen op deze pagina.",
+        "closed": "Deze testreservering is onderweg gestopt. Verwijder haar om een nieuwe te maken.",
+        "howTo": "Hoe doe ik dat?",
+        "expires": "Ze wordt automatisch verwijderd op {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Bevestigen",
+            "help": "Klik op deze pagina op ‘{button}’. Je ontvangt de bevestigingsmail, net als je klant."
+          },
+          "departureInspection": {
+            "title": "Ophalen",
+            "help": "Doe de inspectie bij vertrek, zoals bij het overhandigen van het materiaal.",
+            "action": "Inspectie bij vertrek doen"
+          },
+          "pickup": {
+            "title": "Ophalen",
+            "help": "Klik op ‘{button}’ wanneer de klant met het materiaal vertrekt."
+          },
+          "return": {
+            "title": "Terugbrengen en afsluiten",
+            "help": "Klik op ‘{button}’ wanneer het materiaal terug is. De verhuur is afgerond."
+          }
+        }
+      },
+      "done": {
+        "title": "Alles is klaar. Deel je winkel",
+        "description": "Je hebt gezien wat je klanten meemaken. Je hoeft ze alleen nog de link te geven.",
+        "share": "Mijn winkel delen",
+        "marketplace": "Mijn vermelding op reeent"
+      },
+      "delete": {
+        "button": "Testgegevens verwijderen",
+        "title": "Testgegevens verwijderen?",
+        "description": "De testreservering, de testklant, de gesimuleerde betalingen en de inspecties worden verwijderd. Je producten en instellingen blijven zoals ze zijn.",
+        "cancel": "Annuleren",
+        "confirm": "Verwijderen",
+        "success": "Testgegevens verwijderd",
+        "error": "Verwijderen is mislukt. Probeer het opnieuw."
+      }
+    },
     "purchaseInvoices": {
       "title": "Leveranciersfacturen",
       "description": "Facturen die je leveranciers via het netwerk voor elektronische facturatie naar je bedrijf hebben gestuurd.",
@@ -7380,6 +7434,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Testmodus: er wordt niets afgerekend.",
+      "leave": "Testmodus verlaten",
+      "emailLocked": "Test-e-mails worden naar je gestuurd op {email}.",
+      "badge": "Test",
+      "contractWatermark": "TEST — zonder waarde",
+      "payment": {
+        "title": "Gesimuleerde betaling",
+        "description": "Geen kaart, geen afschrijving.",
+        "reservation": "Reservering {number}",
+        "amountDue": "Te betalen bedrag",
+        "deposit": "Borg",
+        "depositNote": "De borg wordt tijdens een test niet genomen.",
+        "submit": "Betaling simuleren",
+        "notPending": "Deze reservering wacht niet meer op een betaling.",
+        "viewReservation": "Reservering bekijken"
+      }
+    },
     "notFound": {
       "title": "Deze pagina is niet beschikbaar",
       "description": "Het product of de pagina die je zoekt bestaat niet meer of staat nog niet online.",
@@ -9448,6 +9520,10 @@
     }
   },
   "errors": {
+    "testReservationExists": "Je hebt al een testreservering. Verwijder die in het dashboard om een nieuwe te maken.",
+    "testReservationRefused": "Niet mogelijk bij een testreservering: er wordt niets afgerekend.",
+    "testModeRequired": "De testmodus is niet meer actief. Start hem opnieuw vanuit het dashboard.",
+    "testPaymentBusy": "De gesimuleerde betaling is al bezig. Probeer het zo meteen opnieuw.",
     "storeNotAcceptingReservations": "Deze winkel neemt op dit moment geen online reserveringen aan. {hasContact, select, yes {Neem contact op met de winkel: {contact}} other {Neem rechtstreeks contact op met de winkel.}}",
     "generic": "Er is een fout opgetreden",
     "contractNotSignable": "Dit contract kan niet meer worden ondertekend.",

@@ -331,6 +331,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Teste",
+      "start": "Fazer uma reserva de teste",
+      "resume": "Retomar a reserva de teste",
+      "startError": "Não foi possível abrir a loja em modo de teste. Tente novamente.",
+      "toast": {
+        "description": "A sua loja está pronta. Faça uma reserva de teste para ver o que os seus clientes vivem."
+      },
+      "homeCard": {
+        "title": "Primeiro passo",
+        "description": "Reserve na sua loja como um cliente e depois gira a reserva aqui. Nada é pago nem faturado."
+      },
+      "guide": {
+        "title": "Reserva de teste",
+        "description": "Gira-a como uma reserva real, com os botões desta página.",
+        "closed": "Esta reserva de teste parou a meio. Elimine-a para fazer outra.",
+        "howTo": "Como fazer?",
+        "expires": "Será eliminada automaticamente a {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Confirmar",
+            "help": "Clique em «{button}» nesta página. Recebe o e-mail de confirmação, tal como o seu cliente."
+          },
+          "departureInspection": {
+            "title": "Levantamento",
+            "help": "Faça a vistoria de saída, como na entrega do equipamento.",
+            "action": "Fazer a vistoria de saída"
+          },
+          "pickup": {
+            "title": "Levantamento",
+            "help": "Clique em «{button}» quando o cliente sair com o equipamento."
+          },
+          "return": {
+            "title": "Devolução e fecho",
+            "help": "Quando o equipamento voltar, clique em «{button}». O aluguer fica concluído."
+          }
+        }
+      },
+      "done": {
+        "title": "Tudo pronto. Partilhe a sua loja",
+        "description": "Viu o que os seus clientes vivem. Só falta dar-lhes o link.",
+        "share": "Partilhar a minha loja",
+        "marketplace": "A minha publicação na reeent"
+      },
+      "delete": {
+        "button": "Eliminar os dados de teste",
+        "title": "Eliminar os dados de teste?",
+        "description": "A reserva de teste, o seu cliente de teste, os pagamentos simulados e as vistorias são eliminados. Os seus produtos e definições ficam como estão.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar",
+        "success": "Dados de teste eliminados",
+        "error": "A eliminação falhou. Tente novamente."
+      }
+    },
     "purchaseInvoices": {
       "title": "Faturas de fornecedores",
       "description": "Faturas que os seus fornecedores enviaram à sua empresa através da rede de faturação eletrónica.",
@@ -7380,6 +7434,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Modo de teste: nada é cobrado.",
+      "leave": "Sair do modo de teste",
+      "emailLocked": "Os e-mails de teste são enviados para {email}.",
+      "badge": "Teste",
+      "contractWatermark": "TESTE — sem valor",
+      "payment": {
+        "title": "Pagamento simulado",
+        "description": "Sem cartão, sem cobrança.",
+        "reservation": "Reserva {number}",
+        "amountDue": "Valor a pagar",
+        "deposit": "Caução",
+        "depositNote": "A caução não é retida durante um teste.",
+        "submit": "Simular o pagamento",
+        "notPending": "Esta reserva já não aguarda pagamento.",
+        "viewReservation": "Ver a reserva"
+      }
+    },
     "notFound": {
       "title": "Esta página não está disponível",
       "description": "O produto ou a página que procura já não existe ou ainda não está online.",
@@ -9448,6 +9520,10 @@
     }
   },
   "errors": {
+    "testReservationExists": "Já tem uma reserva de teste. Elimine-a no painel para fazer outra.",
+    "testReservationRefused": "Não é possível numa reserva de teste: nada é cobrado nela.",
+    "testModeRequired": "O modo de teste já não está ativo. Reinicie-o a partir do painel.",
+    "testPaymentBusy": "O pagamento simulado já está em andamento. Tente novamente em instantes.",
     "storeNotAcceptingReservations": "Esta loja não está aceitando reservas online no momento. {hasContact, select, yes {Entre em contato com a loja: {contact}} other {Entre em contato diretamente com a loja.}}",
     "generic": "Ocorreu um erro",
     "contractNotSignable": "Este contrato já não pode ser assinado.",

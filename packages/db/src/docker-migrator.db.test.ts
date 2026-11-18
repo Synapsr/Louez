@@ -49,6 +49,7 @@ const RELEASE = [
   "0110_lifecycle_analytics",
   "0111_reservation_sales_channel",
   "0112_plan_offer",
+  "0113_test_reservations",
 ];
 
 interface Journal {

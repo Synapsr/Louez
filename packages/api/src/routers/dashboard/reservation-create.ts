@@ -9,6 +9,7 @@ import { platformErrors } from "../../platform/errors";
 import { customerLinks, reservationLinks } from "../../platform/links";
 import { allows, type ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
+import { canSeeTestReservations } from "../../platform/test-reservation-visibility";
 import { readAfterCommit } from "../../platform/errors";
 import {
   createStoreReservation,
@@ -114,6 +115,7 @@ async function answerOf(
         currency: context.store.settings?.currency ?? "EUR",
         customers: true,
         payments: mayRead(context, "payments"),
+        testReservations: canSeeTestReservations(context.actor),
       },
       created.id,
     ),

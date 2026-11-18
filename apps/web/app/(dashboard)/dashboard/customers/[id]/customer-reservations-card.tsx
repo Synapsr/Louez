@@ -6,6 +6,8 @@ import { Building2, CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@louez/ui";
+
+import { TestBadge } from "@/components/dashboard/test-reservation/test-badge";
 import { formatCurrency, isBusinessBilling, resolveReservationBilling } from "@louez/utils";
 
 import { DashboardEmptyState } from "@/components/dashboard/shared/dashboard-empty-state";
@@ -118,9 +120,12 @@ export const CustomerReservationsCard = ({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANTS[reservation.status] ?? "pending"}>
-                      {tReservations(`status.${reservation.status}`)}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge variant={STATUS_VARIANTS[reservation.status] ?? "pending"}>
+                        {tReservations(`status.${reservation.status}`)}
+                      </Badge>
+                      <TestBadge reservationId={reservation.id} />
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(parseFloat(reservation.totalAmount), currency, formatLocale)}

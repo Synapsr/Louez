@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import {
   db,
   markReservation,
+  TestReservationRefusedError,
   payments,
   reservationActivity,
   reservationItems,
@@ -109,6 +110,8 @@ export const startExtension = async (input: {
   expectedSupplement: number;
 }) => {
   const result = await runExtensionQuote(input, async (tx, reservation) => {
+    // Its payment would go through Stripe (lib/test-reservations).
+    if (reservation.isTest) throw new TestReservationRefusedError("rental_extension");
     const end = parseExtensionEnd(input.endDate, reservation.store.settings?.timezone ?? "UTC");
     if (reservation.endDate.getTime() === end.getTime()) {
       const completed = reservation.activity.flatMap((row) => {

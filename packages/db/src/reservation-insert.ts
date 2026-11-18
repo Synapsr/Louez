@@ -31,7 +31,8 @@ export function planReservationInsert(
   now: Date,
 ): { row: typeof reservations.$inferInsert; effects: ReservationBillingEffect[] } {
   const at = toWholeSeconds(now);
-  const billableAt = initialBillableAt(values.status, at);
+  // A test reservation is never billed (test-reservations.ts).
+  const billableAt = values.isTest ? null : initialBillableAt(values.status, at);
   const row = { ...values, billableAt };
   if (!billableAt) return { row, effects: [] };
 
@@ -58,7 +59,8 @@ export function planReservationInsert(
  *
  * A billable status (a booking created as confirmed) throws
  * StoreNotAcceptingReservationsError when the store's card gate is closed, before
- * the insert. Pending and quote bookings never ask.
+ * the insert. Pending and quote bookings never ask, nor a test reservation,
+ * which is never billed and never marked for billing.
  */
 export async function insertReservation(
   tx: Transaction,
@@ -66,12 +68,14 @@ export async function insertReservation(
   options: { now?: Date } = {},
 ): Promise<{ effects: ReservationBillingEffect[]; lock: InsertedReservationLock }> {
   const now = options.now ?? new Date();
-  if (isBillableReservationStatus(values.status)) {
+  if (isBillableReservationStatus(values.status) && !values.isTest) {
     await assertStoreCanTakeReservations(tx, values.storeId, now);
   }
   const plan = planReservationInsert(values, now);
   await tx.insert(reservations).values(plan.row);
-  await markReservation(tx, { id: values.id, storeId: values.storeId });
+  if (!values.isTest) {
+    await markReservation(tx, { id: values.id, storeId: values.storeId });
+  }
   return {
     effects: plan.effects,
     lock: insertedReservationLock(tx, { reservationId: values.id, storeId: values.storeId }),

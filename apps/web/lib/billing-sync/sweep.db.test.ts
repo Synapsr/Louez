@@ -61,14 +61,14 @@ describe("billing sweep (database)", { skip: skipWithoutTestDatabase() }, () => 
       updatedAt: new Date("2026-01-01T08:00:00Z"),
     });
     // Fixtures written directly: the sweep only reads them.
-    await db
-      .insert(reservations)
-      .values([
-        reservation("sw_open", "pending", "2026-01-02T08:00:00Z"),
-        reservation("sw_ended_recently", "completed", "2026-10-15T08:00:00Z"),
-        reservation("sw_paid_recently", "completed", "2026-02-02T08:00:00Z"),
-        reservation("sw_old", "completed", "2026-02-02T08:00:00Z"),
-      ]);
+    await db.insert(reservations).values([
+      reservation("sw_open", "pending", "2026-01-02T08:00:00Z"),
+      reservation("sw_ended_recently", "completed", "2026-10-15T08:00:00Z"),
+      reservation("sw_paid_recently", "completed", "2026-02-02T08:00:00Z"),
+      reservation("sw_old", "completed", "2026-02-02T08:00:00Z"),
+      // Open, but a test reservation: never billed, never marked.
+      { ...reservation("sw_test", "pending", "2026-01-02T08:00:00Z"), isTest: true },
+    ]);
     await db.insert(payments).values({
       id: "sw_pay",
       reservationId: "sw_paid_recently",

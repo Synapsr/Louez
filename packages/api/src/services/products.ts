@@ -2,6 +2,7 @@ import {
   categories,
   db,
   effectiveProductQuantitySql,
+  excludeTestReservations,
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
@@ -307,6 +308,8 @@ async function assignedBlockingUnitIds(
           reservations.status,
           getBlockingReservationStatuses(params.pendingBlocksAvailability),
         ),
+        // A test reservation holds no unit: it never blocks a deletion.
+        excludeTestReservations(),
         reservationStillHoldsUnitsSql(),
       ),
     );
@@ -1227,6 +1230,8 @@ export async function updateProduct(
               eq(reservationItems.productId, product.id),
               not(eq(reservationItems.combinationKey, DEFAULT_COMBINATION_KEY)),
               inArray(reservations.status, blockingStatuses),
+              // A test reservation never holds the product.
+              excludeTestReservations(),
               gte(reservations.endDate, new Date()),
             ),
           )
@@ -1492,6 +1497,8 @@ async function checkUnitCapacity(
         eq(reservationItems.productId, product.id),
         eq(reservations.storeId, params.storeId),
         inArray(reservations.status, params.blockingStatuses),
+        // A test reservation holds no unit.
+        excludeTestReservations(),
         gte(reservations.endDate, from),
       ),
     );
@@ -1720,6 +1727,8 @@ export async function updateProductStatus(
             eq(reservationItems.productId, product.id),
             eq(reservations.storeId, storeId),
             inArray(reservations.status, ["pending", "confirmed", "ongoing"]),
+            // Test reservations are not counted.
+            excludeTestReservations(),
           ),
         );
       refusal = await options.confirm(
@@ -1804,7 +1813,14 @@ export async function deleteProduct(
         })
         .from(reservationItems)
         .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-        .where(and(eq(reservationItems.productId, id), eq(reservations.storeId, storeId)));
+        .where(
+          and(
+            eq(reservationItems.productId, id),
+            eq(reservations.storeId, storeId),
+            // Test reservations are not counted.
+            excludeTestReservations(),
+          ),
+        );
       refusal = await options.confirm(
         {
           product,

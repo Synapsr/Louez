@@ -18,7 +18,7 @@ import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { getCustomerPaymentRows } from "@/lib/reservations/util.payment-status";
 import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
-import { getContractTranslations } from "./contract-i18n";
+import { getContractTestWatermark, getContractTranslations } from "./contract-i18n";
 import { isLocale } from "@/lib/i18n/format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
@@ -285,6 +285,8 @@ export async function generateContract({
       currency: reservationCurrency(reservation.currency, store.settings),
       timezone: store.settings?.timezone || undefined,
       fullCgvHtml,
+      // A test reservation's contract binds no one (packages/db test-reservations.ts).
+      watermark: reservation.isTest ? getContractTestWatermark(locale) : null,
     }),
   );
 

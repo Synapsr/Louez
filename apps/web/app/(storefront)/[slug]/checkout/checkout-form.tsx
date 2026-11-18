@@ -35,6 +35,7 @@ import type {
   CheckoutFormProps,
   CheckoutFormValues,
   CheckoutInitialCustomer,
+  CheckoutTestMode,
   StepId,
 } from "./checkout.types";
 import { CheckoutConfirmStep } from "./components/checkout-confirm-step";
@@ -69,6 +70,26 @@ const NO_SAVED_VALUES: Record<string, string> = {};
 
 type CheckoutFieldName = DeepKeys<CheckoutFormValues>;
 
+/** A test checkout's events say so (lib/test-reservations). */
+const TEST_CHECKOUT_ANALYTICS_PROPERTIES = {
+  ...checkoutAnalyticsBaseProperties,
+  is_test: true,
+} as const;
+
+const toTestModeCustomer = (testMode: CheckoutTestMode): CheckoutInitialCustomer => ({
+  email: testMode.email,
+  firstName: testMode.firstName,
+  lastName: testMode.lastName,
+  phone: "",
+  isBusinessCustomer: false,
+  companyName: "",
+  companyNumber: "",
+  vatNumber: "",
+  address: "",
+  city: "",
+  postalCode: "",
+});
+
 const CONTACT_FIELDS: CheckoutFieldName[] = ["email", "firstName", "lastName", "phone"];
 const ADDRESS_FIELDS: CheckoutFieldName[] = ["address", "city", "postalCode"];
 const COMPANY_FIELDS: CheckoutFieldName[] = ["companyName", "companyNumber", "vatNumber"];
@@ -100,9 +121,13 @@ export const CheckoutForm = ({
   initialCustomer,
   initialCustomerFieldValues,
   initialCustomerProfileValues,
+  testMode = null,
 }: CheckoutFormProps) => {
   const t = useTranslations("storefront.checkout");
   const tErrors = useTranslations("errors");
+  const analyticsBaseProperties = testMode
+    ? TEST_CHECKOUT_ANALYTICS_PROPERTIES
+    : checkoutAnalyticsBaseProperties;
   const activeLocale = useLocale();
   const locale = isLocale(activeLocale) ? activeLocale : defaultLocale;
   const posthog = usePostHog();
@@ -169,7 +194,7 @@ export const CheckoutForm = ({
   const form = useAppForm({
     ...checkoutFormOptions,
     defaultValues: getCheckoutDefaultValues(
-      sessionCustomer,
+      sessionCustomer ?? (testMode ? toTestModeCustomer(testMode) : null),
       savedCustomerFieldValues,
       savedCustomerProfileValues,
     ),
@@ -203,7 +228,7 @@ export const CheckoutForm = ({
 
       if (failedFields.length > 0) {
         posthog.capture(productAnalyticsEvents.checkoutStepValidationFailed, {
-          ...checkoutAnalyticsBaseProperties,
+          ...analyticsBaseProperties,
           store_id: storeId,
           step,
           failed_fields: failedFields,
@@ -218,7 +243,7 @@ export const CheckoutForm = ({
       }
       return true;
     },
-    [checkoutFields, form, posthog, showAddressInContact, storeId],
+    [analyticsBaseProperties, checkoutFields, form, posthog, showAddressInContact, storeId],
   );
 
   const stepFlow = useCheckoutStepFlow({
@@ -285,6 +310,7 @@ export const CheckoutForm = ({
     storeId,
     storeSlug,
     reservationMode,
+    isTestMode: testMode !== null,
     locale,
     items: itemsWithResolved,
     subtotal,
@@ -321,15 +347,16 @@ export const CheckoutForm = ({
 
   const checkoutStartedRef = useRef(false);
   useEffect(() => {
-    if (items.length === 0 || checkoutStartedRef.current) return;
+    // A test checkout (lib/test-reservations) counts in no store statistic.
+    if (items.length === 0 || checkoutStartedRef.current || testMode !== null) return;
     checkoutStartedRef.current = true;
     trackEvent({ eventType: "checkout_started", metadata: { itemCount: items.length, subtotal } });
-  }, [items.length, subtotal, trackEvent]);
+  }, [items.length, subtotal, trackEvent, testMode]);
 
   useEffect(() => {
     if (items.length === 0) return;
     posthog.capture(productAnalyticsEvents.checkoutStepViewed, {
-      ...checkoutAnalyticsBaseProperties,
+      ...analyticsBaseProperties,
       store_id: storeId,
       step: stepFlow.currentStep,
       step_index: stepFlow.currentStepIndex,
@@ -493,6 +520,7 @@ export const CheckoutForm = ({
               showAddressFields={showAddressInContact}
               sessionCustomer={sessionCustomer}
               onSessionCustomer={handleSessionCustomer}
+              testModeEmail={testMode?.email ?? null}
               addressPick={customerAddressPick}
               onAddressPickChange={setCustomerAddressPick}
               profileFields={checkoutFields.profileFields}

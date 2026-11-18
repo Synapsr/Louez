@@ -1,6 +1,7 @@
 import {
   categories,
   db,
+  excludeTestReservations,
   lockStoreRow,
   markStore,
   products,
@@ -173,7 +174,8 @@ export async function readLaunchState(
           executor
             .select({ id: reservations.id })
             .from(reservations)
-            .where(eq(reservations.storeId, storeId))
+            // A test reservation is no milestone.
+            .where(and(eq(reservations.storeId, storeId), excludeTestReservations()))
             .limit(1),
         )
       : Promise.resolve(false),
@@ -182,7 +184,14 @@ export async function readLaunchState(
           executor
             .select({ id: reservations.id })
             .from(reservations)
-            .where(and(eq(reservations.storeId, storeId), eq(reservations.status, "completed")))
+            .where(
+              and(
+                eq(reservations.storeId, storeId),
+                eq(reservations.status, "completed"),
+                // A test reservation is no milestone.
+                excludeTestReservations(),
+              ),
+            )
             .limit(1),
         )
       : Promise.resolve(false),

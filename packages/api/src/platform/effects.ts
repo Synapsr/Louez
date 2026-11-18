@@ -429,6 +429,19 @@ export interface ApiEffectPayloads {
     /** Who recorded it, for the invoicing log. */
     source: string;
   };
+  /**
+   * A test reservation's analytics event (services/test-reservations.ts,
+   * docs/analytics/test-reservation.md), counted on the dashboard user who
+   * acted; on the store's owner for the daily cleanup. Codes and enums only.
+   */
+  "testReservation.analytics": AnalyticsEventIdentity & {
+    event: "test_reservation_started" | "test_reservation_managed" | "test_reservation_deleted";
+    distinctId: string;
+    storeId: string;
+    properties: Record<string, string>;
+  };
+  /** Stored files of a deleted test reservation (its inspection photos), removed from storage. */
+  "testReservation.deleteFiles": { keys: string[] };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;

@@ -34,7 +34,9 @@ export type InvoiceGenerationSkipReason =
   | "already_invoiced"
   | "invoicing_disabled"
   | "feature_disabled"
-  | "generation_failed";
+  | "generation_failed"
+  /** A test reservation is never invoiced (packages/db test-reservations.ts). */
+  | "test_reservation";
 
 export type InvoiceGenerationResult =
   | {
@@ -54,6 +56,22 @@ function skipped(reason: InvoiceGenerationSkipReason): InvoiceGenerationResult {
 type PaymentInvoiceGenerationEligibility =
   | { enabled: true }
   | { enabled: false; reason: "invoicing_disabled" | "feature_disabled" };
+
+/**
+ * Whether the store's documents go out with its reservations: its invoicing on and
+ * electronic invoicing open to it. Where they do, a test reservation's confirmation
+ * attaches its watermarked contract (delivery.ts), and nothing else.
+ */
+export async function isStoreInvoiceGenerationEnabled(storeId: string): Promise<boolean> {
+  const [profile] = await db
+    .select({ storeId: storeLegalProfiles.storeId })
+    .from(storeLegalProfiles)
+    .where(
+      and(eq(storeLegalProfiles.storeId, storeId), eq(storeLegalProfiles.invoicingEnabled, true)),
+    )
+    .limit(1);
+  return Boolean(profile) && (await isElectronicInvoicingEnabled(storeId));
+}
 
 async function getPaymentInvoiceGenerationEligibility(
   paymentId: string,
@@ -356,6 +374,25 @@ export async function tryGenerateInvoiceForPayment(
   source: string,
 ): Promise<InvoiceGenerationResult> {
   try {
+    // A test reservation gets no invoice, no number, no transmission. Where the
+    // store's confirmation would attach documents, its contract is generated
+    // (watermarked) for the attachment alone.
+    const [testPayment] = await db
+      .select({ reservationId: reservations.id, storeId: reservations.storeId })
+      .from(payments)
+      .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+      .where(and(eq(payments.id, paymentId), eq(reservations.isTest, true)))
+      .limit(1);
+    if (testPayment) {
+      if (await isStoreInvoiceGenerationEnabled(testPayment.storeId)) {
+        await tryGenerateInitialContract(testPayment.reservationId, source);
+      }
+      log.info({
+        invoicing: { event: "trigger_skipped", paymentId, source, reason: "test_reservation" },
+      });
+      return skipped("test_reservation");
+    }
+
     const eligibility = await getPaymentInvoiceGenerationEligibility(paymentId);
     if (!eligibility.enabled) {
       log.info({

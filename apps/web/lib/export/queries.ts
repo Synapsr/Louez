@@ -6,6 +6,7 @@ import {
   categories,
   customers,
   effectiveProductQuantitySql,
+  excludeTestReservations,
 } from "@louez/db";
 import { paymentRowStatus, resolveReservationBilling } from "@louez/utils";
 import { eq, and, between, asc, desc } from "drizzle-orm";
@@ -69,6 +70,8 @@ async function queryPaymentsData(storeId: string, params: ExportParams) {
     .where(
       and(
         eq(reservations.storeId, storeId),
+        // Test reservations are never exported.
+        excludeTestReservations(),
         params.startDate && params.endDate
           ? between(payments.createdAt, params.startDate, params.endDate)
           : undefined,
@@ -133,6 +136,8 @@ async function queryReservationsData(storeId: string, params: ExportParams) {
   const rows = await db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
+      // Test reservations are never exported.
+      excludeTestReservations(),
       params.startDate && params.endDate
         ? between(reservations.createdAt, params.startDate, params.endDate)
         : undefined,

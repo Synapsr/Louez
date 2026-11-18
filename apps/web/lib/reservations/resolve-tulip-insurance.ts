@@ -28,6 +28,11 @@ export interface ResolveTulipInsuranceInput {
   endDate: Date;
   tulipInsuranceOptIn?: boolean;
   fallbackCountry: string;
+  /**
+   * A test reservation (lib/test-reservations), read from the signed test-mode
+   * cookie or the reservation's `isTest`: never insured, and Tulip never asked.
+   */
+  testReservation?: boolean;
 }
 
 export interface TulipInsuranceResolution {
@@ -76,6 +81,22 @@ export const getTulipCheckoutMode = async (
 export const resolveTulipInsurance = async (
   input: ResolveTulipInsuranceInput,
 ): Promise<TulipInsuranceResolution> => {
+  if (input.testReservation) {
+    return {
+      mode: "no_public",
+      connected: false,
+      inclusionEnabled: false,
+      quoteUnavailable: false,
+      quoteError: null,
+      requestedOptIn: false,
+      appliedOptIn: false,
+      amount: 0,
+      insuredProductCount: 0,
+      uninsuredProductCount: 0,
+      insuredProductIds: [],
+    };
+  }
+
   const modeInfo = await getTulipCheckoutMode(input.storeId, input.modeOverride);
   const requestedOptIn = getRequestedTulipOptIn(modeInfo.mode, input.tulipInsuranceOptIn);
 

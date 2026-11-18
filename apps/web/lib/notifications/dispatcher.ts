@@ -48,6 +48,7 @@ import {
   reservationCurrencyOf,
 } from "@/lib/notifications/util.notification-currency";
 import { isPushConfigured, sendPush } from "@/lib/push/client";
+import { planReservationDispatch, sendWithTestMark } from "@/lib/test-reservations/message-policy";
 import { log } from "@/lib/evlog";
 import { buildAdminPushPayload } from "@/lib/push/notifications";
 import type { NotificationEventType, NotificationSettings } from "@louez/types";
@@ -110,6 +111,8 @@ export interface DispatchNotificationDeps {
   sendAdminSms: typeof sendAdminSms;
   /** Where a channel that threw is logged; the application's logger when absent. */
   logError?: (tag: string, message: string) => void;
+  /** The test-reservation message plan; read from the database when absent. */
+  planDispatch?: typeof planReservationDispatch;
 }
 
 const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail, sendAdminSms };
@@ -941,7 +944,14 @@ export async function dispatchNotification(
   // over the defaults so stores saved before a channel existed (e.g. `push`)
   // still inherit that channel's default instead of resolving to undefined.
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
-  const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
+  const storePrefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
+  // A test reservation reaches only the member who started it, by e-mail, marked
+  // "[Test]"; one gone sends nothing (lib/test-reservations message-policy.ts).
+  const plan = await (deps.planDispatch ?? planReservationDispatch)(ctx.reservation?.id);
+  if (!plan.send) return result;
+  const prefs = plan.emailOnly
+    ? { ...storePrefs, sms: false, push: false, discord: false }
+    : storePrefs;
 
   // Determine locale from store country
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
@@ -957,7 +967,9 @@ export async function dispatchNotification(
   // Email to the store owner. Events without an owner template answer "not sent".
   if (prefs.email) {
     try {
-      result.email = await deps.sendAdminEventEmail(eventType, ctx);
+      result.email = await sendWithTestMark(plan.mark, () =>
+        deps.sendAdminEventEmail(eventType, ctx),
+      );
     } catch (error) {
       failed("email", error);
       result.email = { sent: false, error: describeChannelError(error) };

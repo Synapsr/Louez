@@ -82,6 +82,7 @@ export const upsertCustomer = async ({
   customer,
   phone,
   companyIdentity,
+  isTest = false,
 }: {
   tx: Transaction;
   storeId: string;
@@ -90,6 +91,12 @@ export const upsertCustomer = async ({
   customer: CreateReservationCustomerInput;
   phone: string | null;
   companyIdentity: CustomerCompanyIdentity;
+  /**
+   * A test checkout (lib/test-reservations): a new customer is a test one, and a
+   * real customer with the owner's e-mail (the owner's own record) is used as is,
+   * never changed.
+   */
+  isTest?: boolean;
 }): Promise<UpsertedCustomer | null> => {
   // Locked, in the checkout's transaction, after its products: a reservation is
   // never created for a customer who no longer exists. A customer's deletion
@@ -117,11 +124,14 @@ export const upsertCustomer = async ({
         postalCode: customer.postalCode || null,
         country: storeCountry,
         createdVia: CREATED_VIA_BY_SOURCE[source],
+        isTest,
       })
       .$returningId();
 
     return (await tx.query.customers.findFirst({ where: eq(customers.id, inserted.id) })) ?? null;
   }
+
+  if (isTest && !existing.isTest) return existing;
 
   // Identifiers already on file survive a checkout that omits them; the
   // scheme is re-derived from the buyer's own country, never trusted.
@@ -151,9 +161,11 @@ export const upsertCustomer = async ({
       address: customer.address || existing.address,
       city: customer.city || existing.city,
       postalCode: customer.postalCode || existing.postalCode,
+      // A real checkout under a test customer's e-mail makes them a real customer.
+      ...(existing.isTest && !isTest ? { isTest: false } : {}),
       updatedAt: new Date(),
     })
     .where(eq(customers.id, existing.id));
 
-  return existing;
+  return existing.isTest && !isTest ? { ...existing, isTest: false } : existing;
 };

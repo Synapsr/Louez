@@ -331,6 +331,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Test",
+      "start": "Zrób rezerwację testową",
+      "resume": "Wróć do rezerwacji testowej",
+      "startError": "Nie udało się otworzyć sklepu w trybie testowym. Spróbuj ponownie.",
+      "toast": {
+        "description": "Twój sklep jest gotowy. Zrób rezerwację testową, aby zobaczyć, co przeżywają Twoi klienci."
+      },
+      "homeCard": {
+        "title": "Pierwszy krok",
+        "description": "Zarezerwuj w swoim sklepie jak klient, a potem zarządzaj rezerwacją tutaj. Nic nie jest płacone ani fakturowane."
+      },
+      "guide": {
+        "title": "Rezerwacja testowa",
+        "description": "Zarządzaj nią jak prawdziwą rezerwacją, przyciskami na tej stronie.",
+        "closed": "Ta rezerwacja testowa zatrzymała się w połowie. Usuń ją, aby zrobić nową.",
+        "howTo": "Jak to zrobić?",
+        "expires": "Zostanie automatycznie usunięta {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Potwierdź",
+            "help": "Kliknij „{button}” na tej stronie. Otrzymasz e-mail z potwierdzeniem, tak jak Twój klient."
+          },
+          "departureInspection": {
+            "title": "Odbiór",
+            "help": "Wykonaj protokół wydania, jak przy przekazaniu sprzętu.",
+            "action": "Wykonaj protokół wydania"
+          },
+          "pickup": {
+            "title": "Odbiór",
+            "help": "Kliknij „{button}”, gdy klient wychodzi ze sprzętem."
+          },
+          "return": {
+            "title": "Zwrot i zamknięcie",
+            "help": "Gdy sprzęt wróci, kliknij „{button}”. Wynajem jest zakończony."
+          }
+        }
+      },
+      "done": {
+        "title": "Wszystko gotowe. Udostępnij swój sklep",
+        "description": "Wiesz już, co przeżywają Twoi klienci. Zostało tylko dać im link.",
+        "share": "Udostępnij mój sklep",
+        "marketplace": "Moja publikacja w reeent"
+      },
+      "delete": {
+        "button": "Usuń dane testowe",
+        "title": "Usunąć dane testowe?",
+        "description": "Rezerwacja testowa, jej klient testowy, symulowane płatności i protokoły zostaną usunięte. Twoje produkty i ustawienia pozostają bez zmian.",
+        "cancel": "Anuluj",
+        "confirm": "Usuń",
+        "success": "Dane testowe usunięte",
+        "error": "Usuwanie nie powiodło się. Spróbuj ponownie."
+      }
+    },
     "purchaseInvoices": {
       "title": "Faktury od dostawców",
       "description": "Faktury, które Twoi dostawcy przesłali Twojej firmie przez sieć e-fakturowania.",
@@ -7380,6 +7434,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Tryb testowy: nic nie jest pobierane.",
+      "leave": "Wyjdź z trybu testowego",
+      "emailLocked": "Testowe e-maile są wysyłane na adres {email}.",
+      "badge": "Test",
+      "contractWatermark": "TEST — bez wartości",
+      "payment": {
+        "title": "Symulowana płatność",
+        "description": "Bez karty, bez obciążenia.",
+        "reservation": "Rezerwacja {number}",
+        "amountDue": "Kwota do zapłaty",
+        "deposit": "Kaucja",
+        "depositNote": "Kaucja nie jest pobierana podczas testu.",
+        "submit": "Symuluj płatność",
+        "notPending": "Ta rezerwacja nie czeka już na płatność.",
+        "viewReservation": "Zobacz rezerwację"
+      }
+    },
     "notFound": {
       "title": "Ta strona jest niedostępna",
       "description": "Produkt lub strona, której szukasz, już nie istnieje lub nie jest jeszcze dostępna online.",
@@ -9448,6 +9520,10 @@
     }
   },
   "errors": {
+    "testReservationExists": "Masz już rezerwację testową. Usuń ją w panelu, aby utworzyć nową.",
+    "testReservationRefused": "Niemożliwe przy rezerwacji testowej: nic nie jest pobierane.",
+    "testModeRequired": "Tryb testowy nie jest już aktywny. Uruchom go ponownie w panelu.",
+    "testPaymentBusy": "Symulowana płatność jest już w toku. Spróbuj ponownie za chwilę.",
     "storeNotAcceptingReservations": "Ten sklep nie przyjmuje teraz rezerwacji online. {hasContact, select, yes {Skontaktuj się ze sklepem: {contact}} other {Skontaktuj się bezpośrednio ze sklepem.}}",
     "generic": "Wystąpił błąd",
     "contractNotSignable": "Tej umowy nie można już podpisać.",

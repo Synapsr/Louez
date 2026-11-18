@@ -87,12 +87,12 @@ export type CompleteCheckoutPaymentResult =
   | { status: "not_found" }
   | { status: "payment_unavailable" };
 
-type ReservationRow = NonNullable<Awaited<ReturnType<typeof loadReservationForCompletion>>>;
+export type ReservationRow = NonNullable<Awaited<ReturnType<typeof loadReservationForCompletion>>>;
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-const loadReservationForCompletion = async (reservationId: string) =>
+export const loadReservationForCompletion = async (reservationId: string) =>
   db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
     with: { store: true, customer: true, items: true },
@@ -200,6 +200,69 @@ const toNotificationCustomer = (customer: ReservationRow["customer"]) =>
         phone: customer.phone,
       }
     : undefined;
+
+/**
+ * The messages of a reservation its payment just confirmed: the owner's
+ * notification, and the customer's confirmation with the documents its e-mail
+ * attaches. Shared with the simulated payment of a test reservation
+ * (lib/test-reservations/simulate-payment.ts).
+ */
+export const sendPaidConfirmationMessages = async (reservation: ReservationRow): Promise<void> => {
+  const { store } = reservation;
+  dispatchNotification("reservation_confirmed", {
+    actor: "system",
+    store: toAdminNotificationStore(store),
+    reservation: toNotificationReservation(reservation),
+    customer: toNotificationCustomer(reservation.customer),
+  }).catch((error: unknown) => {
+    log.error("checkout", `confirmation notification failed: ${describeError(error)}`);
+  });
+
+  if (!reservation.customer) return;
+  const invoiceDelivery = await tryPrepareInitialInvoiceEmailDelivery(reservation.id);
+  dispatchCustomerNotification("customer_reservation_confirmed", {
+    store: {
+      id: store.id,
+      name: store.name,
+      email: store.email,
+      logoUrl: store.logoUrl,
+      darkLogoUrl: store.darkLogoUrl,
+      address: store.address,
+      phone: store.phone,
+      theme: store.theme,
+      settings: store.settings,
+      emailSettings: store.emailSettings,
+      customerNotificationSettings: store.customerNotificationSettings,
+    },
+    customer: {
+      id: reservation.customer.id,
+      firstName: reservation.customer.firstName,
+      lastName: reservation.customer.lastName,
+      email: reservation.customer.email,
+      phone: reservation.customer.phone,
+    },
+    reservation: {
+      ...toNotificationReservation(reservation),
+      subtotalAmount: Number(reservation.subtotalAmount),
+      depositAmount: Number(reservation.depositAmount),
+      taxEnabled: Boolean(reservation.taxRate),
+      taxRate: reservation.taxRate ? Number(reservation.taxRate) : null,
+      subtotalExclTax: reservation.subtotalExclTax ? Number(reservation.subtotalExclTax) : null,
+      taxAmount: reservation.taxAmount ? Number(reservation.taxAmount) : null,
+    },
+    items: reservation.items.map((item) => ({
+      name: item.productSnapshot?.name || "Product",
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      totalPrice: Number(item.totalPrice),
+    })),
+    reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservation.id}`),
+    documentAttachments: invoiceDelivery.attachments,
+    contractSignatureUrl: invoiceDelivery.contractSignatureUrl,
+  }).catch((error: unknown) => {
+    log.error("checkout", `customer confirmation dispatch failed: ${describeError(error)}`);
+  });
+};
 
 /**
  * Claim → confirm → effects, once per (reservation, session) whichever path
@@ -414,60 +477,7 @@ const runCheckoutPaymentCompletion = async ({
       });
     }
 
-    dispatchNotification("reservation_confirmed", {
-      actor: "system",
-      store: toAdminNotificationStore(store),
-      reservation: toNotificationReservation(reservation),
-      customer: toNotificationCustomer(reservation.customer),
-    }).catch((error: unknown) => {
-      log.error("checkout", `confirmation notification failed: ${describeError(error)}`);
-    });
-
-    if (reservation.customer) {
-      const invoiceDelivery = await tryPrepareInitialInvoiceEmailDelivery(reservationId);
-      dispatchCustomerNotification("customer_reservation_confirmed", {
-        store: {
-          id: store.id,
-          name: store.name,
-          email: store.email,
-          logoUrl: store.logoUrl,
-          darkLogoUrl: store.darkLogoUrl,
-          address: store.address,
-          phone: store.phone,
-          theme: store.theme,
-          settings: store.settings,
-          emailSettings: store.emailSettings,
-          customerNotificationSettings: store.customerNotificationSettings,
-        },
-        customer: {
-          id: reservation.customer.id,
-          firstName: reservation.customer.firstName,
-          lastName: reservation.customer.lastName,
-          email: reservation.customer.email,
-          phone: reservation.customer.phone,
-        },
-        reservation: {
-          ...toNotificationReservation(reservation),
-          subtotalAmount: Number(reservation.subtotalAmount),
-          depositAmount: Number(reservation.depositAmount),
-          taxEnabled: Boolean(reservation.taxRate),
-          taxRate: reservation.taxRate ? Number(reservation.taxRate) : null,
-          subtotalExclTax: reservation.subtotalExclTax ? Number(reservation.subtotalExclTax) : null,
-          taxAmount: reservation.taxAmount ? Number(reservation.taxAmount) : null,
-        },
-        items: reservation.items.map((item) => ({
-          name: item.productSnapshot?.name || "Product",
-          quantity: item.quantity,
-          unitPrice: Number(item.unitPrice),
-          totalPrice: Number(item.totalPrice),
-        })),
-        reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`),
-        documentAttachments: invoiceDelivery.attachments,
-        contractSignatureUrl: invoiceDelivery.contractSignatureUrl,
-      }).catch((error: unknown) => {
-        log.error("checkout", `customer confirmation dispatch failed: ${describeError(error)}`);
-      });
-    }
+    await sendPaidConfirmationMessages(reservation);
 
     notifyReservationConfirmed(toStoreInfo(store), reservation.number).catch(() => {});
 

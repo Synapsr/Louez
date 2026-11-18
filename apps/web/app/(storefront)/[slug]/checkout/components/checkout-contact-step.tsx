@@ -34,6 +34,8 @@ interface CheckoutContactStepProps {
   showAddressFields: boolean;
   sessionCustomer: CheckoutInitialCustomer | null;
   onSessionCustomer: (customer: CheckoutInitialCustomer | null) => void;
+  /** Test mode (lib/test-reservations): the owner's e-mail, which cannot be changed. */
+  testModeEmail: string | null;
   addressPick: CustomerAddressPick | null;
   onAddressPickChange: (pick: CustomerAddressPick | null) => void;
   /** Native profile fields this cart asks (birth date, source, links). */
@@ -63,6 +65,7 @@ export const CheckoutContactStep = withForm({
     showAddressFields,
     sessionCustomer,
     onSessionCustomer,
+    testModeEmail,
     addressPick,
     onAddressPickChange,
     profileFields,
@@ -75,6 +78,7 @@ export const CheckoutContactStep = withForm({
     stepDirection,
   }) => {
     const t = useTranslations("storefront.checkout");
+    const tTestMode = useTranslations("storefront.testMode");
     const isBusinessCustomer = useStore(form.store, (state) => state.values.isBusinessCustomer);
     const hasNotes = useStore(form.store, (state) => state.values.notes.length > 0);
 
@@ -99,7 +103,7 @@ export const CheckoutContactStep = withForm({
               <h2 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
                 {t("steps.contact")}
               </h2>
-              {!sessionCustomer && (
+              {!sessionCustomer && !testModeEmail && (
                 <p className="text-sm text-muted-foreground">
                   {t.rich("returningCustomer.loginLink", {
                     signin: (chunks) => (
@@ -152,6 +156,12 @@ export const CheckoutContactStep = withForm({
                 inputMode="email"
                 autoComplete="email"
                 placeholder={t("emailPlaceholder")}
+                {...(testModeEmail
+                  ? {
+                      readOnly: true,
+                      description: tTestMode("emailLocked", { email: testModeEmail }),
+                    }
+                  : {})}
               />
             )}
           </form.AppField>

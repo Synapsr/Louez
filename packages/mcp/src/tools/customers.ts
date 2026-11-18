@@ -16,7 +16,14 @@ import {
   toReadableCustomerFields,
 } from '@louez/api/services/customer-tools';
 import { customerLinks, reservationLinks } from '@louez/api/platform/links';
-import { customers, db, reservations, stores } from '@louez/db';
+import {
+  customers,
+  db,
+  excludeTestCustomers,
+  excludeTestReservations,
+  reservations,
+  stores,
+} from '@louez/db';
 
 import { hasPermission, type McpRequestContext } from '../auth/context';
 import { toolError, toolResult } from '../utils/errors';
@@ -80,7 +87,8 @@ export function registerCustomerTools(
     async ({ search, type, page, pageSize }) => {
       const { limit, offset } = paginationParams({ page, pageSize });
 
-      const conditions = [eq(customers.storeId, ctx.storeId)];
+      // An agent never sees a test customer.
+      const conditions = [eq(customers.storeId, ctx.storeId), excludeTestCustomers()];
 
       if (type) {
         conditions.push(eq(customers.customerType, type));
@@ -141,6 +149,8 @@ export function registerCustomerTools(
         where: and(
           eq(customers.storeId, ctx.storeId),
           eq(customers.id, customerId),
+          // An agent never sees a test customer.
+          excludeTestCustomers(),
         ),
       });
 
@@ -187,6 +197,8 @@ export function registerCustomerTools(
             where: and(
               eq(reservations.storeId, ctx.storeId),
               eq(reservations.customerId, customer.id),
+              // An agent never sees a test reservation.
+              excludeTestReservations(),
             ),
             orderBy: [desc(reservations.createdAt)],
             limit: 10,
@@ -390,6 +402,8 @@ export function registerCustomerTools(
         where: and(
           eq(customers.storeId, ctx.storeId),
           eq(customers.id, customerId),
+          // An agent never sees a test customer.
+          excludeTestCustomers(),
         ),
         columns: {
           id: true,

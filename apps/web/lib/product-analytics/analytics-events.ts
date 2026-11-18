@@ -54,6 +54,11 @@ export const productAnalyticsEvents = {
   planOfferShown: 'plan_offer_shown',
   planOfferDismissed: 'plan_offer_dismissed',
   planOfferClicked: 'plan_offer_clicked',
+  // Test reservations (docs/analytics/test-reservation.md)
+  testReservationStarted: 'test_reservation_started',
+  testReservationCompleted: 'test_reservation_completed',
+  testReservationManaged: 'test_reservation_managed',
+  testReservationDeleted: 'test_reservation_deleted',
 } as const;
 
 export type ProductAnalyticsEvent =

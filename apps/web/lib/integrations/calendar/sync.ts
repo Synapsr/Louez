@@ -3,7 +3,9 @@ import { nanoid } from 'nanoid';
 
 import {
   db,
+  excludeTestReservations,
   integrationCredentials,
+  isTestReservation,
   reservationCalendarEvents,
   reservations,
   storeCalendarIntegrations,
@@ -58,6 +60,9 @@ export async function markReservationForCalendarSync(
   storeId: string,
   reservationId: string,
 ): Promise<void> {
+  // A test reservation never reaches a calendar.
+  if (await isTestReservation(db, reservationId)) return;
+
   const integrations = await db
     .select({ integrationId: storeIntegrations.id })
     .from(storeIntegrations)
@@ -124,6 +129,8 @@ export async function enqueueCalendarBackfill(params: {
     .where(
       and(
         eq(reservations.storeId, params.storeId),
+        // A test reservation never reaches a calendar.
+        excludeTestReservations(),
         or(
           and(lte(reservations.startDate, now), gte(reservations.endDate, now)),
           and(

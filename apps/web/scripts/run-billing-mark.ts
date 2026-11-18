@@ -160,8 +160,9 @@ async function* reservationMarks(
   for (;;) {
     const rows = await select<ReservationRow>(
       connection,
+      // A test reservation is never billed (packages/db test-reservations.ts).
       `SELECT id, store_id AS storeId FROM reservations
-       WHERE id > ? ${where.join(" ")} ORDER BY id LIMIT ${CHUNK}`,
+       WHERE id > ? AND is_test = 0 ${where.join(" ")} ORDER BY id LIMIT ${CHUNK}`,
       [cursor, ...params],
     );
     if (rows.length === 0) return;

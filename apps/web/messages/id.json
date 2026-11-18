@@ -331,6 +331,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Uji",
+      "start": "Buat reservasi uji",
+      "resume": "Lanjutkan reservasi uji",
+      "startError": "Toko tidak dapat dibuka dalam mode uji. Silakan coba lagi.",
+      "toast": {
+        "description": "Toko Anda sudah siap. Buat reservasi uji untuk melihat apa yang dialami pelanggan Anda."
+      },
+      "homeCard": {
+        "title": "Langkah pertama",
+        "description": "Pesan di toko Anda seperti pelanggan, lalu kelola reservasinya di sini. Tidak ada yang dibayar atau ditagih."
+      },
+      "guide": {
+        "title": "Reservasi uji",
+        "description": "Kelola seperti reservasi sungguhan, dengan tombol di halaman ini.",
+        "closed": "Reservasi uji ini berhenti di tengah jalan. Hapus untuk membuat yang baru.",
+        "howTo": "Bagaimana caranya?",
+        "expires": "Reservasi ini akan dihapus otomatis pada {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Konfirmasi",
+            "help": "Klik “{button}” di halaman ini. Anda menerima email konfirmasi, sama seperti pelanggan Anda."
+          },
+          "departureInspection": {
+            "title": "Pengambilan",
+            "help": "Lakukan pemeriksaan saat pengambilan, seperti saat menyerahkan peralatan.",
+            "action": "Lakukan pemeriksaan pengambilan"
+          },
+          "pickup": {
+            "title": "Pengambilan",
+            "help": "Klik “{button}” saat pelanggan pergi membawa peralatan."
+          },
+          "return": {
+            "title": "Pengembalian dan penutupan",
+            "help": "Saat peralatan kembali, klik “{button}”. Penyewaan selesai."
+          }
+        }
+      },
+      "done": {
+        "title": "Semua siap. Bagikan toko Anda",
+        "description": "Anda sudah melihat apa yang dialami pelanggan. Tinggal berikan tautannya kepada mereka.",
+        "share": "Bagikan toko saya",
+        "marketplace": "Publikasi saya di reeent"
+      },
+      "delete": {
+        "button": "Hapus data uji",
+        "title": "Hapus data uji?",
+        "description": "Reservasi uji, pelanggan ujinya, pembayaran simulasi, dan pemeriksaannya akan dihapus. Produk dan pengaturan Anda tetap seperti semula.",
+        "cancel": "Batal",
+        "confirm": "Hapus",
+        "success": "Data uji dihapus",
+        "error": "Penghapusan gagal. Silakan coba lagi."
+      }
+    },
     "purchaseInvoices": {
       "title": "Faktur pemasok",
       "description": "Faktur yang dikirim pemasok Anda ke perusahaan Anda melalui jaringan faktur elektronik.",
@@ -7380,6 +7434,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Mode uji: tidak ada yang ditagih.",
+      "leave": "Keluar dari mode uji",
+      "emailLocked": "E-mail uji dikirim ke {email}.",
+      "badge": "Uji",
+      "contractWatermark": "UJI — tidak berlaku",
+      "payment": {
+        "title": "Pembayaran simulasi",
+        "description": "Tanpa kartu, tanpa penagihan.",
+        "reservation": "Reservasi {number}",
+        "amountDue": "Jumlah yang harus dibayar",
+        "deposit": "Deposit",
+        "depositNote": "Deposit tidak diambil selama uji.",
+        "submit": "Simulasikan pembayaran",
+        "notPending": "Reservasi ini tidak lagi menunggu pembayaran.",
+        "viewReservation": "Lihat reservasi"
+      }
+    },
     "notFound": {
       "title": "Halaman ini tidak tersedia",
       "description": "Produk atau halaman yang Anda cari sudah tidak ada atau belum online.",
@@ -9448,6 +9520,10 @@
     }
   },
   "errors": {
+    "testReservationExists": "Anda sudah memiliki reservasi uji. Hapus dari dasbor untuk membuat yang baru.",
+    "testReservationRefused": "Tidak bisa untuk reservasi uji: tidak ada yang ditagih.",
+    "testModeRequired": "Mode uji sudah tidak aktif. Mulai lagi dari dasbor.",
+    "testPaymentBusy": "Pembayaran simulasi sedang diproses. Coba lagi sebentar lagi.",
     "storeNotAcceptingReservations": "Toko ini sedang tidak menerima reservasi online. {hasContact, select, yes {Hubungi toko: {contact}} other {Silakan hubungi toko secara langsung.}}",
     "generic": "Terjadi kesalahan",
     "contractNotSignable": "Kontrak ini tidak dapat ditandatangani lagi.",

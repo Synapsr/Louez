@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, stores } from "@louez/db";
+import { db, stores, TestReservationRefusedError } from "@louez/db";
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import {
   ExtensionError,
@@ -33,6 +33,8 @@ const resolve = async (input: z.infer<typeof identitySchema>) => {
 };
 const failed = (error: unknown) => {
   if (error instanceof ExtensionError) return { error: error.message };
+  // A test reservation is never extended with a payment (lib/test-reservations).
+  if (error instanceof TestReservationRefusedError) return { error: "unexpected" };
   log.error("reservation.extension", error instanceof Error ? error.message : String(error));
   return { error: "unexpected" };
 };

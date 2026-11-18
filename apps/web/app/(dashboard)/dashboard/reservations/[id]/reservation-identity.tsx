@@ -6,6 +6,7 @@ import {
   ContractSignatureBadge,
   showsContractSignature,
 } from "@/components/dashboard/contract-signature-badge";
+import { TestBadge } from "@/components/dashboard/test-reservation/test-badge";
 import { PaymentStatusBadge } from "./payment-status-badge";
 import { STATUS_CONFIG } from "../reservations-utils";
 
@@ -13,12 +14,14 @@ export interface ReservationIdentityProps extends Omit<
   ComponentProps<typeof PaymentStatusBadge>,
   "className" | "showDetails"
 > {
+  reservationId: string;
   reservationNumber: string;
   status: keyof typeof STATUS_CONFIG;
   contractSignature?: ComponentProps<typeof ContractSignatureBadge>;
 }
 
 export const ReservationIdentity = ({
+  reservationId,
   reservationNumber,
   status,
   rentalAmount,
@@ -37,6 +40,7 @@ export const ReservationIdentity = ({
         <Badge variant={STATUS_CONFIG[status].badgeVariant} className="font-medium">
           {t(`status.${status}`)}
         </Badge>
+        <TestBadge reservationId={reservationId} />
         <PaymentStatusBadge
           rentalAmount={rentalAmount}
           rentalPaid={rentalPaid}

@@ -30,6 +30,7 @@ import type { CheckoutTotals } from "../util.checkout-totals";
 import { getStepForErrorKey, sanitizeTranslationParams } from "../util.checkout-steps";
 import { buildReservationPayload } from "../util.reservation-payload";
 import type { CartItem } from "@/contexts/cart-context";
+import { testPaymentPath } from "@/lib/test-reservations/checkout";
 import {
   readPendingCheckout,
   writePendingCheckout,
@@ -50,6 +51,11 @@ interface UseCheckoutSubmitParams {
   storeId: string;
   storeSlug: string;
   reservationMode: ReservationMode;
+  /**
+   * A test checkout (lib/test-reservations): no completion event, its failures say
+   * so, the store's stats skip it.
+   */
+  isTestMode: boolean;
   locale: Locale;
   items: CartItem[];
   subtotal: number;
@@ -99,6 +105,7 @@ export const useCheckoutSubmit = ({
   storeId,
   storeSlug,
   reservationMode,
+  isTestMode,
   locale,
   items,
   subtotal,
@@ -169,29 +176,41 @@ export const useCheckoutSubmit = ({
       setServerError(null);
       setIsRedirecting(true);
 
-      trackEvent({
-        eventType: "checkout_completed",
-        metadata: {
-          reservationId: result.reservationId,
-          itemCount: items.length,
-          subtotal,
-          total: totals.total,
-          reservationMode,
-        },
-      });
-      // Captured client-side so the PostHog funnel keeps the browser's
-      // distinct_id; the server-side event is attributed to the customer.
-      posthog.capture(productAnalyticsEvents.checkoutCompleted, {
-        ...checkoutAnalyticsBaseProperties,
-        store_id: storeId,
-        reservation_id: result.reservationId,
-        reservation_mode: reservationMode,
-        item_count: items.length,
-        subtotal_amount_cents: Math.round(subtotal * 100),
-        total_amount_cents: Math.round(totals.total * 100),
-      });
+      // A test checkout counts in no funnel and no store statistic: the server
+      // records `test_reservation_completed` for it (lib/test-reservations).
+      if (!isTestMode) {
+        trackEvent({
+          eventType: "checkout_completed",
+          metadata: {
+            reservationId: result.reservationId,
+            itemCount: items.length,
+            subtotal,
+            total: totals.total,
+            reservationMode,
+          },
+        });
+        // Captured client-side so the PostHog funnel keeps the browser's
+        // distinct_id; the server-side event is attributed to the customer.
+        posthog.capture(productAnalyticsEvents.checkoutCompleted, {
+          ...checkoutAnalyticsBaseProperties,
+          store_id: storeId,
+          reservation_id: result.reservationId,
+          reservation_mode: reservationMode,
+          item_count: items.length,
+          subtotal_amount_cents: Math.round(subtotal * 100),
+          total_amount_cents: Math.round(totals.total * 100),
+        });
+      }
 
       if (reservationMode === "payment" && result.paymentUrl) {
+        // A test reservation is never resumed: its payment page is simulated, on
+        // this host, where the test-mode cookie lives. Its record replaces any
+        // resume hint this browser held and never resumes.
+        if (isTestMode) {
+          writePendingCheckout({ storeId, reservationId: result.reservationId, resumable: false });
+          window.location.assign(getUrl(testPaymentPath(result.reservationId)));
+          return;
+        }
         writePendingCheckout({ storeId, reservationId: result.reservationId, resumable: true });
         trackEvent({
           eventType: "payment_initiated",
@@ -230,6 +249,7 @@ export const useCheckoutSubmit = ({
 
       posthog.capture(productAnalyticsEvents.checkoutSubmitFailed, {
         ...checkoutAnalyticsBaseProperties,
+        ...(isTestMode ? { is_test: true } : {}),
         store_id: storeId,
         error_code: message,
         failure_source: message.startsWith("errors.") ? "server" : "client_validation",

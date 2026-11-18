@@ -98,12 +98,24 @@ export async function markBillingDirty(
   );
 }
 
-export function markReservation(
+/**
+ * Marks one reservation, unless it is a test one: a test reservation is never
+ * billed (test-reservations.ts), and its snapshot reads as missing. Its flag
+ * comes from a plain SELECT, which takes no lock (see `markReservationIds`). A
+ * reservation the transaction cannot see is still marked: the relay then reads
+ * it as missing.
+ */
+export async function markReservation(
   executor: MarkExecutor,
   reservation: { readonly id: string; readonly storeId: string },
   options?: MarkOptions,
 ): Promise<void> {
-  return markBillingDirty(
+  if (!isBillingSyncEnabled()) return;
+  const [rows] = (await executor.execute(
+    sql`SELECT is_test AS isTest FROM reservations WHERE id = ${reservation.id}`,
+  )) as [ReadonlyArray<{ isTest: number | boolean }>];
+  if (rows[0]?.isTest) return;
+  await markBillingDirty(
     executor,
     [{ type: "reservation", aggregateId: reservation.id, storeId: reservation.storeId }],
     options,
@@ -130,11 +142,13 @@ export async function markReservationIds(
   // Sorted, so two transactions that mark the same reservations lock their queue
   // rows in the same order.
   const [rows] = (await executor.execute(
+    // A test reservation is never billed (test-reservations.ts).
     sql`SELECT id, store_id AS storeId FROM reservations
         WHERE id IN (${sql.join(
           ids.map((id) => sql`${id}`),
           sql`, `,
         )})
+          AND is_test = 0
         ORDER BY id`,
   )) as [ReadonlyArray<{ id: string; storeId: string }>];
   await markBillingDirty(
@@ -159,7 +173,7 @@ export async function markStoreReservations(
 ): Promise<void> {
   if (!isBillingSyncEnabled()) return;
   const [rows] = (await executor.execute(
-    sql`SELECT r.id FROM reservations r WHERE r.store_id = ${storeId} ORDER BY r.id`,
+    sql`SELECT r.id FROM reservations r WHERE r.store_id = ${storeId} AND r.is_test = 0 ORDER BY r.id`,
   )) as [ReadonlyArray<{ id: string }>];
   for (let index = 0; index < rows.length; index += STORE_MARK_CHUNK) {
     await markBillingDirty(

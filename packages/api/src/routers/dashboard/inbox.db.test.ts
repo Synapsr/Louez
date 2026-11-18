@@ -963,6 +963,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       storeId: STORE,
       store: { id: STORE, name: "Brest Surf", slug: "ib-brest-surf", ownerUserId: OWNER },
       transport: "mcp" as const,
+      testReservations: false,
       ports,
     };
     for (const id of [pickup, late, booked.reservationId]) {

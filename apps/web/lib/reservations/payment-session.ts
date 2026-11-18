@@ -19,6 +19,7 @@ import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { openRentalCheckoutSession } from "@/lib/reservations/rental-session-gate";
 import { isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import { TEST_RESERVATION_REFUSED_ERROR } from "@/lib/test-reservations/refusal";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
@@ -89,6 +90,10 @@ export async function createReservationPaymentSessionForCustomer(
 
     if (!reservation) {
       return { error: "errors.reservationNotFound" };
+    }
+    // A test reservation is never paid through Stripe (lib/test-reservations).
+    if (reservation.isTest) {
+      return { error: TEST_RESERVATION_REFUSED_ERROR };
     }
 
     const allowedStatuses = allowPendingReservation

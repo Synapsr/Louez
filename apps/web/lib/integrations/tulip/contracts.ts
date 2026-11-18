@@ -1,6 +1,6 @@
 import { and, eq, isNull, ne, or } from "drizzle-orm";
 
-import { db, reservations } from "@louez/db";
+import { db, reservations, TestReservationRefusedError } from "@louez/db";
 import type { TulipPublicMode } from "@louez/types";
 import { resolveReservationBilling } from "@louez/utils";
 
@@ -678,6 +678,8 @@ export async function createTulipContractForReservation(params: {
   if (!reservation) {
     throw new Error("errors.reservationNotFound");
   }
+  // A test reservation is never insured (lib/test-reservations).
+  if (reservation.isTest) throw new TestReservationRefusedError("tulip_contract");
 
   console.info("[tulip][contract-create] start", {
     reservationId: reservation.id,
@@ -1022,7 +1024,11 @@ export async function syncTulipContractForReservation(params: { reservationId: s
     throw new Error("errors.reservationNotFound");
   }
 
-  if (reservation.status !== "confirmed" && reservation.status !== "ongoing") {
+  // A test reservation is never insured (lib/test-reservations).
+  if (
+    reservation.isTest ||
+    (reservation.status !== "confirmed" && reservation.status !== "ongoing")
+  ) {
     return {
       synced: false,
       action: "skipped_status" as const,

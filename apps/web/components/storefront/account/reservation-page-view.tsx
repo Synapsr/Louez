@@ -19,6 +19,7 @@ import { StoreContactCard } from "@/components/storefront/account/store-contact-
 import { AccountCard } from "@/components/storefront/account/account-card";
 import { ReservationStatusBadge } from "@/components/storefront/account/reservation-status-badge";
 import { AddToCalendarButton } from "@/components/storefront/account/add-to-calendar-button";
+import { Badge } from "@louez/ui";
 
 export interface ReservationPageViewProps {
   number: string;
@@ -26,6 +27,8 @@ export interface ReservationPageViewProps {
   cancelledRequest: boolean;
   periodLabel: string;
   calendarLinks: ComponentProps<typeof AddToCalendarButton>["links"];
+  /** A test reservation (lib/test-reservations): marked "Test". */
+  isTest?: boolean;
   reviewPrompt?: ReactNode;
   /** Per-unit details the store asks for (sizes, levels…), next to the rented items. */
   rentalDetails?: ReactNode;
@@ -53,6 +56,7 @@ export const ReservationPageView = ({
   cancelledRequest,
   periodLabel,
   calendarLinks,
+  isTest = false,
   reviewPrompt,
   rentalDetails,
   readOnly = false,
@@ -72,6 +76,7 @@ export const ReservationPageView = ({
   contact,
 }: ReservationPageViewProps) => {
   const t = useTranslations("storefront.account");
+  const tTestMode = useTranslations("storefront.testMode");
   return (
     <StorefrontSection contentClassName="flex max-w-6xl flex-col gap-4 sm:gap-6">
       <div>
@@ -83,6 +88,7 @@ export const ReservationPageView = ({
             })}
           </h1>
           <ReservationStatusBadge status={status} />
+          {isTest ? <Badge variant="warning">{tTestMode("badge")}</Badge> : null}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{periodLabel}</p>
       </div>

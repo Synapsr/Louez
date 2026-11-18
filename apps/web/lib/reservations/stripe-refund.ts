@@ -15,6 +15,7 @@ import {
   isDuplicateKeyError,
   isPaymentReceiptSql,
   isStripeRefundPaymentSql,
+  isTestReservation,
   paymentDisputes,
   paymentRefundOperations,
   payments,
@@ -323,6 +324,10 @@ export async function readChargeForRefund(
   const [payment] = await paymentFacts(deps.database, input.paymentId);
   const checked = checkPayment(payment, input.storeId);
   if ("ok" in checked) return checked;
+  // A test reservation's money was never taken online (lib/test-reservations).
+  if (await isTestReservation(deps.database, checked.reservationId)) {
+    return refused({ code: "PAYMENT_NOT_REFUNDABLE", reason: "not_online" });
+  }
   const charge = await deps.stripe.readCharge(checked.accountId, checked.chargeId);
   return {
     ok: true,

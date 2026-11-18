@@ -4,6 +4,7 @@ import {
   buildReservationOverlapPredicate,
   customers,
   db,
+  excludeTestReservations,
   productUnitDowntimes,
   productUnits,
   products,
@@ -94,6 +95,8 @@ export async function getUnitConflicts(
     eq(reservationItemUnits.productUnitId, unitId),
     eq(reservations.storeId, options.storeId),
     inArray(reservations.status, blockingStatuses),
+    // A test reservation holds no unit.
+    excludeTestReservations(),
   ];
 
   if (window.end) {
@@ -272,6 +275,8 @@ export async function findConflictingAssignments(
     inArray(reservationItemUnits.productUnitId, unitIds),
     eq(reservations.storeId, options.storeId),
     inArray(reservations.status, blockingStatuses),
+    // A test reservation holds no unit.
+    excludeTestReservations(),
     gt(reservations.endDate, minStart),
   ];
   if (maxFiniteEnd) {

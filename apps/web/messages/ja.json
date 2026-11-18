@@ -331,6 +331,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "テスト",
+      "start": "テスト予約をする",
+      "resume": "テスト予約を再開する",
+      "startError": "ストアをテストモードで開けませんでした。もう一度お試しください。",
+      "toast": {
+        "description": "ストアの準備ができました。テスト予約をして、お客様の体験を確かめましょう。"
+      },
+      "homeCard": {
+        "title": "最初のステップ",
+        "description": "お客様と同じようにストアで予約し、その予約をここで管理します。支払いや請求は発生しません。"
+      },
+      "guide": {
+        "title": "テスト予約",
+        "description": "このページのボタンで、本物の予約と同じように管理してください。",
+        "closed": "このテスト予約は途中で止まりました。削除すると、もう一度やり直せます。",
+        "howTo": "やり方は？",
+        "expires": "{date} に自動で削除されます。",
+        "steps": {
+          "confirm": {
+            "title": "確定",
+            "help": "このページの「{button}」をクリックします。お客様と同じように確認メールが届きます。"
+          },
+          "departureInspection": {
+            "title": "受け渡し",
+            "help": "機材を渡すときと同じように、受け渡し時の点検を行います。",
+            "action": "受け渡し時の点検を行う"
+          },
+          "pickup": {
+            "title": "受け渡し",
+            "help": "お客様が機材を持ち出すときに「{button}」をクリックします。"
+          },
+          "return": {
+            "title": "返却と完了",
+            "help": "機材が戻ったら「{button}」をクリックします。レンタルは完了です。"
+          }
+        }
+      },
+      "done": {
+        "title": "準備完了。ストアを共有しましょう",
+        "description": "お客様の体験を確かめました。あとはリンクを届けるだけです。",
+        "share": "ストアを共有する",
+        "marketplace": "reeent での掲載"
+      },
+      "delete": {
+        "button": "テストデータを削除",
+        "title": "テストデータを削除しますか？",
+        "description": "テスト予約、そのテスト顧客、模擬支払い、点検記録が削除されます。商品と設定はそのままです。",
+        "cancel": "キャンセル",
+        "confirm": "削除",
+        "success": "テストデータを削除しました",
+        "error": "削除できませんでした。もう一度お試しください。"
+      }
+    },
     "purchaseInvoices": {
       "title": "サプライヤーの請求書",
       "description": "電子請求書ネットワークを通じてサプライヤーに請求書を会社に送信します。",
@@ -7380,6 +7434,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "テストモード：料金は一切請求されません。",
+      "leave": "テストモードを終了",
+      "emailLocked": "テストメールは {email} に送信されます。",
+      "badge": "テスト",
+      "contractWatermark": "テスト — 無効",
+      "payment": {
+        "title": "支払いのシミュレーション",
+        "description": "カード不要、請求なし。",
+        "reservation": "予約 {number}",
+        "amountDue": "お支払い金額",
+        "deposit": "保証金",
+        "depositNote": "テスト中は保証金を預かりません。",
+        "submit": "支払いをシミュレート",
+        "notPending": "この予約は支払い待ちではなくなりました。",
+        "viewReservation": "予約を見る"
+      }
+    },
     "notFound": {
       "title": "このページは利用できません",
       "description": "お探しの製品またはページは存在しないか、まだオンラインになっていません。",
@@ -9448,6 +9520,10 @@
     }
   },
   "errors": {
+    "testReservationExists": "テスト予約がすでにあります。新しく作成するにはダッシュボードから削除してください。",
+    "testReservationRefused": "テスト予約ではできません：料金は請求されません。",
+    "testModeRequired": "テストモードは無効になりました。ダッシュボードから再開してください。",
+    "testPaymentBusy": "シミュレーション決済はすでに処理中です。しばらくしてからもう一度お試しください。",
     "storeNotAcceptingReservations": "このストアは現在オンライン予約を受け付けていません。{hasContact, select, yes {ストアの連絡先：{contact}} other {ストアに直接お問い合わせください。}}",
     "generic": "エラーが発生しました",
     "contractNotSignable": "この契約はもう署名できません。",

@@ -40,6 +40,7 @@ import {
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { isSmsAccepted } from "@/lib/sms/delivery-record";
+import { planReservationDispatch, sendWithTestMark } from "@/lib/test-reservations/message-policy";
 import type { EmailAttachment } from "@/lib/email/client";
 import {
   withCustomerNotificationDefaults,
@@ -241,7 +242,16 @@ export async function dispatchCustomerNotification(
   const customerPreferences = isCustomerReminder(eventType)
     ? await getCustomerReminderPreferences(ctx.store.id, ctx.customer.id)
     : null;
-  const channels = resolveCustomerReminderChannels(eventType, prefs, customerPreferences);
+  const resolvedChannels = resolveCustomerReminderChannels(eventType, prefs, customerPreferences);
+  // A test reservation sends its e-mails marked "[Test]", to the member who started
+  // it, and never an SMS; one gone sends nothing (lib/test-reservations message-policy.ts).
+  const plan = await planReservationDispatch(ctx.reservation.id);
+  if (!plan.send) {
+    result.email.skipped = true;
+    result.sms.skipped = true;
+    return result;
+  }
+  const channels = plan.emailOnly ? { ...resolvedChannels, sms: false } : resolvedChannels;
 
   // Get custom template if any, with backward compatibility
   const customTemplate = settings.templates?.[eventType];
@@ -250,7 +260,9 @@ export async function dispatchCustomerNotification(
   // Send email if enabled
   if (channels.email && ctx.customer.email) {
     try {
-      await sendCustomerEmail(eventType, ctx, locale, mergedContent);
+      await sendWithTestMark(plan.mark, () =>
+        sendCustomerEmail(eventType, ctx, locale, mergedContent),
+      );
       result.email.sent = true;
     } catch (error) {
       result.email.error = error instanceof Error ? error.message : "Unknown error";

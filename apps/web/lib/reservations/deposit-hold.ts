@@ -5,6 +5,7 @@ import {
   type Database,
   type Transaction,
   customers,
+  isTestReservation,
   markReservationIds,
   payments,
   reservations,
@@ -259,6 +260,8 @@ export async function releaseOwedHold(
 
 export type DepositHoldError =
   | "errors.reservationNotFound"
+  /** A test reservation holds nothing on a card (lib/test-reservations). */
+  | "errors.testReservationRefused"
   | "errors.stripe.noSavedCard"
   | "errors.stripe.invalidDepositStatus"
   | "errors.stripe.noDepositRequired"
@@ -920,6 +923,9 @@ export async function authorizeDepositHold(
   input: DepositHoldInput,
   deps: DepositHoldDeps,
 ): Promise<DepositHoldResult> {
+  if (await isTestReservation(deps.database, input.reservationId)) {
+    return refusal("errors.testReservationRefused");
+  }
   // An attempt that ended with nothing held is closed, and the request starts a new one.
   for (let run = 0; run < 2; run++) {
     const result = await runAttempt(input, deps);

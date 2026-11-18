@@ -331,6 +331,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Test",
+      "start": "Faire une réservation test",
+      "resume": "Reprendre la réservation test",
+      "startError": "La boutique n'a pas pu s'ouvrir en mode test. Réessayez.",
+      "toast": {
+        "description": "Votre boutique est prête. Faites une réservation test pour voir ce que vivent vos clients."
+      },
+      "homeCard": {
+        "title": "Première étape",
+        "description": "Réservez sur votre boutique comme un client, puis gérez la réservation ici. Rien n'est payé ni facturé."
+      },
+      "guide": {
+        "title": "Réservation test",
+        "description": "Gérez-la comme une vraie réservation, avec les boutons de cette page.",
+        "closed": "Cette réservation test s'est arrêtée en route. Supprimez-la pour en refaire une.",
+        "howTo": "Comment faire ?",
+        "expires": "Elle sera supprimée automatiquement le {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Confirmer",
+            "help": "Cliquez sur « {button} » sur cette page. Vous recevez l'e-mail de confirmation, comme votre client."
+          },
+          "departureInspection": {
+            "title": "Départ",
+            "help": "Faites l'état des lieux de départ, comme à la remise du matériel.",
+            "action": "Faire l'état des lieux de départ"
+          },
+          "pickup": {
+            "title": "Départ",
+            "help": "Cliquez sur « {button} » quand le client part avec le matériel."
+          },
+          "return": {
+            "title": "Retour et clôture",
+            "help": "Au retour du matériel, cliquez sur « {button} ». La location est terminée."
+          }
+        }
+      },
+      "done": {
+        "title": "Tout est prêt. Partagez votre boutique",
+        "description": "Vous avez vu ce que vivent vos clients. Il ne reste qu'à leur donner le lien.",
+        "share": "Partager ma boutique",
+        "marketplace": "Ma publication sur reeent"
+      },
+      "delete": {
+        "button": "Supprimer les données de test",
+        "title": "Supprimer les données de test ?",
+        "description": "La réservation test, son client test, ses paiements simulés et ses états des lieux sont supprimés. Vos produits et vos réglages ne changent pas.",
+        "cancel": "Annuler",
+        "confirm": "Supprimer",
+        "success": "Données de test supprimées",
+        "error": "La suppression a échoué. Réessayez."
+      }
+    },
     "purchaseInvoices": {
       "title": "Factures fournisseurs",
       "description": "Les factures que vos fournisseurs ont adressées à votre entreprise via le réseau de facturation électronique.",
@@ -7380,6 +7434,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Mode test : rien n'est encaissé.",
+      "leave": "Quitter le mode test",
+      "emailLocked": "Les e-mails de test vous sont envoyés à {email}.",
+      "badge": "Test",
+      "contractWatermark": "TEST — sans valeur",
+      "payment": {
+        "title": "Paiement simulé",
+        "description": "Aucune carte, aucun encaissement.",
+        "reservation": "Réservation {number}",
+        "amountDue": "Montant à payer",
+        "deposit": "Caution",
+        "depositNote": "La caution n'est pas prise pendant un test.",
+        "submit": "Simuler le paiement",
+        "notPending": "Cette réservation n'attend plus de paiement.",
+        "viewReservation": "Voir la réservation"
+      }
+    },
     "notFound": {
       "title": "Cette page n'est pas disponible",
       "description": "Le produit ou la page que vous cherchez n'existe plus ou n'est pas encore en ligne.",
@@ -9448,6 +9520,10 @@
     }
   },
   "errors": {
+    "testReservationExists": "Vous avez déjà une réservation test. Supprimez-la depuis le tableau de bord pour en refaire une.",
+    "testReservationRefused": "Impossible sur une réservation test : rien n'y est encaissé.",
+    "testModeRequired": "Le mode test n'est plus actif. Relancez-le depuis le tableau de bord.",
+    "testPaymentBusy": "Le paiement simulé est déjà en cours. Réessayez dans un instant.",
     "storeNotAcceptingReservations": "Cette boutique ne prend pas de réservations en ligne pour le moment. {hasContact, select, yes {Contactez-la : {contact}} other {Contactez-la directement.}}",
     "generic": "Une erreur est survenue",
     "contractNotSignable": "Ce contrat ne peut plus être signé.",

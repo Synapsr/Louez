@@ -1,7 +1,7 @@
 import { and, asc, between, eq, inArray } from "drizzle-orm";
 import { strToU8, Zip, ZipPassThrough } from "fflate";
 
-import { db, reservations } from "@louez/db";
+import { db, excludeTestReservations, reservations } from "@louez/db";
 
 import { generateContract, getContractPdfBuffer } from "@/lib/pdf/generate";
 import type { ContractExportParams } from "./types";
@@ -34,6 +34,8 @@ export async function queryContractExportReservations(
         eq(reservations.storeId, storeId),
         between(reservations.startDate, range.startDate, range.endDate),
         inArray(reservations.status, params.statuses),
+        // Test reservations are never exported.
+        excludeTestReservations(),
       ),
     )
     .orderBy(asc(reservations.startDate), asc(reservations.number));

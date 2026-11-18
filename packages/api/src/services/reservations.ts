@@ -1,6 +1,8 @@
 import {
   customers,
   db,
+  excludeTestCustomers,
+  excludeTestReservations,
   payments,
   products,
   productsTulip,
@@ -72,6 +74,20 @@ export interface ReservationReader {
   customers: boolean;
   /** The same for payments: their rows, notes and Stripe ids. */
   payments: boolean;
+  /**
+   * The reader sees the store's test reservation: a person in the dashboard
+   * only (`canSeeTestReservations`, platform/test-reservation-visibility.ts).
+   * Anyone else reads as if it did not exist.
+   */
+  testReservations: boolean;
+}
+
+/** The reader's store, without its test reservation unless the reader may see it. */
+function readerStore(reader: Pick<ReservationReader, "storeId" | "testReservations">): SQL {
+  return and(
+    eq(reservations.storeId, reader.storeId),
+    reader.testReservations ? undefined : excludeTestReservations(),
+  ) as SQL;
 }
 
 /** What settles the rental (`getRentalPaid`), in its currency, as a decimal string. */
@@ -265,11 +281,13 @@ function periodBounds(period: "today" | "week" | "month", now = new Date()) {
 }
 
 /** Reservations per dashboard tab, every filter left out. */
-export async function countReservationsByTab(storeId: string): Promise<ReservationCounts> {
+export async function countReservationsByTab(
+  reader: Pick<ReservationReader, "storeId" | "testReservations">,
+): Promise<ReservationCounts> {
   const rows = await db
     .select({ status: reservations.status, count: count() })
     .from(reservations)
-    .where(eq(reservations.storeId, storeId))
+    .where(readerStore(reader))
     .groupBy(reservations.status);
   const by = new Map(rows.map((row) => [row.status, row.count]));
   const of = (status: string) => by.get(status as (typeof rows)[number]["status"]) ?? 0;
@@ -301,7 +319,7 @@ export async function listReservations(reader: ReservationReader, input: ListRes
   if (input.paymentMethod && !reader.payments) {
     throw platformErrors.permissionDenied("payments:read");
   }
-  const conditions: SQL[] = [eq(reservations.storeId, storeId)];
+  const conditions: SQL[] = [readerStore(reader)];
   if (input.paymentMethod) {
     conditions.push(
       exists(
@@ -377,7 +395,7 @@ export async function listReservations(reader: ReservationReader, input: ListRes
       .from(reservations)
       .leftJoin(customers, eq(reservations.customerId, customers.id))
       .where(filters),
-    countReservationsByTab(storeId),
+    countReservationsByTab(reader),
   ]);
 
   const page = pageRows.slice(0, limit);
@@ -487,7 +505,7 @@ export async function getReservation(
   executor: Pick<typeof db, "query" | "select" | "selectDistinct"> = db,
 ): Promise<Reservation> {
   const row = await executor.query.reservations.findFirst({
-    where: and(eq(reservations.id, id), eq(reservations.storeId, reader.storeId)),
+    where: and(eq(reservations.id, id), readerStore(reader)),
     columns: {
       storeId: false,
       signatureIp: false,
@@ -674,12 +692,18 @@ function withoutCustomer(reservation: Reservation): Reservation {
   };
 }
 
-/** The reservation's number, or not found in this store. */
-export async function assertOwnedReservation(storeId: string, id: string) {
+/**
+ * The reservation's number, or not found in this store: a test reservation is
+ * not found by a reader that may not see it.
+ */
+export async function assertOwnedReservation(
+  reader: Pick<ReservationReader, "storeId" | "testReservations">,
+  id: string,
+) {
   const [row] = await db
     .select({ id: reservations.id, number: reservations.number })
     .from(reservations)
-    .where(and(eq(reservations.id, id), eq(reservations.storeId, storeId)))
+    .where(and(eq(reservations.id, id), readerStore(reader)))
     .limit(1);
   if (!row) throw reservationErrors.notFound(id);
   return row;
@@ -698,12 +722,14 @@ export async function updateReservationNotes(
     storeId: string;
     store: ApiEventStore;
     transport: Transport;
+    /** The caller sees test reservations (`ReservationReader.testReservations`). */
+    testReservations: boolean;
     ports: Pick<ApiPorts, "afterCommit" | "dispatchEffects">;
   },
   input: { id: string; notes: string },
 ) {
   const { storeId, transport } = caller;
-  const owned = await assertOwnedReservation(storeId, input.id);
+  const owned = await assertOwnedReservation(caller, input.id);
   const updatedAt = new Date();
   const effectIds = await db.transaction(async (tx) => {
     await tx
@@ -745,7 +771,7 @@ export async function updateReservationNotes(
 /** What the dashboard polls: pending requests, the newest one, and the counters. */
 export async function pollReservations(reader: ReservationReader): Promise<ReservationPoll> {
   const { storeId } = reader;
-  const pending = and(eq(reservations.storeId, storeId), eq(reservations.status, "pending"));
+  const pending = and(readerStore(reader), eq(reservations.status, "pending"));
 
   const [[pendingCount], latest, pendingRows, [supplierInvoices], [total], counts] =
     await Promise.all([
@@ -781,8 +807,8 @@ export async function pollReservations(reader: ReservationReader): Promise<Reser
           ),
         )
         .where(and(eq(receivedInvoices.storeId, storeId), eq(receivedInvoices.ourAction, "none"))),
-      db.select({ count: count() }).from(reservations).where(eq(reservations.storeId, storeId)),
-      countReservationsByTab(storeId),
+      db.select({ count: count() }).from(reservations).where(readerStore(reader)),
+      countReservationsByTab(reader),
     ]);
 
   return {
@@ -825,7 +851,7 @@ export async function listCalendarPeriod(
   assertWindow(window);
   const rows = await db.query.reservations.findMany({
     where: and(
-      eq(reservations.storeId, reader.storeId),
+      readerStore(reader),
       lte(reservations.startDate, window.to),
       gte(reservations.endDate, window.from),
     ),
@@ -925,7 +951,7 @@ export async function getPlanningTimeline(
     .leftJoin(products, eq(reservationItems.productId, products.id))
     .where(
       and(
-        eq(reservations.storeId, reader.storeId),
+        readerStore(reader),
         lte(reservations.startDate, window.to),
         gte(reservations.endDate, window.from),
       ),
@@ -1075,12 +1101,7 @@ export async function listUpcoming(
       .from(reservations)
       .leftJoin(customers, eq(reservations.customerId, customers.id))
       .where(
-        and(
-          eq(reservations.storeId, reader.storeId),
-          eq(reservations.status, status),
-          gte(date, from),
-          lte(date, to),
-        ),
+        and(readerStore(reader), eq(reservations.status, status), gte(date, from), lte(date, to)),
       )
       .orderBy(asc(date), asc(reservations.id))
       .limit(limit + 1);
@@ -1111,11 +1132,7 @@ export async function listOverdue(
     .from(reservations)
     .leftJoin(customers, eq(reservations.customerId, customers.id))
     .where(
-      and(
-        eq(reservations.storeId, reader.storeId),
-        eq(reservations.status, "ongoing"),
-        lte(reservations.endDate, now),
-      ),
+      and(readerStore(reader), eq(reservations.status, "ongoing"), lte(reservations.endDate, now)),
     )
     .orderBy(asc(reservations.endDate), asc(reservations.id))
     .limit(limit + 1);
@@ -1189,7 +1206,7 @@ export async function globalSearch(
       })
       .from(reservations)
       .leftJoin(customers, eq(reservations.customerId, customers.id))
-      .where(and(eq(reservations.storeId, storeId), reservationMatch))
+      .where(and(readerStore(reader), reservationMatch))
       .orderBy(desc(reservations.createdAt), desc(reservations.id))
       .limit(GLOBAL_SEARCH_LIMIT),
     reader.customers
@@ -1205,6 +1222,8 @@ export async function globalSearch(
           .where(
             and(
               eq(customers.storeId, storeId),
+              // A test customer is seen by whoever sees test reservations.
+              reader.testReservations ? undefined : excludeTestCustomers(),
               or(
                 like(customers.firstName, term),
                 like(customers.lastName, term),

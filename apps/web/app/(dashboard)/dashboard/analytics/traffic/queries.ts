@@ -3,7 +3,7 @@ import type { Locale as DateFnsLocale } from "date-fns";
 
 import { and, count, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
 
-import { db } from "@louez/db";
+import { db, excludeTestReservations } from "@louez/db";
 import {
   dailyStats,
   pageViews,
@@ -429,6 +429,8 @@ export async function getTopProductsByViews(
             and(
               eq(reservations.storeId, storeId),
               ne(reservations.status, "cancelled"),
+              // Test reservations are left out of the figures.
+              excludeTestReservations(),
               gte(reservations.createdAt, startDate),
               lte(reservations.createdAt, endDate),
             ),

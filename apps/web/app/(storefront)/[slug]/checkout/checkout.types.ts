@@ -91,6 +91,18 @@ export interface CheckoutFormProps {
    * the ones a checkout may ask. Blank for a guest, same rule as above.
    */
   initialCustomerProfileValues: CustomerProfileFormValues;
+  /**
+   * The storefront is in test mode (lib/test-reservations): the form starts with the
+   * owner's name and e-mail, and the e-mail cannot be changed. Null otherwise.
+   */
+  testMode?: CheckoutTestMode | null;
+}
+
+/** The owner a test checkout books for. */
+export interface CheckoutTestMode {
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface CheckoutFormValues {

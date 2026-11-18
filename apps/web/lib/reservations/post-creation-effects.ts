@@ -56,6 +56,11 @@ export interface PostCreationEffectsInput {
   delivery: ResolvedDelivery;
   insurance: { amount: number; optIn: boolean };
   promoCodeUsed: boolean;
+  /**
+   * A test reservation (lib/test-reservations): its own analytics event, attributed
+   * to the owner who made it, and no funnel event, calendar sync or platform ping.
+   */
+  test?: { ownerUserId: string; reservationMode: "payment" | "request" } | null;
 }
 
 /** What the funnel event of a new reservation is built from. */
@@ -141,9 +146,26 @@ export const captureReservationCreated = ({
  */
 export const runPostCreationEffects = async ({
   customer,
+  test,
   ...created
 }: PostCreationEffectsInput): Promise<void> => {
   const { store, reservation, totals } = created;
+  if (test) {
+    runAfterResponse(() =>
+      captureProductServerEvent({
+        distinctId: test.ownerUserId,
+        event: productAnalyticsEvents.testReservationCompleted,
+        properties: {
+          feature: "test_reservation",
+          surface: "storefront",
+          store_id: store.id,
+          reservation_mode: test.reservationMode,
+        },
+      }),
+    );
+    return;
+  }
+
   const currency = reservationCurrency(reservation.currency, store.settings);
 
   captureReservationCreated({ ...created, customerId: customer.id });

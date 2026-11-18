@@ -8,6 +8,7 @@ import {
   type ReservationStockLock,
 } from './reservation-lock'
 import { products, reservationItemUnits, reservationItems, reservations } from './schema'
+import { excludeTestReservations, isTestReservation } from './test-reservations'
 import {
   buildReservationAvailabilityPredicate,
   type BlockingReservationStatus,
@@ -79,6 +80,8 @@ export async function getProductStockKindChangeBlockers(
         eq(reservations.storeId, params.storeId),
         eq(reservationItems.productId, params.productId),
         inArray(reservations.status, stockConsumingReservationStatuses),
+        // A test reservation consumes nothing: it never blocks the change.
+        excludeTestReservations(),
       ),
     )
     .orderBy(reservations.number)
@@ -96,6 +99,8 @@ export async function lockProductReservationsForStockKindChange(
       and(
         eq(reservations.storeId, params.storeId),
         eq(reservationItems.productId, params.productId),
+        // A test reservation consumes nothing: it never blocks the change.
+        excludeTestReservations(),
       ),
     )
     .orderBy(reservations.id)
@@ -278,6 +283,9 @@ async function mutateReservationStock(
   storeId: string,
   mode: ConsumableStockMutationMode,
 ): Promise<void> {
+  // A test reservation is checked against the real stock but never takes or
+  // gives back a consumable (test-reservations.ts).
+  if (await isTestReservation(tx, reservationId)) return
   const plan = await checkedStockPlan(tx, reservationId, storeId, mode)
   if (!plan) return
 

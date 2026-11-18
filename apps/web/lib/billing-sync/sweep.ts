@@ -3,6 +3,7 @@ import { and, asc, eq, exists, gt, gte, inArray, lte, or } from "drizzle-orm";
 import {
   type BillingMark,
   db,
+  excludeTestReservations,
   markBillingDirty,
   newStoresCutoff,
   paymentDisputes,
@@ -103,6 +104,8 @@ export async function runSweep(now: Date = new Date()): Promise<SweepResult> {
       .where(
         and(
           gt(reservations.id, reservationCursor),
+          // A test reservation is never billed (packages/db test-reservations.ts).
+          excludeTestReservations(),
           or(
             inArray(reservations.status, [...OPEN_STATUSES]),
             and(gte(reservations.endDate, since), lte(reservations.endDate, now)),

@@ -1,4 +1,6 @@
 import { getAccessoryCandidates } from "@louez/api/services";
+import { db, products } from "@louez/db";
+import { and, eq } from "drizzle-orm";
 import { serverApi } from "@/lib/api/server-api";
 import { getCurrentStore } from "@/lib/store-context";
 import { redirect } from "next/navigation";
@@ -24,9 +26,15 @@ export default async function NewProductPage() {
 
   const api = await serverApi();
   // The form reads every category itself; the first page shows until then.
-  const [categoriesPage, availableAccessories] = await Promise.all([
+  const [categoriesPage, availableAccessories, [activeProduct]] = await Promise.all([
     api.categories.list({}),
     getAccessoryCandidates({ storeId: store.id }),
+    // None yet: this one makes the store bookable (the test reservation's offer).
+    db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.storeId, store.id), eq(products.status, "active")))
+      .limit(1),
   ]);
 
   const showAiContext = store.aiAdvisorSettings?.enabled === true;
@@ -49,6 +57,7 @@ export default async function NewProductPage() {
         imageEnhanceEnabled={isAiImageEnhanceEnabled()}
         imageBackgroundRemovalEnabled={isImageBackgroundRemovalEnabled()}
         canDelete={productPermissions(store.role).canDelete}
+        isFirstProduct={!activeProduct}
       />
     </div>
   );

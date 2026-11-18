@@ -12,7 +12,9 @@ import {
   aiAdvisorConversations,
   changeReservationStatus,
   db,
+  excludeTestReservations,
   getBlockingReservationStatuses,
+  findStoreTestReservation,
   insertReservation,
   lockReservationOnlyInTransaction,
   payments,
@@ -46,6 +48,10 @@ import {
 } from "@louez/utils";
 
 import { env } from "@/env";
+import {
+  createReservationInstantAccessUrl,
+  INSTANT_ACCESS_SHORT_TTL_MS,
+} from "@/lib/customer-auth/instant-access";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { checkReservationGate } from "@/lib/billing/reservation-gate";
@@ -56,6 +62,11 @@ import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { normalizePhoneNumber } from "@/lib/sms/phone";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { getStripe } from "@/lib/stripe/client";
+import {
+  isTestReservationConflict,
+  TEST_RESERVATION_EXISTS_ERROR,
+  testPaymentPath,
+} from "@/lib/test-reservations/checkout";
 
 import { applyPromoCode, consumePromoCode, type AppliedPromoCode } from "./apply-promo-code";
 import {
@@ -158,6 +169,7 @@ type PrepareInput = QuoteReservationRequest & {
   customerFields?: CreateReservationRequest["customerFields"];
   itemDetails?: CreateReservationRequest["itemDetails"];
   profileFields?: CreateReservationRequest["profileFields"];
+  testMode?: CreateReservationRequest["testMode"];
 };
 
 const getErrorKey = (error: unknown, fallback: string): string =>
@@ -448,6 +460,8 @@ const prepareReservation = async (
       endDate: window.end,
       tulipInsuranceOptIn: input.tulipInsuranceOptIn,
       fallbackCountry: storeCountry,
+      // A test checkout is never insured: Tulip is never asked for it.
+      testReservation: input.testMode !== undefined,
     });
   } catch (error) {
     return failReservation(getErrorKey(error, "errors.tulipQuoteFailed"));
@@ -596,6 +610,8 @@ const findResumableCheckout = async (
       eq(reservations.storeId, storeId),
       eq(reservations.status, "pending"),
       eq(reservations.source, "online"),
+      // A test reservation is never taken over by a real checkout.
+      excludeTestReservations(),
     ),
     with: {
       customer: { columns: { email: true } },
@@ -1003,14 +1019,17 @@ const writeReservation = async (
       customer: request.customer,
       phone: prepared.customerPhone,
       companyIdentity: prepared.companyIdentity,
+      isTest: request.testMode !== undefined,
     });
     if (!customer) {
       return failReservation("errors.createCustomerError");
     }
 
+    // A test checkout writes nothing on the owner's own real customer record.
+    const savesCustomerValues = request.testMode === undefined || customer.isTest;
     // A signed-in buyer updates their own values; anyone else typing this
     // e-mail only fills what the customer does not hold yet.
-    if (checkoutFields.customerDefinitions.length > 0) {
+    if (savesCustomerValues && checkoutFields.customerDefinitions.length > 0) {
       await saveCustomerFieldValues(tx, {
         storeId: store.id,
         customerId: customer.id,
@@ -1020,12 +1039,14 @@ const writeReservation = async (
       });
     }
     // Same rule for the native profile fields (birth date, source, links).
-    await saveCustomerProfileValues(tx, {
-      storeId: store.id,
-      customerId: customer.id,
-      values: checkoutFields.profileValues,
-      mode: request.customerSignedIn ? "overwrite" : "fillEmpty",
-    });
+    if (savesCustomerValues) {
+      await saveCustomerProfileValues(tx, {
+        storeId: store.id,
+        customerId: customer.id,
+        values: checkoutFields.profileValues,
+        mode: request.customerSignedIn ? "overwrite" : "fillEmpty",
+      });
+    }
 
     const reservationValues = buildReservationValues(request, prepared, customer.id);
     const itemValues = buildReservationItemValues(request, prepared, resolvedCombinationByLineKey);
@@ -1059,8 +1080,13 @@ const writeReservation = async (
     }
 
     // Consume the promo under the write: a concurrent checkout that took the
-    // last use makes this one fail before anything is written.
-    if (promo && !(await consumePromoCode(tx, promo.promoCodeId))) {
+    // last use makes this one fail before anything is written. A test reservation
+    // gets the discount and takes no use.
+    if (
+      promo &&
+      request.testMode === undefined &&
+      !(await consumePromoCode(tx, promo.promoCodeId))
+    ) {
       return failReservation("errors.promoCodeExhausted");
     }
 
@@ -1072,6 +1098,8 @@ const writeReservation = async (
       id: reservationId,
       number: reservationNumber,
       ...reservationValues,
+      // A second one in the store fails on `reservations_one_test_per_store`.
+      ...(request.testMode ? { isTest: true } : {}),
     });
     effects.push(...inserted.effects);
 
@@ -1163,8 +1191,13 @@ const writeReservation = async (
  * phone receptionist call it directly with their own source.
  */
 export const createReservation = async (
-  request: CreateReservationRequest,
+  input: CreateReservationRequest,
 ): Promise<CreateReservationResult> => {
+  // A test checkout (lib/test-reservations) books for the owner who started it:
+  // its messages go to the owner's e-mail, whatever the form sent.
+  const request: CreateReservationRequest = input.testMode
+    ? { ...input, customer: { ...input.customer, email: input.testMode.ownerEmail } }
+    : input;
   try {
     const capabilityFailure = await checkMarketplaceCapability(request);
     if (capabilityFailure) return capabilityFailure;
@@ -1181,10 +1214,16 @@ export const createReservation = async (
     const { prepared } = preparation;
     const { store, totals, insurance, promo, delivery, cart } = prepared;
 
+    // One test reservation per store: the dashboard deletes it before another.
+    if (request.testMode && (await findStoreTestReservation(db, store.id))) {
+      return failReservation(TEST_RESERVATION_EXISTS_ERROR);
+    }
+
     // The card gate (README §8.4): the booking is written as pending, and its
     // confirmation after payment is never refused, so the start of the booking is.
-    // The renter gets the store's contact, never the reason (design §4.7).
-    if (!(await checkReservationGate(store.id, request.source)).accepts) {
+    // The renter gets the store's contact, never the reason (design §4.7). A test
+    // reservation is never billed, and passes.
+    if (!request.testMode && !(await checkReservationGate(store.id, request.source)).accepts) {
       return failReservation(
         STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
         renterGateRefusalParams(store),
@@ -1209,9 +1248,10 @@ export const createReservation = async (
       }
     }
 
-    // Only the web checkout resumes an existing pending reservation.
+    // Only the web checkout resumes an existing pending reservation; a test one
+    // never takes over another reservation.
     const resumable =
-      request.source === "online" && request.resumeReservationId
+      request.source === "online" && request.resumeReservationId && !request.testMode
         ? await findResumableCheckout(store.id, request.resumeReservationId, request.customer.email)
         : null;
 
@@ -1273,11 +1313,20 @@ export const createReservation = async (
 
     // A resumed reservation already ran its creation effects the first time.
     if (!written.reused) {
-      await runPostCreationEffects({ ...created, customer: customerSummary });
+      await runPostCreationEffects({
+        ...created,
+        customer: customerSummary,
+        test: request.testMode
+          ? { ownerUserId: request.testMode.userId, reservationMode: effectiveReservationMode }
+          : null,
+      });
     }
 
     let paymentUrl: string | null = null;
-    if (effectiveReservationMode === "payment") {
+    if (effectiveReservationMode === "payment" && request.testMode) {
+      // No Stripe for a test: the storefront's simulated payment page.
+      paymentUrl = getStorefrontUrl(store.slug, testPaymentPath(written.reservationId));
+    } else if (effectiveReservationMode === "payment") {
       if (written.reused) {
         // Back to the same Stripe session when it is still open, otherwise a
         // fresh one for the same charge.
@@ -1331,8 +1380,25 @@ export const createReservation = async (
       });
     }
 
-    return { ...base, paymentUrl, instantAccessUrl: null, idempotentReplay: written.reused };
+    // The owner of a test request lands on it signed in, without a code.
+    const instantAccessUrl =
+      request.testMode && effectiveReservationMode === "request"
+        ? await createReservationInstantAccessUrl({
+            storeId: store.id,
+            storeSlug: store.slug,
+            customerEmail: written.customerEmail,
+            reservationId: written.reservationId,
+            ttlMs: INSTANT_ACCESS_SHORT_TTL_MS,
+            redirectPath: `/account/reservations/${written.reservationId}?event=requested`,
+          })
+        : null;
+
+    return { ...base, paymentUrl, instantAccessUrl, idempotentReplay: written.reused };
   } catch (error) {
+    // Two test checkouts at once: the second meets the first's row.
+    if (request.testMode && isTestReservationConflict(error)) {
+      return failReservation(TEST_RESERVATION_EXISTS_ERROR);
+    }
     log.error("reservation", `creation failed: ${describeError(error)}`);
     return failReservation("errors.createReservationError");
   }

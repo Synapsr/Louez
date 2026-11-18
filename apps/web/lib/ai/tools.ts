@@ -5,6 +5,8 @@ import { z } from "zod";
 import {
   customers,
   db,
+  excludeTestCustomers,
+  excludeTestReservations,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
@@ -470,7 +472,8 @@ export function createAITools(ctx: AIChatContext) {
       execute: async ({ search, type, since }) => {
         requirePermission(ctx, "customers", "read");
 
-        const conditions = [eq(customers.storeId, ctx.storeId)];
+        // The assistant never sees a test customer.
+        const conditions = [eq(customers.storeId, ctx.storeId), excludeTestCustomers()];
         if (type) {
           // Business: default identity or at least one reservation billed to a company.
           const isBusiness = or(
@@ -540,7 +543,12 @@ export function createAITools(ctx: AIChatContext) {
         requirePermission(ctx, "customers", "read");
 
         const customer = await db.query.customers.findFirst({
-          where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
+          // The assistant never sees a test customer.
+          where: and(
+            eq(customers.storeId, ctx.storeId),
+            eq(customers.id, customerId),
+            excludeTestCustomers(),
+          ),
           columns: {
             id: true,
             customerType: true,
@@ -586,6 +594,8 @@ export function createAITools(ctx: AIChatContext) {
                   and(
                     eq(reservations.storeId, ctx.storeId),
                     eq(reservations.customerId, customer.id),
+                    // The assistant never sees a test reservation.
+                    excludeTestReservations(),
                   ),
                 )
                 .orderBy(desc(reservations.createdAt))
@@ -700,7 +710,12 @@ export function createAITools(ctx: AIChatContext) {
         requirePermission(ctx, "customers", "write");
 
         const existing = await db.query.customers.findFirst({
-          where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
+          // The assistant never sees a test customer.
+          where: and(
+            eq(customers.storeId, ctx.storeId),
+            eq(customers.id, customerId),
+            excludeTestCustomers(),
+          ),
           columns: { id: true, email: true, customerType: true },
         });
         if (!existing) return { error: "Customer not found" };
@@ -768,7 +783,12 @@ export function createAITools(ctx: AIChatContext) {
         requirePermission(ctx, "payments", "read");
 
         const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+          // The assistant never sees a test reservation.
+          where: and(
+            eq(reservations.storeId, ctx.storeId),
+            eq(reservations.id, reservationId),
+            excludeTestReservations(),
+          ),
           columns: { id: true, number: true },
         });
         if (!reservation) return { error: "Reservation not found" };
@@ -998,6 +1018,8 @@ export function createAITools(ctx: AIChatContext) {
           where: and(
             eq(reservations.storeId, ctx.storeId),
             inArray(reservations.status, blockingStatuses),
+            // A test reservation holds no stock, and the assistant never sees one.
+            excludeTestReservations(),
             buildReservationOverlapPredicate({
               start,
               end,

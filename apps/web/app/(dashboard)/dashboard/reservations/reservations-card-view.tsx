@@ -51,6 +51,7 @@ import {
   getReservationDetailHref,
   isReservationAnalyticsSource,
 } from "@/lib/product-analytics/reservation-analytics";
+import { TestBadge } from "@/components/dashboard/test-reservation/test-badge";
 
 const STATUS_ICON_MAP: Record<ReservationStatus, typeof PendingSolidIcon> = {
   pending: PendingSolidIcon,
@@ -157,6 +158,7 @@ export function ReservationsCardView({
                           <StatusIcon className="h-4 w-4" />
                           {t(`status.${status}`)}
                         </Badge>
+                        <TestBadge reservationId={reservation.id} />
                         {/* Payment Status Badge */}
                         {showPaymentStatus && (
                           <Tooltip>

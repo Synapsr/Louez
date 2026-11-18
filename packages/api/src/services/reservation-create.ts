@@ -6,6 +6,7 @@ import {
   consumeReservationStock,
   customers,
   db,
+  excludeTestCustomers,
   getBlockingReservationStatuses,
   insertReservation,
   isReservationChangeBusyError,
@@ -553,7 +554,14 @@ export async function createStoreReservation(
         const [row] = await tx
           .select()
           .from(customers)
-          .where(and(eq(customers.id, input.customer.id), eq(customers.storeId, storeId)));
+          .where(
+            and(
+              eq(customers.id, input.customer.id),
+              eq(customers.storeId, storeId),
+              // A test customer never gets a real booking.
+              excludeTestCustomers(),
+            ),
+          );
         if (!row) return refuse(reservationCreateErrors.customerNotFound(input.customer.id));
         customer = { kind: "existing", row };
       } else {

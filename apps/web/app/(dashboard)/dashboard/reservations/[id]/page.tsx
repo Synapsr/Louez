@@ -24,6 +24,7 @@ import { listReservationItemDetails } from "@louez/api/services/customer-fields-
 import { DEFAULT_INSPECTION_SETTINGS } from "@louez/types";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
+import { TestReservationGuide } from "@/components/dashboard/test-reservation/test-reservation-guide";
 
 import { serverApi } from "@/lib/api/server-api";
 
@@ -200,6 +201,7 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
     (request) => request.status === "pending",
   );
   const { intl: formatLocale } = await getRequestFormatLocale();
+  const testReservation = await (await serverApi()).testReservations.get({});
 
   return (
     <>
@@ -215,6 +217,14 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
             formatLocale,
           )}
           canWrite={hasPermission(store.role, "write")}
+        />
+      ) : null}
+      {testReservation.reservation?.id === id ? (
+        <TestReservationGuide
+          reservationId={id}
+          initialStatus={reservation.status}
+          initialState={testReservation}
+          className="mb-6"
         />
       ) : null}
       <ReservationDetailClient

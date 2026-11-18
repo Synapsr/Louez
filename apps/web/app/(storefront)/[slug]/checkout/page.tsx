@@ -28,6 +28,7 @@ import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state"
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug, type StorefrontStore } from "@/lib/storefront/get-store-by-slug";
+import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-mode";
 import { getMinRentalMinutes } from "@louez/utils";
 
 import { getCustomerSession } from "../account/actions";
@@ -168,13 +169,19 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
     notFound();
   }
 
-  const [tulip, locations, activePromoCodes, advisorReachable, session] = await Promise.all([
-    resolveTulipIntegrationForStore(store.id),
-    getCheckoutLocations(store),
-    hasActivePromoCodes(store.id),
-    isAdvisorReachableForStore(store),
-    getCustomerSession(slug),
-  ]);
+  const [tulip, locations, activePromoCodes, advisorReachable, signedInSession, testMode] =
+    await Promise.all([
+      resolveTulipIntegrationForStore(store.id),
+      getCheckoutLocations(store),
+      hasActivePromoCodes(store.id),
+      isAdvisorReachableForStore(store),
+      getCustomerSession(slug),
+      getStorefrontTestMode(store.id),
+    ]);
+  // A test checkout books for the owner (lib/test-reservations): no customer's
+  // values on file prefill it.
+  const session = testMode ? null : signedInSession;
+  const [testFirstName = "", ...testLastName] = (testMode?.ownerName ?? "").trim().split(/\s+/);
 
   const tulipMode = tulip.settings.enabled ? tulip.settings.publicMode : "no_public";
   const savedCustomerFieldValues = session
@@ -220,6 +227,15 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
           initialCustomer={session ? toCheckoutInitialCustomer(session.customer) : null}
           initialCustomerFieldValues={savedCustomerFieldValues}
           initialCustomerProfileValues={savedCustomerProfileValues}
+          testMode={
+            testMode
+              ? {
+                  email: testMode.ownerEmail,
+                  firstName: testFirstName,
+                  lastName: testLastName.join(" "),
+                }
+              : null
+          }
         />
       </StorefrontSection>
     </>

@@ -1,4 +1,8 @@
 {
+  "testReservation": {
+    "subjectPrefix": "[测试] ",
+    "banner": "这是一个测试预订：未收取任何费用。"
+  },
   "common": {
     "greeting": "您好{name}，",
     "regards": "最好的问候，",

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { AnalyticsEventIdentity } from '@louez/api/platform/effects';
+import { db, isTestReservation } from '@louez/db';
 
 import { env } from '@/env';
 import { providerSignal } from '@/lib/api/effect-signal';
@@ -145,6 +146,8 @@ const reservationActionEvent = ({
 });
 
 export async function captureReservationActionSucceeded(event: ReservationActionSucceeded) {
+  // A test reservation has its own events (lib/test-reservations), never this one.
+  if (await isTestReservation(db, event.reservationId).catch(() => false)) return;
   await captureProductServerEvent(reservationActionEvent(event));
 }
 

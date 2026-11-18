@@ -252,15 +252,18 @@ export default async function ReservationDetailPage({
   );
   const damageFees = getDamageFees(reservation.payments);
   const paymentStatus = getReservationPaymentStatus(reservation.payments);
+  // A test reservation is never paid or held online (lib/test-reservations): no
+  // payment and no deposit button.
   const actions = getReservationActions({
     status: reservation.status,
     isRentalPaid: rentalPaid,
     isSigned: reservation.signedAt !== null,
-    stripeAccountId: store.stripeAccountId,
+    stripeAccountId: reservation.isTest ? null : store.stripeAccountId,
     stripeChargesEnabled: store.stripeChargesEnabled,
   });
   const event = parseReservationOutcomeEvent(query.event);
-  const stripeActive = Boolean(store.stripeAccountId) && store.stripeChargesEnabled === true;
+  const stripeActive =
+    !reservation.isTest && Boolean(store.stripeAccountId) && store.stripeChargesEnabled === true;
 
   const depositView = getCustomerDepositView(reservation);
   const deposit: ReservationDepositView | null = (() => {
@@ -399,6 +402,7 @@ export default async function ReservationDetailPage({
       />
       <ReservationPageView
         number={reservation.number}
+        isTest={reservation.isTest}
         status={status}
         cancelledRequest={cancelledRequest}
         periodLabel={formatStoreDateRange(

@@ -1,4 +1,8 @@
 {
+  "testReservation": {
+    "subjectPrefix": "[Test] ",
+    "banner": "Questa è una prenotazione di test: non è stato addebitato nulla."
+  },
   "common": {
     "greeting": "Ciao {name},",
     "regards": "Cordiali saluti,",

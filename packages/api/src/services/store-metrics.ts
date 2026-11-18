@@ -1,6 +1,13 @@
 import { and, count, eq, gte, lt, sql } from "drizzle-orm";
 
-import { customers, db, products, reservations } from "@louez/db";
+import {
+  customers,
+  db,
+  excludeTestCustomers,
+  excludeTestReservations,
+  products,
+  reservations,
+} from "@louez/db";
 
 import { getReceiptTotals, instantSql, type SalesStore } from "./sales-analytics";
 import { getStoreCalendar, type StoreCalendar } from "./sales-window";
@@ -76,7 +83,8 @@ export async function getStoreMetrics(
         newThisMonth: sql<number>`SUM(CASE WHEN ${customers.createdAt} >= ${instantSql(monthStart)} THEN 1 ELSE 0 END)`,
       })
       .from(customers)
-      .where(eq(customers.storeId, storeId)),
+      // Test customers and test reservations are left out of the counters.
+      .where(and(eq(customers.storeId, storeId), excludeTestCustomers())),
     db
       .select({
         total: count(),
@@ -86,7 +94,7 @@ export async function getStoreMetrics(
         ongoing: sql<number>`SUM(CASE WHEN ${reservations.status} = 'ongoing' THEN 1 ELSE 0 END)`,
       })
       .from(reservations)
-      .where(eq(reservations.storeId, storeId)),
+      .where(and(eq(reservations.storeId, storeId), excludeTestReservations())),
     db
       .select({ count: count() })
       .from(reservations)
@@ -94,6 +102,7 @@ export async function getStoreMetrics(
         and(
           eq(reservations.storeId, storeId),
           eq(reservations.status, "confirmed"),
+          excludeTestReservations(),
           gte(reservations.startDate, todayStart),
           lt(reservations.startDate, tomorrowStart),
         ),
@@ -105,6 +114,7 @@ export async function getStoreMetrics(
         and(
           eq(reservations.storeId, storeId),
           eq(reservations.status, "ongoing"),
+          excludeTestReservations(),
           gte(reservations.endDate, todayStart),
           lt(reservations.endDate, tomorrowStart),
         ),

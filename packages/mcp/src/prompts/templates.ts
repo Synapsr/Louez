@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { db, reservations, customers } from '@louez/db'
+import { db, excludeTestReservations, reservations, customers } from '@louez/db'
 import { dashboardStats } from '@louez/api/services/analytics'
 import { and, eq, gte, lt, lte, sql } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/server'
@@ -26,7 +26,8 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
       const [pendingCount] = await db
         .select({ count: sql<number>`COUNT(*)` })
         .from(reservations)
-        .where(and(eq(reservations.storeId, ctx.storeId), eq(reservations.status, 'pending')))
+        // An agent never sees a test reservation.
+        .where(and(eq(reservations.storeId, ctx.storeId), eq(reservations.status, 'pending'), excludeTestReservations()))
 
       // Today's pickups
       const todaysPickups = await db
@@ -41,6 +42,8 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
         .where(
           and(
             eq(reservations.storeId, ctx.storeId),
+            // An agent never sees a test reservation.
+            excludeTestReservations(),
             eq(reservations.status, 'confirmed'),
             gte(reservations.startDate, today),
             lt(reservations.startDate, tomorrow)
@@ -60,6 +63,8 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
         .where(
           and(
             eq(reservations.storeId, ctx.storeId),
+            // An agent never sees a test reservation.
+            excludeTestReservations(),
             eq(reservations.status, 'ongoing'),
             gte(reservations.endDate, today),
             lt(reservations.endDate, tomorrow)
@@ -73,6 +78,8 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
         .where(
           and(
             eq(reservations.storeId, ctx.storeId),
+            // An agent never sees a test reservation.
+            excludeTestReservations(),
             eq(reservations.status, 'ongoing'),
             lte(reservations.endDate, today)
           )
@@ -128,6 +135,8 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
       const reservation = await db.query.reservations.findFirst({
         where: and(
           eq(reservations.storeId, ctx.storeId),
+          // An agent never sees a test reservation.
+          excludeTestReservations(),
           eq(reservations.id, reservationId)
         ),
         with: {

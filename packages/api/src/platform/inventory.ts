@@ -194,6 +194,7 @@ const ORPC = {
   settings: `${ROUTERS}/settings.ts`,
   stores: `${ROUTERS}/stores.ts`,
   team: `${ROUTERS}/team.ts`,
+  testReservations: `${ROUTERS}/test-reservations.ts`,
 } as const;
 
 const MCP = {
@@ -217,6 +218,7 @@ const tool = (path: string, name: string): CapabilitySource => ({ kind: "mcp-too
 
 const UI_ONLY = "Interface preference, no business effect";
 const PASSWORD = "Password and passkeys stay with Better Auth, in the browser";
+const TEST_RESERVATION = "Dashboard onboarding, human session only";
 
 // ---------------------------------------------------------------------------
 // Inventory
@@ -2370,6 +2372,32 @@ export const capabilities = [
     actors: ["session"],
   },
 
+  // --- Test reservation (dashboard onboarding) ----------------------------
+  // A person rehearses the customer journey on their own store; an agent
+  // never sees a test reservation (packages/db test-reservations.ts).
+  {
+    id: "reservations.getTestReservation",
+    sources: [procedure("testReservations", "get")],
+    kind: "read",
+    plan: { exclude: TEST_RESERVATION },
+    actors: ["session"],
+  },
+  {
+    id: "reservations.startTestReservation",
+    sources: [procedure("testReservations", "start")],
+    kind: "write",
+    plan: { exclude: TEST_RESERVATION },
+    actors: ["session"],
+  },
+  {
+    id: "reservations.deleteTestReservation",
+    sources: [procedure("testReservations", "delete")],
+    kind: "write",
+    sensitive: "destructive",
+    plan: { exclude: TEST_RESERVATION },
+    actors: ["session"],
+  },
+
   // --- Excluded: interface preferences, password and passkeys -------------
   {
     id: "ui.updateKeyboardShortcuts",
@@ -2455,6 +2483,7 @@ export const outOfScopeServerModules = [
   },
   { path: "apps/web/app/(storefront)/[slug]/catalog/actions.ts", reason: STOREFRONT },
   { path: "apps/web/app/(storefront)/[slug]/checkout/actions.ts", reason: STOREFRONT },
+  { path: "apps/web/app/(storefront)/[slug]/checkout/test-payment/actions.ts", reason: STOREFRONT },
   { path: "apps/web/app/(storefront)/[slug]/checkout/cancelled/actions.ts", reason: STOREFRONT },
   { path: "apps/web/app/(storefront)/[slug]/contact/actions.ts", reason: STOREFRONT },
   { path: "apps/web/app/(storefront)/[slug]/pay/[reservationId]/actions.ts", reason: STOREFRONT },

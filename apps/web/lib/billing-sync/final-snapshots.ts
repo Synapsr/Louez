@@ -89,10 +89,11 @@ async function selectFinalReservationIds(
   since: Date,
 ): Promise<string[]> {
   const from = utcSqlTime(since);
+  // A test reservation is never billed (packages/db test-reservations.ts).
   const rows = await selectRows(
     tx,
     sql`SELECT r.id FROM reservations r
-        WHERE r.store_id = ${storeId} AND (
+        WHERE r.store_id = ${storeId} AND r.is_test = 0 AND (
           r.reservation_status IN ('confirmed', 'ongoing', 'completed')
           OR r.billable_at >= ${from} OR r.withdrawn_at >= ${from} OR r.end_date >= ${from}
           OR EXISTS (SELECT 1 FROM billing_sync_queue q
