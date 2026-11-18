@@ -176,6 +176,21 @@ export const env = createEnv({
     SUPERPDP_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
     SUPERPDP_REDIRECT_URL: z.url("SUPERPDP_REDIRECT_URL must be a valid URL").optional(),
 
+    // ===== Google Ads "account created" conversion (Optional, Louez Cloud only) =====
+    // Off unless GOOGLE_ADS_CONVERSIONS_ENABLED is "true" and the three values after it
+    // are set: a self-hosted instance sends nothing. Plain strings here, so a wrong value
+    // never stops the server: lib/acquisition/google-ads-config.ts checks them and the
+    // cron reports why the upload is off. See docs/analytics/lifecycle.md.
+    GOOGLE_ADS_CONVERSIONS_ENABLED: z.string().optional(),
+    // The Google Ads account that receives the conversion, 10 digits (dashes allowed).
+    GOOGLE_ADS_CUSTOMER_ID: z.string().optional(),
+    // The id of the "Compte créé" conversion action (type: import from clicks).
+    GOOGLE_ADS_ACCOUNT_CREATED_CONVERSION_ACTION_ID: z.string().optional(),
+    // The service account's JSON key, raw or base64, for the Data Manager API.
+    GOOGLE_DATA_MANAGER_SERVICE_ACCOUNT_KEY: z.string().optional(),
+    // Optional: a manager account through which the service account reaches the customer.
+    GOOGLE_ADS_LOGIN_CUSTOMER_ID: z.string().optional(),
+
     // ===== Cron Jobs (Required) =====
     // Optional: cron routes reject requests until it is set.
     CRON_SECRET: z.string().optional(),
@@ -466,6 +481,12 @@ export const env = createEnv({
     SUPERPDP_CLIENT_SECRET: process.env.SUPERPDP_CLIENT_SECRET,
     SUPERPDP_ENVIRONMENT: process.env.SUPERPDP_ENVIRONMENT,
     SUPERPDP_REDIRECT_URL: process.env.SUPERPDP_REDIRECT_URL,
+    GOOGLE_ADS_CONVERSIONS_ENABLED: process.env.GOOGLE_ADS_CONVERSIONS_ENABLED,
+    GOOGLE_ADS_CUSTOMER_ID: process.env.GOOGLE_ADS_CUSTOMER_ID,
+    GOOGLE_ADS_ACCOUNT_CREATED_CONVERSION_ACTION_ID:
+      process.env.GOOGLE_ADS_ACCOUNT_CREATED_CONVERSION_ACTION_ID,
+    GOOGLE_DATA_MANAGER_SERVICE_ACCOUNT_KEY: process.env.GOOGLE_DATA_MANAGER_SERVICE_ACCOUNT_KEY,
+    GOOGLE_ADS_LOGIN_CUSTOMER_ID: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
     CRON_SECRET: process.env.CRON_SECRET,
     MARKETPLACE_CATALOG_SECRET: process.env.MARKETPLACE_CATALOG_SECRET,
     MARKETPLACE_URL: process.env.MARKETPLACE_URL,

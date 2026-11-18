@@ -70,6 +70,8 @@ Deletion is fail-closed. If Louez knows about a provider-side resource and canno
 
 When Louez reports to the billing service (`LOUEZ_BILLING=cloud` with `BILLING_SERVICE_URL`), it leaves Stripe Billing customers to that service, which bills the final statement and then closes or anonymises the customer after its retention period. Louez still cancels the customer's plan subscription and removes the Stripe Connect accounts.
 
+A Google Ads "account created" conversion (Louez Cloud only, `GOOGLE_ADS_CONVERSIONS_ENABLED`) is deleted with the account while it waits in `google_ads_conversions`. One already uploaded holds the ad click id and the account id as its transaction id, no name or e-mail; Google Ads keeps it under its own retention, and Louez cannot recall it (docs/analytics/lifecycle.md).
+
 PostHog event deletion and OpenReplay recording deletion are asynchronous provider jobs. Operators should monitor provider failures and their normal job queues. Webhook-only Discord notifications cannot be recalled because Louez does not retain provider message IDs; they must not contain Store operational data beyond the notification's stated purpose.
 
 ## Backups and restores

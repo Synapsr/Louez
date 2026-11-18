@@ -65,9 +65,9 @@ Dans l'ordre, le premier qui s'applique :
 ### En base
 
 `users.first_touch_attribution` (JSON) garde le canal (`channel`) et les champs du cookie, une
-seule fois, jamais par-dessus une valeur déjà là : pour une future conversion Google Ads côté
-serveur, qui a besoin du `gclid` (ou `gbraid`/`wbraid`). Distinct de `users.acquisition_channel`,
-la réponse déclarée.
+seule fois, jamais par-dessus une valeur déjà là. Distinct de `users.acquisition_channel`, la
+réponse déclarée. La conversion Google Ads « Compte créé », elle, a sa propre table (section
+suivante).
 
 Exemple d'`account_created` avec un cookie Google Ads :
 
@@ -107,6 +107,79 @@ Exemple d'`account_created` avec un cookie Google Ads :
   }
 }
 ```
+
+## Conversion Google Ads « Compte créé »
+
+L'app déclare elle-même à Google Ads, depuis le serveur, chaque compte venu d'un clic sur une
+annonce : la vraie conversion, là où « Inscription » ne compte qu'un clic de louez.io vers
+l'app. Conception : `docs/google-ads/01-SERVER-SIDE-CONVERSIONS.md` du dépôt du site.
+
+**Éteinte par défaut.** Rien ne part sans `GOOGLE_ADS_CONVERSIONS_ENABLED=true` **et**
+`GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_ACCOUNT_CREATED_CONVERSION_ACTION_ID` et
+`GOOGLE_DATA_MANAGER_SERVICE_ACCOUNT_KEY` valides (`GOOGLE_ADS_LOGIN_CUSTOMER_ID` en plus, si le
+compte de service passe par un compte administrateur). Une instance auto-hébergée n'en pose
+aucune et n'envoie rien. Le drapeau levé avec une valeur absente ou fausse, rien ne part non plus
+et le résultat du cron dit laquelle (`googleAdsConversions.off`), sans jamais la montrer.
+
+**À l'inscription** (`apps/web/lib/auth.ts`), si l'upload est configuré et que le cookie porte un
+`gclid` (sinon `gbraid`, sinon `wbraid`) et sa date `ts`, une ligne `google_ads_conversions` est
+ajoutée : le compte (`user_id`, clé primaire), l'identifiant de clic et son type, la date du clic
+(`clicked_at`, le `ts` du cookie), celle du compte (`converted_at`) et le consentement. Google
+n'est jamais appelé pendant l'inscription, et une erreur n'y change rien. Sans identifiant de
+clic, sans `ts`, ou un clic de plus de 90 jours : pas de ligne. `gad_source` seul ne suffit pas,
+Google ne rattache rien à lui.
+
+**L'envoi** (`apps/web/lib/acquisition/google-ads-conversion-record.ts`) part du cron, chaque
+heure à :20. Une ligne part au plus tôt 6 h (et 15 min) après le clic : Google refuse un clic plus
+récent. Une requête `events:ingest` de la
+[Data Manager API](https://developers.google.com/data-manager/api/devguides/events) par
+conversion, avec pour `transactionId` l'id du compte : Google ne garde que le premier événement
+d'un `transactionId` par action de conversion, et une ligne est prise (`sending`, bail de 5 min)
+avant d'être envoyée, donc un envoi rejoué ne compte pas deux fois. Pas de valeur : celle par
+défaut de l'action s'applique. Un échec garde le message de Google (`last_error`, jamais un jeton
+ni la clé) et repart 15 min, 30 min, 1 h… plus tard, au plus un jour ; au 8ᵉ essai la ligne est
+`abandoned`. Un clic de plus de 90 jours au moment de l'envoi passe `expired` sans partir. Les
+lignes finies (`sent`, `expired`, `abandoned`) sont effacées 30 jours après, et avec le compte
+quand il est supprimé.
+
+Data Manager plutôt que l'`UploadClickConversions` de la Google Ads API : depuis le 15 juin 2026
+celle-ci refuse les jetons développeur qui n'envoyaient pas déjà de conversions hors ligne
+(`CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE`), et Google y envoie les nouvelles intégrations.
+Data Manager n'a pas de jeton développeur : un compte de service Google Cloud, utilisateur du
+compte Google Ads, avec la portée `https://www.googleapis.com/auth/datamanager`.
+
+Ce qui part : l'identifiant de clic, l'id du compte, la date de création et le consentement.
+Aucun e-mail, aucun nom, aucune donnée hachée.
+
+### Consentement
+
+Ni louez.io ni l'app n'ont de bannière de consentement. L'app n'invente pas un consentement
+qu'elle n'a pas : chaque conversion part avec `adUserData` et `adPersonalization` à
+`CONSENT_DENIED` (`AD_CONSENT_AT_SIGN_UP` dans `google-ads-conversion.ts`, gardés sur la ligne).
+Ce que Google en fait :
+
+- **Personnes de l'EEE** (presque tout le trafic de louez.io) : sans les deux consentements
+  accordés, Google ne traite pas la conversion. L'API répond quand même 200 ; la conversion
+  disparaît sans erreur.
+- **Hors EEE** : la documentation de Google ne dit pas ce que devient une conversion de clic
+  `CONSENT_DENIED`. À vérifier sur les premiers envois.
+
+Pour que ces conversions comptent, il faut un mécanisme de consentement (louez.io, où a lieu le
+clic) dont la réponse arrive jusqu'à l'inscription : on la lit alors à la place de
+`AD_CONSENT_AT_SIGN_UP` et on la garde sur la ligne, que l'envoi transmet telle quelle. La
+conversion déjà taguée côté client (« Inscription ») est sous la même obligation.
+
+### Vérifier
+
+1. Avant de lever le drapeau, avec les variables de production (via `infisical run`) :
+   `pnpm --filter @louez/web google-ads:check`. Il envoie une conversion d'exemple en
+   `validateOnly`, que Google valide sans l'enregistrer, et dit `ok` ou ce que Google refuse.
+2. Après un compte venu d'une annonce : la ligne `google_ads_conversions` du compte en `pending`,
+   puis, à la première heure :20 passées les 6 h, `sent` avec un `request_id` ; le résultat du cron
+   compte `googleAdsConversions.sent`.
+3. Dans Google Ads, l'action « Compte créé » : les conversions apparaissent à la date du **clic**,
+   quelques heures après l'envoi ; ses diagnostics d'import disent celles refusées. Le
+   `request_id` sert aussi à `requestStatus:retrieve` de Data Manager.
 
 ## Les étapes d'une boutique
 
@@ -158,6 +231,9 @@ valeurs du cookie après le filtre ci-dessus. Les tests :
 
 - `apps/web/lib/acquisition/first-touch.test.ts` : cookie absent, invalide, valide, filtre,
   canal, propriétés de `account_created` ;
+- `apps/web/lib/acquisition/google-ads-*.test.ts`, `google-data-manager.test.ts` et
+  `google-ads-conversion-record.db.test.ts` : la conversion Google Ads, de l'inscription à
+  l'envoi (configuration, délais, requête, reprises, une seule fois) ;
 - `apps/web/lib/stripe/subscription-analytics.test.ts` : quel changement d'abonnement compte ;
 - `apps/web/lib/billing/legacy-guard.db.test.ts` : début et fin d'un abonnement comptés une fois,
   redélivrance comprise ;

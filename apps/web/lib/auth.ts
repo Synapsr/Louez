@@ -9,6 +9,7 @@ import { db } from '@louez/db';
 import { deleteAccountData } from '@/lib/account-deletion/account-deletion';
 import { firstTouchEventProperties, readFirstTouch } from '@/lib/acquisition/first-touch';
 import { persistFirstTouch } from '@/lib/acquisition/first-touch-record';
+import { queueGoogleAdsConversion } from '@/lib/acquisition/google-ads-conversion-record';
 import { accountDeletionRepository } from '@/lib/account-deletion/database-repository';
 import {
   accountDeletionExternalServices,
@@ -32,7 +33,12 @@ setUserCreatedHook(async ({ userId, headers }) => {
   // The first touch the louez.io site left in its cookie, on the sign-up's own request.
   // An account created without a request (a script) has no attribution at all.
   const touch = headers ? readFirstTouch(headers) : null;
-  if (headers) await persistFirstTouch(userId, touch);
+  if (headers) {
+    await persistFirstTouch(userId, touch);
+    // From an ad click: the "account created" conversion Google Ads is owed, sent later
+    // by the cron (lib/acquisition/google-ads-conversion-record.ts).
+    await queueGoogleAdsConversion(userId, touch);
+  }
   await captureProductServerEvent({
     distinctId: userId,
     event: productAnalyticsEvents.accountCreated,
