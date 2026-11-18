@@ -171,7 +171,16 @@ export async function uploadDueGoogleAdsConversions(
   for (const { userId } of due) {
     if (!(await claim(userId, now))) continue;
     const [row] = await db
-      .select()
+      .select({
+        userId: googleAdsConversions.userId,
+        clickIdType: googleAdsConversions.clickIdType,
+        clickId: googleAdsConversions.clickId,
+        clickedAt: googleAdsConversions.clickedAt,
+        convertedAt: googleAdsConversions.convertedAt,
+        adUserDataConsent: googleAdsConversions.adUserDataConsent,
+        adPersonalizationConsent: googleAdsConversions.adPersonalizationConsent,
+        attempts: googleAdsConversions.attempts,
+      })
       .from(googleAdsConversions)
       .where(eq(googleAdsConversions.userId, userId));
     if (!row) continue;

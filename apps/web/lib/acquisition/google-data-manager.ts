@@ -13,6 +13,8 @@
 
 import { createSign } from "node:crypto";
 
+import { z } from "zod";
+
 import type {
   GoogleAdsConversionsConfig,
   GoogleServiceAccount,
@@ -121,32 +123,52 @@ function signedAssertion(account: GoogleServiceAccount, nowMs: number) {
   return `${header}.${claims}.${signature}`;
 }
 
+/** The token endpoint's error: { error, error_description }. */
+const oauthError = z.object({ error: z.string(), error_description: z.string().optional() });
+
+/** A Google API's error: { error: { status, message, details: [BadRequest…] } }. */
+const apiError = z.object({
+  error: z.object({
+    status: z.string().optional(),
+    message: z.string().optional(),
+    details: z
+      .array(
+        z.object({
+          fieldViolations: z
+            .array(z.object({ field: z.string().optional(), description: z.string().optional() }))
+            .optional(),
+        }),
+      )
+      .optional(),
+  }),
+});
+
+const tokenAnswer = z.object({
+  access_token: z.string(),
+  expires_in: z.number().positive().optional(),
+});
+
+const ingestAnswer = z.object({ requestId: z.string().optional() });
+
+/** The body as JSON, or undefined when it is not JSON. */
+const jsonOf = (response: Response): Promise<unknown> => response.json().catch(() => undefined);
+
 /** Google's own words for a failed call, from its JSON error; the status otherwise. */
 async function describeFailure(response: Response): Promise<string> {
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    return `HTTP ${response.status}`;
+  const body = await jsonOf(response);
+  const oauth = oauthError.safeParse(body);
+  if (oauth.success) {
+    const description = oauth.data.error_description ? `: ${oauth.data.error_description}` : "";
+    return `HTTP ${response.status} ${oauth.data.error}${description}`;
   }
-  const record = (body ?? {}) as Record<string, unknown>;
-  // The token endpoint: { error, error_description }.
-  if (typeof record.error === "string") {
-    const description =
-      typeof record.error_description === "string" ? `: ${record.error_description}` : "";
-    return `HTTP ${response.status} ${record.error}${description}`;
-  }
-  // Google APIs: { error: { code, status, message, details: [BadRequest…] } }.
-  const error = (record.error ?? {}) as Record<string, unknown>;
   const parts = [`HTTP ${response.status}`];
-  if (typeof error.status === "string") parts.push(error.status);
-  if (typeof error.message === "string") parts.push(error.message);
-  const details = Array.isArray(error.details) ? error.details : [];
-  for (const detail of details) {
-    const violations = (detail as { fieldViolations?: unknown }).fieldViolations;
-    if (!Array.isArray(violations)) continue;
-    for (const violation of violations as Array<Record<string, unknown>>) {
-      parts.push(`${String(violation.field ?? "")}: ${String(violation.description ?? "")}`);
+  const api = apiError.safeParse(body);
+  if (api.success) {
+    const { status, message, details } = api.data.error;
+    if (status) parts.push(status);
+    if (message) parts.push(message);
+    for (const violation of (details ?? []).flatMap((detail) => detail.fieldViolations ?? [])) {
+      parts.push(`${violation.field ?? ""}: ${violation.description ?? ""}`);
     }
   }
   return parts.join(" — ");
@@ -186,12 +208,12 @@ export function createDataManagerClient(
         response.status,
       );
     }
-    const body = (await response.json()) as { access_token?: unknown; expires_in?: unknown };
-    if (typeof body.access_token !== "string") {
+    const answer = tokenAnswer.safeParse(await jsonOf(response));
+    if (!answer.success) {
       throw new DataManagerError("Token refused: no access_token in the answer", response.status);
     }
-    const lifetimeS = typeof body.expires_in === "number" ? body.expires_in : 3600;
-    token = { value: body.access_token, expiresAt: now() + lifetimeS * 1000 };
+    const lifetimeS = answer.data.expires_in ?? 3600;
+    token = { value: answer.data.access_token, expiresAt: now() + lifetimeS * 1000 };
     return token.value;
   }
 
@@ -211,8 +233,8 @@ export function createDataManagerClient(
           response.status,
         );
       }
-      const body = (await response.json().catch(() => ({}))) as { requestId?: unknown };
-      return { requestId: typeof body.requestId === "string" ? body.requestId : null };
+      const answer = ingestAnswer.safeParse(await jsonOf(response));
+      return { requestId: (answer.success && answer.data.requestId) || null };
     },
   };
 }
