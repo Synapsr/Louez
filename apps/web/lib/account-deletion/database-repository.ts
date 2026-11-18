@@ -1093,6 +1093,9 @@ const purgeOwnedData = async (
     await transaction.delete(schema.accounts).where(eq(schema.accounts.userId, context.user.id));
     await transaction.delete(schema.sessions).where(eq(schema.sessions.userId, context.user.id));
     await transaction
+      .delete(schema.googleAdsConversions)
+      .where(eq(schema.googleAdsConversions.userId, context.user.id));
+    await transaction
       .delete(schema.verification)
       .where(
         or(

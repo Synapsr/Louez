@@ -8,6 +8,10 @@ import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retent
 import { reportServerError } from "@/lib/error-tracking";
 import { createError, log, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
+import {
+  googleAdsConversionsConfig,
+  uploadDueGoogleAdsConversions,
+} from "@/lib/acquisition/google-ads-conversion-record";
 import { reconcileVoiceSessions } from "@/lib/ai/phone/live-reconciliation";
 import { processVoiceNumberRenewals } from "@/lib/ai/phone/number-renewals";
 import { processCalendarSyncQueue } from "@/lib/integrations/calendar/sync";
@@ -56,6 +60,10 @@ import { runIsolatedTasks } from "./isolated-tasks";
  *   jobs after 90 days, write records after 12 months, OAuth tokens 7 days after they
  *   expire or are revoked
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
+ * - Google Ads "account created" conversions: hourly at :20, only when
+ *   GOOGLE_ADS_CONVERSIONS_ENABLED is "true". Uploads those whose ad click is 6 hours old
+ *   through Google's Data Manager API; expires clicks past 90 days, retries failures,
+ *   deletes finished rows after 30 days (lib/acquisition/google-ads-conversion-record.ts)
  * - Invoice transmission: every minute (converts, validates, and sends due invoices)
  * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
  * - Analytics aggregation: daily at 2:00 AM UTC (aggregates yesterday's data)
@@ -174,6 +182,25 @@ async function handleCron(request: Request) {
       );
       tasks.push(...daily.tasks);
       Object.assign(results, daily.results);
+    }
+
+    // Google Ads "account created" conversions: hourly, only once the flag is on, so
+    // an instance that never set it shows nothing. With the flag on and a value missing
+    // or wrong, the result says which (`off`).
+    const googleAds = minute === 20 ? googleAdsConversionsConfig() : null;
+    if (googleAds && (googleAds.enabled || googleAds.reason !== "not_enabled")) {
+      const hourly = await runIsolatedTasks(
+        [
+          {
+            task: "google-ads-conversions",
+            key: "googleAdsConversions",
+            run: () => uploadDueGoogleAdsConversions({ config: googleAds }),
+          },
+        ],
+        taskLogs,
+      );
+      tasks.push(...hourly.tasks);
+      Object.assign(results, hourly.results);
     }
 
     tasks.push("voice-sessions");

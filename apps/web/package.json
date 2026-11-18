@@ -19,6 +19,7 @@
     "variants:sync-inactive": "node --import tsx scripts/run-variant-axes-backfill.ts",
     "payg:audit-pricing": "node --import tsx scripts/run-payg-pricing-audit.ts",
     "payg:freeze-pricing": "node --import tsx scripts/run-payg-pricing-freeze.ts",
+    "google-ads:check": "node --import tsx scripts/run-google-ads-conversions-check.ts",
     "billing:mark": "node --import tsx scripts/run-billing-mark.ts",
     "billing:legacy-run": "node --import tsx scripts/run-billing-legacy-run.ts",
     "billing:gross-backfill": "node --import tsx scripts/run-billing-gross-backfill.ts",

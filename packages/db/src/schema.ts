@@ -135,6 +135,51 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
 
+/**
+ * The "account created" conversion owed to Google Ads for an account that came from an
+ * ad click (apps/web lib/acquisition/google-ads-conversion-record.ts): one row per account,
+ * added at sign-up when the louez.io cookie carried a click id and the upload is
+ * configured, then sent by the cron once the click is old enough. The account's id is
+ * the conversion's transaction id, so Google counts it once.
+ */
+export const googleAdsConversions = mysqlTable(
+  "google_ads_conversions",
+  {
+    userId: varchar("user_id", { length: 21 })
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clickIdType: mysqlEnum("click_id_type", ["gclid", "gbraid", "wbraid"]).notNull(),
+    clickId: varchar("click_id", { length: 255 }).notNull(),
+    // When the site saw the click (the cookie's `ts`), and when the account was created.
+    clickedAt: timestamp("clicked_at", { mode: "date", fsp: 3 }).notNull(),
+    convertedAt: timestamp("converted_at", { mode: "date", fsp: 3 }).notNull(),
+    // The person's consent to ad_user_data and ad_personalization, as captured at
+    // sign-up. Nothing captures it yet: `denied`, never assumed granted.
+    adUserDataConsent: mysqlEnum("ad_user_data_consent", ["granted", "denied"]).notNull(),
+    adPersonalizationConsent: mysqlEnum("ad_personalization_consent", [
+      "granted",
+      "denied",
+    ]).notNull(),
+    // pending → sending → sent; failed retries; expired (click too old) and abandoned
+    // (out of attempts) are never sent.
+    status: mysqlEnum("status", ["pending", "sending", "sent", "failed", "expired", "abandoned"])
+      .default("pending")
+      .notNull(),
+    attempts: int("attempts").default(0).notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date", fsp: 3 }).notNull(),
+    lockedUntil: timestamp("locked_until", { mode: "date", fsp: 3 }),
+    // Google's id of the upload that took it, for its diagnostics.
+    requestId: varchar("request_id", { length: 255 }),
+    lastError: text("last_error"),
+    sentAt: timestamp("sent_at", { mode: "date", fsp: 3 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    dueIdx: index("google_ads_conversions_due_idx").on(table.status, table.nextAttemptAt),
+  }),
+);
+
 export const accounts = mysqlTable(
   "accounts",
   {
