@@ -34,7 +34,7 @@ export const AgentAssistantOption = ({
   const [guideOpen, setGuideOpen] = useState(false);
   return (
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", className)}>
-      {showLogos && <AgentLogos className="scale-90" />}
+      {showLogos && <AgentLogos />}
       <p className="text-muted-foreground min-w-0 flex-1 basis-40 text-sm">
         {t("title")} <AgentAssistantInfo />
       </p>

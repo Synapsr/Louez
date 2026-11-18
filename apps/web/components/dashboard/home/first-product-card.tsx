@@ -44,7 +44,7 @@ export const FirstProductCard = ({ assistant, className }: FirstProductCardProps
         </Button>
       </div>
       {assistant && (
-        <AgentAssistantOption {...assistant} className="mt-3 border-t pt-3 sm:ps-12" />
+        <AgentAssistantOption {...assistant} className="mt-3 border-t pt-3" />
       )}
     </div>
   );
