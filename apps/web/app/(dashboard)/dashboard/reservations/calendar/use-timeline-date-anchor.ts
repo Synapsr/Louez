@@ -58,6 +58,19 @@ export function useTimelineDateAnchor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateParamTime]);
 
+  // With Cache Components, Next keeps the page we leave mounted in a hidden
+  // <Activity> and reveals it on back navigation. The hidden scroller can come
+  // back at scrollLeft 0, far from the date this view persisted on its way out
+  // (seen on the second reservation round trip). Forget that date when hidden,
+  // so the reveal re-centres on it. Effects with no dependencies are cleaned up
+  // only on unmount and when the view is hidden.
+  useEffect(
+    () => () => {
+      persistedDateRef.current = null;
+    },
+    [],
+  );
+
   /**
    * Records the day at the centre of the viewport before navigating away, so
    * coming back lands on it. Normalized to midnight to match how the param
