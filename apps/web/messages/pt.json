@@ -995,7 +995,11 @@
       "analyticsSales": "Vendas",
       "analyticsTraffic": "Tráfego",
       "multiStore": "Multi-lojas",
-      "aiCredits": "Créditos IA"
+      "aiCredits": "Créditos IA",
+      "visibility": "Dar-se a conhecer",
+      "visibilityFirstCustomers": "Primeiros clientes",
+      "visibilityAi": "Ser encontrado pelas IA",
+      "analyticsAi": "Assistentes de IA"
     },
     "home": {
       "viewAll": "Ver tudo",
@@ -3654,6 +3658,39 @@
         "productViews": "Visualizações de produtos",
         "cartAdditions": "Adicionados ao carrinho",
         "orders": "Pedidos"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Visitas vindas de assistentes de IA",
+          "vsPrevious": "vs período anterior",
+          "share": "Parte das suas visitas",
+          "shareOf": "de {count, plural, one {# visita} other {# visitas}} no total",
+          "bookings": "Reservas",
+          "bookingsSubtitle": "durante essas visitas",
+          "crawls": "Leituras pelos robôs de IA",
+          "llmsTxt": "{count, plural, =0 {nenhuma do seu llms.txt} one {das quais # do seu llms.txt} other {das quais # do seu llms.txt}}"
+        },
+        "trend": {
+          "title": "Visitas vindas de assistentes de IA",
+          "description": "E as suas reservas",
+          "visits": "Visitas",
+          "bookings": "Reservas"
+        },
+        "byAssistant": {
+          "title": "Por assistente"
+        },
+        "improve": "Melhorar o que as IA sabem de si",
+        "notIncluded": {
+          "title": "Não incluído no seu plano",
+          "description": "As visitas vindas de assistentes de IA não fazem parte do seu plano atual."
+        },
+        "note": {
+          "title": "Como contamos",
+          "visits": "Uma visita conta para um assistente quando chega da página dele (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) ou por um link que ele marcou.",
+          "bookings": "Uma reserva conta quando é feita online durante essa visita, no mesmo separador. Diz que o cliente veio por um assistente, não que o assistente a decidiu.",
+          "minimum": "Algumas apps de assistentes não dizem de onde vem o visitante: essas visitas contam como diretas. Estes números são um mínimo.",
+          "crawls": "As leituras são as passagens dos robôs dos assistentes pela sua loja e pelo seu llms.txt: um contador, nada sobre pessoas."
+        }
       }
     },
     "multiStore": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "Editar",
       "settingsCustomerFields": "Ficha de cliente",
       "needsALook": "A verificar",
-      "visibility": "Dê-se a conhecer"
+      "visibility": "Dê-se a conhecer",
+      "visibilityAi": "Ser encontrado pelas IA",
+      "analyticsAi": "Assistentes de IA"
     },
     "notificationsCenter": {
       "title": "Notificações",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "Visitas vindas de um assistente de IA",
           "crawls": "Leituras pelos robôs de IA",
-          "period": "Últimos 28 dias"
+          "period": "Últimos 28 dias",
+          "bookings": "Reservas durante essas visitas"
         },
         "details": "Detalhes",
         "table": {
           "assistant": "Assistente",
           "visits": "Visitas",
-          "reads": "Leituras"
+          "reads": "Leituras",
+          "bookings": "Reservas"
         },
         "assistants": {
           "other": "Outras IA"
@@ -7556,7 +7597,24 @@
           "reads": "A sua página para as IA (llms.txt): {count, plural, =0 {ainda não lida} one {lida uma vez} other {lida # vezes}}",
           "open": "Ver a página"
         },
-        "note": "Um assistente nem sempre indica de onde vem um visitante: estes números são um mínimo."
+        "note": "Um assistente nem sempre indica de onde vem um visitante: estes números são um mínimo.",
+        "readiness": {
+          "title": "O que as IA precisam de saber"
+        },
+        "results": {
+          "title": "O que as IA lhe trouxeram",
+          "openAnalytics": "Ver a evolução em Análises"
+        },
+        "summary": {
+          "fold": "Recolher",
+          "unfold": "Expandir",
+          "openPage": "Ver o detalhe",
+          "complete": "Completar as minhas informações"
+        },
+        "notIncluded": {
+          "title": "Não incluído no seu plano",
+          "description": "Ser encontrado pelos assistentes de IA não faz parte do seu plano atual."
+        }
       }
     }
   },

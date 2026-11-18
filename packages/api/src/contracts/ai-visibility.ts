@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { ANALYTICS_PERIODS, DEFAULT_ANALYTICS_PERIOD } from "./analytics";
 
 /**
  * « Être trouvé par les IA » (docs/product/visibilite-boutiques.md, phase 3):
@@ -68,7 +69,10 @@ const ASSISTANT_UTM_NAMES: Readonly<Record<string, Exclude<AiAssistant, "other">
 };
 
 const assistantOfHost = (host: string): AiAssistant | null => {
-  const normalized = host.trim().toLowerCase().replace(/^www\./, "");
+  const normalized = host
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "");
   for (const [domain, assistant] of Object.entries(ASSISTANT_HOSTS)) {
     if (normalized === domain || normalized.endsWith(`.${domain}`)) return assistant;
   }
@@ -186,7 +190,12 @@ export const AI_VISIBILITY_WINDOW_DAYS = 28;
  * What an assistant needs to describe a store well, in the order the
  * dashboard lists them. Each has a one-click fix in the dashboard.
  */
-export const AI_READINESS_ITEM_KEYS = ["description", "address", "businessHours", "products"] as const;
+export const AI_READINESS_ITEM_KEYS = [
+  "description",
+  "address",
+  "businessHours",
+  "products",
+] as const;
 export type AiReadinessItemKey = (typeof AI_READINESS_ITEM_KEYS)[number];
 
 export const aiReadinessItemSchema = z.object({
@@ -208,6 +217,11 @@ export const getAiVisibilityOutput = z.object({
     /** One entry per assistant that sent a visit, the most first. */
     byAssistant: z.array(z.object({ assistant: aiAssistantSchema, visits: z.number().int() })),
   }),
+  /**
+   * Reservations made online during a visit that came from an assistant, in
+   * the same window, test reservations aside (see `countAiBookings`).
+   */
+  bookings: z.object({ total: z.number().int() }),
   /** Requests of AI crawlers over the same window: a count, never who or what page. */
   crawls: z.object({
     total: z.number().int(),
@@ -218,6 +232,44 @@ export const getAiVisibilityOutput = z.object({
   }),
 });
 export type AiVisibilityView = z.infer<typeof getAiVisibilityOutput>;
+
+/** The AI sources view of Analyses, over one of the analytics periods. */
+export const getAiTrafficInput = z.object({
+  period: z.enum(ANALYTICS_PERIODS).default(DEFAULT_ANALYTICS_PERIOD),
+});
+
+export const getAiTrafficOutput = z.object({
+  period: z.enum(ANALYTICS_PERIODS),
+  /** How `series` is bucketed: days for the short periods, calendar months for the long ones. */
+  granularity: z.enum(["day", "month"]),
+  /** The store's time zone, at whose midnight the buckets are cut. */
+  timezone: z.string(),
+  visits: z.object({
+    /** Distinct visits from an assistant in the period. */
+    total: z.number().int(),
+    /** The same over the period before, for the trend. */
+    previous: z.number().int(),
+    /** Every visit of the period, whatever its source. */
+    all: z.number().int(),
+  }),
+  /** Reservations made during a visit from an assistant (`countAiBookings`). */
+  bookings: z.object({ total: z.number().int() }),
+  /** One point per bucket, in order: visits from an assistant, and reservations they made. */
+  series: z.array(
+    z.object({ start: z.date(), visits: z.number().int(), bookings: z.number().int() }),
+  ),
+  /** One row per assistant with a visit, a reservation or a crawler read; the most visits first. */
+  byAssistant: z.array(
+    z.object({
+      assistant: aiAssistantSchema,
+      visits: z.number().int(),
+      bookings: z.number().int(),
+      hits: z.number().int(),
+    }),
+  ),
+  crawls: z.object({ total: z.number().int(), llmsTxt: z.number().int() }),
+});
+export type AiTrafficView = z.infer<typeof getAiTrafficOutput>;
 
 export const aiVisibilityErrors = {
   notIncluded: () =>

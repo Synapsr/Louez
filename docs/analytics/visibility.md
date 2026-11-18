@@ -32,12 +32,16 @@ codes : jamais un nom, un message ni un lien.
 
 ### « Être trouvé par les IA »
 
-| Événement                  | Quand                                                         | Propriétés propres                                                 |
-| -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `visibility_ai_viewed`     | La section est montrée sur la page (une fois par affichage)   | `placement`, `ready_count`, `item_count`, `ai_visits`, `ai_crawls` |
-| `visibility_ai_fix_opened` | Le loueur ouvre la page qui règle un point, ou son `llms.txt` | `placement`, `item`                                                |
+| Événement                  | Quand                                                                                       | Propriétés propres                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `visibility_ai_viewed`     | La page IA, son résumé sur « Se faire connaître » ou la vue Analyses est montrée (une fois) | `placement`, `ready_count`, `item_count`, `ai_visits`, `ai_crawls` |
+| `visibility_ai_fix_opened` | Le loueur ouvre la page qui règle un point, son `llms.txt`, la page IA ou la vue Analyses   | `placement`, `item`                                                |
 
-- `item` : `description`, `address`, `businessHours`, `products`, ou `llms_txt`.
+- `placement` : `page` (`/dashboard/visibility/ai`), `summary` (la carte de « Se faire
+  connaître »), `analytics` (`/dashboard/analytics/ai` ; `ready_count` et `item_count` y
+  valent 0).
+- `item` : `description`, `address`, `businessHours`, `products`, `llms_txt`, `ai_page`,
+  `analytics`.
 - `ai_visits`, `ai_crawls` : les compteurs des 28 jours affichés, pas un détail.
 
 Sans `NEXT_PUBLIC_POSTHOG_KEY`, rien ne part ; la base suffit.
@@ -63,7 +67,12 @@ La page du guide affiche les visites (sessions distinctes) par source sur 28 jou
 - **Robots** : le layout de la boutique et les routes `llms.txt` comptent, après la réponse,
   les requêtes dont l'agent porte le jeton d'un robot connu (`AI_CRAWLERS`) : une ligne par
   boutique, jour (UTC), robot et ressource, dont `hits` augmente. Rien d'autre n'est gardé.
-- Lecture : `visibility.getAi` (28 jours), `packages/api/src/services/ai-visibility.ts`.
+- **Réservations** : `checkout_completed` dont `metadata.reservationId` nomme une réservation
+  non test de la boutique, dans une session dont les pages portent un assistant
+  (`readAiBookings`). Une réservation compte une fois.
+- Lecture : `visibility.getAi` (28 jours, page IA et résumé) et `visibility.getAiTraffic` (une
+  période d'Analyses, découpée comme les ventes, au minuit de la boutique),
+  `packages/api/src/services/ai-visibility.ts`.
 
 ## Analyses visées
 

@@ -16,6 +16,8 @@ export const AI_ASSISTANT_NAMES: Record<Exclude<AiAssistant, "other">, string> =
 export interface AiAssistantRow {
   assistant: AiAssistant;
   visits: number;
+  /** Reservations made during those visits, where the view counts them per assistant. */
+  bookings?: number;
   hits: number;
 }
 

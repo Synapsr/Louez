@@ -995,7 +995,11 @@
       "analyticsSales": "Verkäufe",
       "analyticsTraffic": "Traffic",
       "multiStore": "Multi-Shop",
-      "aiCredits": "KI-Guthaben"
+      "aiCredits": "KI-Guthaben",
+      "visibility": "Bekannt werden",
+      "visibilityFirstCustomers": "Erste Kunden",
+      "visibilityAi": "Von KI gefunden werden",
+      "analyticsAi": "KI-Assistenten"
     },
     "multiStore": {
       "title": "Multi-Shop",
@@ -3693,6 +3697,39 @@
         "productViews": "Produktansichten",
         "cartAdditions": "Zum Warenkorb",
         "orders": "Bestellungen"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Besuche über KI-Assistenten",
+          "vsPrevious": "ggü. Vorperiode",
+          "share": "Anteil an Ihren Besuchen",
+          "shareOf": "von {count, plural, one {# Besuch} other {# Besuchen}} insgesamt",
+          "bookings": "Buchungen",
+          "bookingsSubtitle": "während dieser Besuche",
+          "crawls": "Abrufe durch KI-Crawler",
+          "llmsTxt": "{count, plural, =0 {noch keiner Ihrer llms.txt} one {davon # Ihrer llms.txt} other {davon # Ihrer llms.txt}}"
+        },
+        "trend": {
+          "title": "Besuche über KI-Assistenten",
+          "description": "Und ihre Buchungen",
+          "visits": "Besuche",
+          "bookings": "Buchungen"
+        },
+        "byAssistant": {
+          "title": "Nach Assistent"
+        },
+        "improve": "Verbessern, was KI-Assistenten über Sie wissen",
+        "notIncluded": {
+          "title": "Nicht in Ihrem Tarif enthalten",
+          "description": "Besuche über KI-Assistenten sind nicht Teil Ihres aktuellen Tarifs."
+        },
+        "note": {
+          "title": "So zählen wir",
+          "visits": "Ein Besuch zählt für einen Assistenten, wenn er von dessen Seite kommt (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat …) oder über einen von ihm markierten Link.",
+          "bookings": "Eine Buchung zählt, wenn sie während dieses Besuchs im selben Browser-Tab online getätigt wird. Sie zeigt, dass der Kunde über einen Assistenten kam, nicht dass der Assistent sie veranlasst hat.",
+          "minimum": "Manche Assistenten-Apps verraten nicht, woher ein Besucher kommt: Diese Besuche zählen als direkt. Die Zahlen sind ein Mindestwert.",
+          "crawls": "Abrufe sind Besuche der Roboter der Assistenten in Ihrem Shop und seiner llms.txt: ein Zähler, nichts über Personen."
+        }
       }
     },
     "settings": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "Bearbeiten",
       "settingsCustomerFields": "Kundendaten",
       "needsALook": "Zu prüfen",
-      "visibility": "Bekannt werden"
+      "visibility": "Bekannt werden",
+      "visibilityAi": "Von KI gefunden werden",
+      "analyticsAi": "KI-Assistenten"
     },
     "notificationsCenter": {
       "title": "Benachrichtigungen",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "Besuche über einen KI-Assistenten",
           "crawls": "Abrufe durch KI-Crawler",
-          "period": "Letzte 28 Tage"
+          "period": "Letzte 28 Tage",
+          "bookings": "Buchungen während dieser Besuche"
         },
         "details": "Details",
         "table": {
           "assistant": "Assistent",
           "visits": "Besuche",
-          "reads": "Abrufe"
+          "reads": "Abrufe",
+          "bookings": "Buchungen"
         },
         "assistants": {
           "other": "Andere KI"
@@ -7556,7 +7597,24 @@
           "reads": "Ihre Seite für KI-Assistenten (llms.txt): {count, plural, =0 {noch nicht abgerufen} one {einmal abgerufen} other {# Mal abgerufen}}",
           "open": "Seite ansehen"
         },
-        "note": "Ein Assistent gibt nicht immer an, woher ein Besucher kommt: Diese Zahlen sind ein Mindestwert."
+        "note": "Ein Assistent gibt nicht immer an, woher ein Besucher kommt: Diese Zahlen sind ein Mindestwert.",
+        "readiness": {
+          "title": "Was KI-Assistenten wissen müssen"
+        },
+        "results": {
+          "title": "Was KI-Assistenten Ihnen gebracht haben",
+          "openAnalytics": "Verlauf in den Analysen ansehen"
+        },
+        "summary": {
+          "fold": "Einklappen",
+          "unfold": "Ausklappen",
+          "openPage": "Details ansehen",
+          "complete": "Meine Angaben ergänzen"
+        },
+        "notIncluded": {
+          "title": "Nicht in Ihrem Tarif enthalten",
+          "description": "Von KI-Assistenten gefunden zu werden ist nicht Teil Ihres aktuellen Tarifs."
+        }
       }
     }
   },

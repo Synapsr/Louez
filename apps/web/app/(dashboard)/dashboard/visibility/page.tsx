@@ -13,7 +13,6 @@ import { VisibilityGuide } from "@/components/dashboard/visibility/visibility-gu
 import { env } from "@/env";
 import { canUseAiVisibility } from "@/lib/ai-visibility/entitlement";
 import { serverApi } from "@/lib/api/server-api";
-import { isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { getProductPath } from "@/lib/seo";
 import { getCurrentStore } from "@/lib/store-context";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -74,13 +73,7 @@ export default async function VisibilityPage() {
         url: getStorefrontUrl(store.slug, getProductPath(product)),
       }))}
       initialView={view}
-      ai={
-        aiView && {
-          initialView: aiView,
-          llmsTxtUrl: getStorefrontUrl(store.slug, "/llms.txt"),
-          indexingEnabled: isSearchIndexingEnabled(),
-        }
-      }
+      aiView={aiView}
       marketplaceAvailable={Boolean(env.MARKETPLACE_URL)}
     />
   );

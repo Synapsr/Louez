@@ -209,17 +209,39 @@ mesure ce qui en vient, et dit au loueur ce qui manque.
 - **Lectures par les robots des IA** : la boutique compte les requêtes dont l'agent est celui
   d'un robot connu, par jour, robot et ressource (`page` ou `llms_txt`) dans `store_ai_crawls`.
   Un compteur seulement : ni adresse IP, ni agent complet, ni page.
-- **Dans le dashboard**, section « Être trouvé par les IA » de « Se faire connaître » : visites
-  venues d'un assistant et lectures sur 28 jours ; le détail par assistant et le nombre de
-  lectures de `llms.txt` restent repliés.
+- **Réservations venues d'un assistant** : une réservation compte quand l'événement
+  `checkout_completed` de la boutique la nomme (`metadata.reservationId`) dans une visite dont
+  les pages portent un assistant (même onglet ; une visite commencée la veille compte encore).
+  Hors réservations test, hors événements sans réservation (antérieurs à ce champ), une seule
+  fois par réservation. Elle dit que le client est venu par un assistant, pas que l'assistant
+  l'a décidé ; rien n'est inventé pour les visites sans référent.
 - **PostHog** : `visibility_ai_viewed` et `visibility_ai_fix_opened`
   (`docs/analytics/visibility.md`).
 - **Correctif lié** : la page produit envoyait son slug comme `productId` ; `/api/track` le
   refusait (400) et aucune vue de page produit n'était comptée. Elle envoie l'id.
 
+### Où le loueur le trouve
+
+Revue de Téo (18 novembre 2026) : une fois la carte d'accueil fermée, plus rien ne menait au
+guide. Désormais :
+
+- **Barre latérale, toujours** : « Se faire connaître » (sous « Produits »), avec deux entrées,
+  « Premiers clients » (`/dashboard/visibility`, les trois gestes) et « Être trouvé par les IA »
+  (`/dashboard/visibility/ai`). La page IA s'ouvre aussi avant la mise en ligne : compléter ses
+  informations sert dès ce moment ; le lien vers `llms.txt` n'y paraît qu'une fois en ligne.
+- **Analyses → Assistants IA** (`/dashboard/analytics/ai`), à côté de Ventes et Trafic, avec le
+  même filtre de période : visites venues des assistants (et tendance contre la période
+  d'avant), leur part dans toutes les visites, réservations passées pendant ces visites,
+  lectures des robots (dont `llms.txt`), courbe visites/réservations, tableau par assistant, et
+  « Comment on compte » replié (les limites ci-dessous). Procédure `visibility.getAiTraffic`.
+- **Résumé sur « Se faire connaître »** : une carte « Être trouvé par les IA » (x sur 4 prêts,
+  visites, réservations et lectures sur 28 jours, boutons vers la page IA et vers Analyses). La
+  fermer la **replie** sur son titre, sans jamais la cacher ; le choix reste sur le navigateur
+  (`localStorage`).
+
 ### Ce qui manque au loueur
 
-Quatre points, dans la section du guide, chacun avec un bouton vers la page qui le règle :
+Quatre points, sur la page « Être trouvé par les IA », chacun avec un bouton vers la page qui le règle :
 description de la boutique (au moins 40 caractères avec l'accroche, Boutique en ligne →
 Identité), adresse (Boutique en ligne → Contact), horaires d'ouverture (au moins un jour ouvert,
 Réglages → Horaires), produits actifs avec photo et prix (« 3 produits sur 4 », Produits). Pas
@@ -229,8 +251,9 @@ de carte de plus sur l'accueil : l'accueil ne montre qu'une prochaine étape.
 
 `canUseAiVisibility(store)` (`apps/web/lib/ai-visibility/entitlement.ts`) décide seule, et
 répond oui pour toutes les boutiques. L'API la consulte par `ApiPorts.aiVisibility` (procédure
-`visibility.getAi`, refus `AI_VISIBILITY_NOT_INCLUDED`), la boutique pour `llms.txt`, la page du
-guide pour sa section. Pour la lier à une offre ou à une option payante, seule cette fonction
+`visibility.getAi` et `visibility.getAiTraffic`, refus `AI_VISIBILITY_NOT_INCLUDED`), la
+boutique pour `llms.txt`, les pages du dashboard pour leurs vues (sans le droit : un message à
+la place, l'entrée de la barre latérale reste). Pour la lier à une offre ou à une option payante, seule cette fonction
 change (par exemple un drapeau `aiVisibility` dans `PlanFeatures`, lu par `getStorePlan`).
 Restent hors du droit, exprès : le JSON-LD, les titres, le sitemap et le robots.txt de toutes
 les boutiques (le référencement de base), et le comptage des visites et lectures, pour qu'une

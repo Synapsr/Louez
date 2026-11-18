@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Code2, Store } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import type { AiVisibilityView } from "@louez/api/contracts/ai-visibility";
 import type { VisibilityStepKey, VisibilityView } from "@louez/api/contracts/visibility";
 import {
   Button,
@@ -25,7 +26,7 @@ import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-se
 import { apiErrorKey } from "@/lib/orpc/errors";
 import { visibilityMutations, visibilityQueries } from "@/lib/queries/visibility.queries";
 
-import { AiVisibilityCard } from "./ai-visibility-card";
+import { AiVisibilitySummaryCard } from "./ai-visibility-summary-card";
 import { GoogleBusinessPanel } from "./google-business-panel";
 import { PosterPanel } from "./poster-panel";
 import { SharePanel, type ShareableProduct } from "./share-panel";
@@ -45,8 +46,8 @@ interface VisibilityGuideProps {
   products: readonly ShareableProduct[];
   /** Read by the page on the server. */
   initialView: VisibilityView;
-  /** « Être trouvé par les IA »; null for a store without it (`canUseAiVisibility`). */
-  ai: Omit<ComponentProps<typeof AiVisibilityCard>, "storeId"> | null;
+  /** « Être trouvé par les IA », its summary; null for a store without it (`canUseAiVisibility`). */
+  aiView: AiVisibilityView | null;
   /** The instance publishes to reeent (`MARKETPLACE_URL`). */
   marketplaceAvailable: boolean;
 }
@@ -62,7 +63,7 @@ export const VisibilityGuide = ({
   storeUrl,
   products,
   initialView,
-  ai,
+  aiView,
   marketplaceAvailable,
 }: VisibilityGuideProps) => {
   const t = useTranslations("dashboard.visibility");
@@ -156,7 +157,7 @@ export const VisibilityGuide = ({
 
       <VisibilityVisitsCard visits={view.visits} />
 
-      {ai && <AiVisibilityCard storeId={storeId} {...ai} />}
+      {aiView && <AiVisibilitySummaryCard storeId={storeId} view={aiView} />}
 
       <DashboardSectionCard title={t("other.title")} contentClassName="-mx-2 space-y-1 sm:-mx-3">
         {marketplaceAvailable && (

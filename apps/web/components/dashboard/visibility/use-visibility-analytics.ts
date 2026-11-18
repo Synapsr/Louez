@@ -16,6 +16,12 @@ import {
 export type VisibilityPlacement = "page" | "home_card" | "storefront_card";
 
 /**
+ * Where « Être trouvé par les IA » is shown: its own page, its summary on
+ * « Se faire connaître », the AI sources view of Analyses.
+ */
+export type AiVisibilityPlacement = "page" | "summary" | "analytics";
+
+/**
  * The guide's PostHog events, on the store's group. Codes only: never a
  * name, a message or a link.
  */
@@ -55,9 +61,12 @@ export const useVisibilityAnalytics = (storeId: string) => {
       [capture],
     ),
     aiViewed: useCallback(
-      (facts: { readyCount: number; itemCount: number; aiVisits: number; aiCrawls: number }) =>
+      (
+        placement: AiVisibilityPlacement,
+        facts: { readyCount: number; itemCount: number; aiVisits: number; aiCrawls: number },
+      ) =>
         capture(productAnalyticsEvents.visibilityAiViewed, {
-          placement: "page",
+          placement,
           ready_count: facts.readyCount,
           item_count: facts.itemCount,
           ai_visits: facts.aiVisits,
@@ -65,10 +74,16 @@ export const useVisibilityAnalytics = (storeId: string) => {
         }),
       [capture],
     ),
-    /** `llms_txt`: the owner opened the file assistants read. */
+    /**
+     * A readiness item's fix, or: `llms_txt` the file assistants read,
+     * `ai_page` the AI page, `analytics` the AI sources view.
+     */
     aiFixOpened: useCallback(
-      (item: AiReadinessItemKey | "llms_txt") =>
-        capture(productAnalyticsEvents.visibilityAiFixOpened, { placement: "page", item }),
+      (
+        placement: AiVisibilityPlacement,
+        item: AiReadinessItemKey | "llms_txt" | "ai_page" | "analytics",
+      ) =>
+        capture(productAnalyticsEvents.visibilityAiFixOpened, { placement, item }),
       [capture],
     ),
   };

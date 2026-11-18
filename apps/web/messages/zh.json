@@ -995,7 +995,11 @@
       "settings": "设置",
       "store": "我的商店",
       "multiStore": "多店",
-      "aiCredits": "AI 额度"
+      "aiCredits": "AI 额度",
+      "visibility": "让人知道你",
+      "visibilityFirstCustomers": "第一批客户",
+      "visibilityAi": "让 AI 找到你",
+      "analyticsAi": "AI 助手"
     },
     "multiStore": {
       "title": "多店",
@@ -3693,6 +3697,39 @@
         "productViews": "产品浏览",
         "cartAdditions": "购物车添加",
         "orders": "订单"
+      },
+      "ai": {
+        "stats": {
+          "visits": "来自 AI 助手的访问",
+          "vsPrevious": "与上一周期相比",
+          "share": "占你访问量的比例",
+          "shareOf": "共 {count, plural, other {# 次访问}}",
+          "bookings": "预订",
+          "bookingsSubtitle": "在这些访问中",
+          "crawls": "AI 爬虫读取次数",
+          "llmsTxt": "{count, plural, =0 {你的 llms.txt 尚未被读取} other {其中你的 llms.txt 被读取 # 次}}"
+        },
+        "trend": {
+          "title": "来自 AI 助手的访问",
+          "description": "以及其中的预订",
+          "visits": "访问",
+          "bookings": "预订"
+        },
+        "byAssistant": {
+          "title": "按助手"
+        },
+        "improve": "完善 AI 对你的了解",
+        "notIncluded": {
+          "title": "你的套餐未包含",
+          "description": "来自 AI 助手的访问不在你当前的套餐中。"
+        },
+        "note": {
+          "title": "我们如何统计",
+          "visits": "当访问来自某个助手的页面（ChatGPT、Perplexity、Claude、Gemini、Copilot、Le Chat 等）或其标记的链接时，计入该助手。",
+          "bookings": "在该次访问中、同一浏览器标签页内在线完成的预订才计入。这说明客户经由助手而来，而不是助手做出了预订决定。",
+          "minimum": "部分助手应用不会告知访客来源：这些访问计为直接访问。因此这些数字是最低值。",
+          "crawls": "读取是助手的机器人访问你的店铺及其 llms.txt 的次数：只是计数，不涉及任何个人信息。"
+        }
       }
     },
     "settings": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "编辑",
       "settingsCustomerFields": "客户档案",
       "needsALook": "待检查",
-      "visibility": "让客户找到你"
+      "visibility": "让客户找到你",
+      "visibilityAi": "让 AI 找到你",
+      "analyticsAi": "AI 助手"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "来自 AI 助手的访问",
           "crawls": "AI 爬虫读取次数",
-          "period": "最近 28 天"
+          "period": "最近 28 天",
+          "bookings": "这些访问中产生的预订"
         },
         "details": "详情",
         "table": {
           "assistant": "助手",
           "visits": "访问",
-          "reads": "读取"
+          "reads": "读取",
+          "bookings": "预订"
         },
         "assistants": {
           "other": "其他 AI"
@@ -7556,7 +7597,24 @@
           "reads": "你为 AI 准备的页面（llms.txt）：{count, plural, =0 {尚未被读取} other {已被读取 # 次}}",
           "open": "查看页面"
         },
-        "note": "AI 助手并不总会注明访客来源：这些数字是最低值。"
+        "note": "AI 助手并不总会注明访客来源：这些数字是最低值。",
+        "readiness": {
+          "title": "AI 需要知道的信息"
+        },
+        "results": {
+          "title": "AI 为你带来的成果",
+          "openAnalytics": "在分析中查看趋势"
+        },
+        "summary": {
+          "fold": "收起",
+          "unfold": "展开",
+          "openPage": "查看详情",
+          "complete": "完善我的信息"
+        },
+        "notIncluded": {
+          "title": "你的套餐未包含",
+          "description": "被 AI 助手找到不在你当前的套餐中。"
+        }
       }
     }
   },

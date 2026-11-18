@@ -995,7 +995,11 @@
       "settings": "Instellingen",
       "store": "Mijn winkel",
       "multiStore": "Multi-winkel",
-      "aiCredits": "AI-tegoed"
+      "aiCredits": "AI-tegoed",
+      "visibility": "Bekend worden",
+      "visibilityFirstCustomers": "Eerste klanten",
+      "visibilityAi": "Gevonden worden door AI",
+      "analyticsAi": "AI-assistenten"
     },
     "home": {
       "viewAll": "Alles bekijken",
@@ -3654,6 +3658,39 @@
         "productViews": "Productweergaven",
         "cartAdditions": "Toegevoegd aan winkelwagen",
         "orders": "Bestellingen"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Bezoeken via AI-assistenten",
+          "vsPrevious": "t.o.v. vorige periode",
+          "share": "Aandeel van je bezoeken",
+          "shareOf": "van {count, plural, one {# bezoek} other {# bezoeken}} in totaal",
+          "bookings": "Reserveringen",
+          "bookingsSubtitle": "tijdens die bezoeken",
+          "crawls": "Bezoeken van AI-crawlers",
+          "llmsTxt": "{count, plural, =0 {nog geen van je llms.txt} one {waarvan # van je llms.txt} other {waarvan # van je llms.txt}}"
+        },
+        "trend": {
+          "title": "Bezoeken via AI-assistenten",
+          "description": "En hun reserveringen",
+          "visits": "Bezoeken",
+          "bookings": "Reserveringen"
+        },
+        "byAssistant": {
+          "title": "Per assistent"
+        },
+        "improve": "Verbeter wat AI-assistenten over je weten",
+        "notIncluded": {
+          "title": "Niet in je abonnement",
+          "description": "Bezoeken via AI-assistenten horen niet bij je huidige abonnement."
+        },
+        "note": {
+          "title": "Hoe we tellen",
+          "visits": "Een bezoek telt voor een assistent als het van zijn pagina komt (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) of via een link die hij markeerde.",
+          "bookings": "Een reservering telt als ze online tijdens dat bezoek wordt gedaan, in hetzelfde tabblad. Ze zegt dat de klant via een assistent kwam, niet dat de assistent haar besliste.",
+          "minimum": "Sommige assistent-apps zeggen niet waar een bezoeker vandaan komt: die bezoeken tellen als direct. Deze cijfers zijn een minimum.",
+          "crawls": "Crawls zijn bezoeken van de robots van de assistenten aan je winkel en zijn llms.txt: een teller, niets over personen."
+        }
       }
     },
     "multiStore": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "Bewerken",
       "settingsCustomerFields": "Klantgegevens",
       "needsALook": "Te controleren",
-      "visibility": "Maak je bekend"
+      "visibility": "Maak je bekend",
+      "visibilityAi": "Gevonden worden door AI",
+      "analyticsAi": "AI-assistenten"
     },
     "notificationsCenter": {
       "title": "Meldingen",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "Bezoeken via een AI-assistent",
           "crawls": "Bezoeken van AI-crawlers",
-          "period": "Afgelopen 28 dagen"
+          "period": "Afgelopen 28 dagen",
+          "bookings": "Reserveringen tijdens die bezoeken"
         },
         "details": "Details",
         "table": {
           "assistant": "Assistent",
           "visits": "Bezoeken",
-          "reads": "Crawls"
+          "reads": "Crawls",
+          "bookings": "Reserveringen"
         },
         "assistants": {
           "other": "Andere AI"
@@ -7556,7 +7597,24 @@
           "reads": "Je pagina voor AI (llms.txt): {count, plural, =0 {nog niet gelezen} one {één keer gelezen} other {# keer gelezen}}",
           "open": "Pagina bekijken"
         },
-        "note": "Een assistent vermeldt niet altijd waar een bezoeker vandaan komt: deze cijfers zijn een minimum."
+        "note": "Een assistent vermeldt niet altijd waar een bezoeker vandaan komt: deze cijfers zijn een minimum.",
+        "readiness": {
+          "title": "Wat AI-assistenten moeten weten"
+        },
+        "results": {
+          "title": "Wat AI-assistenten je opleverden",
+          "openAnalytics": "Bekijk het verloop in Analyses"
+        },
+        "summary": {
+          "fold": "Inklappen",
+          "unfold": "Uitklappen",
+          "openPage": "Details bekijken",
+          "complete": "Mijn gegevens aanvullen"
+        },
+        "notIncluded": {
+          "title": "Niet in je abonnement",
+          "description": "Gevonden worden door AI-assistenten hoort niet bij je huidige abonnement."
+        }
       }
     }
   },

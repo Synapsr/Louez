@@ -9,9 +9,15 @@ for (const name of ["@louez/types", "@louez/utils", "@louez/validations"]) {
   mock.module(name, { namedExports });
 }
 
-const { buildAiReadiness, crawlDayOf, toCrawlsByAssistant, toVisitsByAssistant } = await import(
-  "./ai-visibility"
-);
+const {
+  buildAiReadiness,
+  countPerBucket,
+  crawlDayOf,
+  toAiBookings,
+  toAiTrafficByAssistant,
+  toCrawlsByAssistant,
+  toVisitsByAssistant,
+} = await import("./ai-visibility");
 
 const OPEN_MONDAY = {
   enabled: true,
@@ -51,7 +57,10 @@ test("a complete store is ready on every item, in the dashboard's order", () => 
 
 test("a description of a few words, or markup alone, is not enough", () => {
   assert.equal(readyOf({ ...complete, description: "<p>Bienvenue !</p>" }).description, false);
-  assert.equal(readyOf({ ...complete, description: "<p><br></p>", tagline: null }).description, false);
+  assert.equal(
+    readyOf({ ...complete, description: "<p><br></p>", tagline: null }).description,
+    false,
+  );
   // The tagline counts with the description.
   assert.equal(
     readyOf({
@@ -124,4 +133,70 @@ test("crawler reads fold into their assistant; llms.txt reads are counted apart"
 
 test("a crawl counts on its UTC day", () => {
   assert.equal(crawlDayOf(new Date("2026-11-18T23:30:00-02:00")), "2026-11-19");
+});
+
+const session = (sessionId: string, assistant: "chatgpt" | "perplexity" | "claude") => ({
+  sessionId,
+  assistant,
+  firstAt: new Date("2026-11-17T10:00:00Z"),
+});
+
+test("a booking takes the assistant of its visit, counts once, and needs a visit from an assistant", () => {
+  const at = new Date("2026-11-17T11:00:00Z");
+  assert.deepEqual(
+    toAiBookings(
+      [
+        { sessionId: "s1", reservationId: "r1", at },
+        // The same reservation reported twice (a reload of the confirmation).
+        { sessionId: "s1", reservationId: "r1", at },
+        { sessionId: "s2", reservationId: "r2", at },
+        // A session no assistant sent.
+        { sessionId: "s9", reservationId: "r9", at },
+      ],
+      [session("s1", "chatgpt"), session("s2", "perplexity")],
+    ),
+    [
+      { reservationId: "r1", assistant: "chatgpt", at },
+      { reservationId: "r2", assistant: "perplexity", at },
+    ],
+  );
+});
+
+test("dates fall in their bucket, start included and end excluded", () => {
+  const buckets = [
+    { start: new Date("2026-11-16T00:00:00Z"), end: new Date("2026-11-17T00:00:00Z") },
+    { start: new Date("2026-11-17T00:00:00Z"), end: new Date("2026-11-18T00:00:00Z") },
+  ];
+  assert.deepEqual(
+    countPerBucket(
+      [
+        new Date("2026-11-16T00:00:00Z"),
+        new Date("2026-11-16T23:59:59Z"),
+        new Date("2026-11-17T00:00:00Z"),
+        new Date("2026-11-18T00:00:00Z"),
+      ],
+      buckets,
+    ),
+    [2, 1],
+  );
+});
+
+test("per assistant: visits, bookings and crawler reads together, the most visits first", () => {
+  const at = new Date("2026-11-17T11:00:00Z");
+  assert.deepEqual(
+    toAiTrafficByAssistant({
+      sessions: [session("s1", "chatgpt"), session("s2", "chatgpt"), session("s3", "perplexity")],
+      bookings: [{ reservationId: "r1", assistant: "perplexity", at }],
+      crawls: [
+        { crawler: "claudebot", hits: "5" },
+        { crawler: "gptbot", hits: 2 },
+        { crawler: "retired_bot", hits: 9 },
+      ],
+    }),
+    [
+      { assistant: "chatgpt", visits: 2, bookings: 0, hits: 2 },
+      { assistant: "perplexity", visits: 1, bookings: 1, hits: 0 },
+      { assistant: "claude", visits: 0, bookings: 0, hits: 5 },
+    ],
+  );
 });

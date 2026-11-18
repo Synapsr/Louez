@@ -29,13 +29,15 @@ export interface TrendDataPoint {
 interface TrendChartProps {
   data: TrendDataPoint[];
   showConversions?: boolean;
+  /** The two series' names, when they count something else than visitors and orders. */
+  labels?: { visitors: string; conversions: string };
 }
 
 /** Same hues as the badge tokens, so charts and badges agree. */
 const VISITORS_COLOR = "var(--primary)";
 const CONVERSIONS_COLOR = "var(--badge-success-foreground)";
 
-export const TrendChart = ({ data, showConversions = true }: TrendChartProps) => {
+export const TrendChart = ({ data, showConversions = true, labels }: TrendChartProps) => {
   const t = useTranslations("dashboard.analytics");
 
   if (data.every((point) => point.visitors === 0 && point.pageViews === 0)) {
@@ -104,7 +106,7 @@ export const TrendChart = ({ data, showConversions = true }: TrendChartProps) =>
           <Area
             type="monotone"
             dataKey="visitors"
-            name={t("visitors")}
+            name={labels?.visitors ?? t("visitors")}
             stroke={VISITORS_COLOR}
             strokeWidth={2}
             fillOpacity={1}
@@ -114,7 +116,7 @@ export const TrendChart = ({ data, showConversions = true }: TrendChartProps) =>
             <Area
               type="monotone"
               dataKey="conversions"
-              name={t("conversions")}
+              name={labels?.conversions ?? t("conversions")}
               stroke={CONVERSIONS_COLOR}
               strokeWidth={2}
               fillOpacity={1}

@@ -995,7 +995,11 @@
       "settings": "Settings",
       "store": "My store",
       "multiStore": "Multi-store",
-      "aiCredits": "AI credits"
+      "aiCredits": "AI credits",
+      "visibility": "Get known",
+      "visibilityFirstCustomers": "First customers",
+      "visibilityAi": "Be found by AI",
+      "analyticsAi": "AI assistants"
     },
     "multiStore": {
       "title": "Multi-store",
@@ -3693,6 +3697,39 @@
         "productViews": "Product views",
         "cartAdditions": "Cart additions",
         "orders": "Orders"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Visits from AI assistants",
+          "vsPrevious": "vs previous period",
+          "share": "Share of your visits",
+          "shareOf": "of {count, plural, one {# visit} other {# visits}} in total",
+          "bookings": "Bookings",
+          "bookingsSubtitle": "during those visits",
+          "crawls": "Reads by AI crawlers",
+          "llmsTxt": "{count, plural, =0 {none of your llms.txt yet} one {incl. # of your llms.txt} other {incl. # of your llms.txt}}"
+        },
+        "trend": {
+          "title": "Visits from AI assistants",
+          "description": "And their bookings",
+          "visits": "Visits",
+          "bookings": "Bookings"
+        },
+        "byAssistant": {
+          "title": "By assistant"
+        },
+        "improve": "Improve what AI assistants know about you",
+        "notIncluded": {
+          "title": "Not included in your plan",
+          "description": "Visits from AI assistants are not part of your current plan."
+        },
+        "note": {
+          "title": "How we count",
+          "visits": "A visit counts for an assistant when it arrives from the assistant's page (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) or through a link it tagged.",
+          "bookings": "A booking counts when it is made online during that visit, in the same browser tab. It says the customer came through an assistant, not that the assistant decided it.",
+          "minimum": "Some assistant apps do not say where a visitor comes from: those visits count as direct. These figures are a minimum.",
+          "crawls": "Reads are visits of the assistants' robots to your store and its llms.txt: a counter, nothing about people."
+        }
       }
     },
     "settings": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "Edit",
       "settingsCustomerFields": "Customer record",
       "needsALook": "To check",
-      "visibility": "Get known"
+      "visibility": "Get known",
+      "visibilityAi": "Be found by AI",
+      "analyticsAi": "AI assistants"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "Visits from an AI assistant",
           "crawls": "Reads by AI crawlers",
-          "period": "Last 28 days"
+          "period": "Last 28 days",
+          "bookings": "Bookings made during those visits"
         },
         "details": "Details",
         "table": {
           "assistant": "Assistant",
           "visits": "Visits",
-          "reads": "Reads"
+          "reads": "Reads",
+          "bookings": "Bookings"
         },
         "assistants": {
           "other": "Other AI"
@@ -7556,7 +7597,24 @@
           "reads": "Your page for AI assistants (llms.txt): read {count, plural, =0 {no times yet} one {once} other {# times}}",
           "open": "View the page"
         },
-        "note": "An assistant does not always say where a visitor comes from: these figures are a minimum."
+        "note": "An assistant does not always say where a visitor comes from: these figures are a minimum.",
+        "readiness": {
+          "title": "What AI assistants need to know"
+        },
+        "results": {
+          "title": "What AI assistants brought you",
+          "openAnalytics": "See the trend in Analytics"
+        },
+        "summary": {
+          "fold": "Fold",
+          "unfold": "Unfold",
+          "openPage": "See the details",
+          "complete": "Complete my information"
+        },
+        "notIncluded": {
+          "title": "Not included in your plan",
+          "description": "Being found by AI assistants is not part of your current plan."
+        }
       }
     }
   },

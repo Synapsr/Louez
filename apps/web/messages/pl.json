@@ -995,7 +995,11 @@
       "analyticsSales": "Sprzedaż",
       "analyticsTraffic": "Ruch",
       "multiStore": "Multi-sklep",
-      "aiCredits": "Kredyty AI"
+      "aiCredits": "Kredyty AI",
+      "visibility": "Daj się poznać",
+      "visibilityFirstCustomers": "Pierwsi klienci",
+      "visibilityAi": "Bądź widoczny dla AI",
+      "analyticsAi": "Asystenci AI"
     },
     "home": {
       "viewAll": "Zobacz wszystko",
@@ -3654,6 +3658,39 @@
         "productViews": "Wyświetlenia produktów",
         "cartAdditions": "Dodane do koszyka",
         "orders": "Zamówienia"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Wizyty z asystentów AI",
+          "vsPrevious": "vs poprzedni okres",
+          "share": "Udział w Twoich wizytach",
+          "shareOf": "z {count, plural, one {# wizyty} few {# wizyt} many {# wizyt} other {# wizyt}} łącznie",
+          "bookings": "Rezerwacje",
+          "bookingsSubtitle": "podczas tych wizyt",
+          "crawls": "Odczyty przez roboty AI",
+          "llmsTxt": "{count, plural, =0 {żaden z Twojego llms.txt} one {w tym # z Twojego llms.txt} few {w tym # z Twojego llms.txt} many {w tym # z Twojego llms.txt} other {w tym # z Twojego llms.txt}}"
+        },
+        "trend": {
+          "title": "Wizyty z asystentów AI",
+          "description": "I ich rezerwacje",
+          "visits": "Wizyty",
+          "bookings": "Rezerwacje"
+        },
+        "byAssistant": {
+          "title": "Według asystenta"
+        },
+        "improve": "Popraw to, co AI wie o Tobie",
+        "notIncluded": {
+          "title": "Nie ma w Twoim planie",
+          "description": "Wizyty z asystentów AI nie są częścią Twojego obecnego planu."
+        },
+        "note": {
+          "title": "Jak liczymy",
+          "visits": "Wizyta liczy się dla asystenta, gdy przychodzi z jego strony (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) lub przez oznaczony przez niego link.",
+          "bookings": "Rezerwacja liczy się, gdy zostanie złożona online podczas tej wizyty, w tej samej karcie. Mówi, że klient przyszedł przez asystenta, nie że asystent o niej zdecydował.",
+          "minimum": "Niektóre aplikacje asystentów nie podają, skąd przychodzi odwiedzający: te wizyty liczą się jako bezpośrednie. Te liczby to minimum.",
+          "crawls": "Odczyty to wizyty robotów asystentów w Twoim sklepie i jego llms.txt: licznik, nic o osobach."
+        }
       }
     },
     "multiStore": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "Edytuj",
       "settingsCustomerFields": "Karta klienta",
       "needsALook": "Do sprawdzenia",
-      "visibility": "Dotrzyj do klientów"
+      "visibility": "Dotrzyj do klientów",
+      "visibilityAi": "Bądź widoczny dla AI",
+      "analyticsAi": "Asystenci AI"
     },
     "notificationsCenter": {
       "title": "Powiadomienia",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "Wizyty z asystenta AI",
           "crawls": "Odczyty przez roboty AI",
-          "period": "Ostatnie 28 dni"
+          "period": "Ostatnie 28 dni",
+          "bookings": "Rezerwacje podczas tych wizyt"
         },
         "details": "Szczegóły",
         "table": {
           "assistant": "Asystent",
           "visits": "Wizyty",
-          "reads": "Odczyty"
+          "reads": "Odczyty",
+          "bookings": "Rezerwacje"
         },
         "assistants": {
           "other": "Inne AI"
@@ -7556,7 +7597,24 @@
           "reads": "Twoja strona dla AI (llms.txt): {count, plural, =0 {jeszcze nieodczytana} one {odczytana raz} few {odczytana # razy} many {odczytana # razy} other {odczytana # razy}}",
           "open": "Zobacz stronę"
         },
-        "note": "Asystent nie zawsze podaje, skąd przychodzi odwiedzający: te liczby to minimum."
+        "note": "Asystent nie zawsze podaje, skąd przychodzi odwiedzający: te liczby to minimum.",
+        "readiness": {
+          "title": "Co asystenci AI muszą wiedzieć"
+        },
+        "results": {
+          "title": "Co dały Ci asystenci AI",
+          "openAnalytics": "Zobacz trend w Analizach"
+        },
+        "summary": {
+          "fold": "Zwiń",
+          "unfold": "Rozwiń",
+          "openPage": "Zobacz szczegóły",
+          "complete": "Uzupełnij moje dane"
+        },
+        "notIncluded": {
+          "title": "Nie ma w Twoim planie",
+          "description": "Widoczność w asystentach AI nie jest częścią Twojego obecnego planu."
+        }
       }
     }
   },

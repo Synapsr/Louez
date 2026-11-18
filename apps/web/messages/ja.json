@@ -995,7 +995,11 @@
       "settings": "設定",
       "store": "私の店",
       "multiStore": "多店舗展開",
-      "aiCredits": "AIクレジット"
+      "aiCredits": "AIクレジット",
+      "visibility": "知ってもらう",
+      "visibilityFirstCustomers": "最初のお客様",
+      "visibilityAi": "AI に見つけてもらう",
+      "analyticsAi": "AI アシスタント"
     },
     "multiStore": {
       "title": "多店舗展開",
@@ -3693,6 +3697,39 @@
         "productViews": "製品ビュー",
         "cartAdditions": "カートの追加",
         "orders": "注文"
+      },
+      "ai": {
+        "stats": {
+          "visits": "AI アシスタントからの訪問",
+          "vsPrevious": "前期間との比較",
+          "share": "訪問全体に占める割合",
+          "shareOf": "全 {count, plural, other {# 件}}の訪問のうち",
+          "bookings": "予約",
+          "bookingsSubtitle": "その訪問中",
+          "crawls": "AI クローラーの読み取り",
+          "llmsTxt": "{count, plural, =0 {llms.txt はまだ読まれていません} other {うち llms.txt が # 回}}"
+        },
+        "trend": {
+          "title": "AI アシスタントからの訪問",
+          "description": "その予約も表示",
+          "visits": "訪問",
+          "bookings": "予約"
+        },
+        "byAssistant": {
+          "title": "アシスタント別"
+        },
+        "improve": "AI が知っている情報を充実させる",
+        "notIncluded": {
+          "title": "ご利用のプランに含まれていません",
+          "description": "AI アシスタントからの訪問は現在のプランに含まれていません。"
+        },
+        "note": {
+          "title": "集計方法",
+          "visits": "アシスタントのページ（ChatGPT、Perplexity、Claude、Gemini、Copilot、Le Chat など）や、アシスタントが付けたリンクから来た訪問を、そのアシスタントに数えます。",
+          "bookings": "その訪問中に同じブラウザタブでオンライン予約された場合に数えます。お客様がアシスタント経由で来たことを示すもので、アシスタントが予約を決めたことを示すものではありません。",
+          "minimum": "一部のアシスタントアプリは訪問者の出どころを伝えません。それらの訪問は直接の訪問として数えられるため、これらの数値は最低値です。",
+          "crawls": "読み取りは、アシスタントのロボットがショップと llms.txt を訪れた回数です。カウントのみで、個人に関する情報は含みません。"
+        }
       }
     },
     "settings": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "編集",
       "settingsCustomerFields": "顧客情報",
       "needsALook": "要確認",
-      "visibility": "お店を知ってもらう"
+      "visibility": "お店を知ってもらう",
+      "visibilityAi": "AI に見つけてもらう",
+      "analyticsAi": "AI アシスタント"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "AI アシスタントからの訪問",
           "crawls": "AI クローラーの読み取り",
-          "period": "過去 28 日間"
+          "period": "過去 28 日間",
+          "bookings": "その訪問中の予約"
         },
         "details": "詳細",
         "table": {
           "assistant": "アシスタント",
           "visits": "訪問",
-          "reads": "読み取り"
+          "reads": "読み取り",
+          "bookings": "予約"
         },
         "assistants": {
           "other": "その他の AI"
@@ -7556,7 +7597,24 @@
           "reads": "AI 向けページ（llms.txt）：{count, plural, =0 {まだ読まれていません} other {# 回読まれました}}",
           "open": "ページを見る"
         },
-        "note": "AI アシスタントは訪問者の出どころを必ず伝えるわけではありません。これらの数値は最低値です。"
+        "note": "AI アシスタントは訪問者の出どころを必ず伝えるわけではありません。これらの数値は最低値です。",
+        "readiness": {
+          "title": "AI が知っておくべきこと"
+        },
+        "results": {
+          "title": "AI がもたらした成果",
+          "openAnalytics": "分析で推移を見る"
+        },
+        "summary": {
+          "fold": "折りたたむ",
+          "unfold": "展開する",
+          "openPage": "詳細を見る",
+          "complete": "情報を入力する"
+        },
+        "notIncluded": {
+          "title": "ご利用のプランに含まれていません",
+          "description": "AI アシスタントに見つけてもらう機能は現在のプランに含まれていません。"
+        }
       }
     }
   },

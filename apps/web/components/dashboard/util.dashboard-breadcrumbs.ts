@@ -42,6 +42,7 @@ const staticBreadcrumbRoutes = [
     href: "/dashboard/analytics/traffic",
     translationKey: "analyticsTraffic",
   },
+  { href: "/dashboard/analytics/ai", translationKey: "analyticsAi" },
   { href: "/dashboard/team", translationKey: "team" },
   { href: "/dashboard/referrals", translationKey: "referrals" },
   { href: "/dashboard/sms", translationKey: "sms" },
@@ -49,6 +50,7 @@ const staticBreadcrumbRoutes = [
   { href: "/dashboard/account", translationKey: "account" },
   { href: "/dashboard/whats-new", translationKey: "whatsNew" },
   { href: "/dashboard/visibility", translationKey: "visibility" },
+  { href: "/dashboard/visibility/ai", translationKey: "visibilityAi" },
   { href: "/dashboard/settings", translationKey: "settings" },
   {
     href: "/dashboard/settings/admin",

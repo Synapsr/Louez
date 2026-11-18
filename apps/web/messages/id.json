@@ -995,7 +995,11 @@
       "settings": "Pengaturan",
       "store": "Toko saya",
       "multiStore": "Multi-toko",
-      "aiCredits": "Kredit AI"
+      "aiCredits": "Kredit AI",
+      "visibility": "Dikenal pelanggan",
+      "visibilityFirstCustomers": "Pelanggan pertama",
+      "visibilityAi": "Ditemukan oleh AI",
+      "analyticsAi": "Asisten AI"
     },
     "multiStore": {
       "title": "Multi-toko",
@@ -3693,6 +3697,39 @@
         "productViews": "Tampilan produk",
         "cartAdditions": "Penambahan keranjang",
         "orders": "Pesanan"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Kunjungan dari asisten AI",
+          "vsPrevious": "vs periode sebelumnya",
+          "share": "Bagian dari kunjungan Anda",
+          "shareOf": "dari total {count, plural, other {# kunjungan}}",
+          "bookings": "Pemesanan",
+          "bookingsSubtitle": "selama kunjungan tersebut",
+          "crawls": "Pembacaan oleh robot AI",
+          "llmsTxt": "{count, plural, =0 {llms.txt Anda belum dibaca} other {termasuk # dari llms.txt Anda}}"
+        },
+        "trend": {
+          "title": "Kunjungan dari asisten AI",
+          "description": "Dan pemesanannya",
+          "visits": "Kunjungan",
+          "bookings": "Pemesanan"
+        },
+        "byAssistant": {
+          "title": "Per asisten"
+        },
+        "improve": "Tingkatkan apa yang diketahui AI tentang Anda",
+        "notIncluded": {
+          "title": "Tidak termasuk dalam paket Anda",
+          "description": "Kunjungan dari asisten AI tidak termasuk dalam paket Anda saat ini."
+        },
+        "note": {
+          "title": "Cara kami menghitung",
+          "visits": "Kunjungan dihitung untuk sebuah asisten jika datang dari halamannya (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) atau lewat tautan yang ditandainya.",
+          "bookings": "Pemesanan dihitung jika dibuat secara online selama kunjungan itu, di tab yang sama. Artinya pelanggan datang lewat asisten, bukan asisten yang memutuskan pemesanan.",
+          "minimum": "Beberapa aplikasi asisten tidak menyebut asal pengunjung: kunjungan itu dihitung sebagai langsung. Angka ini adalah angka minimum.",
+          "crawls": "Pembacaan adalah kunjungan robot asisten ke toko Anda dan llms.txt-nya: hanya penghitung, tanpa data tentang orang."
+        }
       }
     },
     "settings": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "Sunting",
       "settingsCustomerFields": "Data pelanggan",
       "needsALook": "Perlu dicek",
-      "visibility": "Perkenalkan toko Anda"
+      "visibility": "Perkenalkan toko Anda",
+      "visibilityAi": "Ditemukan oleh AI",
+      "analyticsAi": "Asisten AI"
     },
     "notificationsCenter": {
       "title": "Pemberitahuan",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "Kunjungan dari asisten AI",
           "crawls": "Pembacaan oleh robot AI",
-          "period": "28 hari terakhir"
+          "period": "28 hari terakhir",
+          "bookings": "Pemesanan selama kunjungan tersebut"
         },
         "details": "Detail",
         "table": {
           "assistant": "Asisten",
           "visits": "Kunjungan",
-          "reads": "Pembacaan"
+          "reads": "Pembacaan",
+          "bookings": "Pemesanan"
         },
         "assistants": {
           "other": "AI lainnya"
@@ -7556,7 +7597,24 @@
           "reads": "Halaman Anda untuk AI (llms.txt): {count, plural, =0 {belum dibaca} other {dibaca # kali}}",
           "open": "Lihat halaman"
         },
-        "note": "Asisten tidak selalu menyebut asal pengunjung: angka ini adalah angka minimum."
+        "note": "Asisten tidak selalu menyebut asal pengunjung: angka ini adalah angka minimum.",
+        "readiness": {
+          "title": "Yang perlu diketahui AI"
+        },
+        "results": {
+          "title": "Yang dibawa AI untuk Anda",
+          "openAnalytics": "Lihat tren di Analitik"
+        },
+        "summary": {
+          "fold": "Ciutkan",
+          "unfold": "Bentangkan",
+          "openPage": "Lihat detail",
+          "complete": "Lengkapi informasi saya"
+        },
+        "notIncluded": {
+          "title": "Tidak termasuk dalam paket Anda",
+          "description": "Ditemukan oleh asisten AI tidak termasuk dalam paket Anda saat ini."
+        }
       }
     }
   },

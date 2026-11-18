@@ -995,7 +995,11 @@
       "settings": "Paramètres",
       "store": "Ma boutique",
       "multiStore": "Multi-boutiques",
-      "aiCredits": "Crédits IA"
+      "aiCredits": "Crédits IA",
+      "visibility": "Se faire connaître",
+      "visibilityFirstCustomers": "Premiers clients",
+      "visibilityAi": "Être trouvé par les IA",
+      "analyticsAi": "Assistants IA"
     },
     "multiStore": {
       "title": "Multi-boutiques",
@@ -3693,6 +3697,39 @@
         "productViews": "Vues produits",
         "cartAdditions": "Ajouts panier",
         "orders": "Commandes"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Visites venues des assistants IA",
+          "vsPrevious": "vs période précédente",
+          "share": "Part de vos visites",
+          "shareOf": "sur {count, plural, one {# visite} other {# visites}} au total",
+          "bookings": "Réservations",
+          "bookingsSubtitle": "pendant ces visites",
+          "crawls": "Lectures par les robots des IA",
+          "llmsTxt": "{count, plural, =0 {dont aucune de votre llms.txt} one {dont # de votre llms.txt} other {dont # de votre llms.txt}}"
+        },
+        "trend": {
+          "title": "Visites venues des assistants IA",
+          "description": "Et leurs réservations",
+          "visits": "Visites",
+          "bookings": "Réservations"
+        },
+        "byAssistant": {
+          "title": "Par assistant"
+        },
+        "improve": "Améliorer ce que les IA savent de vous",
+        "notIncluded": {
+          "title": "Pas inclus dans votre offre",
+          "description": "Les visites venues des assistants IA ne font pas partie de votre offre actuelle."
+        },
+        "note": {
+          "title": "Comment on compte",
+          "visits": "Une visite compte pour un assistant quand elle arrive depuis sa page (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) ou par un lien qu'il a marqué.",
+          "bookings": "Une réservation compte quand elle est passée en ligne pendant cette visite, dans le même onglet. Elle dit que le client est venu par un assistant, pas que l'assistant a décidé de la réservation.",
+          "minimum": "Certaines applications d'assistant ne disent pas d'où vient le visiteur : ces visites comptent comme directes. Les chiffres sont un minimum.",
+          "crawls": "Les lectures sont les passages des robots des assistants sur votre boutique et son llms.txt : un compteur, rien sur les personnes."
+        }
       }
     },
     "settings": {
@@ -7078,7 +7115,9 @@
       "reservationsEdit": "Modifier",
       "settingsCustomerFields": "Fiche client",
       "needsALook": "À vérifier",
-      "visibility": "Se faire connaître"
+      "visibility": "Se faire connaître",
+      "visibilityAi": "Être trouvé par les IA",
+      "analyticsAi": "Assistants IA"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7540,13 +7579,15 @@
         "stats": {
           "visits": "Visites venues d'un assistant IA",
           "crawls": "Lectures par les robots des IA",
-          "period": "28 derniers jours"
+          "period": "28 derniers jours",
+          "bookings": "Réservations pendant ces visites"
         },
         "details": "Détails",
         "table": {
           "assistant": "Assistant",
           "visits": "Visites",
-          "reads": "Lectures"
+          "reads": "Lectures",
+          "bookings": "Réservations"
         },
         "assistants": {
           "other": "Autres IA"
@@ -7556,7 +7597,24 @@
           "reads": "Votre page pour les IA (llms.txt) : {count, plural, =0 {pas encore lue} one {lue une fois} other {lue # fois}}",
           "open": "Voir la page"
         },
-        "note": "Un assistant n'indique pas toujours d'où vient un visiteur : ces chiffres sont un minimum."
+        "note": "Un assistant n'indique pas toujours d'où vient un visiteur : ces chiffres sont un minimum.",
+        "readiness": {
+          "title": "Ce que les IA doivent savoir"
+        },
+        "results": {
+          "title": "Ce que les IA vous ont apporté",
+          "openAnalytics": "Voir l'évolution dans Analyses"
+        },
+        "summary": {
+          "fold": "Replier",
+          "unfold": "Déplier",
+          "openPage": "Voir le détail",
+          "complete": "Compléter mes informations"
+        },
+        "notIncluded": {
+          "title": "Pas inclus dans votre offre",
+          "description": "Être trouvé par les assistants IA ne fait pas partie de votre offre actuelle."
+        }
       }
     }
   },
