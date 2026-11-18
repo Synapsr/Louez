@@ -1,9 +1,11 @@
 "use client";
 
+import posthog from "posthog-js";
 import { useEffect } from "react";
 
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { markOpenReplayReady } from "@/lib/openreplay/client";
+import { linkOpenReplaySessionToPostHog } from "@/lib/openreplay/posthog-link";
 import type { PublicEnv } from "@/lib/validators/validator.public-env";
 
 type OpenReplayTracker = InstanceType<Awaited<typeof import("@openreplay/tracker")>["default"]>;
@@ -136,6 +138,10 @@ export const OpenReplayProvider = ({ children, surface, user, store }: OpenRepla
         markOpenReplayReady(({ name, payload }) => {
           tracker.event(name, payload);
         });
+
+        if (surface === "dashboard") {
+          linkOpenReplaySessionToPostHog({ posthog, tracker });
+        }
       });
     });
   }, [publicEnv, store, surface, user]);
