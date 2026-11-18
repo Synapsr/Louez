@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Primer paso",
-        "description": "Reserva en tu tienda como un cliente y luego gestiona la reserva aquí. No se paga ni se factura nada."
+        "description": "Reserva en tu tienda como un cliente y luego gestiona la reserva aquí. No se paga ni se factura nada.",
+        "dismiss": "Ocultar"
       },
       "guide": {
         "title": "Reserva de prueba",
@@ -1174,6 +1175,12 @@
         "detailsPlanPriceWithVat": "{price} sin IVA al mes, es decir {priceWithVat} con el IVA al {vatRate}",
         "detailsSavings": "Ahorro",
         "detailsNote": "Calculado con las tarifas de tu tienda. Con una suscripción, las comisiones de Stripe y del marketplace reeent siguen aplicándose."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Añade tu primer producto",
+          "description": "Lo que alquilas y a qué precio: tus clientes podrán reservarlo en línea."
+        }
       }
     },
     "products": {

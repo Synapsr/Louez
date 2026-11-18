@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Pierwszy krok",
-        "description": "Zarezerwuj w swoim sklepie jak klient, a potem zarządzaj rezerwacją tutaj. Nic nie jest płacone ani fakturowane."
+        "description": "Zarezerwuj w swoim sklepie jak klient, a potem zarządzaj rezerwacją tutaj. Nic nie jest płacone ani fakturowane.",
+        "dismiss": "Ukryj"
       },
       "guide": {
         "title": "Rezerwacja testowa",
@@ -1135,6 +1136,12 @@
         "detailsPlanPriceWithVat": "{price} netto miesięcznie, czyli {priceWithVat} z VAT {vatRate}",
         "detailsSavings": "Oszczędność",
         "detailsNote": "Obliczono według stawek Twojego sklepu. W abonamencie nadal obowiązują opłaty Stripe i opłaty marketplace'u reeent."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Dodaj swój pierwszy produkt",
+          "description": "Co wynajmujesz i za jaką cenę: Twoi klienci będą mogli zarezerwować go online."
+        }
       }
     },
     "products": {

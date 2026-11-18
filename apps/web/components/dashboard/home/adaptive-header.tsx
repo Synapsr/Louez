@@ -6,7 +6,6 @@ import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@louez/ui";
-import { ProductSolidIcon } from "@louez/ui/icons";
 
 import type { StoreMetrics, StoreState } from "./home-types";
 
@@ -55,30 +54,7 @@ export const AdaptiveHeader = ({
   };
 
   const getPrimaryCTA = () => {
-    if (storeState === "virgin") {
-      return (
-        <Button
-          className="w-full sm:w-auto"
-          render={
-            <Link
-              href={actionHref ?? "/dashboard/products/new"}
-              onClick={
-                onNavigate
-                  ? (event) => {
-                      event.preventDefault();
-                      onNavigate();
-                    }
-                  : undefined
-              }
-            />
-          }
-        >
-          <ProductSolidIcon />
-          {t("header.cta.addFirstProduct")}
-        </Button>
-      );
-    }
-
+    // An empty store's first action is the next step card (first-product-card.tsx).
     if (metrics.pendingReservations > 0) {
       return (
         <Button

@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Eerste stap",
-        "description": "Reserveer in je winkel zoals een klant, en beheer de reservering daarna hier. Er wordt niets betaald of gefactureerd."
+        "description": "Reserveer in je winkel zoals een klant, en beheer de reservering daarna hier. Er wordt niets betaald of gefactureerd.",
+        "dismiss": "Verbergen"
       },
       "guide": {
         "title": "Testreservering",
@@ -1135,6 +1136,12 @@
         "detailsPlanPriceWithVat": "{price} excl. btw per maand, dus {priceWithVat} met {vatRate} btw",
         "detailsSavings": "Besparing",
         "detailsNote": "Berekend met de tarieven van je winkel. Met een abonnement blijven Stripe-kosten en kosten van de reeent-marktplaats verschuldigd."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Voeg je eerste product toe",
+          "description": "Wat je verhuurt en voor welke prijs: je klanten kunnen het daarna online boeken."
+        }
       }
     },
     "products": {

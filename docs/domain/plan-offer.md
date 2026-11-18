@@ -5,6 +5,10 @@ propose Pro ou Ultra quand l'abonnement lui aurait coûté moins cher que ce qu'
 Louez dans le mois. Les chiffres sont ceux de la boutique, à son tarif réel. Rien n'est
 proposé sur une instance auto-hébergée (`LOUEZ_BILLING` autre que `cloud`).
 
+L'accueil ne montre qu'une carte de prochaine étape à la fois
+([accueil-prochaine-etape.md](../product/accueil-prochaine-etape.md)) : l'offre y passe avant le
+guide « Se faire connaître » ; sans offre, la carte suivante prend sa place.
+
 Le code :
 
 - la règle, pure : `apps/web/lib/billing/plan-offer-core.ts` ;

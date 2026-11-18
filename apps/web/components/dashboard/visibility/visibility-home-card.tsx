@@ -5,11 +5,11 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 
 import { useMutation } from "@tanstack/react-query";
-import { Megaphone, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { ArrowRight, Megaphone, X } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import type { VisibilityView } from "@louez/api/contracts/visibility";
-import { Button, toastManager } from "@louez/ui";
+import { Badge, Button, toastManager } from "@louez/ui";
 import { cn } from "@louez/utils";
 
 import { apiErrorKey } from "@/lib/orpc/errors";
@@ -26,15 +26,28 @@ interface VisibilityHomeCardProps {
   storeId: string;
   /** Read by the page on the server. */
   view: VisibilityView;
+  /**
+   * The reeent launch offer's seats still open to this store, shown as one
+   * more channel to be seen on; null when the store may not see it.
+   */
+  launchOfferSeats: number | null;
   className?: string;
 }
 
 /**
- * The home's way into "Se faire connaître": the next step only. Gone once
+ * The home's way into "Se faire connaître": the next step only, and the
+ * reeent launch offer under it while the store may take a seat. Gone once
  * every step is done or skipped, or once the user closes it for good.
  */
-export const VisibilityHomeCard = ({ storeId, view, className }: VisibilityHomeCardProps) => {
+export const VisibilityHomeCard = ({
+  storeId,
+  view,
+  launchOfferSeats,
+  className,
+}: VisibilityHomeCardProps) => {
   const t = useTranslations("dashboard.visibility");
+  const tCohort = useTranslations("dashboard.settings.salesChannels.cohort");
+  const format = useFormatter();
   const tErrors = useTranslations("errors");
   const analytics = useVisibilityAnalytics(storeId);
   const next = nextVisibilityStep(view.steps);
@@ -60,35 +73,46 @@ export const VisibilityHomeCard = ({ storeId, view, className }: VisibilityHomeC
 
   return (
     <div
-      className={cn(
-        "bg-card ring-border relative flex flex-col gap-3 rounded-2xl p-4 ring-1 ring-inset sm:flex-row sm:items-center sm:justify-between",
-        className,
-      )}
+      className={cn("bg-card ring-border relative rounded-2xl p-4 ring-1 ring-inset", className)}
     >
-      <div className="flex min-w-0 items-start gap-3 pr-8 sm:pr-0">
-        <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
-          <Megaphone className="size-4" />
-        </span>
-        <div className="min-w-0 space-y-1">
-          <p className="font-medium">{t("homeCard.title")}</p>
-          <p className="text-muted-foreground text-sm">
-            {t("homeCard.next", { step: t(`steps.${next.key}.title`) })}
-          </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3 pr-8 sm:pr-0">
+          <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+            <Megaphone className="size-4" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <p className="font-medium">{t("homeCard.title")}</p>
+            <p className="text-muted-foreground text-sm">
+              {t("homeCard.next", { step: t(`steps.${next.key}.title`) })}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 max-sm:self-end">
+          <Button render={<Link href="/dashboard/visibility" />}>{t("homeCard.action")}</Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("homeCard.dismiss")}
+            disabled={dismissal.isPending}
+            onClick={() => dismissal.mutate({ noticeId: VISIBILITY_GUIDE_NOTICE_ID })}
+            className="max-sm:absolute max-sm:top-3 max-sm:right-3"
+          >
+            <X />
+          </Button>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 max-sm:self-end">
-        <Button render={<Link href="/dashboard/visibility" />}>{t("homeCard.action")}</Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={t("homeCard.dismiss")}
-          disabled={dismissal.isPending}
-          onClick={() => dismissal.mutate({ noticeId: VISIBILITY_GUIDE_NOTICE_ID })}
-          className="max-sm:absolute max-sm:top-3 max-sm:right-3"
+      {launchOfferSeats !== null && (
+        <Link
+          href="/dashboard/settings/marketplace"
+          className="group text-muted-foreground hover:text-foreground mt-3 block border-t pt-3 text-sm sm:ps-12"
         >
-          <X />
-        </Button>
-      </div>
+          <Badge variant="success" className="me-2 align-middle">
+            {tCohort("incentiveBadge")}
+          </Badge>
+          {tCohort("incentiveLine", { remaining: format.number(launchOfferSeats) })}
+          <ArrowRight className="ms-1 inline size-3.5 align-[-2px] transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      )}
     </div>
   );
 };
