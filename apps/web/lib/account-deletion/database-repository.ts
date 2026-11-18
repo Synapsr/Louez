@@ -767,6 +767,10 @@ const purgeOwnedData = async (
       .set({ referredUserId: null })
       .where(eq(schema.referralRewards.referredUserId, context.user.id));
     await transaction
+      .update(schema.storeVisibilitySteps)
+      .set({ userId: null })
+      .where(eq(schema.storeVisibilitySteps.userId, context.user.id));
+    await transaction
       .delete(schema.storeInvitations)
       .where(eq(schema.storeInvitations.invitedBy, context.user.id));
 
@@ -978,6 +982,9 @@ const purgeOwnedData = async (
         .delete(schema.inspectionTemplates)
         .where(inArray(schema.inspectionTemplates.storeId, storeIds));
       await transaction.delete(schema.pageViews).where(inArray(schema.pageViews.storeId, storeIds));
+      await transaction
+        .delete(schema.storeVisibilitySteps)
+        .where(inArray(schema.storeVisibilitySteps.storeId, storeIds));
       await transaction.delete(schema.products).where(inArray(schema.products.storeId, storeIds));
       await transaction
         .delete(schema.variantDefinitions)

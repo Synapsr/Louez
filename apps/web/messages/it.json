@@ -1116,25 +1116,6 @@
         "share": "Condividi",
         "shareTitle": "Il mio negozio di noleggio"
       },
-      "share": {
-        "title": "Condividi il tuo negozio",
-        "description": "Invia il link del tuo negozio ai tuoi clienti",
-        "copyLink": "Copia link",
-        "copyLinkDescription": "Copia l'URL negli appunti",
-        "copied": "Copiato!",
-        "whatsappDescription": "Invia tramite WhatsApp",
-        "whatsappMessage": "Scopri il nostro negozio di noleggio: {url}",
-        "email": "Email",
-        "emailDescription": "Invia via email",
-        "emailSubject": "Scopri il nostro negozio di noleggio",
-        "emailBody": "Ciao,\n\nTi invito a scoprire il nostro negozio di noleggio:\n{url}\n\nA presto!",
-        "smsDescription": "Invia tramite SMS",
-        "smsMessage": "Scopri il nostro negozio di noleggio: {url}",
-        "showQR": "Mostra codice QR",
-        "hideQR": "Nascondi codice QR",
-        "qrDescription": "Scansiona questo codice per accedere al negozio",
-        "downloadQR": "Scarica"
-      },
       "planOffer": {
         "titleCurrentCommission": "Questo mese hai pagato {paid} di commissione.",
         "titlePreviousCommission": "Il mese scorso hai pagato {paid} di commissione.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Modifica",
       "reservationsEdit": "Modifica",
       "settingsCustomerFields": "Scheda cliente",
-      "needsALook": "Da verificare"
+      "needsALook": "Da verificare",
+      "visibility": "Fatti conoscere"
     },
     "notificationsCenter": {
       "title": "Notifiche",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Qualcosa da verificare",
       "neutral": "Louez non è riuscito a risolverlo da solo. Aprilo per vedere cosa è successo.",
       "viewAll": "Vedi tutto"
+    },
+    "visibility": {
+      "title": "Fatti conoscere",
+      "description": "Tre semplici mosse perché i clienti ti trovino e prenotino online.",
+      "steps": {
+        "share_contacts": {
+          "title": "Avvisa clienti e amici",
+          "description": "I tuoi primi clienti sono le persone che ti conoscono già."
+        },
+        "qr_poster": {
+          "title": "Metti un QR code nel tuo negozio",
+          "description": "I clienti di passaggio prenotano il prossimo noleggio dal telefono."
+        },
+        "google_business": {
+          "title": "Aggiungi il tuo link a Google Maps",
+          "description": "Chi ti cerca su Google arriva direttamente alla prenotazione."
+        }
+      },
+      "status": {
+        "done": "Fatto",
+        "skipped": "Non fa per me"
+      },
+      "actions": {
+        "start": "Inizia",
+        "open": "Apri",
+        "done": "Fatto",
+        "skip": "Non fa per me",
+        "reopen": "Segna come da fare"
+      },
+      "share": {
+        "title": "Condividi il tuo negozio",
+        "description": "Invia il link dalle tue app, alle persone che scegli tu.",
+        "targetLabel": "Cosa vuoi condividere?",
+        "targetStore": "Tutto il negozio",
+        "messageStore": "Ciao! Ora puoi prenotare online da {storeName}: {url}",
+        "messageProduct": "Ciao! {productName} è a noleggio da {storeName} e puoi prenotarlo online: {url}",
+        "emailSubject": "Prenota online da {storeName}",
+        "email": "E-mail",
+        "copyLink": "Copia il link",
+        "copyMessage": "Copia il messaggio",
+        "copied": "Copiato!",
+        "moreIdeas": "Poster QR, Google Maps: altri modi per farti conoscere"
+      },
+      "poster": {
+        "headline": "Prenota online",
+        "scanHint": "Inquadra con la fotocamera del telefono",
+        "save": "Salva il poster",
+        "hint": "Stampalo in A4 per il banco o la vetrina, oppure mostralo dal telefono.",
+        "previewAlt": "Anteprima del poster",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "Apri il tuo profilo su Google Business Profile, oppure creane uno: è gratis.",
+        "step2": "Clicca su «Modifica profilo», poi sul campo «Sito web».",
+        "step3": "Incolla il tuo link e salva. Se Google propone «Prenotazioni», aggiungi il link anche lì.",
+        "open": "Apri Google Business Profile",
+        "copyLink": "Copia il mio link",
+        "copied": "Copiato!"
+      },
+      "visits": {
+        "title": "Visite dai tuoi link condivisi",
+        "period": "Ultimi 28 giorni",
+        "empty": "Ancora nessuna visita. I link e il QR code di questa pagina vengono conteggiati qui.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "E-mail",
+          "facebook": "Facebook",
+          "copy": "Link copiato",
+          "qr": "QR code",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Altri canali",
+        "reeent": {
+          "title": "Pubblica su reeent",
+          "description": "Il marketplace del noleggio"
+        },
+        "website": {
+          "title": "Prenotazione sul tuo sito",
+          "description": "Aggiungi il widget di prenotazione a un sito che hai già"
+        }
+      },
+      "notReady": {
+        "title": "Il tuo negozio non è ancora pronto",
+        "description": "Aggiungi un prodotto e metti online il negozio prima di condividerlo.",
+        "action": "Torna alla home"
+      },
+      "homeCard": {
+        "title": "Trova i tuoi primi clienti",
+        "next": "Prossimo passo: {step}",
+        "action": "Continua",
+        "dismiss": "Nascondi"
+      }
     }
   },
   "storefront": {

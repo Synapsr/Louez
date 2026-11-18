@@ -1155,25 +1155,6 @@
         "share": "Compartir",
         "shareTitle": "Mi tienda de alquiler"
       },
-      "share": {
-        "title": "Compartir su tienda",
-        "description": "Envíe el enlace de su tienda a sus clientes",
-        "copyLink": "Copiar enlace",
-        "copyLinkDescription": "Copiar URL al portapapeles",
-        "copied": "¡Copiado!",
-        "whatsappDescription": "Enviar por WhatsApp",
-        "whatsappMessage": "Descubre nuestra tienda de alquiler: {url}",
-        "email": "Correo electrónico",
-        "emailDescription": "Enviar por correo electrónico",
-        "emailSubject": "Descubre nuestra tienda de alquiler",
-        "emailBody": "Hola,\n\nTe invito a descubrir nuestra tienda de alquiler:\n{url}\n\n¡Hasta pronto!",
-        "smsDescription": "Enviar por SMS",
-        "smsMessage": "Descubre nuestra tienda de alquiler: {url}",
-        "showQR": "Mostrar código QR",
-        "hideQR": "Ocultar código QR",
-        "qrDescription": "Escanea este código para acceder a la tienda",
-        "downloadQR": "Descargar"
-      },
       "planOffer": {
         "titleCurrentCommission": "Este mes has pagado {paid} de comisión.",
         "titlePreviousCommission": "El mes pasado pagaste {paid} de comisión.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Editar",
       "reservationsEdit": "Editar",
       "settingsCustomerFields": "Ficha de cliente",
-      "needsALook": "Por revisar"
+      "needsALook": "Por revisar",
+      "visibility": "Date a conocer"
     },
     "notificationsCenter": {
       "title": "Notificaciones",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Algo por revisar",
       "neutral": "Louez no pudo resolver esto por sí solo. Ábrelo para ver qué ha pasado.",
       "viewAll": "Ver todo"
+    },
+    "visibility": {
+      "title": "Date a conocer",
+      "description": "Tres gestos sencillos para que los clientes te encuentren y reserven en línea.",
+      "steps": {
+        "share_contacts": {
+          "title": "Díselo a tus clientes y amigos",
+          "description": "Tus primeros clientes son las personas que ya te conocen."
+        },
+        "qr_poster": {
+          "title": "Pon un código QR en tu tienda",
+          "description": "Los clientes de paso reservan su próximo alquiler desde el móvil."
+        },
+        "google_business": {
+          "title": "Añade tu enlace a Google Maps",
+          "description": "Quien te busque en Google llegará directo a la reserva."
+        }
+      },
+      "status": {
+        "done": "Hecho",
+        "skipped": "No es para mí"
+      },
+      "actions": {
+        "start": "Empezar",
+        "open": "Abrir",
+        "done": "Hecho",
+        "skip": "No es para mí",
+        "reopen": "Marcar como pendiente"
+      },
+      "share": {
+        "title": "Comparte tu tienda",
+        "description": "Envía el enlace desde tus propias apps a quien tú elijas.",
+        "targetLabel": "¿Qué quieres compartir?",
+        "targetStore": "Toda la tienda",
+        "messageStore": "¡Hola! Ya puedes reservar en línea en {storeName}: {url}",
+        "messageProduct": "¡Hola! {productName} está en alquiler en {storeName} y puedes reservarlo en línea: {url}",
+        "emailSubject": "Reserva en línea en {storeName}",
+        "email": "Correo electrónico",
+        "copyLink": "Copiar enlace",
+        "copyMessage": "Copiar mensaje",
+        "copied": "¡Copiado!",
+        "moreIdeas": "Cartel QR, Google Maps: más formas de darte a conocer"
+      },
+      "poster": {
+        "headline": "Reserva en línea",
+        "scanHint": "Escanea con la cámara del móvil",
+        "save": "Guardar el cartel",
+        "hint": "Imprímelo en A4 para tu mostrador o escaparate, o muéstralo desde el móvil.",
+        "previewAlt": "Vista previa del cartel",
+        "fileName": "cartel"
+      },
+      "google": {
+        "step1": "Abre tu perfil en Google Business Profile o crea uno: es gratis.",
+        "step2": "Haz clic en «Editar perfil» y luego en el campo «Sitio web».",
+        "step3": "Pega tu enlace y guarda. Si Google ofrece «Reservas», añade el enlace también ahí.",
+        "open": "Abrir Google Business Profile",
+        "copyLink": "Copiar mi enlace",
+        "copied": "¡Copiado!"
+      },
+      "visits": {
+        "title": "Visitas de tus enlaces compartidos",
+        "period": "Últimos 28 días",
+        "empty": "Aún no hay visitas. Aquí se cuentan los enlaces y el código QR de esta página.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "Correo electrónico",
+          "facebook": "Facebook",
+          "copy": "Enlace copiado",
+          "qr": "Código QR",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Otros canales",
+        "reeent": {
+          "title": "Publicar en reeent",
+          "description": "El marketplace de alquiler"
+        },
+        "website": {
+          "title": "Reservas en tu web",
+          "description": "Añade el widget de reservas a una web que ya tengas"
+        }
+      },
+      "notReady": {
+        "title": "Tu tienda aún no está lista",
+        "description": "Añade un producto y pon tu tienda en línea antes de compartirla.",
+        "action": "Volver al inicio"
+      },
+      "homeCard": {
+        "title": "Consigue tus primeros clientes",
+        "next": "Siguiente paso: {step}",
+        "action": "Continuar",
+        "dismiss": "Ocultar"
+      }
     }
   },
   "storefront": {

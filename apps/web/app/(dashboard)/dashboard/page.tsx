@@ -14,7 +14,10 @@ import { getStoreCalendar, type StoreCalendar } from "@louez/api/services/sales-
 import { determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import type { GetTestReservationOutput } from "@louez/api/contracts/test-reservations";
+import type { VisibilityView } from "@louez/api/contracts/visibility";
 import { TestReservationHomeCard } from "@/components/dashboard/test-reservation/test-reservation-home-card";
+import { shouldOfferVisibilityGuide } from "@/components/dashboard/visibility/util.visibility-steps";
+import { VisibilityHomeCard } from "@/components/dashboard/visibility/visibility-home-card";
 import { serverApi } from "@/lib/api/server-api";
 import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
@@ -127,6 +130,7 @@ async function getPendingReservationsList(storeId: string) {
 
 interface DashboardContentProps {
   storeId: string;
+  storeName: string;
   storeSlug: string;
   /** The store's time zone, which sets today and the month. */
   timezone: string | null;
@@ -141,12 +145,15 @@ interface DashboardContentProps {
   dismissedNoticeIds: DismissibleNoticeId[];
   /** The test reservation's card, or null when the store does not need it. */
   testReservation: GetTestReservationOutput | null;
+  /** The "Se faire connaître" guide's card, or null when it is not offered. */
+  visibility: VisibilityView | null;
   /** The user owns the store, so may be offered a plan (the billing pages are the owner's). */
   isStoreOwner: boolean;
 }
 
 async function DashboardContent({
   storeId,
+  storeName,
   storeSlug,
   timezone,
   currency,
@@ -156,6 +163,7 @@ async function DashboardContent({
   hasStripeAccount,
   dismissedNoticeIds,
   testReservation,
+  visibility,
   isStoreOwner,
 }: DashboardContentProps) {
   // Stores that want online payments track the Stripe KYC left pending during
@@ -201,6 +209,9 @@ async function DashboardContent({
       )}
 
       {testReservation && <TestReservationHomeCard initialState={testReservation} />}
+
+      {/* Bring the first customers: the next step of "Se faire connaître". */}
+      {visibility && <VisibilityHomeCard storeId={storeId} view={visibility} />}
 
       {/* Stores from reeent are not published there until Stripe can charge. */}
       {isFromReeent && onlinePaymentsStep === "todo" && (
@@ -251,7 +262,7 @@ async function DashboardContent({
       {/* Bottom Section: Quick Actions + Storefront */}
       <div className="grid gap-4 lg:grid-cols-2">
         <QuickActions storeState={storeState} />
-        <StorefrontWidget storeSlug={storeSlug} />
+        <StorefrontWidget storeId={storeId} storeName={storeName} storeSlug={storeSlug} />
       </div>
     </div>
   );
@@ -276,15 +287,25 @@ export default async function DashboardHomePage() {
 
   const api = await serverApi();
   const launchChecklist = await api.stores.getLaunchChecklist({});
-  // The test reservation's card: a product to book, no real reservation yet.
-  const testReservation =
+  const dismissedNoticeIds = parseDismissedNotices(userRow?.dismissedNotices);
+  const [testReservation, visibility] = await Promise.all([
+    // The test reservation's card: a product to book, no real reservation yet.
     launchChecklist.catalog.hasActiveProduct && !launchChecklist.milestones?.firstReservation
-      ? await api.testReservations.get({})
-      : null;
+      ? api.testReservations.get({})
+      : null,
+    shouldOfferVisibilityGuide({
+      online: launchChecklist.online,
+      hasActiveProduct: launchChecklist.catalog.hasActiveProduct,
+      dismissedNoticeIds,
+    })
+      ? api.visibility.get({})
+      : null,
+  ]);
 
   return (
     <DashboardContent
       storeId={store.id}
+      storeName={store.name}
       storeSlug={store.slug}
       timezone={store.settings?.timezone ?? null}
       currency={salesStore(store).currency}
@@ -292,8 +313,9 @@ export default async function DashboardHomePage() {
       launchChecklist={launchChecklist}
       isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
       hasStripeAccount={store.stripeAccountId !== null}
-      dismissedNoticeIds={parseDismissedNotices(userRow?.dismissedNotices)}
+      dismissedNoticeIds={dismissedNoticeIds}
       testReservation={testReservation}
+      visibility={visibility}
       isStoreOwner={store.role === "owner"}
     />
   );

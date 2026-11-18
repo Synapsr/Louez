@@ -1116,25 +1116,6 @@
         "share": "Delen",
         "shareTitle": "Mijn verhuurwinkel"
       },
-      "share": {
-        "title": "Deel uw winkel",
-        "description": "Stuur uw winkellink naar uw klanten",
-        "copyLink": "Link kopiëren",
-        "copyLinkDescription": "URL naar klembord kopiëren",
-        "copied": "Gekopieerd!",
-        "whatsappDescription": "Verstuur via WhatsApp",
-        "whatsappMessage": "Ontdek onze verhuurwinkel: {url}",
-        "email": "E-mail",
-        "emailDescription": "Verstuur via e-mail",
-        "emailSubject": "Ontdek onze verhuurwinkel",
-        "emailBody": "Hallo,\n\nIk nodig u uit om onze verhuurwinkel te ontdekken:\n{url}\n\nTot snel!",
-        "smsDescription": "Verstuur via SMS",
-        "smsMessage": "Ontdek onze verhuurwinkel: {url}",
-        "showQR": "QR-code tonen",
-        "hideQR": "QR-code verbergen",
-        "qrDescription": "Scan deze code om de winkel te bezoeken",
-        "downloadQR": "Downloaden"
-      },
       "planOffer": {
         "titleCurrentCommission": "Deze maand betaalde je {paid} aan commissie.",
         "titlePreviousCommission": "Vorige maand betaalde je {paid} aan commissie.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Bewerken",
       "reservationsEdit": "Bewerken",
       "settingsCustomerFields": "Klantgegevens",
-      "needsALook": "Te controleren"
+      "needsALook": "Te controleren",
+      "visibility": "Maak je bekend"
     },
     "notificationsCenter": {
       "title": "Meldingen",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Iets te controleren",
       "neutral": "Louez kon dit niet zelf oplossen. Open het om te zien wat er is gebeurd.",
       "viewAll": "Alles bekijken"
+    },
+    "visibility": {
+      "title": "Maak je bekend",
+      "description": "Drie eenvoudige stappen zodat klanten je vinden en online boeken.",
+      "steps": {
+        "share_contacts": {
+          "title": "Vertel het je klanten en vrienden",
+          "description": "Je eerste klanten zijn de mensen die je al kennen."
+        },
+        "qr_poster": {
+          "title": "Hang een QR-code op in je winkel",
+          "description": "Passanten boeken hun volgende verhuur vanaf hun telefoon."
+        },
+        "google_business": {
+          "title": "Voeg je link toe aan Google Maps",
+          "description": "Wie je op Google opzoekt, komt direct bij het boeken uit."
+        }
+      },
+      "status": {
+        "done": "Klaar",
+        "skipped": "Niet voor mij"
+      },
+      "actions": {
+        "start": "Beginnen",
+        "open": "Openen",
+        "done": "Klaar",
+        "skip": "Niet voor mij",
+        "reopen": "Markeer als te doen"
+      },
+      "share": {
+        "title": "Deel je winkel",
+        "description": "Stuur de link via je eigen apps naar mensen die jij kiest.",
+        "targetLabel": "Wat wil je delen?",
+        "targetStore": "De hele winkel",
+        "messageStore": "Hallo! Je kunt nu online boeken bij {storeName}: {url}",
+        "messageProduct": "Hallo! {productName} is te huur bij {storeName} en je kunt het online boeken: {url}",
+        "emailSubject": "Boek online bij {storeName}",
+        "email": "E-mail",
+        "copyLink": "Link kopiëren",
+        "copyMessage": "Bericht kopiëren",
+        "copied": "Gekopieerd!",
+        "moreIdeas": "QR-poster, Google Maps: meer manieren om bekend te worden"
+      },
+      "poster": {
+        "headline": "Boek online",
+        "scanHint": "Scan met de camera van je telefoon",
+        "save": "Poster opslaan",
+        "hint": "Print hem op A4 voor je balie of etalage, of laat hem zien op je telefoon.",
+        "previewAlt": "Voorbeeld van de poster",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "Open je profiel op Google Business Profile, of maak er een aan: het is gratis.",
+        "step2": "Klik op „Profiel bewerken” en dan op het veld „Website”.",
+        "step3": "Plak je link en sla op. Biedt Google „Boekingen” aan, voeg de link dan ook daar toe.",
+        "open": "Google Business Profile openen",
+        "copyLink": "Mijn link kopiëren",
+        "copied": "Gekopieerd!"
+      },
+      "visits": {
+        "title": "Bezoeken via je gedeelde links",
+        "period": "Laatste 28 dagen",
+        "empty": "Nog geen bezoeken. De links en de QR-code op deze pagina worden hier geteld.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "E-mail",
+          "facebook": "Facebook",
+          "copy": "Gekopieerde link",
+          "qr": "QR-code",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Andere kanalen",
+        "reeent": {
+          "title": "Publiceren op reeent",
+          "description": "De marktplaats voor verhuur"
+        },
+        "website": {
+          "title": "Boeken op je website",
+          "description": "Voeg de boekingswidget toe aan een site die je al hebt"
+        }
+      },
+      "notReady": {
+        "title": "Je winkel is nog niet klaar",
+        "description": "Voeg een product toe en zet je winkel online voordat je hem deelt.",
+        "action": "Terug naar het startscherm"
+      },
+      "homeCard": {
+        "title": "Vind je eerste klanten",
+        "next": "Volgende stap: {step}",
+        "action": "Doorgaan",
+        "dismiss": "Verbergen"
+      }
     }
   },
   "storefront": {

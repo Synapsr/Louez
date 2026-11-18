@@ -1155,25 +1155,6 @@
         "share": "공유",
         "shareTitle": "내 임대 매장"
       },
-      "share": {
-        "title": "매장을 공유하세요",
-        "description": "고객에게 매장 링크 보내기",
-        "copyLink": "링크 복사",
-        "copyLinkDescription": "URL을 클립보드에 복사",
-        "copied": "복사되었습니다!",
-        "whatsappDescription": "WhatsApp을 통해 보내기",
-        "whatsappMessage": "렌탈 매장을 확인해 보세요: {url}",
-        "email": "이메일",
-        "emailDescription": "이메일로 보내기",
-        "emailSubject": "렌탈 매장을 찾아보세요",
-        "emailBody": "안녕하세요,\n\n저희 대여 매장을 소개합니다:\n{url}\n\n방문을 기다리겠습니다!",
-        "smsDescription": "SMS로 보내기",
-        "smsMessage": "렌탈 매장을 확인해 보세요: {url}",
-        "showQR": "QR 코드 표시",
-        "hideQR": "QR 코드 숨기기",
-        "qrDescription": "매장에 액세스하려면 이 코드를 스캔하세요.",
-        "downloadQR": "다운로드"
-      },
       "planOffer": {
         "titleCurrentCommission": "이번 달 수수료로 {paid}를 지불하셨습니다.",
         "titlePreviousCommission": "지난달 수수료로 {paid}를 지불하셨습니다.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "편집",
       "reservationsEdit": "편집",
       "settingsCustomerFields": "고객 정보",
-      "needsALook": "확인 필요"
+      "needsALook": "확인 필요",
+      "visibility": "가게 알리기"
     },
     "notificationsCenter": {
       "title": "알림",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "확인할 항목",
       "neutral": "Louez가 스스로 해결하지 못했습니다. 열어서 무슨 일이 있었는지 확인하세요.",
       "viewAll": "모두 보기"
+    },
+    "visibility": {
+      "title": "가게 알리기",
+      "description": "고객이 나를 찾고 온라인으로 예약하도록 하는 세 가지 간단한 방법입니다.",
+      "steps": {
+        "share_contacts": {
+          "title": "고객과 지인에게 알리세요",
+          "description": "첫 고객은 이미 나를 아는 사람들입니다."
+        },
+        "qr_poster": {
+          "title": "매장에 QR 코드를 붙이세요",
+          "description": "지나가던 손님이 다음 대여를 휴대폰으로 예약할 수 있습니다."
+        },
+        "google_business": {
+          "title": "Google Maps에 링크를 추가하세요",
+          "description": "Google에서 검색한 사람이 바로 예약 페이지로 연결됩니다."
+        }
+      },
+      "status": {
+        "done": "완료",
+        "skipped": "나에게는 필요 없음"
+      },
+      "actions": {
+        "start": "시작",
+        "open": "열기",
+        "done": "완료",
+        "skip": "나에게는 필요 없음",
+        "reopen": "할 일로 되돌리기"
+      },
+      "share": {
+        "title": "스토어 공유하기",
+        "description": "내가 쓰는 앱으로, 원하는 사람에게 링크를 보내세요.",
+        "targetLabel": "무엇을 공유할까요?",
+        "targetStore": "스토어 전체",
+        "messageStore": "안녕하세요! 이제 {storeName}에서 온라인으로 예약할 수 있어요: {url}",
+        "messageProduct": "안녕하세요! {storeName}에서 {productName}을(를) 대여할 수 있고, 온라인으로 예약할 수 있어요: {url}",
+        "emailSubject": "{storeName}에서 온라인 예약",
+        "email": "이메일",
+        "copyLink": "링크 복사",
+        "copyMessage": "메시지 복사",
+        "copied": "복사했어요!",
+        "moreIdeas": "QR 포스터, Google Maps: 가게를 알리는 더 많은 방법"
+      },
+      "poster": {
+        "headline": "온라인 예약",
+        "scanHint": "휴대폰 카메라로 스캔하세요",
+        "save": "포스터 저장",
+        "hint": "A4로 인쇄해 계산대나 진열창에 붙이거나, 휴대폰으로 보여 주세요.",
+        "previewAlt": "포스터 미리보기",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "Google Business Profile에서 내 프로필을 열거나 무료로 만드세요.",
+        "step2": "“프로필 수정”을 클릭한 다음 “웹사이트” 입력란을 선택하세요.",
+        "step3": "링크를 붙여넣고 저장하세요. Google에 “예약” 항목이 있으면 거기에도 링크를 추가하세요.",
+        "open": "Google Business Profile 열기",
+        "copyLink": "내 링크 복사",
+        "copied": "복사했어요!"
+      },
+      "visits": {
+        "title": "공유한 링크로 들어온 방문",
+        "period": "최근 28일",
+        "empty": "아직 방문이 없어요. 이 페이지의 링크와 QR 코드로 들어온 방문이 여기에 집계됩니다.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "이메일",
+          "facebook": "Facebook",
+          "copy": "복사한 링크",
+          "qr": "QR 코드",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "다른 채널",
+        "reeent": {
+          "title": "reeent에 게시",
+          "description": "대여 마켓플레이스"
+        },
+        "website": {
+          "title": "내 웹사이트에서 예약",
+          "description": "이미 있는 사이트에 예약 위젯을 추가하세요"
+        }
+      },
+      "notReady": {
+        "title": "스토어가 아직 준비되지 않았어요",
+        "description": "공유하기 전에 상품을 추가하고 스토어를 온라인에 공개하세요.",
+        "action": "홈으로 돌아가기"
+      },
+      "homeCard": {
+        "title": "첫 고객을 만나 보세요",
+        "next": "다음 단계: {step}",
+        "action": "계속",
+        "dismiss": "숨기기"
+      }
     }
   },
   "storefront": {

@@ -27,6 +27,7 @@ import { dashboardSettingsRouter } from "./settings";
 import { dashboardStoresRouter } from "./stores";
 import { dashboardTeamRouter } from "./team";
 import { dashboardTestReservationsRouter } from "./test-reservations";
+import { dashboardVisibilityRouter } from "./visibility";
 
 /**
  * Example dashboard procedure for testing the setup
@@ -70,6 +71,7 @@ export const dashboardRouter = {
   stores: dashboardStoresRouter,
   team: dashboardTeamRouter,
   testReservations: dashboardTestReservationsRouter,
+  visibility: dashboardVisibilityRouter,
   onboarding: dashboardOnboardingRouter,
   onlineStore: dashboardOnlineStoreRouter,
   payments: dashboardPaymentsRouter,

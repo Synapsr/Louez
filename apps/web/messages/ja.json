@@ -1155,25 +1155,6 @@
         "share": "シェアする",
         "shareTitle": "私のレンタル店"
       },
-      "share": {
-        "title": "ストアを共有する",
-        "description": "ストアのリンクを顧客に送信します",
-        "copyLink": "リンクをコピー",
-        "copyLinkDescription": "URLをクリップボードにコピー",
-        "copied": "コピーしました！",
-        "whatsappDescription": "WhatsApp経由で送信する",
-        "whatsappMessage": "レンタルストアをチェックしてください: {url}",
-        "email": "電子メール",
-        "emailDescription": "電子メールで送信する",
-        "emailSubject": "レンタルショップをご覧ください",
-        "emailBody": "こんにちは、\n\nぜひ当社のレンタルストアをご覧ください。\n{url}\n\nまた近いうちにお会いしましょう！",
-        "smsDescription": "SMSで送信",
-        "smsMessage": "レンタルストアをチェックしてください: {url}",
-        "showQR": "QRコードを表示",
-        "hideQR": "QRコードを隠す",
-        "qrDescription": "このコードをスキャンしてストアにアクセスします",
-        "downloadQR": "ダウンロード"
-      },
       "planOffer": {
         "titleCurrentCommission": "今月は手数料として{paid}をお支払いいただいています。",
         "titlePreviousCommission": "先月は手数料として{paid}をお支払いいただきました。",
@@ -7096,7 +7077,8 @@
       "productsEdit": "編集",
       "reservationsEdit": "編集",
       "settingsCustomerFields": "顧客情報",
-      "needsALook": "要確認"
+      "needsALook": "要確認",
+      "visibility": "お店を知ってもらう"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "確認事項",
       "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。",
       "viewAll": "すべて見る"
+    },
+    "visibility": {
+      "title": "お店を知ってもらう",
+      "description": "お客様に見つけてもらい、オンラインで予約してもらうための3つの簡単なステップです。",
+      "steps": {
+        "share_contacts": {
+          "title": "お客様や友人に伝えましょう",
+          "description": "最初のお客様は、すでにあなたを知っている人たちです。"
+        },
+        "qr_poster": {
+          "title": "お店にQRコードを貼りましょう",
+          "description": "来店したお客様が、次のレンタルをスマホから予約できます。"
+        },
+        "google_business": {
+          "title": "Google マップにリンクを追加しましょう",
+          "description": "Googleで検索した人が、そのまま予約ページに進めます。"
+        }
+      },
+      "status": {
+        "done": "完了",
+        "skipped": "自分には不要"
+      },
+      "actions": {
+        "start": "始める",
+        "open": "開く",
+        "done": "完了",
+        "skip": "自分には不要",
+        "reopen": "未対応に戻す"
+      },
+      "share": {
+        "title": "ストアを共有",
+        "description": "お好きな相手に、普段使っているアプリでリンクを送りましょう。",
+        "targetLabel": "何を共有しますか？",
+        "targetStore": "ストア全体",
+        "messageStore": "こんにちは！{storeName}でオンライン予約ができるようになりました：{url}",
+        "messageProduct": "こんにちは！{storeName}で{productName}をレンタルできます。オンラインで予約できます：{url}",
+        "emailSubject": "{storeName}でオンライン予約",
+        "email": "メール",
+        "copyLink": "リンクをコピー",
+        "copyMessage": "メッセージをコピー",
+        "copied": "コピーしました！",
+        "moreIdeas": "QRポスター、Google マップ：知ってもらうその他の方法"
+      },
+      "poster": {
+        "headline": "オンライン予約",
+        "scanHint": "スマホのカメラで読み取り",
+        "save": "ポスターを保存",
+        "hint": "A4で印刷してカウンターや窓に貼るか、スマホで見せましょう。",
+        "previewAlt": "ポスターのプレビュー",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "Google Business Profileでプロフィールを開くか、無料で作成してください。",
+        "step2": "「プロフィールを編集」をクリックし、「ウェブサイト」欄を選びます。",
+        "step3": "リンクを貼り付けて保存します。Googleに「予約」の項目があれば、そちらにもリンクを追加してください。",
+        "open": "Google Business Profileを開く",
+        "copyLink": "自分のリンクをコピー",
+        "copied": "コピーしました！"
+      },
+      "visits": {
+        "title": "共有したリンクからの訪問",
+        "period": "過去28日間",
+        "empty": "まだ訪問はありません。このページのリンクとQRコードからの訪問がここに集計されます。",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "メール",
+          "facebook": "Facebook",
+          "copy": "コピーしたリンク",
+          "qr": "QRコード",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "その他のチャネル",
+        "reeent": {
+          "title": "reeentに掲載",
+          "description": "レンタルのマーケットプレイス"
+        },
+        "website": {
+          "title": "自社サイトで予約",
+          "description": "すでにお持ちのサイトに予約ウィジェットを追加"
+        }
+      },
+      "notReady": {
+        "title": "ストアの準備がまだ整っていません",
+        "description": "共有する前に、商品を追加してストアを公開してください。",
+        "action": "ホームに戻る"
+      },
+      "homeCard": {
+        "title": "最初のお客様を獲得しましょう",
+        "next": "次のステップ：{step}",
+        "action": "続ける",
+        "dismiss": "非表示"
+      }
     }
   },
   "storefront": {

@@ -10,6 +10,10 @@ import {
   type ReactNode,
 } from "react";
 
+import { parseVisitSource, type VisitSource } from "@louez/api/contracts/visibility";
+
+import { readVisitSource } from "@/lib/visibility/util.visit-source";
+
 /** Storefront pages the funnel distinguishes. */
 export type PageType =
   | "home"
@@ -59,11 +63,14 @@ interface AnalyticsContextValue {
 interface AnalyticsSession {
   sessionId: string;
   device: DeviceType;
+  /** The channel of the link the visit came in by (`?via=`), kept for the whole visit. */
+  source: VisitSource | null;
 }
 
 const AnalyticsContext = createContext<AnalyticsContextValue | undefined>(undefined);
 
 const SESSION_STORAGE_KEY = "louez_analytics_session";
+const SOURCE_STORAGE_KEY = "louez_analytics_source";
 const TRACK_ENDPOINT = "/api/track";
 
 const NOOP_ANALYTICS: AnalyticsContextValue = {
@@ -113,6 +120,22 @@ const getOrCreateSessionId = (): string => {
 };
 
 /**
+ * The visit's source: the first marked link of the tab's session (`?via=`,
+ * set by the dashboard's share tools), so the pages after it keep it.
+ */
+const getOrCaptureVisitSource = (): VisitSource | null => {
+  const fromUrl = readVisitSource(window.location.search);
+  try {
+    const stored = parseVisitSource(sessionStorage.getItem(SOURCE_STORAGE_KEY));
+    if (stored) return stored;
+    if (fromUrl) sessionStorage.setItem(SOURCE_STORAGE_KEY, fromUrl);
+  } catch {
+    // sessionStorage can be unavailable in strict privacy modes.
+  }
+  return fromUrl;
+};
+
+/**
  * Fire-and-forget delivery: `sendBeacon` survives navigation and unload;
  * the fetch fallback keeps `keepalive` for the same reason. Analytics never
  * throws into the page.
@@ -151,7 +174,11 @@ export const AnalyticsProvider = ({
   const [session, setSession] = useState<AnalyticsSession | null>(null);
 
   useEffect(() => {
-    setSession({ sessionId: getOrCreateSessionId(), device: getDeviceType() });
+    setSession({
+      sessionId: getOrCreateSessionId(),
+      device: getDeviceType(),
+      source: getOrCaptureVisitSource(),
+    });
   }, []);
 
   const trackPageView = useCallback(
@@ -167,6 +194,7 @@ export const AnalyticsProvider = ({
         categoryId: data.categoryId,
         referrer: document.referrer.slice(0, 500) || undefined,
         device: session.device,
+        source: session.source ?? undefined,
       });
     },
     [enabled, session, storeSlug],
@@ -182,7 +210,14 @@ export const AnalyticsProvider = ({
         sessionId: session.sessionId,
         customerId: data.customerId,
         eventType: data.eventType,
-        metadata: channel ? { ...data.metadata, channel } : data.metadata,
+        metadata:
+          channel || session.source
+            ? {
+                ...data.metadata,
+                ...(channel && { channel }),
+                ...(session.source && { source: session.source }),
+              }
+            : data.metadata,
       });
     },
     [channel, enabled, session, storeSlug],

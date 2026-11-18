@@ -55,5 +55,9 @@ export async function serverApi() {
       context,
       path: ["dashboard", "billing"],
     }),
+    visibility: createRouterClient(appRouter.dashboard.visibility, {
+      context,
+      path: ["dashboard", "visibility"],
+    }),
   };
 }

@@ -1155,25 +1155,6 @@
         "share": "分享",
         "shareTitle": "我的出租店"
       },
-      "share": {
-        "title": "分享您的商店",
-        "description": "将您的商店链接发送给您的客户",
-        "copyLink": "复制链接",
-        "copyLinkDescription": "将 URL 复制到剪贴板",
-        "copied": "复制了！",
-        "whatsappDescription": "通过 WhatsApp 发送",
-        "whatsappMessage": "查看我们的租赁店：{url}",
-        "email": "电子邮件",
-        "emailDescription": "通过电子邮件发送",
-        "emailSubject": "探索我们的租赁店",
-        "emailBody": "您好，\n\n我邀请您探索我们的租赁店：\n{url}\n\n再见！",
-        "smsDescription": "通过短信发送",
-        "smsMessage": "查看我们的租赁店：{url}",
-        "showQR": "显示二维码",
-        "hideQR": "隐藏二维码",
-        "qrDescription": "扫描此码即可进入店铺",
-        "downloadQR": "下载"
-      },
       "planOffer": {
         "titleCurrentCommission": "本月您已支付 {paid} 的佣金。",
         "titlePreviousCommission": "上月您支付了 {paid} 的佣金。",
@@ -7096,7 +7077,8 @@
       "productsEdit": "编辑",
       "reservationsEdit": "编辑",
       "settingsCustomerFields": "客户档案",
-      "needsALook": "待检查"
+      "needsALook": "待检查",
+      "visibility": "让客户找到你"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "待检查事项",
       "neutral": "Louez 无法自行处理此事项。打开查看发生了什么。",
       "viewAll": "查看全部"
+    },
+    "visibility": {
+      "title": "让客户找到你",
+      "description": "三个简单步骤，让客户找到你并在线预订。",
+      "steps": {
+        "share_contacts": {
+          "title": "告诉你的客户和朋友",
+          "description": "你的第一批客户，就是已经认识你的人。"
+        },
+        "qr_poster": {
+          "title": "在店里贴上二维码",
+          "description": "路过的顾客可以用手机预订下次租赁。"
+        },
+        "google_business": {
+          "title": "把链接添加到 Google Maps",
+          "description": "在 Google 上搜索你的人会直接进入预订页面。"
+        }
+      },
+      "status": {
+        "done": "已完成",
+        "skipped": "不适合我"
+      },
+      "actions": {
+        "start": "开始",
+        "open": "打开",
+        "done": "已完成",
+        "skip": "不适合我",
+        "reopen": "标记为待办"
+      },
+      "share": {
+        "title": "分享你的店铺",
+        "description": "通过你自己的应用，把链接发给你选择的人。",
+        "targetLabel": "你想分享什么？",
+        "targetStore": "整个店铺",
+        "messageStore": "你好！现在可以在 {storeName} 在线预订了：{url}",
+        "messageProduct": "你好！{storeName} 有 {productName} 可租，可在线预订：{url}",
+        "emailSubject": "在 {storeName} 在线预订",
+        "email": "电子邮件",
+        "copyLink": "复制链接",
+        "copyMessage": "复制消息",
+        "copied": "已复制！",
+        "moreIdeas": "二维码海报、Google Maps：更多让客户找到你的方式"
+      },
+      "poster": {
+        "headline": "在线预订",
+        "scanHint": "用手机相机扫码",
+        "save": "保存海报",
+        "hint": "用 A4 纸打印后放在柜台或橱窗，或直接用手机展示。",
+        "previewAlt": "海报预览",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "打开你在 Google Business Profile 上的资料，或免费创建一个。",
+        "step2": "点击“编辑个人资料”，然后点击“网站”字段。",
+        "step3": "粘贴你的链接并保存。如果 Google 提供“预订”，也请在那里添加链接。",
+        "open": "打开 Google Business Profile",
+        "copyLink": "复制我的链接",
+        "copied": "已复制！"
+      },
+      "visits": {
+        "title": "来自你分享链接的访问",
+        "period": "最近 28 天",
+        "empty": "暂无访问。此页面上的链接和二维码带来的访问会在这里统计。",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "电子邮件",
+          "facebook": "Facebook",
+          "copy": "复制的链接",
+          "qr": "二维码",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "其他渠道",
+        "reeent": {
+          "title": "发布到 reeent",
+          "description": "租赁市场"
+        },
+        "website": {
+          "title": "在你的网站上预订",
+          "description": "把预订小组件添加到你已有的网站"
+        }
+      },
+      "notReady": {
+        "title": "你的店铺还没准备好",
+        "description": "请先添加产品并让店铺上线，再进行分享。",
+        "action": "返回首页"
+      },
+      "homeCard": {
+        "title": "获得你的第一批客户",
+        "next": "下一步：{step}",
+        "action": "继续",
+        "dismiss": "隐藏"
+      }
     }
   },
   "storefront": {

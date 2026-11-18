@@ -4,6 +4,7 @@ import { pageViews, storefrontEvents, stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getClientIp } from '@/lib/request'
+import { visitSourceSchema } from '@louez/api/contracts/visibility'
 
 // Validation schemas
 const pageViewSchema = z.object({
@@ -15,6 +16,8 @@ const pageViewSchema = z.object({
   categoryId: z.string().length(21).optional(),
   referrer: z.string().max(500).optional(),
   device: z.enum(['mobile', 'tablet', 'desktop']).optional(),
+  // The channel of the shared link the visit came in by (`?via=`)
+  source: visitSourceSchema.optional(),
 })
 
 const eventSchema = z.object({
@@ -221,6 +224,7 @@ export async function POST(request: NextRequest) {
           categoryId: data.categoryId,
           referrer: data.referrer,
           device: data.device || 'desktop',
+          source: data.source,
         })
         .catch((err) => console.error('[Analytics] Failed to insert page view:', err))
     } else {

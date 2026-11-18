@@ -76,7 +76,6 @@ export const TestReservationGuide = ({
       {guide.kind === "done" ? (
         <TestReservationFinish
           reservationId={reservationId}
-          storefrontUrl={state.storefrontUrl}
           hasMarketplaceChannel={state.hasMarketplaceChannel}
         />
       ) : (

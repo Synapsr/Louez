@@ -1155,25 +1155,6 @@
         "share": "Share",
         "shareTitle": "My rental store"
       },
-      "share": {
-        "title": "Share your store",
-        "description": "Send your store link to your customers",
-        "copyLink": "Copy link",
-        "copyLinkDescription": "Copy URL to clipboard",
-        "copied": "Copied!",
-        "whatsappDescription": "Send via WhatsApp",
-        "whatsappMessage": "Check out our rental store: {url}",
-        "email": "Email",
-        "emailDescription": "Send via email",
-        "emailSubject": "Discover our rental store",
-        "emailBody": "Hello,\n\nI invite you to discover our rental store:\n{url}\n\nSee you soon!",
-        "smsDescription": "Send via SMS",
-        "smsMessage": "Check out our rental store: {url}",
-        "showQR": "Show QR code",
-        "hideQR": "Hide QR code",
-        "qrDescription": "Scan this code to access the store",
-        "downloadQR": "Download"
-      },
       "planOffer": {
         "titleCurrentCommission": "This month, you paid {paid} in commission.",
         "titlePreviousCommission": "Last month, you paid {paid} in commission.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Edit",
       "reservationsEdit": "Edit",
       "settingsCustomerFields": "Customer record",
-      "needsALook": "To check"
+      "needsALook": "To check",
+      "visibility": "Get known"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Something to check",
       "neutral": "Louez couldn't settle this on its own. Open it to see what happened.",
       "viewAll": "See all"
+    },
+    "visibility": {
+      "title": "Get known",
+      "description": "Three simple moves so customers find you and book online.",
+      "steps": {
+        "share_contacts": {
+          "title": "Tell your customers and friends",
+          "description": "Your first customers are the people who already know you."
+        },
+        "qr_poster": {
+          "title": "Put a QR code up in your shop",
+          "description": "Walk-in customers book their next rental from their phone."
+        },
+        "google_business": {
+          "title": "Add your link to Google Maps",
+          "description": "People who look you up on Google land straight on booking."
+        }
+      },
+      "status": {
+        "done": "Done",
+        "skipped": "Not for me"
+      },
+      "actions": {
+        "start": "Start",
+        "open": "Open",
+        "done": "Done",
+        "skip": "Not for me",
+        "reopen": "Mark as to do"
+      },
+      "share": {
+        "title": "Share your store",
+        "description": "Send the link through your own apps, to people you choose.",
+        "targetLabel": "What do you want to share?",
+        "targetStore": "The whole store",
+        "messageStore": "Hello! You can now book online at {storeName}: {url}",
+        "messageProduct": "Hello! {productName} is for rent at {storeName}, and you can book it online: {url}",
+        "emailSubject": "Book online at {storeName}",
+        "email": "Email",
+        "copyLink": "Copy link",
+        "copyMessage": "Copy message",
+        "copied": "Copied!",
+        "moreIdeas": "QR poster, Google Maps: more ways to get known"
+      },
+      "poster": {
+        "headline": "Book online",
+        "scanHint": "Scan with your phone's camera",
+        "save": "Save the poster",
+        "hint": "Print it on A4 for your counter or window, or show it from your phone.",
+        "previewAlt": "Preview of the poster",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "Open your profile on Google Business Profile, or create one: it is free.",
+        "step2": "Click “Edit profile”, then the “Website” field.",
+        "step3": "Paste your link and save. If Google offers “Bookings”, add the link there too.",
+        "open": "Open Google Business Profile",
+        "copyLink": "Copy my link",
+        "copied": "Copied!"
+      },
+      "visits": {
+        "title": "Visits from your shared links",
+        "period": "Last 28 days",
+        "empty": "No visits yet. The links and the QR code on this page are counted here.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "Email",
+          "facebook": "Facebook",
+          "copy": "Copied link",
+          "qr": "QR code",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Other channels",
+        "reeent": {
+          "title": "Publish on reeent",
+          "description": "The rental marketplace"
+        },
+        "website": {
+          "title": "Booking on your website",
+          "description": "Add the booking widget to a site you already have"
+        }
+      },
+      "notReady": {
+        "title": "Your store is not ready yet",
+        "description": "Add a product and put your store online before sharing it.",
+        "action": "Back to the home page"
+      },
+      "homeCard": {
+        "title": "Get your first customers",
+        "next": "Next step: {step}",
+        "action": "Continue",
+        "dismiss": "Hide"
+      }
     }
   },
   "storefront": {

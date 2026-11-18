@@ -195,6 +195,7 @@ const ORPC = {
   stores: `${ROUTERS}/stores.ts`,
   team: `${ROUTERS}/team.ts`,
   testReservations: `${ROUTERS}/test-reservations.ts`,
+  visibility: `${ROUTERS}/visibility.ts`,
 } as const;
 
 const MCP = {
@@ -219,6 +220,7 @@ const tool = (path: string, name: string): CapabilitySource => ({ kind: "mcp-too
 const UI_ONLY = "Interface preference, no business effect";
 const PASSWORD = "Password and passkeys stay with Better Auth, in the browser";
 const TEST_RESERVATION = "Dashboard onboarding, human session only";
+const VISIBILITY_GUIDE = "Dashboard guide, human session only";
 
 // ---------------------------------------------------------------------------
 // Inventory
@@ -1617,6 +1619,21 @@ export const capabilities = [
     sources: [action(SA.marketplace, "dismissDirectoryClaim")],
     kind: "write",
     plan: { lot: "6" },
+  },
+  // The "Se faire connaître" guide (docs/product/visibilite-boutiques.md).
+  {
+    id: "online_store.getVisibility",
+    sources: [procedure("visibility", "get")],
+    kind: "read",
+    plan: { exclude: VISIBILITY_GUIDE },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.setVisibilityStep",
+    sources: [procedure("visibility", "setStep")],
+    kind: "write",
+    plan: { exclude: VISIBILITY_GUIDE },
+    actors: ["session"],
   },
   {
     // The dashboard keeps its direct flow (the action redirects to Stripe);
