@@ -59,6 +59,10 @@ export const productAnalyticsEvents = {
   testReservationCompleted: 'test_reservation_completed',
   testReservationManaged: 'test_reservation_managed',
   testReservationDeleted: 'test_reservation_deleted',
+  // The "Se faire connaître" guide (docs/analytics/visibility.md)
+  visibilityViewed: 'visibility_viewed',
+  visibilityShareUsed: 'visibility_share_used',
+  visibilityStepCompleted: 'visibility_step_completed',
 } as const;
 
 export type ProductAnalyticsEvent =
@@ -136,6 +140,13 @@ export type ReservationAnalyticsAction =
 export const keyboardShortcutAnalyticsBaseProperties = {
   ...productAnalyticsBaseProperties,
   feature: 'keyboard_shortcuts',
+  surface: 'dashboard',
+} as const;
+
+/** Shared by the "Se faire connaître" guide's events (docs/analytics/visibility.md). */
+export const visibilityAnalyticsBaseProperties = {
+  ...productAnalyticsBaseProperties,
+  feature: 'visibility',
   surface: 'dashboard',
 } as const;
 

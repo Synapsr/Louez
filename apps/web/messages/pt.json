@@ -1116,25 +1116,6 @@
         "share": "Compartilhar",
         "shareTitle": "Minha loja de aluguel"
       },
-      "share": {
-        "title": "Compartilhar sua loja",
-        "description": "Envie o link da sua loja para seus clientes",
-        "copyLink": "Copiar link",
-        "copyLinkDescription": "Copiar URL para a área de transferência",
-        "copied": "Copiado!",
-        "whatsappDescription": "Enviar pelo WhatsApp",
-        "whatsappMessage": "Descubra nossa loja de aluguel: {url}",
-        "email": "E-mail",
-        "emailDescription": "Enviar por e-mail",
-        "emailSubject": "Descubra nossa loja de aluguel",
-        "emailBody": "Olá,\n\nConvido você a descobrir nossa loja de aluguel:\n{url}\n\nAté breve!",
-        "smsDescription": "Enviar por SMS",
-        "smsMessage": "Descubra nossa loja de aluguel: {url}",
-        "showQR": "Mostrar código QR",
-        "hideQR": "Ocultar código QR",
-        "qrDescription": "Escaneie este código para acessar a loja",
-        "downloadQR": "Baixar"
-      },
       "planOffer": {
         "titleCurrentCommission": "Este mês pagou {paid} de comissão.",
         "titlePreviousCommission": "No mês passado pagou {paid} de comissão.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Editar",
       "reservationsEdit": "Editar",
       "settingsCustomerFields": "Ficha de cliente",
-      "needsALook": "A verificar"
+      "needsALook": "A verificar",
+      "visibility": "Dê-se a conhecer"
     },
     "notificationsCenter": {
       "title": "Notificações",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Algo a verificar",
       "neutral": "A Louez não conseguiu resolver isto sozinha. Abra para ver o que aconteceu.",
       "viewAll": "Ver tudo"
+    },
+    "visibility": {
+      "title": "Dê-se a conhecer",
+      "description": "Três passos simples para os clientes o encontrarem e reservarem online.",
+      "steps": {
+        "share_contacts": {
+          "title": "Avise os seus clientes e amigos",
+          "description": "Os seus primeiros clientes são as pessoas que já o conhecem."
+        },
+        "qr_poster": {
+          "title": "Coloque um código QR na sua loja",
+          "description": "Os clientes de passagem reservam o próximo aluguer pelo telemóvel."
+        },
+        "google_business": {
+          "title": "Adicione o seu link ao Google Maps",
+          "description": "Quem o procura no Google chega diretamente à reserva."
+        }
+      },
+      "status": {
+        "done": "Feito",
+        "skipped": "Não é para mim"
+      },
+      "actions": {
+        "start": "Começar",
+        "open": "Abrir",
+        "done": "Feito",
+        "skip": "Não é para mim",
+        "reopen": "Marcar como por fazer"
+      },
+      "share": {
+        "title": "Partilhe a sua loja",
+        "description": "Envie o link pelas suas próprias aplicações, às pessoas que escolher.",
+        "targetLabel": "O que quer partilhar?",
+        "targetStore": "A loja toda",
+        "messageStore": "Olá! Já pode reservar online em {storeName}: {url}",
+        "messageProduct": "Olá! {productName} está para alugar em {storeName} e pode reservá-lo online: {url}",
+        "emailSubject": "Reserve online em {storeName}",
+        "email": "E-mail",
+        "copyLink": "Copiar link",
+        "copyMessage": "Copiar mensagem",
+        "copied": "Copiado!",
+        "moreIdeas": "Cartaz QR, Google Maps: mais formas de se dar a conhecer"
+      },
+      "poster": {
+        "headline": "Reserve online",
+        "scanHint": "Digitalize com a câmara do telemóvel",
+        "save": "Guardar o cartaz",
+        "hint": "Imprima-o em A4 para o balcão ou a montra, ou mostre-o no telemóvel.",
+        "previewAlt": "Pré-visualização do cartaz",
+        "fileName": "cartaz"
+      },
+      "google": {
+        "step1": "Abra o seu perfil no Google Business Profile ou crie um: é grátis.",
+        "step2": "Clique em «Editar perfil» e depois no campo «Website».",
+        "step3": "Cole o seu link e guarde. Se o Google oferecer «Reservas», adicione lá também o link.",
+        "open": "Abrir o Google Business Profile",
+        "copyLink": "Copiar o meu link",
+        "copied": "Copiado!"
+      },
+      "visits": {
+        "title": "Visitas dos seus links partilhados",
+        "period": "Últimos 28 dias",
+        "empty": "Ainda sem visitas. Os links e o código QR desta página são contados aqui.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "E-mail",
+          "facebook": "Facebook",
+          "copy": "Link copiado",
+          "qr": "Código QR",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Outros canais",
+        "reeent": {
+          "title": "Publicar no reeent",
+          "description": "O marketplace de aluguer"
+        },
+        "website": {
+          "title": "Reservas no seu site",
+          "description": "Adicione o widget de reservas a um site que já tenha"
+        }
+      },
+      "notReady": {
+        "title": "A sua loja ainda não está pronta",
+        "description": "Adicione um produto e ponha a loja online antes de a partilhar.",
+        "action": "Voltar à página inicial"
+      },
+      "homeCard": {
+        "title": "Conquiste os primeiros clientes",
+        "next": "Próximo passo: {step}",
+        "action": "Continuar",
+        "dismiss": "Ocultar"
+      }
     }
   },
   "storefront": {

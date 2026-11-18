@@ -1155,25 +1155,6 @@
         "share": "Teilen",
         "shareTitle": "Mein Vermietungsshop"
       },
-      "share": {
-        "title": "Shop teilen",
-        "description": "Senden Sie Ihren Shop-Link an Ihre Kunden",
-        "copyLink": "Link kopieren",
-        "copyLinkDescription": "URL in Zwischenablage kopieren",
-        "copied": "Kopiert!",
-        "whatsappDescription": "Über WhatsApp senden",
-        "whatsappMessage": "Entdecken Sie unseren Vermietungsshop: {url}",
-        "email": "E-Mail",
-        "emailDescription": "Per E-Mail senden",
-        "emailSubject": "Entdecken Sie unseren Vermietungsshop",
-        "emailBody": "Hallo,\n\nIch lade Sie ein, unseren Vermietungsshop zu entdecken:\n{url}\n\nBis bald!",
-        "smsDescription": "Per SMS senden",
-        "smsMessage": "Entdecken Sie unseren Vermietungsshop: {url}",
-        "showQR": "QR-Code anzeigen",
-        "hideQR": "QR-Code ausblenden",
-        "qrDescription": "Scannen Sie diesen Code, um auf den Shop zuzugreifen",
-        "downloadQR": "Herunterladen"
-      },
       "planOffer": {
         "titleCurrentCommission": "Diesen Monat haben Sie {paid} Provision gezahlt.",
         "titlePreviousCommission": "Letzten Monat haben Sie {paid} Provision gezahlt.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Bearbeiten",
       "reservationsEdit": "Bearbeiten",
       "settingsCustomerFields": "Kundendaten",
-      "needsALook": "Zu prüfen"
+      "needsALook": "Zu prüfen",
+      "visibility": "Bekannt werden"
     },
     "notificationsCenter": {
       "title": "Benachrichtigungen",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Etwas zu prüfen",
       "neutral": "Louez konnte das nicht selbst klären. Öffne es, um zu sehen, was passiert ist.",
       "viewAll": "Alle ansehen"
+    },
+    "visibility": {
+      "title": "Bekannt werden",
+      "description": "Drei einfache Schritte, damit Kunden Sie finden und online buchen.",
+      "steps": {
+        "share_contacts": {
+          "title": "Sagen Sie es Kunden und Freunden",
+          "description": "Ihre ersten Kunden sind die Menschen, die Sie schon kennen."
+        },
+        "qr_poster": {
+          "title": "Hängen Sie einen QR-Code in Ihrem Laden auf",
+          "description": "Laufkundschaft bucht die nächste Miete bequem per Handy."
+        },
+        "google_business": {
+          "title": "Tragen Sie Ihren Link in Google Maps ein",
+          "description": "Wer Sie bei Google sucht, landet direkt bei der Buchung."
+        }
+      },
+      "status": {
+        "done": "Erledigt",
+        "skipped": "Nicht für mich"
+      },
+      "actions": {
+        "start": "Starten",
+        "open": "Öffnen",
+        "done": "Erledigt",
+        "skip": "Nicht für mich",
+        "reopen": "Wieder auf „offen“ setzen"
+      },
+      "share": {
+        "title": "Ihren Shop teilen",
+        "description": "Senden Sie den Link über Ihre eigenen Apps an Leute Ihrer Wahl.",
+        "targetLabel": "Was möchten Sie teilen?",
+        "targetStore": "Den ganzen Shop",
+        "messageStore": "Hallo! Sie können jetzt online bei {storeName} buchen: {url}",
+        "messageProduct": "Hallo! {productName} gibt es zu mieten bei {storeName}, und Sie können es online buchen: {url}",
+        "emailSubject": "Online buchen bei {storeName}",
+        "email": "E-Mail",
+        "copyLink": "Link kopieren",
+        "copyMessage": "Nachricht kopieren",
+        "copied": "Kopiert!",
+        "moreIdeas": "QR-Poster, Google Maps: mehr Wege, bekannt zu werden"
+      },
+      "poster": {
+        "headline": "Online buchen",
+        "scanHint": "Mit der Handykamera scannen",
+        "save": "Poster speichern",
+        "hint": "Drucken Sie es auf A4 für Theke oder Schaufenster oder zeigen Sie es auf dem Handy.",
+        "previewAlt": "Vorschau des Posters",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "Öffnen Sie Ihr Profil bei Google Business Profile oder legen Sie eines an: kostenlos.",
+        "step2": "Klicken Sie auf „Profil bearbeiten“ und dann auf das Feld „Website“.",
+        "step3": "Fügen Sie Ihren Link ein und speichern Sie. Bietet Google „Buchungen“ an, tragen Sie ihn auch dort ein.",
+        "open": "Google Business Profile öffnen",
+        "copyLink": "Meinen Link kopieren",
+        "copied": "Kopiert!"
+      },
+      "visits": {
+        "title": "Besuche über Ihre geteilten Links",
+        "period": "Letzte 28 Tage",
+        "empty": "Noch keine Besuche. Die Links und der QR-Code auf dieser Seite werden hier gezählt.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "E-Mail",
+          "facebook": "Facebook",
+          "copy": "Kopierter Link",
+          "qr": "QR-Code",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Weitere Kanäle",
+        "reeent": {
+          "title": "Auf reeent veröffentlichen",
+          "description": "Der Marktplatz für Vermietung"
+        },
+        "website": {
+          "title": "Buchung auf Ihrer Website",
+          "description": "Fügen Sie das Buchungs-Widget zu einer bestehenden Website hinzu"
+        }
+      },
+      "notReady": {
+        "title": "Ihr Shop ist noch nicht bereit",
+        "description": "Legen Sie ein Produkt an und schalten Sie Ihren Shop online, bevor Sie ihn teilen.",
+        "action": "Zurück zur Startseite"
+      },
+      "homeCard": {
+        "title": "Gewinnen Sie Ihre ersten Kunden",
+        "next": "Nächster Schritt: {step}",
+        "action": "Weiter",
+        "dismiss": "Ausblenden"
+      }
     }
   },
   "storefront": {

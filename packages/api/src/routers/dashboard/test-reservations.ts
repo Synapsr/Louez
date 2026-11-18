@@ -44,7 +44,7 @@ const get = testReservations
   })
   .input(getTestReservationInput)
   .output(getTestReservationOutput)
-  .handler(({ context }) => getTestReservationState(context.store, context.ports.urls));
+  .handler(({ context }) => getTestReservationState(context.store));
 
 const start = testReservations
   .meta({

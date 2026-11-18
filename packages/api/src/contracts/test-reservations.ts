@@ -28,8 +28,6 @@ export const getTestReservationOutput = z.object({
   /** The test reservation's inspections, by type; false without a reservation. */
   hasDepartureInspection: z.boolean(),
   hasReturnInspection: z.boolean(),
-  /** The storefront's home, to share once the test is done. */
-  storefrontUrl: z.string(),
   /** The store has a reeent (marketplace) channel: the finish screen links to its settings. */
   hasMarketplaceChannel: z.boolean(),
 });

@@ -1116,25 +1116,6 @@
         "share": "Udostępnij",
         "shareTitle": "Mój sklep z wynajmem"
       },
-      "share": {
-        "title": "Udostępnij swój sklep",
-        "description": "Wyślij link do swojego sklepu klientom",
-        "copyLink": "Kopiuj link",
-        "copyLinkDescription": "Skopiuj URL do schowka",
-        "copied": "Skopiowano!",
-        "whatsappDescription": "Wyślij przez WhatsApp",
-        "whatsappMessage": "Odkryj nasz sklep z wynajmem: {url}",
-        "email": "E-mail",
-        "emailDescription": "Wyślij e-mailem",
-        "emailSubject": "Odkryj nasz sklep z wynajmem",
-        "emailBody": "Cześć,\n\nZapraszam do odkrycia naszego sklepu z wynajmem:\n{url}\n\nDo zobaczenia!",
-        "smsDescription": "Wyślij przez SMS",
-        "smsMessage": "Odkryj nasz sklep z wynajmem: {url}",
-        "showQR": "Pokaż kod QR",
-        "hideQR": "Ukryj kod QR",
-        "qrDescription": "Zeskanuj ten kod, aby uzyskać dostęp do sklepu",
-        "downloadQR": "Pobierz"
-      },
       "planOffer": {
         "titleCurrentCommission": "W tym miesiącu zapłacono {paid} prowizji.",
         "titlePreviousCommission": "W zeszłym miesiącu zapłacono {paid} prowizji.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Edytuj",
       "reservationsEdit": "Edytuj",
       "settingsCustomerFields": "Karta klienta",
-      "needsALook": "Do sprawdzenia"
+      "needsALook": "Do sprawdzenia",
+      "visibility": "Dotrzyj do klientów"
     },
     "notificationsCenter": {
       "title": "Powiadomienia",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Coś do sprawdzenia",
       "neutral": "Louez nie mógł załatwić tego sam. Otwórz, aby zobaczyć, co się stało.",
       "viewAll": "Zobacz wszystko"
+    },
+    "visibility": {
+      "title": "Dotrzyj do klientów",
+      "description": "Trzy proste kroki, dzięki którym klienci znajdą Cię i zarezerwują online.",
+      "steps": {
+        "share_contacts": {
+          "title": "Powiedz klientom i znajomym",
+          "description": "Twoimi pierwszymi klientami są ludzie, którzy już Cię znają."
+        },
+        "qr_poster": {
+          "title": "Powieś kod QR w swoim sklepie",
+          "description": "Klienci z ulicy zarezerwują kolejny wynajem prosto z telefonu."
+        },
+        "google_business": {
+          "title": "Dodaj swój link do Map Google",
+          "description": "Osoby szukające Cię w Google trafią prosto do rezerwacji."
+        }
+      },
+      "status": {
+        "done": "Gotowe",
+        "skipped": "Nie dla mnie"
+      },
+      "actions": {
+        "start": "Zacznij",
+        "open": "Otwórz",
+        "done": "Gotowe",
+        "skip": "Nie dla mnie",
+        "reopen": "Oznacz jako do zrobienia"
+      },
+      "share": {
+        "title": "Udostępnij swój sklep",
+        "description": "Wyślij link przez własne aplikacje, wybranym osobom.",
+        "targetLabel": "Co chcesz udostępnić?",
+        "targetStore": "Cały sklep",
+        "messageStore": "Cześć! Możesz już rezerwować online w {storeName}: {url}",
+        "messageProduct": "Cześć! {productName} można wynająć w {storeName} i zarezerwować online: {url}",
+        "emailSubject": "Rezerwuj online w {storeName}",
+        "email": "E-mail",
+        "copyLink": "Kopiuj link",
+        "copyMessage": "Kopiuj wiadomość",
+        "copied": "Skopiowano!",
+        "moreIdeas": "Plakat z kodem QR, Google Maps: więcej sposobów na dotarcie do klientów"
+      },
+      "poster": {
+        "headline": "Rezerwuj online",
+        "scanHint": "Zeskanuj aparatem telefonu",
+        "save": "Zapisz plakat",
+        "hint": "Wydrukuj go w formacie A4 na ladę lub witrynę albo pokaż z telefonu.",
+        "previewAlt": "Podgląd plakatu",
+        "fileName": "plakat"
+      },
+      "google": {
+        "step1": "Otwórz swój profil w Google Business Profile lub załóż go: to bezpłatne.",
+        "step2": "Kliknij „Edytuj profil”, a potem pole „Witryna”.",
+        "step3": "Wklej swój link i zapisz. Jeśli Google oferuje „Rezerwacje”, dodaj tam link także.",
+        "open": "Otwórz Google Business Profile",
+        "copyLink": "Kopiuj mój link",
+        "copied": "Skopiowano!"
+      },
+      "visits": {
+        "title": "Wizyty z Twoich udostępnionych linków",
+        "period": "Ostatnie 28 dni",
+        "empty": "Brak wizyt. Tutaj liczą się linki i kod QR z tej strony.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "E-mail",
+          "facebook": "Facebook",
+          "copy": "Skopiowany link",
+          "qr": "Kod QR",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Inne kanały",
+        "reeent": {
+          "title": "Opublikuj na reeent",
+          "description": "Marketplace wynajmu"
+        },
+        "website": {
+          "title": "Rezerwacje na Twojej stronie",
+          "description": "Dodaj widżet rezerwacji do istniejącej strony"
+        }
+      },
+      "notReady": {
+        "title": "Twój sklep nie jest jeszcze gotowy",
+        "description": "Dodaj produkt i uruchom sklep online, zanim go udostępnisz.",
+        "action": "Wróć do strony głównej"
+      },
+      "homeCard": {
+        "title": "Zdobądź pierwszych klientów",
+        "next": "Następny krok: {step}",
+        "action": "Dalej",
+        "dismiss": "Ukryj"
+      }
     }
   },
   "storefront": {

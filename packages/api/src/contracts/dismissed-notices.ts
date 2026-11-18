@@ -8,12 +8,14 @@ import { z } from "zod";
  *
  * The two cohort states have their own id: closing the seats pitch must not
  * hide the badge the store earns later. `agent-assistant` is the offer to
- * connect an AI assistant.
+ * connect an AI assistant; `visibility-guide` the home's card of the "Se faire
+ * connaître" guide.
  */
 export const DISMISSIBLE_NOTICE_IDS = [
   "reeent-cohort-member",
   "reeent-cohort-seats",
   "agent-assistant",
+  "visibility-guide",
 ] as const;
 
 export type DismissibleNoticeId = (typeof DISMISSIBLE_NOTICE_IDS)[number];

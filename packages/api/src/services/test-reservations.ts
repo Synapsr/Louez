@@ -105,8 +105,7 @@ export async function recordTestReservationEvent(effect: TestAnalyticsEffect): P
 
 /** What the dashboard's guide and home card read. */
 export async function getTestReservationState(
-  store: Pick<ActorStore, "id" | "slug" | "settings">,
-  urls: UrlsPort,
+  store: Pick<ActorStore, "id" | "settings">,
   now: Date = new Date(),
 ): Promise<GetTestReservationOutput> {
   const [found, [channel]] = await Promise.all([
@@ -140,7 +139,6 @@ export async function getTestReservationState(
     inspectionsEnabled: inspection.enabled === true,
     hasDepartureInspection: types.includes("departure"),
     hasReturnInspection: types.includes("return"),
-    storefrontUrl: urls.storefront(store.slug, "/"),
     hasMarketplaceChannel: Boolean(channel),
   };
 }

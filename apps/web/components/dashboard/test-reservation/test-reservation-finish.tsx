@@ -1,30 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { PartyPopper, Share2 } from "lucide-react";
 
 import { Button } from "@louez/ui";
 
-import { ShareModal } from "@/components/dashboard/home/share-modal";
-
 import { DeleteTestReservationButton } from "./delete-test-reservation-button";
 
 interface TestReservationFinishProps {
   reservationId: string;
-  storefrontUrl: string;
   hasMarketplaceChannel: boolean;
 }
 
-/** The end of the test: share the store, then delete what the test left. */
+/**
+ * The end of the test: make the store known ("Se faire connaître"), then
+ * delete what the test left.
+ */
 export const TestReservationFinish = ({
   reservationId,
-  storefrontUrl,
   hasMarketplaceChannel,
 }: TestReservationFinishProps) => {
   const t = useTranslations("dashboard.testReservation.done");
-  const [shareOpen, setShareOpen] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -38,7 +35,7 @@ export const TestReservationFinish = ({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setShareOpen(true)}>
+        <Button render={<Link href="/dashboard/visibility" />}>
           <Share2 />
           {t("share")}
         </Button>
@@ -49,7 +46,6 @@ export const TestReservationFinish = ({
         )}
         <DeleteTestReservationButton reservationId={reservationId} />
       </div>
-      <ShareModal open={shareOpen} onOpenChange={setShareOpen} storeUrl={storefrontUrl} />
     </div>
   );
 };

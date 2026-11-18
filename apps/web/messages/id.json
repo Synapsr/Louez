@@ -1155,25 +1155,6 @@
         "share": "Bagikan",
         "shareTitle": "Toko persewaan saya"
       },
-      "share": {
-        "title": "Bagikan toko Anda",
-        "description": "Kirim tautan toko Anda ke pelanggan Anda",
-        "copyLink": "Salin tautan",
-        "copyLinkDescription": "Salin URL ke papan klip",
-        "copied": "Disalin!",
-        "whatsappDescription": "Kirim melalui WhatsApp",
-        "whatsappMessage": "Kunjungi toko persewaan kami: {url}",
-        "email": "Surel",
-        "emailDescription": "Kirim melalui email",
-        "emailSubject": "Temukan toko persewaan kami",
-        "emailBody": "Halo,\n\nSaya mengundang Anda untuk menemukan toko persewaan kami:\n{url}\n\nSampai jumpa lagi!",
-        "smsDescription": "Kirim melalui SMS",
-        "smsMessage": "Kunjungi toko persewaan kami: {url}",
-        "showQR": "Tampilkan kode QR",
-        "hideQR": "Sembunyikan kode QR",
-        "qrDescription": "Pindai kode ini untuk mengakses toko",
-        "downloadQR": "Unduh"
-      },
       "planOffer": {
         "titleCurrentCommission": "Bulan ini, Anda membayar komisi {paid}.",
         "titlePreviousCommission": "Bulan lalu, Anda membayar komisi {paid}.",
@@ -7096,7 +7077,8 @@
       "productsEdit": "Sunting",
       "reservationsEdit": "Sunting",
       "settingsCustomerFields": "Data pelanggan",
-      "needsALook": "Perlu dicek"
+      "needsALook": "Perlu dicek",
+      "visibility": "Perkenalkan toko Anda"
     },
     "notificationsCenter": {
       "title": "Pemberitahuan",
@@ -7431,6 +7413,101 @@
       "unknownTitle": "Sesuatu perlu dicek",
       "neutral": "Louez tidak bisa menyelesaikan ini sendiri. Buka untuk melihat apa yang terjadi.",
       "viewAll": "Lihat semua"
+    },
+    "visibility": {
+      "title": "Perkenalkan toko Anda",
+      "description": "Tiga langkah mudah agar pelanggan menemukan Anda dan memesan online.",
+      "steps": {
+        "share_contacts": {
+          "title": "Kabari pelanggan dan teman Anda",
+          "description": "Pelanggan pertama Anda adalah orang-orang yang sudah mengenal Anda."
+        },
+        "qr_poster": {
+          "title": "Pasang kode QR di toko Anda",
+          "description": "Pelanggan yang mampir bisa memesan sewa berikutnya dari ponsel mereka."
+        },
+        "google_business": {
+          "title": "Tambahkan tautan Anda ke Google Maps",
+          "description": "Orang yang mencari Anda di Google langsung masuk ke halaman pemesanan."
+        }
+      },
+      "status": {
+        "done": "Selesai",
+        "skipped": "Bukan untuk saya"
+      },
+      "actions": {
+        "start": "Mulai",
+        "open": "Buka",
+        "done": "Selesai",
+        "skip": "Bukan untuk saya",
+        "reopen": "Tandai belum selesai"
+      },
+      "share": {
+        "title": "Bagikan toko Anda",
+        "description": "Kirim tautan lewat aplikasi Anda sendiri ke orang yang Anda pilih.",
+        "targetLabel": "Apa yang ingin Anda bagikan?",
+        "targetStore": "Seluruh toko",
+        "messageStore": "Halo! Sekarang Anda bisa memesan online di {storeName}: {url}",
+        "messageProduct": "Halo! {productName} tersedia untuk disewa di {storeName}, dan bisa dipesan online: {url}",
+        "emailSubject": "Pesan online di {storeName}",
+        "email": "Email",
+        "copyLink": "Salin tautan",
+        "copyMessage": "Salin pesan",
+        "copied": "Tersalin!",
+        "moreIdeas": "Poster QR, Google Maps: cara lain untuk dikenal"
+      },
+      "poster": {
+        "headline": "Pesan online",
+        "scanHint": "Pindai dengan kamera ponsel Anda",
+        "save": "Simpan poster",
+        "hint": "Cetak di kertas A4 untuk meja kasir atau etalase, atau tunjukkan dari ponsel.",
+        "previewAlt": "Pratinjau poster",
+        "fileName": "poster"
+      },
+      "google": {
+        "step1": "Buka profil Anda di Google Business Profile, atau buat baru: gratis.",
+        "step2": "Klik “Edit profil”, lalu kolom “Situs web”.",
+        "step3": "Tempel tautan Anda lalu simpan. Jika Google menawarkan “Reservasi”, tambahkan tautan di sana juga.",
+        "open": "Buka Google Business Profile",
+        "copyLink": "Salin tautan saya",
+        "copied": "Tersalin!"
+      },
+      "visits": {
+        "title": "Kunjungan dari tautan yang Anda bagikan",
+        "period": "28 hari terakhir",
+        "empty": "Belum ada kunjungan. Tautan dan kode QR di halaman ini dihitung di sini.",
+        "sources": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS",
+          "email": "Email",
+          "facebook": "Facebook",
+          "copy": "Tautan tersalin",
+          "qr": "Kode QR",
+          "google": "Google"
+        }
+      },
+      "other": {
+        "title": "Saluran lain",
+        "reeent": {
+          "title": "Terbitkan di reeent",
+          "description": "Marketplace penyewaan"
+        },
+        "website": {
+          "title": "Pemesanan di situs web Anda",
+          "description": "Tambahkan widget pemesanan ke situs yang sudah Anda punya"
+        }
+      },
+      "notReady": {
+        "title": "Toko Anda belum siap",
+        "description": "Tambahkan produk dan online-kan toko Anda sebelum membagikannya.",
+        "action": "Kembali ke beranda"
+      },
+      "homeCard": {
+        "title": "Dapatkan pelanggan pertama Anda",
+        "next": "Langkah berikutnya: {step}",
+        "action": "Lanjutkan",
+        "dismiss": "Sembunyikan"
+      }
     }
   },
   "storefront": {

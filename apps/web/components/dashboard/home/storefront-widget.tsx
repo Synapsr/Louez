@@ -17,11 +17,18 @@ import { ShareModal } from "./share-modal";
 const COPIED_FEEDBACK_MS = 2000;
 
 interface StorefrontWidgetProps {
+  storeId: string;
+  storeName: string;
   storeSlug: string;
   className?: string;
 }
 
-export const StorefrontWidget = ({ storeSlug, className }: StorefrontWidgetProps) => {
+export const StorefrontWidget = ({
+  storeId,
+  storeName,
+  storeSlug,
+  className,
+}: StorefrontWidgetProps) => {
   const t = useTranslations("dashboard.home");
   const [copied, setCopied] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -89,7 +96,13 @@ export const StorefrontWidget = ({ storeSlug, className }: StorefrontWidgetProps
         </div>
       </DashboardSectionCard>
 
-      <ShareModal open={shareModalOpen} onOpenChange={setShareModalOpen} storeUrl={storeUrl} />
+      <ShareModal
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        storeId={storeId}
+        storeName={storeName}
+        storeUrl={storeUrl}
+      />
     </>
   );
 };
