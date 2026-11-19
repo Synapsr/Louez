@@ -1000,7 +1000,8 @@
       "visibility": "让人知道你",
       "visibilityFirstCustomers": "第一批客户",
       "visibilityAi": "让 AI 找到你",
-      "analyticsAi": "AI 助手"
+      "analyticsAi": "AI 助手",
+      "visibilityPartners": "合作伙伴"
     },
     "multiStore": {
       "title": "多店",
@@ -7124,7 +7125,8 @@
       "needsALook": "待检查",
       "visibility": "让客户找到你",
       "visibilityAi": "让 AI 找到你",
-      "analyticsAi": "AI 助手"
+      "analyticsAi": "AI 助手",
+      "visibilityPartners": "合作伙伴"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7621,6 +7623,139 @@
         "notIncluded": {
           "title": "你的套餐未包含",
           "description": "被 AI 助手找到不在你当前的套餐中。"
+        }
+      }
+    },
+    "partners": {
+      "title": "合作伙伴",
+      "description": "露营地、酒店、游客中心：给他们一个链接。客户通过这个链接预订后，你需要按设定的佣金付给对方，由你自己支付。",
+      "add": "添加合作伙伴",
+      "toPay": "待支付：",
+      "archived": "已存档",
+      "bookings": "{count, plural, =0 {暂无预订} other {# 个预订}}",
+      "dueAmount": "待支付 {amount}",
+      "archivedNotice": "该合作伙伴已存档：通过其链接的新预订不再计入。其对账单仍可查看。",
+      "empty": {
+        "title": "回馈为你推荐客户的人",
+        "description": "附近的露营地、酒店或游客中心已经在给你介绍客户？给他们一个链接：Louez 会统计预订并计算佣金。",
+        "steps": {
+          "add": "添加合作伙伴并设定佣金，例如 10%。",
+          "share": "把链接和二维码海报交给对方。",
+          "pay": "Louez 每月计算你应付的金额，由你自己支付。"
+        }
+      },
+      "rule": {
+        "percent": "租金的 {value}%",
+        "fixed": "每个预订 {value}"
+      },
+      "form": {
+        "titleCreate": "新建合作伙伴",
+        "titleEdit": "编辑合作伙伴",
+        "description": "填写名称和佣金即可。保存后链接立即可用。",
+        "name": "名称",
+        "namePlaceholder": "松林露营地",
+        "nameRequired": "请填写合作伙伴名称。",
+        "commission": "佣金",
+        "types": {
+          "percent": "租金百分比",
+          "fixed": "每个预订固定金额"
+        },
+        "rate": "比例",
+        "amount": "金额",
+        "percentInvalid": "请填写 0 到 100 之间的数。",
+        "amountInvalid": "请填写正数金额。",
+        "baseHint": "按折扣后的租金计算，不含押金、配送费和保险费。",
+        "rateChangeHint": "修改仅对之后的预订生效。",
+        "contact": "联系方式（选填）",
+        "contactName": "联系人",
+        "contactEmail": "邮箱",
+        "contactPhone": "电话",
+        "emailInvalid": "邮箱地址无效。",
+        "cancel": "取消",
+        "create": "添加",
+        "save": "保存"
+      },
+      "link": {
+        "title": "专属链接",
+        "description": "打开链接的客户自行选择是否将预订计入 {partner}。价格不变。",
+        "copy": "复制",
+        "copied": "链接已复制",
+        "poster": "二维码海报",
+        "posterTitle": "{partner} 的海报",
+        "posterDescription": "扫描二维码会通过其专属链接打开你的店铺。",
+        "posterHint": "打印出来放在对方的前台，或直接发给对方。",
+        "posterFileName": "partner-poster",
+        "sendEmail": "邮件",
+        "emailSubject": "您在 {store} 的合作伙伴链接",
+        "message": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n您的对账单，随时更新：{statement}\n\n感谢您的推荐！"
+      },
+      "menu": {
+        "label": "合作伙伴操作",
+        "edit": "编辑",
+        "copyStatement": "复制其对账单链接",
+        "statementCopied": "对账单链接已复制",
+        "rotateStatement": "更换其对账单链接",
+        "rotated": "已生成新的对账单链接，旧链接已失效。",
+        "archive": "存档",
+        "restore": "恢复"
+      },
+      "statement": {
+        "title": "对账单",
+        "due": "应付",
+        "paid": "已付",
+        "remaining": "待支付",
+        "upcoming": "待生效：{amount}",
+        "visits": "{count, plural, =0 {暂无通过其链接的访问} other {通过其链接访问 # 次}}",
+        "export": "导出（CSV）",
+        "markPaid": "标记为已付",
+        "markPaidTitle": "将 {month} 的 {amount} 标记为已付？",
+        "markPaidDescription": "你自己向 {partner} 付款（转账、现金等）。Louez 会记录下来，避免重复付款。",
+        "cancel": "取消",
+        "payout": "已于 {date} 支付 {amount}",
+        "cancelPayout": "撤销",
+        "empty": "本月没有通过该合作伙伴的预订。",
+        "rules": "佣金按折扣后的租金计算，不含押金、配送费和保险费。租赁结束后才需支付，预订取消则佣金一并取消。按租赁结束的月份计入。此对账单不是发票。",
+        "manual": "手动添加",
+        "adjusted": "已调整（计算值：{amount}）",
+        "actions": "操作",
+        "adjust": "调整佣金",
+        "remove": "从该合作伙伴移除",
+        "removed": "已将预订从该合作伙伴移除",
+        "states": {
+          "upcoming": "待生效",
+          "due": "应付",
+          "cancelled": "已取消"
+        },
+        "csv": {
+          "number": "预订",
+          "startDate": "开始",
+          "endDate": "结束",
+          "base": "租金",
+          "rule": "规则",
+          "commission": "佣金",
+          "state": "状态",
+          "note": "备注"
+        }
+      },
+      "adjust": {
+        "title": "预订 {number} 的佣金",
+        "description": "按规则计算为 {amount}。请填写你实际应付的金额，例如部分退款之后。",
+        "amount": "应付金额",
+        "amountInvalid": "请填写大于或等于零的金额。",
+        "note": "原因",
+        "notePlaceholder": "部分退款",
+        "reset": "恢复按规则计算",
+        "save": "保存"
+      },
+      "reservation": {
+        "title": "合作伙伴",
+        "attribute": "计入合作伙伴",
+        "change": "更换合作伙伴",
+        "remove": "移除合作伙伴",
+        "commission": "{amount}，{state}",
+        "origin": {
+          "link": "通过其链接",
+          "manual": "手动添加"
         }
       }
     }
@@ -9280,6 +9415,13 @@
       },
       "fullFile": "所有商品及其描述",
       "footer": "数据来自在线店铺，更新于 {date}。"
+    },
+    "partnerLink": {
+      "title": "由 {partner} 推荐",
+      "question": "如果您预订，是否愿意让 {partner} 获得感谢？价格不变。",
+      "accept": "好的，乐意",
+      "decline": "不用了，谢谢",
+      "note": "如果您同意，Cookie 会记住这一选择 30 天，仅限本店铺。"
     }
   },
   "onboarding": {
@@ -9988,7 +10130,10 @@
       "none": "此预订已没有未确认的授权。"
     },
     "planOfferUnavailable": "此优惠已不再适用于您的店铺。请在订阅页面查看套餐。",
-    "aiVisibilityNotIncluded": "你的套餐不包含 AI 助手可见性。"
+    "aiVisibilityNotIncluded": "你的套餐不包含 AI 助手可见性。",
+    "partnerNotFound": "该合作伙伴不存在或已存档。",
+    "partnerNothingToPay": "本月已无需再向该合作伙伴付款。",
+    "partnerReservationNotAttributed": "该预订未计入任何合作伙伴。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",
@@ -10558,5 +10703,23 @@
         }
       }
     }
+  },
+  "partnerStatement": {
+    "metaTitle": "合作伙伴对账单",
+    "title": "{partner} 的对账单",
+    "months": "月份",
+    "due": "应付",
+    "paid": "已付",
+    "remaining": "待支付",
+    "upcoming": "待生效：尚未结束的租赁共 {amount}。",
+    "empty": "本月没有通过您的链接产生的预订。",
+    "rentalEnded": "租赁于 {date} 结束",
+    "states": {
+      "upcoming": "待生效",
+      "due": "应付",
+      "cancelled": "已取消"
+    },
+    "rules": "佣金针对通过您的链接产生的预订。租赁结束后才需支付，预订取消则佣金一并取消。此对账单不显示任何客户信息，也不是发票。",
+    "paidBy": "{store} 直接向您付款。此对账单由 Louez 计算，款项不经过 Louez。"
   }
 }

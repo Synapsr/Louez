@@ -92,6 +92,7 @@ const visibilityNavigation = {
   items: [
     { key: "visibilityFirstCustomers", href: "/dashboard/visibility" },
     { key: "visibilityAi", href: "/dashboard/visibility/ai" },
+    { key: "visibilityPartners", href: "/dashboard/visibility/partners" },
   ],
 };
 

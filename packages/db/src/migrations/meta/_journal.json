@@ -855,6 +855,13 @@
       "when": 1795031744621,
       "tag": "0116_ai_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "5",
+      "when": 1795080770881,
+      "tag": "0117_partner_links",
+      "breakpoints": true
     }
   ]
 }

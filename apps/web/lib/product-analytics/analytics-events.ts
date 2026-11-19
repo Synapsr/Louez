@@ -65,6 +65,13 @@ export const productAnalyticsEvents = {
   visibilityStepCompleted: 'visibility_step_completed',
   visibilityAiViewed: 'visibility_ai_viewed',
   visibilityAiFixOpened: 'visibility_ai_fix_opened',
+  // Liens partenaires (docs/analytics/partners.md)
+  partnersViewed: 'partners_viewed',
+  partnerCreated: 'partner_created',
+  partnerLinkShared: 'partner_link_shared',
+  partnerMonthPaid: 'partner_month_paid',
+  partnerStatementExported: 'partner_statement_exported',
+  partnerReservationChanged: 'partner_reservation_changed',
   // The home's one next step card (docs/analytics/home.md)
   homeNextStepViewed: 'home_next_step_viewed',
 } as const;
@@ -151,6 +158,12 @@ export const keyboardShortcutAnalyticsBaseProperties = {
 export const visibilityAnalyticsBaseProperties = {
   ...productAnalyticsBaseProperties,
   feature: 'visibility',
+  surface: 'dashboard',
+} as const;
+
+export const partnersAnalyticsBaseProperties = {
+  ...productAnalyticsBaseProperties,
+  feature: 'partners',
   surface: 'dashboard',
 } as const;
 

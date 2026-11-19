@@ -1,5 +1,6 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
 import { HANDOFF_ROUTE_HEADER, isHandoffPath } from "@/lib/handoffs/handoff-privacy";
+import { isPartnerStatementPath } from "@/lib/partners/partner-statement-path";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing-demos/policy";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -434,9 +435,11 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
     return withRuntimeSecurityHeaders(response, pathname, getRuntimePublicEnv());
   }
 
-  // A handoff's URL may hold a secret: the root layout loads no analytics for it, and
-  // no page or redirect of it tells another site where the user came from.
-  if (isHandoffPath(pathname)) {
+  // A handoff's URL may hold a secret, and so does a partner's statement page
+  // (Liens partenaires): the root layout loads no analytics for them, no page or
+  // redirect of them tells another site where the user came from, and in
+  // standalone mode they stay off the storefront.
+  if (isHandoffPath(pathname) || isPartnerStatementPath(pathname)) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set(HANDOFF_ROUTE_HEADER, "1");
     const response = withRuntimeSecurityHeaders(

@@ -1000,7 +1000,8 @@
       "visibility": "Get known",
       "visibilityFirstCustomers": "First customers",
       "visibilityAi": "Be found by AI",
-      "analyticsAi": "AI assistants"
+      "analyticsAi": "AI assistants",
+      "visibilityPartners": "Partners"
     },
     "multiStore": {
       "title": "Multi-store",
@@ -7124,7 +7125,8 @@
       "needsALook": "To check",
       "visibility": "Get known",
       "visibilityAi": "Be found by AI",
-      "analyticsAi": "AI assistants"
+      "analyticsAi": "AI assistants",
+      "visibilityPartners": "Partners"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7621,6 +7623,139 @@
         "notIncluded": {
           "title": "Not included in your plan",
           "description": "Being found by AI assistants is not part of your current plan."
+        }
+      }
+    },
+    "partners": {
+      "title": "Partners",
+      "description": "Campsites, hotels, tourist offices: give them a link. When a customer books through it, you owe them the commission you chose, and you pay them yourself.",
+      "add": "Add a partner",
+      "toPay": "Left to pay:",
+      "archived": "Archived",
+      "bookings": "{count, plural, =0 {No bookings} one {# booking} other {# bookings}}",
+      "dueAmount": "{amount} to pay",
+      "archivedNotice": "This partner is archived: its link no longer credits new bookings. Its statements stay available.",
+      "empty": {
+        "title": "Reward the people who recommend you",
+        "description": "Does a local campsite, hotel or tourist office already send you customers? Give them a link: Louez counts the bookings and works out their commission.",
+        "steps": {
+          "add": "Add a partner and its commission, for example 10%.",
+          "share": "Give them their link and QR poster.",
+          "pay": "Every month, Louez works out what you owe them; you pay them yourself."
+        }
+      },
+      "rule": {
+        "percent": "{value}% of the rental",
+        "fixed": "{value} per booking"
+      },
+      "form": {
+        "titleCreate": "New partner",
+        "titleEdit": "Edit partner",
+        "description": "A name and a commission are enough. Their link is ready as soon as you save.",
+        "name": "Name",
+        "namePlaceholder": "Pine Tree Campsite",
+        "nameRequired": "Enter the partner's name.",
+        "commission": "Commission",
+        "types": {
+          "percent": "Percentage of the rental",
+          "fixed": "Fixed amount per booking"
+        },
+        "rate": "Rate",
+        "amount": "Amount",
+        "percentInvalid": "Between 0 and 100.",
+        "amountInvalid": "Enter a positive amount.",
+        "baseHint": "Worked out on the rental price after discounts, without the deposit, delivery or insurance.",
+        "rateChangeHint": "A change applies to future bookings.",
+        "contact": "Contact details (optional)",
+        "contactName": "Contact person",
+        "contactEmail": "Email",
+        "contactPhone": "Phone",
+        "emailInvalid": "This email is not valid.",
+        "cancel": "Cancel",
+        "create": "Add",
+        "save": "Save"
+      },
+      "link": {
+        "title": "Their link",
+        "description": "A customer who opens it chooses whether to credit {partner}. The price stays the same.",
+        "copy": "Copy",
+        "copied": "Link copied",
+        "poster": "QR poster",
+        "posterTitle": "Poster for {partner}",
+        "posterDescription": "The QR code opens your store with their link.",
+        "posterHint": "Print it for their front desk, or send it to them.",
+        "posterFileName": "partner-poster",
+        "sendEmail": "Email",
+        "emailSubject": "Your {store} partner link",
+        "message": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nYour statement, always up to date: {statement}\n\nThank you for recommending us!"
+      },
+      "menu": {
+        "label": "Partner actions",
+        "edit": "Edit",
+        "copyStatement": "Copy their statement link",
+        "statementCopied": "Statement link copied",
+        "rotateStatement": "Change their statement link",
+        "rotated": "New statement link: the old one no longer works.",
+        "archive": "Archive",
+        "restore": "Restore"
+      },
+      "statement": {
+        "title": "Statement",
+        "due": "Due",
+        "paid": "Paid",
+        "remaining": "Left to pay",
+        "upcoming": "Upcoming: {amount}",
+        "visits": "{count, plural, =0 {No visits through their link} one {# visit through their link} other {# visits through their link}}",
+        "export": "Export (CSV)",
+        "markPaid": "Mark as paid",
+        "markPaidTitle": "Mark {amount} as paid for {month}?",
+        "markPaidDescription": "You pay {partner} yourself (bank transfer, cash…). Louez records it so you never pay twice.",
+        "cancel": "Cancel",
+        "payout": "Paid {amount} on {date}",
+        "cancelPayout": "Undo",
+        "empty": "No bookings through this partner this month.",
+        "rules": "The commission is on the rental price after discounts, without the deposit, delivery or insurance. It is due once the rental is over, and cancelled if the booking is. The month is the one the rental ends in. This statement is not an invoice.",
+        "manual": "added by hand",
+        "adjusted": "Adjusted (worked out: {amount})",
+        "actions": "Actions",
+        "adjust": "Adjust the commission",
+        "remove": "Remove from partner",
+        "removed": "Booking removed from the partner",
+        "states": {
+          "upcoming": "Upcoming",
+          "due": "Due",
+          "cancelled": "Cancelled"
+        },
+        "csv": {
+          "number": "Booking",
+          "startDate": "Start",
+          "endDate": "End",
+          "base": "Rental",
+          "rule": "Rule",
+          "commission": "Commission",
+          "state": "Status",
+          "note": "Note"
+        }
+      },
+      "adjust": {
+        "title": "Commission for booking {number}",
+        "description": "The rule gives {amount}. Enter what you really owe, for example after a partial refund.",
+        "amount": "Amount owed",
+        "amountInvalid": "Enter an amount of zero or more.",
+        "note": "Reason",
+        "notePlaceholder": "Partial refund",
+        "reset": "Back to the rule",
+        "save": "Save"
+      },
+      "reservation": {
+        "title": "Partner",
+        "attribute": "Credit a partner",
+        "change": "Change partner",
+        "remove": "Remove the partner",
+        "commission": "{amount}, {state}",
+        "origin": {
+          "link": "Through their link",
+          "manual": "Added by hand"
         }
       }
     }
@@ -9280,6 +9415,13 @@
       },
       "fullFile": "Every product with its description",
       "footer": "Data from the online store, up to date on {date}."
+    },
+    "partnerLink": {
+      "title": "Recommended by {partner}",
+      "question": "Would you like {partner} to be thanked if you book? The price stays the same.",
+      "accept": "Yes, gladly",
+      "decline": "No thanks",
+      "note": "If you agree, a cookie remembers it for 30 days, on this store only."
     }
   },
   "onboarding": {
@@ -9988,7 +10130,10 @@
       "none": "This reservation has no unconfirmed authorization left."
     },
     "planOfferUnavailable": "This offer no longer applies to your store. You can find the plans on the Subscription page.",
-    "aiVisibilityNotIncluded": "Your plan does not include visibility with AI assistants."
+    "aiVisibilityNotIncluded": "Your plan does not include visibility with AI assistants.",
+    "partnerNotFound": "This partner does not exist or was archived.",
+    "partnerNothingToPay": "Nothing is left to pay this partner for this month.",
+    "partnerReservationNotAttributed": "This booking is not credited to any partner."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
@@ -10558,5 +10703,23 @@
         }
       }
     }
+  },
+  "partnerStatement": {
+    "metaTitle": "Partner statement",
+    "title": "{partner}'s statement",
+    "months": "Months",
+    "due": "Due",
+    "paid": "Paid",
+    "remaining": "Left to pay",
+    "upcoming": "Upcoming: {amount} for rentals not over yet.",
+    "empty": "No bookings through your link this month.",
+    "rentalEnded": "Rental ended on {date}",
+    "states": {
+      "upcoming": "Upcoming",
+      "due": "Due",
+      "cancelled": "Cancelled"
+    },
+    "rules": "The commission is on bookings made through your link. It is due once the rental is over, and cancelled if the booking is. This statement shows nothing about the customers and is not an invoice.",
+    "paidBy": "{store} pays you directly. Louez works out this statement; no money goes through Louez."
   }
 }

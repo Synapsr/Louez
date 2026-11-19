@@ -1000,7 +1000,8 @@
       "visibility": "Bekannt werden",
       "visibilityFirstCustomers": "Erste Kunden",
       "visibilityAi": "Von KI gefunden werden",
-      "analyticsAi": "KI-Assistenten"
+      "analyticsAi": "KI-Assistenten",
+      "visibilityPartners": "Partner"
     },
     "multiStore": {
       "title": "Multi-Shop",
@@ -7124,7 +7125,8 @@
       "needsALook": "Zu prüfen",
       "visibility": "Bekannt werden",
       "visibilityAi": "Von KI gefunden werden",
-      "analyticsAi": "KI-Assistenten"
+      "analyticsAi": "KI-Assistenten",
+      "visibilityPartners": "Partner"
     },
     "notificationsCenter": {
       "title": "Benachrichtigungen",
@@ -7621,6 +7623,139 @@
         "notIncluded": {
           "title": "Nicht in Ihrem Tarif enthalten",
           "description": "Von KI-Assistenten gefunden zu werden ist nicht Teil Ihres aktuellen Tarifs."
+        }
+      }
+    },
+    "partners": {
+      "title": "Partner",
+      "description": "Campingplätze, Hotels, Tourist-Infos: Geben Sie ihnen einen Link. Bucht ein Kunde darüber, schulden Sie ihnen die gewählte Provision und zahlen sie selbst aus.",
+      "add": "Partner hinzufügen",
+      "toPay": "Noch zu zahlen:",
+      "archived": "Archiviert",
+      "bookings": "{count, plural, =0 {Keine Buchungen} one {# Buchung} other {# Buchungen}}",
+      "dueAmount": "{amount} zu zahlen",
+      "archivedNotice": "Dieser Partner ist archiviert: Sein Link schreibt ihm keine neuen Buchungen mehr gut. Seine Abrechnungen bleiben einsehbar.",
+      "empty": {
+        "title": "Belohnen Sie alle, die Sie empfehlen",
+        "description": "Schickt Ihnen ein Campingplatz, ein Hotel oder die Tourist-Info vor Ort schon Kunden? Geben Sie ihnen einen Link: Louez zählt die Buchungen und berechnet ihre Provision.",
+        "steps": {
+          "add": "Fügen Sie einen Partner und seine Provision hinzu, zum Beispiel 10 %.",
+          "share": "Geben Sie ihm seinen Link und sein QR-Poster.",
+          "pay": "Jeden Monat berechnet Louez, was Sie ihm schulden; Sie zahlen ihn selbst."
+        }
+      },
+      "rule": {
+        "percent": "{value} % der Miete",
+        "fixed": "{value} pro Buchung"
+      },
+      "form": {
+        "titleCreate": "Neuer Partner",
+        "titleEdit": "Partner bearbeiten",
+        "description": "Name und Provision genügen. Sein Link ist fertig, sobald Sie speichern.",
+        "name": "Name",
+        "namePlaceholder": "Campingplatz Am Kiefernwald",
+        "nameRequired": "Geben Sie den Namen des Partners ein.",
+        "commission": "Provision",
+        "types": {
+          "percent": "Prozentsatz der Miete",
+          "fixed": "Fester Betrag pro Buchung"
+        },
+        "rate": "Satz",
+        "amount": "Betrag",
+        "percentInvalid": "Zwischen 0 und 100.",
+        "amountInvalid": "Geben Sie einen positiven Betrag ein.",
+        "baseHint": "Berechnet auf den Mietpreis nach Rabatten, ohne Kaution, Lieferung und Versicherung.",
+        "rateChangeHint": "Eine Änderung gilt für künftige Buchungen.",
+        "contact": "Kontaktdaten (optional)",
+        "contactName": "Ansprechperson",
+        "contactEmail": "E-Mail",
+        "contactPhone": "Telefon",
+        "emailInvalid": "Diese E-Mail-Adresse ist ungültig.",
+        "cancel": "Abbrechen",
+        "create": "Hinzufügen",
+        "save": "Speichern"
+      },
+      "link": {
+        "title": "Sein Link",
+        "description": "Ein Kunde, der ihn öffnet, entscheidet, ob er {partner} die Buchung gutschreibt. Der Preis bleibt gleich.",
+        "copy": "Kopieren",
+        "copied": "Link kopiert",
+        "poster": "QR-Poster",
+        "posterTitle": "Poster für {partner}",
+        "posterDescription": "Der QR-Code öffnet Ihren Shop mit seinem Link.",
+        "posterHint": "Drucken Sie es für seinen Empfang aus oder schicken Sie es ihm.",
+        "posterFileName": "partner-poster",
+        "sendEmail": "E-Mail",
+        "emailSubject": "Ihr Partnerlink für {store}",
+        "message": "Guten Tag,\n\nhier ist Ihr Partnerlink für {store}: {link}\nSie erhalten {rule} für jede über diesen Link gebuchte Miete, sobald die Miete beendet ist.\n\nIhre Abrechnung, immer aktuell: {statement}\n\nVielen Dank für Ihre Empfehlung!"
+      },
+      "menu": {
+        "label": "Partneraktionen",
+        "edit": "Bearbeiten",
+        "copyStatement": "Link zu seiner Abrechnung kopieren",
+        "statementCopied": "Abrechnungslink kopiert",
+        "rotateStatement": "Link zu seiner Abrechnung ändern",
+        "rotated": "Neuer Abrechnungslink: Der alte funktioniert nicht mehr.",
+        "archive": "Archivieren",
+        "restore": "Wiederherstellen"
+      },
+      "statement": {
+        "title": "Abrechnung",
+        "due": "Fällig",
+        "paid": "Bezahlt",
+        "remaining": "Noch zu zahlen",
+        "upcoming": "Demnächst: {amount}",
+        "visits": "{count, plural, =0 {Keine Besuche über seinen Link} one {# Besuch über seinen Link} other {# Besuche über seinen Link}}",
+        "export": "Exportieren (CSV)",
+        "markPaid": "Als bezahlt markieren",
+        "markPaidTitle": "{amount} für {month} als bezahlt markieren?",
+        "markPaidDescription": "Sie zahlen {partner} selbst (Überweisung, bar …). Louez hält es fest, damit Sie nie doppelt zahlen.",
+        "cancel": "Abbrechen",
+        "payout": "{amount} bezahlt am {date}",
+        "cancelPayout": "Rückgängig",
+        "empty": "Keine Buchungen über diesen Partner in diesem Monat.",
+        "rules": "Die Provision bezieht sich auf den Mietpreis nach Rabatten, ohne Kaution, Lieferung und Versicherung. Sie ist fällig, sobald die Miete beendet ist, und entfällt, wenn die Buchung storniert wird. Es zählt der Monat, in dem die Miete endet. Diese Abrechnung ist keine Rechnung.",
+        "manual": "manuell hinzugefügt",
+        "adjusted": "Angepasst (berechnet: {amount})",
+        "actions": "Aktionen",
+        "adjust": "Provision anpassen",
+        "remove": "Vom Partner entfernen",
+        "removed": "Buchung vom Partner entfernt",
+        "states": {
+          "upcoming": "Demnächst",
+          "due": "Fällig",
+          "cancelled": "Storniert"
+        },
+        "csv": {
+          "number": "Buchung",
+          "startDate": "Beginn",
+          "endDate": "Ende",
+          "base": "Miete",
+          "rule": "Regel",
+          "commission": "Provision",
+          "state": "Status",
+          "note": "Notiz"
+        }
+      },
+      "adjust": {
+        "title": "Provision für Buchung {number}",
+        "description": "Laut Regel ergibt sich {amount}. Geben Sie ein, was Sie tatsächlich schulden, etwa nach einer Teilerstattung.",
+        "amount": "Geschuldeter Betrag",
+        "amountInvalid": "Geben Sie einen Betrag von null oder mehr ein.",
+        "note": "Grund",
+        "notePlaceholder": "Teilerstattung",
+        "reset": "Zurück zur Regel",
+        "save": "Speichern"
+      },
+      "reservation": {
+        "title": "Partner",
+        "attribute": "Einem Partner gutschreiben",
+        "change": "Partner ändern",
+        "remove": "Partner entfernen",
+        "commission": "{amount}, {state}",
+        "origin": {
+          "link": "Über seinen Link",
+          "manual": "Manuell hinzugefügt"
         }
       }
     }
@@ -9280,6 +9415,13 @@
       },
       "fullFile": "Alle Produkte mit ihrer Beschreibung",
       "footer": "Daten aus dem Online-Shop, Stand {date}."
+    },
+    "partnerLink": {
+      "title": "Empfohlen von {partner}",
+      "question": "Möchten Sie, dass {partner} für Ihre Buchung ein Dankeschön erhält? Der Preis bleibt gleich.",
+      "accept": "Ja, gern",
+      "decline": "Nein, danke",
+      "note": "Wenn Sie zustimmen, merkt sich ein Cookie das 30 Tage lang, nur in diesem Shop."
     }
   },
   "onboarding": {
@@ -9988,7 +10130,10 @@
       "none": "Diese Reservierung hat keine unbestätigte Autorisierung mehr."
     },
     "planOfferUnavailable": "Dieses Angebot gilt nicht mehr für Ihren Shop. Die Abos finden Sie auf der Seite Abonnement.",
-    "aiVisibilityNotIncluded": "Ihr Tarif enthält keine Sichtbarkeit bei KI-Assistenten."
+    "aiVisibilityNotIncluded": "Ihr Tarif enthält keine Sichtbarkeit bei KI-Assistenten.",
+    "partnerNotFound": "Dieser Partner existiert nicht oder wurde archiviert.",
+    "partnerNothingToPay": "An diesen Partner ist für diesen Monat nichts mehr zu zahlen.",
+    "partnerReservationNotAttributed": "Diese Buchung ist keinem Partner gutgeschrieben."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",
@@ -10558,5 +10703,23 @@
         }
       }
     }
+  },
+  "partnerStatement": {
+    "metaTitle": "Partnerabrechnung",
+    "title": "Abrechnung von {partner}",
+    "months": "Monate",
+    "due": "Fällig",
+    "paid": "Bezahlt",
+    "remaining": "Noch zu zahlen",
+    "upcoming": "Demnächst: {amount} für noch nicht beendete Mieten.",
+    "empty": "Keine Buchungen über Ihren Link in diesem Monat.",
+    "rentalEnded": "Miete beendet am {date}",
+    "states": {
+      "upcoming": "Demnächst",
+      "due": "Fällig",
+      "cancelled": "Storniert"
+    },
+    "rules": "Die Provision bezieht sich auf Buchungen über Ihren Link. Sie ist fällig, sobald die Miete beendet ist, und entfällt, wenn die Buchung storniert wird. Diese Abrechnung zeigt nichts über die Kunden und ist keine Rechnung.",
+    "paidBy": "{store} zahlt Sie direkt. Louez erstellt diese Abrechnung; kein Geld läuft über Louez."
   }
 }

@@ -185,6 +185,7 @@ const ORPC = {
   notifications: `${ROUTERS}/notifications.ts`,
   onboarding: `${ROUTERS}/onboarding.ts`,
   onlineStore: `${ROUTERS}/online-store.ts`,
+  partners: `${ROUTERS}/partners.ts`,
   payments: `${ROUTERS}/payments.ts`,
   products: `${ROUTERS}/products.ts`,
   referral: `${ROUTERS}/referral.ts`,
@@ -221,6 +222,7 @@ const UI_ONLY = "Interface preference, no business effect";
 const PASSWORD = "Password and passkeys stay with Better Auth, in the browser";
 const TEST_RESERVATION = "Dashboard onboarding, human session only";
 const VISIBILITY_GUIDE = "Dashboard guide, human session only";
+const PARTNER_LINKS = "Partner links: dashboard session only in phase 1";
 
 // ---------------------------------------------------------------------------
 // Inventory
@@ -1647,6 +1649,83 @@ export const capabilities = [
     sources: [procedure("visibility", "setStep")],
     kind: "write",
     plan: { exclude: VISIBILITY_GUIDE },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.listPartners",
+    sources: [procedure("partners", "list")],
+    kind: "read",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.getPartnerStatement",
+    sources: [procedure("partners", "getStatement")],
+    kind: "read",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.getReservationPartner",
+    sources: [procedure("partners", "getForReservation")],
+    kind: "read",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.createPartner",
+    sources: [procedure("partners", "create")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.updatePartner",
+    sources: [procedure("partners", "update")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.setPartnerArchived",
+    sources: [procedure("partners", "setArchived")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.rotatePartnerStatementToken",
+    sources: [procedure("partners", "rotateStatementToken")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.markPartnerMonthPaid",
+    sources: [procedure("partners", "markMonthPaid")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.cancelPartnerPayout",
+    sources: [procedure("partners", "cancelPayout")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.adjustPartnerCommission",
+    sources: [procedure("partners", "adjustCommission")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.setReservationPartner",
+    sources: [procedure("partners", "setForReservation")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
     actors: ["session"],
   },
   {

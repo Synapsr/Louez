@@ -1000,7 +1000,8 @@
       "visibility": "Se faire connaître",
       "visibilityFirstCustomers": "Premiers clients",
       "visibilityAi": "Être trouvé par les IA",
-      "analyticsAi": "Assistants IA"
+      "analyticsAi": "Assistants IA",
+      "visibilityPartners": "Partenaires"
     },
     "multiStore": {
       "title": "Multi-boutiques",
@@ -7124,7 +7125,8 @@
       "needsALook": "À vérifier",
       "visibility": "Se faire connaître",
       "visibilityAi": "Être trouvé par les IA",
-      "analyticsAi": "Assistants IA"
+      "analyticsAi": "Assistants IA",
+      "visibilityPartners": "Partenaires"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7621,6 +7623,139 @@
         "notIncluded": {
           "title": "Pas inclus dans votre offre",
           "description": "Être trouvé par les assistants IA ne fait pas partie de votre offre actuelle."
+        }
+      }
+    },
+    "partners": {
+      "title": "Partenaires",
+      "description": "Campings, hôtels, offices de tourisme : donnez-leur un lien. Quand un client réserve par ce lien, vous leur devez la commission que vous avez choisie, et vous les payez vous-même.",
+      "add": "Ajouter un partenaire",
+      "toPay": "Reste à payer :",
+      "archived": "Archivé",
+      "bookings": "{count, plural, =0 {Aucune réservation} one {# réservation} other {# réservations}}",
+      "dueAmount": "{amount} à payer",
+      "archivedNotice": "Ce partenaire est archivé : son lien ne crédite plus les nouvelles réservations. Ses relevés restent consultables.",
+      "empty": {
+        "title": "Récompensez ceux qui vous recommandent",
+        "description": "Le camping, l'hôtel ou l'office de tourisme du coin envoie déjà des clients ? Donnez-lui un lien : Louez compte les réservations et calcule sa commission.",
+        "steps": {
+          "add": "Ajoutez un partenaire et sa commission, par exemple 10 %.",
+          "share": "Donnez-lui son lien et son affiche QR.",
+          "pay": "Chaque mois, Louez calcule ce que vous lui devez ; vous le payez vous-même."
+        }
+      },
+      "rule": {
+        "percent": "{value} % de la location",
+        "fixed": "{value} par réservation"
+      },
+      "form": {
+        "titleCreate": "Nouveau partenaire",
+        "titleEdit": "Modifier le partenaire",
+        "description": "Son nom et sa commission suffisent. Son lien est prêt dès l'enregistrement.",
+        "name": "Nom",
+        "namePlaceholder": "Camping Les Pins",
+        "nameRequired": "Indiquez le nom du partenaire.",
+        "commission": "Commission",
+        "types": {
+          "percent": "Pourcentage de la location",
+          "fixed": "Montant fixe par réservation"
+        },
+        "rate": "Taux",
+        "amount": "Montant",
+        "percentInvalid": "Entre 0 et 100.",
+        "amountInvalid": "Indiquez un montant positif.",
+        "baseHint": "Calculée sur le prix de la location, remise déduite, sans la caution, la livraison ni l'assurance.",
+        "rateChangeHint": "Un changement vaut pour les prochaines réservations.",
+        "contact": "Ses coordonnées (facultatif)",
+        "contactName": "Personne à contacter",
+        "contactEmail": "E-mail",
+        "contactPhone": "Téléphone",
+        "emailInvalid": "Cet e-mail n'est pas valide.",
+        "cancel": "Annuler",
+        "create": "Ajouter",
+        "save": "Enregistrer"
+      },
+      "link": {
+        "title": "Son lien",
+        "description": "Le client qui l'ouvre choisit s'il crédite {partner}. Le prix ne change pas.",
+        "copy": "Copier",
+        "copied": "Lien copié",
+        "poster": "Affiche QR",
+        "posterTitle": "Affiche pour {partner}",
+        "posterDescription": "Le QR code ouvre votre boutique avec son lien.",
+        "posterHint": "Imprimez-la pour son accueil, ou envoyez-la-lui.",
+        "posterFileName": "affiche-partenaire",
+        "sendEmail": "E-mail",
+        "emailSubject": "Votre lien partenaire {store}",
+        "message": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nVotre relevé, mis à jour en continu : {statement}\n\nMerci de nous recommander !"
+      },
+      "menu": {
+        "label": "Actions du partenaire",
+        "edit": "Modifier",
+        "copyStatement": "Copier le lien de son relevé",
+        "statementCopied": "Lien du relevé copié",
+        "rotateStatement": "Changer le lien de son relevé",
+        "rotated": "Nouveau lien de relevé : l'ancien ne marche plus.",
+        "archive": "Archiver",
+        "restore": "Réactiver"
+      },
+      "statement": {
+        "title": "Relevé",
+        "due": "Dû",
+        "paid": "Payé",
+        "remaining": "Reste à payer",
+        "upcoming": "À venir : {amount}",
+        "visits": "{count, plural, =0 {Aucune visite par son lien} one {# visite par son lien} other {# visites par son lien}}",
+        "export": "Exporter (CSV)",
+        "markPaid": "Marquer comme payé",
+        "markPaidTitle": "Marquer {amount} comme payé pour {month} ?",
+        "markPaidDescription": "Vous payez {partner} vous-même (virement, espèces…). Louez le note pour que vous ne payiez pas deux fois.",
+        "cancel": "Annuler",
+        "payout": "Payé {amount} le {date}",
+        "cancelPayout": "Annuler",
+        "empty": "Aucune réservation par ce partenaire ce mois-ci.",
+        "rules": "La commission porte sur le prix de la location, remise déduite, sans la caution, la livraison ni l'assurance. Elle est due quand la location est terminée, et annulée si la réservation l'est. Le mois est celui de la fin de location. Ce relevé n'est pas une facture.",
+        "manual": "ajoutée à la main",
+        "adjusted": "Ajustée (calcul : {amount})",
+        "actions": "Actions",
+        "adjust": "Ajuster la commission",
+        "remove": "Retirer du partenaire",
+        "removed": "Réservation retirée du partenaire",
+        "states": {
+          "upcoming": "À venir",
+          "due": "Due",
+          "cancelled": "Annulée"
+        },
+        "csv": {
+          "number": "Réservation",
+          "startDate": "Début",
+          "endDate": "Fin",
+          "base": "Location",
+          "rule": "Règle",
+          "commission": "Commission",
+          "state": "État",
+          "note": "Note"
+        }
+      },
+      "adjust": {
+        "title": "Commission de la réservation {number}",
+        "description": "Le calcul donne {amount}. Indiquez ce que vous lui devez vraiment, par exemple après un remboursement partiel.",
+        "amount": "Montant dû",
+        "amountInvalid": "Indiquez un montant positif ou nul.",
+        "note": "Motif",
+        "notePlaceholder": "Remboursement partiel",
+        "reset": "Revenir au calcul",
+        "save": "Enregistrer"
+      },
+      "reservation": {
+        "title": "Partenaire",
+        "attribute": "Attribuer à un partenaire",
+        "change": "Changer de partenaire",
+        "remove": "Retirer le partenaire",
+        "commission": "{amount}, {state}",
+        "origin": {
+          "link": "Par son lien",
+          "manual": "Ajouté à la main"
         }
       }
     }
@@ -9280,6 +9415,13 @@
       },
       "fullFile": "Tous les produits, avec leur description",
       "footer": "Données de la boutique en ligne, à jour au {date}."
+    },
+    "partnerLink": {
+      "title": "Recommandé par {partner}",
+      "question": "Voulez-vous que {partner} soit remercié si vous réservez ? Le prix ne change pas.",
+      "accept": "Oui, avec plaisir",
+      "decline": "Non merci",
+      "note": "Si vous acceptez, un cookie le retient 30 jours, sur cette boutique seulement."
     }
   },
   "onboarding": {
@@ -9988,7 +10130,10 @@
       "none": "Cette réservation n'a plus d'empreinte non confirmée."
     },
     "planOfferUnavailable": "Cette offre ne s'applique plus à votre boutique. Retrouvez les abonnements sur la page Abonnement.",
-    "aiVisibilityNotIncluded": "Votre offre n'inclut pas la visibilité auprès des assistants IA."
+    "aiVisibilityNotIncluded": "Votre offre n'inclut pas la visibilité auprès des assistants IA.",
+    "partnerNotFound": "Ce partenaire n'existe pas ou a été archivé.",
+    "partnerNothingToPay": "Il ne reste rien à payer à ce partenaire pour ce mois.",
+    "partnerReservationNotAttributed": "Cette réservation n'est attribuée à aucun partenaire."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",
@@ -10558,5 +10703,23 @@
         }
       }
     }
+  },
+  "partnerStatement": {
+    "metaTitle": "Relevé partenaire",
+    "title": "Relevé de {partner}",
+    "months": "Mois",
+    "due": "Dû",
+    "paid": "Payé",
+    "remaining": "Reste à payer",
+    "upcoming": "À venir : {amount} pour des locations pas encore terminées.",
+    "empty": "Aucune réservation par votre lien ce mois-ci.",
+    "rentalEnded": "Location terminée le {date}",
+    "states": {
+      "upcoming": "À venir",
+      "due": "Due",
+      "cancelled": "Annulée"
+    },
+    "rules": "La commission porte sur les réservations faites par votre lien. Elle est due quand la location est terminée, et annulée si la réservation l'est. Ce relevé ne montre rien sur les clients et n'est pas une facture.",
+    "paidBy": "{store} vous paie directement. Louez calcule ce relevé ; aucun argent ne passe par Louez."
   }
 }

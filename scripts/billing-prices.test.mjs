@@ -78,6 +78,8 @@ const KNOWN_FIGURES = new Map([
   ["apps/web/messages:upgradeModal.earlyBird", PLANS],
   // The statutory late-payment compensation in a store's rental contract.
   ["apps/web/messages:contract.legal.text2", NOT_A_FEE],
+  // An example of the commission a store sets for its own partners (Liens partenaires).
+  ["apps/web/messages:dashboard.partners.empty.steps.add", NOT_A_FEE],
   // A product's price tiers, as an example.
   [
     "apps/web/messages:dashboard.products.form.pricingTiers.progressive.modal.withExample",
