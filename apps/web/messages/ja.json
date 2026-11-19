@@ -7701,7 +7701,8 @@
         "posterFileName": "partner-poster",
         "sendEmail": "メール",
         "emailSubject": "{store} のパートナーリンク",
-        "message": "こんにちは。\n\n{store} のパートナーリンクをお送りします：{link}\nこのリンクから予約されたレンタルごとに、レンタル終了後に {rule} をお支払いします。\n\nパートナーページで報酬の確認や通知の設定ができます：{space}\n\nご紹介いただきありがとうございます！"
+        "message": "こんにちは。\n\n{store} のパートナーリンクをお送りします：{link}\nこのリンクから予約されたレンタルごとに、レンタル終了後に {rule} をお支払いします。\n\nパートナーページで報酬の確認や通知の設定ができます：{space}\n\nご紹介いただきありがとうございます！",
+        "posterRecommended": "{partner} のおすすめ"
       },
       "statement": {
         "title": "明細",
@@ -10754,7 +10755,6 @@
   },
   "partnerSpace": {
     "metaTitle": "パートナーページ",
-    "store": "{store}",
     "title": "{partner} 様",
     "howItWorks": "あなたのリンクまたはコードを通じて予約されたレンタルごとに {rule} を受け取れます。リンクはクリックから{days}日間有効です。紹介料はレンタル終了時に確定します。",
     "perk": "あなたのお客様はコード {code} をご利用いただけます。",
@@ -10795,7 +10795,8 @@
       "posterDescription": "QRコードを読み取ると、あなたのリンク経由でストアが開きます。",
       "posterHint": "印刷して受付に置いてください。",
       "posterFileName": "poster",
-      "code": "口頭で伝えるためのコード：{code}"
+      "code": "口頭で伝えるためのコード：{code}",
+      "posterRecommended": "{partner} のおすすめ"
     },
     "months": {
       "title": "月ごとの内訳",
@@ -10834,7 +10835,10 @@
       "failed": "保存できませんでした。もう一度お試しください。"
     },
     "rules": "紹介料は、あなたの紹介で行われた予約が対象です。レンタル終了時に確定し、予約がキャンセルされた場合は取り消されます。このページに顧客情報は表示されず、請求書ではありません。",
-    "paidBy": "{store} から直接お支払いします。金額は Louez が計算していますが、お金が Louez を経由することはありません。"
+    "paidBy": "{store} から直接お支払いします。金額は Louez が計算していますが、お金が Louez を経由することはありません。",
+    "eyebrow": "パートナーページ · {store}",
+    "visitStore": "ストアを見る",
+    "poweredBy": "Powered by"
   },
   "demo": {
     "launcher": {

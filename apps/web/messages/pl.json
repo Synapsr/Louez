@@ -7701,7 +7701,8 @@
         "posterFileName": "plakat-partnera",
         "sendEmail": "E-mail",
         "emailSubject": "Państwa link partnerski do {store}",
-        "message": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nPaństwa strefa partnera, w której można śledzić zarobki i wybrać powiadomienia: {space}\n\nDziękujemy za polecanie nas!"
+        "message": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nPaństwa strefa partnera, w której można śledzić zarobki i wybrać powiadomienia: {space}\n\nDziękujemy za polecanie nas!",
+        "posterRecommended": "Polecane przez {partner}"
       },
       "statement": {
         "title": "Zestawienie",
@@ -10754,7 +10755,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Strefa partnera",
-    "store": "{store}",
     "title": "Dzień dobry, {partner}",
     "howItWorks": "Otrzymują Państwo {rule} za każdy wynajem zarezerwowany dzięki Państwu, przez link lub kod. Link działa przez {days} dni od kliknięcia. Prowizja jest należna po zakończeniu wynajmu.",
     "perk": "Państwa klienci korzystają z kodu {code}.",
@@ -10795,7 +10795,8 @@
       "posterDescription": "Kod QR otwiera sklep z Państwa linkiem.",
       "posterHint": "Proszę wydrukować go do recepcji.",
       "posterFileName": "plakat",
-      "code": "Państwa kod do przekazania ustnie: {code}"
+      "code": "Państwa kod do przekazania ustnie: {code}",
+      "posterRecommended": "Polecane przez {partner}"
     },
     "months": {
       "title": "Miesiąc po miesiącu",
@@ -10834,7 +10835,10 @@
       "failed": "Nie udało się zapisać. Proszę spróbować ponownie."
     },
     "rules": "Prowizja dotyczy rezerwacji dokonanych dzięki Państwu. Jest należna po zakończeniu wynajmu i anulowana, jeśli rezerwacja zostanie anulowana. Ta strona nie pokazuje żadnych danych klientów i nie jest fakturą.",
-    "paidBy": "{store} płaci Państwu bezpośrednio. Louez wylicza te kwoty; żadne pieniądze nie przechodzą przez Louez."
+    "paidBy": "{store} płaci Państwu bezpośrednio. Louez wylicza te kwoty; żadne pieniądze nie przechodzą przez Louez.",
+    "eyebrow": "Strefa partnera · {store}",
+    "visitStore": "Zobacz sklep",
+    "poweredBy": "Działa dzięki"
   },
   "demo": {
     "launcher": {

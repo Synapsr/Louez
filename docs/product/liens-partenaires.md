@@ -191,6 +191,18 @@ envoie avec le lien dans un message prêt (e-mail, WhatsApp). Il ouvre l'espace 
   chaque mois, s'il a eu des réservations finies le mois passé). Tous activés par défaut ;
   chaque e-mail mène à l'espace, où il les coupe.
 
+L'espace est **à l'image de la boutique** (demande de Téo du 19 novembre) : sa couleur, son
+thème clair ou sombre, son logo, sa photo d'accueil en bandeau, un lien « Voir la boutique » et son
+adresse en pied de page ; Louez n'y apparaît qu'en « Propulsé par ». Les e-mails au partenaire
+prennent aussi la couleur et le logo de la boutique.
+
+**L'affiche QR** (celle de « Premiers clients » comme celle d'un partenaire) porte la boutique :
+un bandeau à sa couleur avec son logo sur une carte blanche (ou son nom), « Réservez en ligne »,
+« Recommandé par … » sur l'affiche d'un partenaire, le QR encadré, son logo au centre (ou son
+initiale si le logo est trop horizontal). Le QR prend la couleur de la boutique seulement si
+elle contraste assez avec le blanc (4,5:1) ; sinon il reste noir, pour que tous les téléphones
+le lisent. Avec un logo au centre, le QR passe en correction maximale (niveau H).
+
 La page dit que ce n'est pas une facture et que la boutique paie directement. La boutique peut
 **changer ce lien** (l'ancien cesse de marcher).
 

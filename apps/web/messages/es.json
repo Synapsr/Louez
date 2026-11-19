@@ -7701,7 +7701,8 @@
         "posterFileName": "cartel-socio",
         "sendEmail": "Correo",
         "emailSubject": "Su enlace de socio de {store}",
-        "message": "Hola:\n\nAquí tiene su enlace de socio de {store}: {link}\nRecibe {rule} por cada alquiler reservado con este enlace, una vez terminado el alquiler.\n\nSu espacio de socio, para seguir sus ganancias y elegir sus notificaciones: {space}\n\n¡Gracias por recomendarnos!"
+        "message": "Hola:\n\nAquí tiene su enlace de socio de {store}: {link}\nRecibe {rule} por cada alquiler reservado con este enlace, una vez terminado el alquiler.\n\nSu espacio de socio, para seguir sus ganancias y elegir sus notificaciones: {space}\n\n¡Gracias por recomendarnos!",
+        "posterRecommended": "Recomendado por {partner}"
       },
       "statement": {
         "title": "Extracto",
@@ -10754,7 +10755,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Espacio de socio",
-    "store": "{store}",
     "title": "Hola, {partner}",
     "howItWorks": "Recibe {rule} por cada alquiler reservado gracias a usted, con su enlace o su código. Un enlace vale {days} días tras el clic. La comisión se debe cuando termina el alquiler.",
     "perk": "Sus clientes disfrutan del código {code}.",
@@ -10795,7 +10795,8 @@
       "posterDescription": "El código QR abre la tienda con su enlace.",
       "posterHint": "Imprímalo para su recepción.",
       "posterFileName": "cartel",
-      "code": "Su código, para dar de palabra: {code}"
+      "code": "Su código, para dar de palabra: {code}",
+      "posterRecommended": "Recomendado por {partner}"
     },
     "months": {
       "title": "Mes a mes",
@@ -10834,7 +10835,10 @@
       "failed": "No se pudo guardar. Inténtelo de nuevo."
     },
     "rules": "La comisión se aplica a las reservas hechas gracias a usted. Se debe cuando el alquiler termina y se anula si se cancela la reserva. Esta página no muestra nada sobre los clientes y no es una factura.",
-    "paidBy": "{store} le paga directamente. Louez calcula estos importes; ningún dinero pasa por Louez."
+    "paidBy": "{store} le paga directamente. Louez calcula estos importes; ningún dinero pasa por Louez.",
+    "eyebrow": "Espacio de socio · {store}",
+    "visitStore": "Ver la tienda",
+    "poweredBy": "Con la tecnología de"
   },
   "demo": {
     "launcher": {

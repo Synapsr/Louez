@@ -24,10 +24,21 @@ interface PartnerSpaceLinkProps {
   storeName: string;
   link: string;
   code: string;
+  partnerName: string;
+  /** The store's colour and logo: the partner's poster wears them. */
+  accentColor: string | null;
+  logoUrl: string | null;
 }
 
 /** The partner's own link in its space: to copy, or to print as a QR poster for its desk. */
-export const PartnerSpaceLink = ({ storeName, link, code }: PartnerSpaceLinkProps) => {
+export const PartnerSpaceLink = ({
+  storeName,
+  link,
+  code,
+  partnerName,
+  accentColor,
+  logoUrl,
+}: PartnerSpaceLinkProps) => {
   const t = useTranslations("partnerSpace.link");
   const [posterOpen, setPosterOpen] = useState(false);
 
@@ -71,6 +82,9 @@ export const PartnerSpaceLink = ({ storeName, link, code }: PartnerSpaceLinkProp
               fileName={`${t("posterFileName")}-${code}`}
               hint={t("posterHint")}
               onSave={() => undefined}
+              accentColor={accentColor}
+              logoUrl={logoUrl}
+              recommendedBy={t("posterRecommended", { partner: partnerName })}
             />
           </DialogPanel>
         </DialogPopup>

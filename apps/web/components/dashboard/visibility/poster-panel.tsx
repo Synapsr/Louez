@@ -13,11 +13,15 @@ interface PosterPanelProps {
   storeSlug: string;
   storeUrl: string;
   placement: VisibilityPlacement;
+  /** The store's colour and logo: the poster wears them. */
+  accentColor?: string | null;
+  logoUrl?: string | null;
 }
 
 /**
- * The counter poster: the store's name, its QR code (marked `via=qr`) and its
- * address, saved as a PNG the loueur prints or keeps on their phone.
+ * The counter poster in the store's colours: its logo or name, its QR code
+ * (marked `via=qr`) and its address, saved as a PNG the loueur prints or keeps
+ * on their phone.
  */
 export const PosterPanel = ({
   storeId,
@@ -25,6 +29,8 @@ export const PosterPanel = ({
   storeSlug,
   storeUrl,
   placement,
+  accentColor,
+  logoUrl,
 }: PosterPanelProps) => {
   const t = useTranslations("dashboard.visibility.poster");
   const analytics = useVisibilityAnalytics(storeId);
@@ -37,6 +43,8 @@ export const PosterPanel = ({
       fileName={`${t("fileName")}-${storeSlug}`}
       hint={t("hint")}
       onSave={() => analytics.shareUsed(placement, "qr", "store")}
+      accentColor={accentColor}
+      logoUrl={logoUrl}
     />
   );
 };

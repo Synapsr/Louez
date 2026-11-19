@@ -84,12 +84,27 @@ export interface PartnerStore {
   timezone: string;
   country: string | null;
   logoUrl: string | null;
+  /** The logo for a dark background, when the store has one. */
+  darkLogoUrl: string | null;
+  /** The store's look, as its storefront shows it: a partner's space and poster wear it too. */
+  theme: { mode: "light" | "dark"; primaryColor: string | null };
+  /** The first photo of the storefront's home, for the space's banner. */
+  heroImage: string | null;
+  address: string | null;
 }
 
 export async function readPartnerStore(storeId: string): Promise<PartnerStore> {
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
-    columns: { name: true, slug: true, settings: true, logoUrl: true },
+    columns: {
+      name: true,
+      slug: true,
+      settings: true,
+      logoUrl: true,
+      darkLogoUrl: true,
+      theme: true,
+      address: true,
+    },
   });
   return {
     name: store?.name ?? "",
@@ -98,6 +113,13 @@ export async function readPartnerStore(storeId: string): Promise<PartnerStore> {
     timezone: resolveTimezone(store?.settings?.timezone),
     country: store?.settings?.country ?? null,
     logoUrl: store?.logoUrl ?? null,
+    darkLogoUrl: store?.darkLogoUrl ?? null,
+    theme: {
+      mode: store?.theme?.mode === "dark" ? "dark" : "light",
+      primaryColor: store?.theme?.primaryColor ?? null,
+    },
+    heroImage: store?.theme?.heroImages?.[0] ?? null,
+    address: store?.address ?? null,
   };
 }
 

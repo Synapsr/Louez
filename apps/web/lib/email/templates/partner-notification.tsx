@@ -20,6 +20,7 @@ export type PartnerNotification =
 interface PartnerNotificationEmailProps {
   storeName: string;
   storeLogoUrl?: string | null;
+  primaryColor?: string;
   partnerName: string;
   notification: PartnerNotification;
   spaceUrl: string;
@@ -47,6 +48,7 @@ export function getPartnerNotificationSubject(
 export function PartnerNotificationEmail({
   storeName,
   storeLogoUrl,
+  primaryColor,
   partnerName,
   notification,
   spaceUrl,
@@ -61,6 +63,7 @@ export function PartnerNotificationEmail({
       preview={getPartnerNotificationSubject(locale, storeName, notification)}
       storeName={storeName}
       logoUrl={storeLogoUrl}
+      primaryColor={primaryColor}
       locale={locale}
     >
       <EmailHeading>{t(`${key}.title`, values)}</EmailHeading>
@@ -73,7 +76,7 @@ export function PartnerNotificationEmail({
         </EmailText>
       </Section>
 
-      <CtaButton href={spaceUrl} label={t("partnerNotification.cta")} />
+      <CtaButton href={spaceUrl} label={t("partnerNotification.cta")} primaryColor={primaryColor} />
 
       <FooterNote>{t("partnerNotification.footer", values)}</FooterNote>
     </BaseLayout>

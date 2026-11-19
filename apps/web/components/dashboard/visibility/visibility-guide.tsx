@@ -50,6 +50,9 @@ interface VisibilityGuideProps {
   aiView: AiVisibilityView | null;
   /** The instance publishes to reeent (`MARKETPLACE_URL`). */
   marketplaceAvailable: boolean;
+  /** The store's colour and logo, for its poster. */
+  accentColor?: string | null;
+  logoUrl?: string | null;
 }
 
 /**
@@ -65,6 +68,8 @@ export const VisibilityGuide = ({
   initialView,
   aiView,
   marketplaceAvailable,
+  accentColor,
+  logoUrl,
 }: VisibilityGuideProps) => {
   const t = useTranslations("dashboard.visibility");
   const tErrors = useTranslations("errors");
@@ -128,6 +133,8 @@ export const VisibilityGuide = ({
             storeSlug={storeSlug}
             storeUrl={storeUrl}
             placement={PLACEMENT}
+            accentColor={accentColor}
+            logoUrl={logoUrl}
           />
         );
       case "google_business":

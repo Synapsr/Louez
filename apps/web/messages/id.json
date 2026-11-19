@@ -7701,7 +7701,8 @@
         "posterFileName": "poster-mitra",
         "sendEmail": "Email",
         "emailSubject": "Tautan mitra {store} Anda",
-        "message": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nHalaman mitra Anda, untuk memantau penghasilan dan memilih notifikasi: {space}\n\nTerima kasih telah merekomendasikan kami!"
+        "message": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nHalaman mitra Anda, untuk memantau penghasilan dan memilih notifikasi: {space}\n\nTerima kasih telah merekomendasikan kami!",
+        "posterRecommended": "Direkomendasikan oleh {partner}"
       },
       "statement": {
         "title": "Rekap",
@@ -10754,7 +10755,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Halaman mitra",
-    "store": "{store}",
     "title": "Halo, {partner}",
     "howItWorks": "Anda mendapatkan {rule} untuk setiap sewa yang dipesan berkat Anda, lewat tautan atau kode Anda. Tautan berlaku {days} hari setelah diklik. Komisi terutang setelah sewa selesai.",
     "perk": "Pelanggan Anda mendapat kode {code}.",
@@ -10795,7 +10795,8 @@
       "posterDescription": "Kode QR membuka toko dengan tautan Anda.",
       "posterHint": "Cetak untuk meja resepsionis Anda.",
       "posterFileName": "poster",
-      "code": "Kode Anda, untuk disampaikan secara lisan: {code}"
+      "code": "Kode Anda, untuk disampaikan secara lisan: {code}",
+      "posterRecommended": "Direkomendasikan oleh {partner}"
     },
     "months": {
       "title": "Per bulan",
@@ -10834,7 +10835,10 @@
       "failed": "Gagal menyimpan. Coba lagi."
     },
     "rules": "Komisi berlaku untuk pemesanan yang dibuat berkat Anda. Komisi terutang setelah sewa selesai, dan batal jika pemesanannya dibatalkan. Halaman ini tidak menampilkan data pelanggan dan bukan faktur.",
-    "paidBy": "{store} membayar Anda secara langsung. Louez menghitung jumlah ini; tidak ada uang yang melewati Louez."
+    "paidBy": "{store} membayar Anda secara langsung. Louez menghitung jumlah ini; tidak ada uang yang melewati Louez.",
+    "eyebrow": "Halaman mitra · {store}",
+    "visitStore": "Kunjungi toko",
+    "poweredBy": "Didukung oleh"
   },
   "demo": {
     "launcher": {
