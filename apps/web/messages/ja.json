@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "最初のステップ",
-        "description": "お客様と同じようにストアで予約し、その予約をここで管理します。支払いや請求は発生しません。"
+        "description": "お客様と同じようにストアで予約し、その予約をここで管理します。支払いや請求は発生しません。",
+        "dismiss": "非表示"
       },
       "guide": {
         "title": "テスト予約",
@@ -1178,6 +1179,12 @@
         "detailsPlanPriceWithVat": "月額{price}（税抜）、付加価値税{vatRate}込みで{priceWithVat}",
         "detailsSavings": "節約額",
         "detailsNote": "ストアの実際の料金で計算しています。プランご利用中も、Stripeの手数料とreeentマーケットプレイスの手数料はかかります。"
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "最初の商品を追加しましょう",
+          "description": "レンタルするものと料金を登録すると、お客様がオンラインで予約できるようになります。"
+        }
       }
     },
     "products": {

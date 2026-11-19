@@ -11,8 +11,10 @@ import { Button } from "@louez/ui";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import { cn } from "@louez/utils";
 
+import { AgentAssistantOption } from "@/components/agent-connections/agent-assistant-option";
 import { StartTestReservationButton } from "@/components/dashboard/test-reservation/start-test-reservation-button";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
+import type { McpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { storesQueries } from "@/lib/queries/stores.queries";
 
 import { WELCOME_OVERLAY_COMPLETED_EVENT } from "../welcome-overlay";
@@ -24,6 +26,8 @@ interface SetupChecklistProps {
   initialChecklist: LaunchChecklistView;
   storeSlug: string;
   onlinePaymentsContext?: OnlinePaymentsContext;
+  /** Where an assistant connects, while the home still offers one; null otherwise. */
+  assistant: McpEndpoint | null;
   className?: string;
 }
 
@@ -110,8 +114,10 @@ export function SetupChecklist({
   initialChecklist,
   storeSlug,
   onlinePaymentsContext = "default",
+  assistant,
 }: SetupChecklistProps) {
   const t = useTranslations("dashboard.home");
+  const tVisibility = useTranslations("dashboard.visibility");
   const tCommon = useTranslations("common");
   const reducedMotion = useReducedMotion() ?? false;
   const { getAbsoluteUrl } = useStorefrontUrl(storeSlug);
@@ -350,6 +356,19 @@ export function SetupChecklist({
                                         </Button>
                                       )
                                     )}
+                                    {/* The guide to the first customers, once there is a live store to share. */}
+                                    {item.key === "firstReservation" &&
+                                      checklist.online &&
+                                      checklist.catalog.hasActiveProduct && (
+                                        <Button
+                                          variant="outline"
+                                          className="h-7.5 text-xs"
+                                          render={<Link href="/dashboard/visibility" />}
+                                        >
+                                          {tVisibility("homeCard.title")}
+                                          <ArrowRight />
+                                        </Button>
+                                      )}
                                     {item.showStoreLink && (
                                       <Button
                                         variant="ghost"
@@ -372,6 +391,13 @@ export function SetupChecklist({
                     );
                   })}
                 </ul>
+                {assistant && (
+                  <AgentAssistantOption
+                    {...assistant}
+                    showLogos={false}
+                    className="flex-nowrap border-t px-4 py-3"
+                  />
+                )}
               </motion.div>
             )}
           </AnimatePresence>

@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Primo passo",
-        "description": "Prenota sul tuo negozio come un cliente, poi gestisci la prenotazione qui. Niente viene pagato né fatturato."
+        "description": "Prenota sul tuo negozio come un cliente, poi gestisci la prenotazione qui. Niente viene pagato né fatturato.",
+        "dismiss": "Nascondi"
       },
       "guide": {
         "title": "Prenotazione di prova",
@@ -1139,6 +1140,12 @@
         "detailsPlanPriceWithVat": "{price} IVA esclusa al mese, cioè {priceWithVat} con IVA al {vatRate}",
         "detailsSavings": "Risparmio",
         "detailsNote": "Calcolato con le tariffe del tuo negozio. Con un abbonamento restano dovute le commissioni Stripe e quelle del marketplace reeent."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Aggiungi il tuo primo prodotto",
+          "description": "Cosa noleggi e a quale prezzo: i tuoi clienti potranno poi prenotarlo online."
+        }
       }
     },
     "products": {

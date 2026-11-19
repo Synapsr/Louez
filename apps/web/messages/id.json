@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Langkah pertama",
-        "description": "Pesan di toko Anda seperti pelanggan, lalu kelola reservasinya di sini. Tidak ada yang dibayar atau ditagih."
+        "description": "Pesan di toko Anda seperti pelanggan, lalu kelola reservasinya di sini. Tidak ada yang dibayar atau ditagih.",
+        "dismiss": "Sembunyikan"
       },
       "guide": {
         "title": "Reservasi uji",
@@ -1178,6 +1179,12 @@
         "detailsPlanPriceWithVat": "{price} per bulan belum termasuk PPN, atau {priceWithVat} dengan PPN {vatRate}",
         "detailsSavings": "Penghematan",
         "detailsNote": "Dihitung dengan tarif toko Anda. Dengan paket langganan, biaya Stripe dan biaya marketplace reeent tetap berlaku."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Tambahkan produk pertama Anda",
+          "description": "Apa yang Anda sewakan dan berapa harganya: pelanggan Anda lalu dapat memesannya secara online."
+        }
       }
     },
     "products": {

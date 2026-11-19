@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Première étape",
-        "description": "Réservez sur votre boutique comme un client, puis gérez la réservation ici. Rien n'est payé ni facturé."
+        "description": "Réservez sur votre boutique comme un client, puis gérez la réservation ici. Rien n'est payé ni facturé.",
+        "dismiss": "Masquer"
       },
       "guide": {
         "title": "Réservation test",
@@ -1178,6 +1179,12 @@
         "detailsPlanPriceWithVat": "{price} HT par mois, soit {priceWithVat} avec la TVA à {vatRate}",
         "detailsSavings": "Économie",
         "detailsNote": "Calculé avec le tarif de votre boutique. Avec un abonnement, les frais Stripe et ceux de la marketplace reeent restent dus."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Ajoutez votre premier produit",
+          "description": "Ce que vous louez et à quel prix : vos clients pourront ensuite le réserver en ligne."
+        }
       }
     },
     "products": {

@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Erster Schritt",
-        "description": "Buche in deinem Shop wie ein Kunde und verwalte die Buchung danach hier. Nichts wird bezahlt oder abgerechnet."
+        "description": "Buche in deinem Shop wie ein Kunde und verwalte die Buchung danach hier. Nichts wird bezahlt oder abgerechnet.",
+        "dismiss": "Ausblenden"
       },
       "guide": {
         "title": "Testbuchung",
@@ -1178,6 +1179,12 @@
         "detailsPlanPriceWithVat": "{price} zzgl. MwSt. pro Monat, also {priceWithVat} mit {vatRate} MwSt.",
         "detailsSavings": "Ersparnis",
         "detailsNote": "Berechnet mit den Tarifen Ihres Shops. Mit einem Abo bleiben Stripe-Gebühren und Gebühren des reeent-Marktplatzes fällig."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Fügen Sie Ihr erstes Produkt hinzu",
+          "description": "Was Sie vermieten und zu welchem Preis: Ihre Kunden können es dann online buchen."
+        }
       }
     },
     "products": {

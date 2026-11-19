@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "첫 단계",
-        "description": "고객처럼 스토어에서 예약한 뒤, 여기에서 그 예약을 관리하세요. 결제나 청구는 발생하지 않습니다."
+        "description": "고객처럼 스토어에서 예약한 뒤, 여기에서 그 예약을 관리하세요. 결제나 청구는 발생하지 않습니다.",
+        "dismiss": "숨기기"
       },
       "guide": {
         "title": "테스트 예약",
@@ -1178,6 +1179,12 @@
         "detailsPlanPriceWithVat": "월 {price}(부가세 별도), 부가세 {vatRate} 포함 시 {priceWithVat}",
         "detailsSavings": "절약액",
         "detailsNote": "스토어의 실제 요금으로 계산했습니다. 요금제를 사용해도 Stripe 수수료와 reeent 마켓플레이스 수수료는 계속 부과됩니다."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "첫 번째 상품을 추가하세요",
+          "description": "대여할 물품과 가격을 등록하면 고객이 온라인으로 예약할 수 있습니다."
+        }
       }
     },
     "products": {

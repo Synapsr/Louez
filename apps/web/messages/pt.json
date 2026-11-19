@@ -341,7 +341,8 @@
       },
       "homeCard": {
         "title": "Primeiro passo",
-        "description": "Reserve na sua loja como um cliente e depois gira a reserva aqui. Nada é pago nem faturado."
+        "description": "Reserve na sua loja como um cliente e depois gira a reserva aqui. Nada é pago nem faturado.",
+        "dismiss": "Ocultar"
       },
       "guide": {
         "title": "Reserva de teste",
@@ -1139,6 +1140,12 @@
         "detailsPlanPriceWithVat": "{price} s/ IVA por mês, ou seja {priceWithVat} com IVA a {vatRate}",
         "detailsSavings": "Poupança",
         "detailsNote": "Calculado com as tarifas da sua loja. Com uma assinatura, as taxas da Stripe e do marketplace reeent continuam devidas."
+      },
+      "nextStep": {
+        "firstProduct": {
+          "title": "Adicione o seu primeiro produto",
+          "description": "O que aluga e a que preço: os seus clientes poderão depois reservá-lo online."
+        }
       }
     },
     "products": {

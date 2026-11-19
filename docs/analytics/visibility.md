@@ -22,7 +22,8 @@ codes : jamais un nom, un message ni un lien.
 | `visibility_share_used`     | Le loueur ouvre un canal, copie un lien ou un message, enregistre l'affiche, copie le lien Google | `placement`, `channel`, `target`           |
 | `visibility_step_completed` | Il change le statut d'une étape                                                                   | `step`, `status`                           |
 
-- `placement` : `page` (la page du guide), `home_card` (la carte de l'accueil),
+- `placement` : `page` (la page du guide), `home_card` (la carte de l'accueil, montrée
+  seulement quand elle est la prochaine étape : [home.md](home.md)),
   `storefront_card` (la fenêtre « Partager » de la carte « Votre boutique »).
 - `channel` : la valeur `via` du lien (`whatsapp`, `sms`, `email`, `facebook`, `copy`, `qr`,
   `google`).

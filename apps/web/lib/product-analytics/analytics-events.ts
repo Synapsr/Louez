@@ -65,6 +65,8 @@ export const productAnalyticsEvents = {
   visibilityStepCompleted: 'visibility_step_completed',
   visibilityAiViewed: 'visibility_ai_viewed',
   visibilityAiFixOpened: 'visibility_ai_fix_opened',
+  // The home's one next step card (docs/analytics/home.md)
+  homeNextStepViewed: 'home_next_step_viewed',
 } as const;
 
 export type ProductAnalyticsEvent =
@@ -149,6 +151,12 @@ export const keyboardShortcutAnalyticsBaseProperties = {
 export const visibilityAnalyticsBaseProperties = {
   ...productAnalyticsBaseProperties,
   feature: 'visibility',
+  surface: 'dashboard',
+} as const;
+
+export const homeNextStepAnalyticsBaseProperties = {
+  ...productAnalyticsBaseProperties,
+  feature: 'home_next_step',
   surface: 'dashboard',
 } as const;
 
