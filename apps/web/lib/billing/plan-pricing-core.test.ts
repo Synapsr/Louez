@@ -17,13 +17,13 @@ const plans = [
   { slug: "free", price: 0 },
   {
     slug: "pro",
-    price: 49,
+    price: 50,
     stripePrices: { monthly: "pro_m", yearly: "pro_y" },
     legacyStripePrices: { usd: { monthly: "pro_m_usd", yearly: "pro_y_usd" } },
   },
   {
     slug: "ultra",
-    price: 159,
+    price: 150,
     stripePrices: { monthly: "ultra_m", yearly: "ultra_y" },
     legacyStripePrices: { usd: { monthly: "ultra_m_usd", yearly: "ultra_y_usd" } },
   },
@@ -129,6 +129,6 @@ test("the ids read are the plans' own and earlier ones, paid plans only", () => 
 test("when Stripe cannot be read, EUR sells at the code's amounts on the plans' own prices", () => {
   const catalog = fallbackPlanCatalog(plans);
   assert.deepEqual([...catalog.keys()], ["eur"]);
-  assert.deepEqual(catalog.get("eur")?.pricing.amounts.pro, { monthly: 49, yearly: 490 });
+  assert.deepEqual(catalog.get("eur")?.pricing.amounts.pro, { monthly: 50, yearly: 500 });
   assert.deepEqual(catalog.get("eur")?.priceIds.ultra, { monthly: "ultra_m", yearly: "ultra_y" });
 });
