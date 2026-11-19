@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { countAiCrawl } from "@/lib/ai-visibility/count-ai-crawl";
 import { generateStoreMetadata, stripHtml } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { redirectLegacyStorefrontUrl } from "@/lib/storefront/legacy-url-redirect";
@@ -90,7 +91,11 @@ const StorefrontLayout = async ({
 
   // Same reason: a product or category still addressed by id must answer a
   // real 308 to its slug URL, which is only possible before the shell streams.
-  await redirectLegacyStorefrontUrl(store, (await headers()).get("x-storefront-path"));
+  const headerStore = await headers();
+  await redirectLegacyStorefrontUrl(store, headerStore.get("x-storefront-path"));
+
+  // An AI crawler's read counts for « Être trouvé par les IA », after the response.
+  countAiCrawl({ storeId: store.id, userAgent: headerStore.get("user-agent"), resource: "page" });
 
   return (
     <>

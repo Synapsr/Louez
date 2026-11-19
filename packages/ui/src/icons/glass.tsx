@@ -20,6 +20,7 @@ export {
   IconHelpChat as HelpGlassIcon,
   IconHouse as HomeGlassIcon,
   IconPhone as InstallAppGlassIcon,
+  IconSignal as VisibilityGlassIcon,
   IconSparkle2 as WhatsNewGlassIcon,
   IconTeam as TeamGlassIcon,
   IconUsers as CustomersGlassIcon,

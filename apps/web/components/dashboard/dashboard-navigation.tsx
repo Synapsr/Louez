@@ -28,8 +28,13 @@ import {
   ReservationsGlassIcon,
   SettingsGlassIcon,
   TeamGlassIcon,
+  VisibilityGlassIcon,
 } from "@louez/ui/icons/glass";
 import { SidebarLink } from "@/components/dashboard/sidebar-link";
+import {
+  isNavigationItemActive,
+  isSubItemActive,
+} from "@/components/dashboard/util.navigation-active";
 import { cn } from "@/lib/utils";
 
 type LocalNavigation = {
@@ -76,6 +81,20 @@ const catalogNavigation = [
   { key: "products", href: "/dashboard/products", icon: ProductGlassIcon },
 ];
 
+/**
+ * « Se faire connaître »: always in the sidebar, so the guide and its AI part
+ * stay reachable once the home card is closed (docs/product/visibilite-boutiques.md).
+ */
+const visibilityNavigation = {
+  key: "visibility",
+  href: "/dashboard/visibility",
+  icon: VisibilityGlassIcon,
+  items: [
+    { key: "visibilityFirstCustomers", href: "/dashboard/visibility" },
+    { key: "visibilityAi", href: "/dashboard/visibility/ai" },
+  ],
+};
+
 // Money the store pays out, as opposed to the reservations it cashes in. The
 const analyticsNavigation = [
   {
@@ -88,6 +107,7 @@ const analyticsNavigation = [
     items: [
       { key: "analyticsSales", href: "/dashboard/analytics/sales" },
       { key: "analyticsTraffic", href: "/dashboard/analytics/traffic" },
+      { key: "analyticsAi", href: "/dashboard/analytics/ai" },
     ],
   },
 ];
@@ -172,19 +192,11 @@ const buildNavigationSections = (
   // Purchase invoices (reception) are reachable from Settings → Facturation
   // électronique while e-invoicing adoption is low; promote back to a sidebar
   // group once merchants actually live in that inbox.
-  // No label: the group would only ever read "Analyses / Analyses", the entry
-  // repeating the heading above it. The separator already opens the section.
-  { items: analyticsNavigation },
+  // No label: getting known, then its results; a heading would only repeat the
+  // entries below it. The separator already opens the section.
+  { items: [visibilityNavigation, ...analyticsNavigation] },
   { labelKey: "manage", items: managementNavigation },
 ];
-
-const isNavigationItemActive = (pathname: string, href: string) => {
-  if (href === "/dashboard") {
-    return pathname === "/dashboard";
-  }
-
-  return pathname === href || pathname.startsWith(`${href}/`);
-};
 
 /**
  * The parent's badge, shrunk to fit a sub-row: the AI wallet keeps showing its
@@ -273,7 +285,7 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
                 <NavigationLink
                   key={subItem.href}
                   href={subItem.href}
-                  data-active={isNavigationItemActive(pathname, subItem.href) || undefined}
+                  data-active={isSubItemActive(pathname, subItem, item.items ?? []) || undefined}
                   className="text-foreground/70 hover:bg-accent data-active:bg-accent data-active:text-foreground flex h-8 items-center gap-2 rounded-md px-2 text-[13px] transition-colors data-active:font-medium"
                 >
                   {t(subItem.key)}
@@ -328,7 +340,7 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
                 it, and their labels land on the parent label's baseline column. */}
             <SidebarMenuSub className="mx-0 mt-0.5 ml-4.5 gap-1 py-1 pr-0 pl-2">
               {item.items.map((subItem) => {
-                const subActive = isNavigationItemActive(pathname, subItem.href);
+                const subActive = isSubItemActive(pathname, subItem, item.items ?? []);
 
                 return (
                   <SidebarMenuSubItem

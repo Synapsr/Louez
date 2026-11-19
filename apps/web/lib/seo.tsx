@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
 import type { PricingKind, StoreSettings, StoreTheme } from "@louez/types";
 import type { ReactElement } from "react";
-import {
-  isFixedPriceProduct,
-  minutesToPriceDuration,
-  stripHtml,
-  toAbsoluteUrl,
-} from "@louez/utils";
+import { isFixedPriceProduct, pricingModeToMinutes, stripHtml, toAbsoluteUrl } from "@louez/utils";
 import { type Locale, defaultLocale, locales } from "@/i18n/config";
 import { isStandaloneMode } from "@/lib/deployment";
 import { env } from "@/env";
-import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 import { getStorePageRobots } from "@/lib/seo.robots";
+import { buildRentalOffers, type RentalRate } from "@/lib/util.rental-offer-schema";
 import { truncateText } from "@/lib/util.seo-text";
 import { buildStorefrontUrl } from "@/lib/util.storefront-url";
 import { resolveStoreSocialLinks } from "@/lib/utils/util.store-social-links";
@@ -109,6 +104,11 @@ export interface ProductSeoData {
    * takes precedence over pricingMode in the Offer schema.
    */
   basePeriodMinutes?: number | null;
+  /**
+   * The whole rate grid as the page prints it, shortest period first (see
+   * `getStorefrontRateRows`): one Offer each. Absent: the base rate alone.
+   */
+  rates?: readonly RentalRate[];
   category?: {
     id: string;
     name: string;
@@ -143,34 +143,14 @@ function toOpenGraphLocale(locale?: string): string {
     : OPEN_GRAPH_LOCALES[defaultLocale];
 }
 
-// schema.org expects a duration the price applies to; the storefront speaks in
-// minutes, hours, days and weeks (UN/ECE Recommendation 20 unit codes).
-const PERIOD_UNIT_CODES: Record<string, string> = {
-  minute: "MIN",
-  hour: "HUR",
-  day: "DAY",
-  week: "WEE",
-};
-
 /**
- * The rental period a product's price covers, as a schema.org quantity.
- * Rate-based products (basePeriodMinutes) price a custom period; the others
- * price one pricingMode unit.
+ * The period the base price covers, in minutes: a rate-based product's own
+ * period, else one pricingMode unit; null for a forfait, billed per booking.
  */
-function getPriceReferenceQuantity(
-  product: ProductSeoData,
-): { value: number; unitCode: string } | null {
-  // A forfait covers the whole booking — claiming a period would be a lie.
+function getBasePeriodMinutes(product: ProductSeoData): number | null {
   if (isFixedPriceProduct(product)) return null;
-
-  if (product.basePeriodMinutes && product.basePeriodMinutes > 0) {
-    const period = minutesToPriceDuration(product.basePeriodMinutes);
-    const unitCode = PERIOD_UNIT_CODES[period.unit];
-    return unitCode ? { value: period.duration, unitCode } : null;
-  }
-
-  const unitCode = product.pricingMode ? PERIOD_UNIT_CODES[product.pricingMode] : undefined;
-  return unitCode ? { value: 1, unitCode } : null;
+  if (product.basePeriodMinutes && product.basePeriodMinutes > 0) return product.basePeriodMinutes;
+  return product.pricingMode ? pricingModeToMinutes(product.pricingMode) : null;
 }
 
 // ============================================================================
@@ -195,11 +175,10 @@ export function generateStoreMetadata(
   const { title, description, path = "", noIndex = false, images = [], locale } = options;
 
   const pageTitle = title || store.name;
+  // None at all: the key is left out, so the layout's localized default stands.
   const pageDescription =
-    description ||
-    stripHtml(store.tagline || "") ||
-    stripHtml(store.description || "") ||
-    `Location de matériel chez ${store.name}`;
+    description || stripHtml(store.tagline || "") || stripHtml(store.description || "");
+  const metaDescription = pageDescription ? truncateText(pageDescription, 160) : undefined;
   const canonicalUrl = getCanonicalUrl(store.slug, path);
   const iconUrl = store.faviconUrl || store.logoUrl;
 
@@ -220,7 +199,7 @@ export function generateStoreMetadata(
     // The root layout suffixes every title with the platform name; a store
     // page carries the store's own name, never the platform's.
     title: { absolute: pageTitle },
-    description: truncateText(pageDescription, 160),
+    ...(metaDescription && { description: metaDescription }),
     alternates: {
       canonical: canonicalUrl,
     },
@@ -239,7 +218,7 @@ export function generateStoreMetadata(
       url: canonicalUrl,
       siteName: store.name,
       title: pageTitle,
-      description: truncateText(pageDescription, 160),
+      ...(metaDescription && { description: metaDescription }),
       ...(ogImages.length > 0 && {
         images: ogImages.map((url) => ({
           url,
@@ -252,7 +231,7 @@ export function generateStoreMetadata(
     twitter: {
       card: ogImages.length > 0 ? "summary_large_image" : "summary",
       title: pageTitle,
-      description: truncateText(pageDescription, 160),
+      ...(metaDescription && { description: metaDescription }),
       ...(ogImages.length > 0 && { images: ogImages }),
     },
   };
@@ -268,23 +247,19 @@ export function generateProductMetadata(
   product: ProductSeoData,
   options: {
     path?: string;
-    /** Localized title — falls back to the French default when omitted. */
-    title?: string;
-    /** Localized description — the product's own description wins over both. */
-    description?: string;
+    /** Localized title. */
+    title: string;
+    /** Localized description; the product's own description wins over it. */
+    description: string;
     locale?: string;
-  } = {},
+  },
 ): Metadata {
   const { path = "", locale } = options;
 
-  const currency = store.settings?.currency || "EUR";
-  const priceFormatted = formatPrice(parseFloat(product.price), currency, locale);
-
-  const title = options.title || `${product.name} - Location ${priceFormatted}`;
+  const title = options.title;
   const description = product.description
     ? truncateText(stripHtml(product.description), 160)
-    : options.description ||
-      `Louez ${product.name} chez ${store.name} à partir de ${priceFormatted}`;
+    : options.description;
 
   const images = (product.images?.length ? product.images : []).map(absoluteAssetUrl);
   const canonicalUrl = getCanonicalUrl(store.slug, path || getProductPath(product));
@@ -396,9 +371,6 @@ export function generateLocalBusinessSchema(
     schema.sameAs = sameAs;
   }
 
-  // Add price range indicator
-  schema.priceRange = "$$";
-
   return schema;
 }
 
@@ -408,47 +380,16 @@ export function generateLocalBusinessSchema(
 export function generateProductSchema(store: StoreSeoData, product: ProductSeoData): object {
   const currency = store.settings?.currency || "EUR";
   const canonicalUrl = getCanonicalUrl(store.slug, getProductPath(product));
-  const price = parseFloat(product.price);
-  const referenceQuantity = getPriceReferenceQuantity(product);
+  const baseRate: RentalRate = {
+    price: parseFloat(product.price),
+    periodMinutes: getBasePeriodMinutes(product),
+  };
+  const rates = !isFixedPriceProduct(product) && product.rates?.length ? product.rates : [baseRate];
 
   // Google drops offers whose price has silently expired. A rental rate is a
   // standing price, so keep the window rolling a year ahead of each render.
   const priceValidUntil = new Date();
   priceValidUntil.setFullYear(priceValidUntil.getFullYear() + 1);
-
-  const offer: Record<string, unknown> = {
-    "@type": "Offer",
-    url: canonicalUrl,
-    price,
-    priceCurrency: currency,
-    priceValidUntil: priceValidUntil.toISOString().split("T")[0],
-    // These items are rented out, not sold — the GoodRelations vocabulary is
-    // what schema.org uses to say so.
-    businessFunction: "http://purl.org/goodrelations/v1#LeaseOut",
-    availability:
-      product.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-    seller: {
-      "@type": "LocalBusiness",
-      name: store.name,
-      url: getCanonicalUrl(store.slug),
-    },
-  };
-
-  if (referenceQuantity) {
-    // Without this the price reads as a sale price instead of a rate per
-    // rental period (1 day, 2 hours, …).
-    offer.priceSpecification = {
-      "@type": "UnitPriceSpecification",
-      price,
-      priceCurrency: currency,
-      unitCode: referenceQuantity.unitCode,
-      referenceQuantity: {
-        "@type": "QuantitativeValue",
-        value: referenceQuantity.value,
-        unitCode: referenceQuantity.unitCode,
-      },
-    };
-  }
 
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -461,7 +402,14 @@ export function generateProductSchema(store: StoreSeoData, product: ProductSeoDa
       "@type": "Brand",
       name: store.name,
     },
-    offers: offer,
+    offers: buildRentalOffers({
+      url: canonicalUrl,
+      currency,
+      rates,
+      inStock: product.quantity > 0,
+      seller: { name: store.name, url: getCanonicalUrl(store.slug) },
+      priceValidUntil: priceValidUntil.toISOString().split("T")[0],
+    }),
   };
 
   if (product.description) {
@@ -476,6 +424,19 @@ export function generateProductSchema(store: StoreSeoData, product: ProductSeoDa
 
   if (product.category) {
     schema.category = product.category.name;
+  }
+
+  // schema.org has no deposit on an Offer; a named property is what an
+  // assistant reads to answer "is there a deposit?".
+  const deposit = product.deposit ? parseFloat(product.deposit) : 0;
+  if (deposit > 0) {
+    schema.additionalProperty = {
+      "@type": "PropertyValue",
+      propertyID: "securityDeposit",
+      name: "Security deposit",
+      value: deposit,
+      unitText: currency,
+    };
   }
 
   return schema;
@@ -567,18 +528,6 @@ export function generateItemListSchema(
 export { stripHtml, truncateText };
 
 /**
- * Format price with currency
- */
-function formatPrice(price: number, currency: string, locale?: string): string {
-  return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(price);
-}
-
-/**
  * Component to render JSON-LD script tag
  */
 export function JsonLd({ data }: { data: object | object[] }): ReactElement {
@@ -590,7 +539,8 @@ export function JsonLd({ data }: { data: object | object[] }): ReactElement {
         <script
           key={index}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          // A store's own text ("</script>" in a product name) must not end the tag.
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }}
         />
       ))}
     </>

@@ -996,7 +996,11 @@
       "settings": "Instellingen",
       "store": "Mijn winkel",
       "multiStore": "Multi-winkel",
-      "aiCredits": "AI-tegoed"
+      "aiCredits": "AI-tegoed",
+      "visibility": "Bekend worden",
+      "visibilityFirstCustomers": "Eerste klanten",
+      "visibilityAi": "Gevonden worden door AI",
+      "analyticsAi": "AI-assistenten"
     },
     "home": {
       "viewAll": "Alles bekijken",
@@ -3661,6 +3665,39 @@
         "productViews": "Productweergaven",
         "cartAdditions": "Toegevoegd aan winkelwagen",
         "orders": "Bestellingen"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Bezoeken via AI-assistenten",
+          "vsPrevious": "t.o.v. vorige periode",
+          "share": "Aandeel van je bezoeken",
+          "shareOf": "van {count, plural, one {# bezoek} other {# bezoeken}} in totaal",
+          "bookings": "Reserveringen",
+          "bookingsSubtitle": "tijdens die bezoeken",
+          "crawls": "Bezoeken van AI-crawlers",
+          "llmsTxt": "{count, plural, =0 {nog geen van je llms.txt} one {waarvan # van je llms.txt} other {waarvan # van je llms.txt}}"
+        },
+        "trend": {
+          "title": "Bezoeken via AI-assistenten",
+          "description": "En hun reserveringen",
+          "visits": "Bezoeken",
+          "bookings": "Reserveringen"
+        },
+        "byAssistant": {
+          "title": "Per assistent"
+        },
+        "improve": "Verbeter wat AI-assistenten over je weten",
+        "notIncluded": {
+          "title": "Niet in je abonnement",
+          "description": "Bezoeken via AI-assistenten horen niet bij je huidige abonnement."
+        },
+        "note": {
+          "title": "Hoe we tellen",
+          "visits": "Een bezoek telt voor een assistent als het van zijn pagina komt (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) of via een link die hij markeerde.",
+          "bookings": "Een reservering telt als ze online tijdens dat bezoek wordt gedaan, in hetzelfde tabblad. Ze zegt dat de klant via een assistent kwam, niet dat de assistent haar besliste.",
+          "minimum": "Sommige assistent-apps zeggen niet waar een bezoeker vandaan komt: die bezoeken tellen als direct. Deze cijfers zijn een minimum.",
+          "crawls": "Crawls zijn bezoeken van de robots van de assistenten aan je winkel en zijn llms.txt: een teller, niets over personen."
+        }
       }
     },
     "multiStore": {
@@ -7085,7 +7122,9 @@
       "reservationsEdit": "Bewerken",
       "settingsCustomerFields": "Klantgegevens",
       "needsALook": "Te controleren",
-      "visibility": "Maak je bekend"
+      "visibility": "Maak je bekend",
+      "visibilityAi": "Gevonden worden door AI",
+      "analyticsAi": "AI-assistenten"
     },
     "notificationsCenter": {
       "title": "Meldingen",
@@ -7514,6 +7553,75 @@
         "next": "Volgende stap: {step}",
         "action": "Doorgaan",
         "dismiss": "Verbergen"
+      },
+      "ai": {
+        "title": "Gevonden worden door AI",
+        "description": "ChatGPT, Claude, Perplexity en Gemini lezen je winkel om je toekomstige klanten te antwoorden.",
+        "readyCount": "{ready} van {total} klaar",
+        "indexingOff": "Deze instantie verbergt haar winkels voor zoekmachines en AI-assistenten (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "Een beschrijving van je winkel",
+            "missing": "Een paar zinnen over wat je verhuurt en waar: dat herhaalt een assistent."
+          },
+          "address": {
+            "title": "Je adres",
+            "missing": "Zonder adres kan een assistent je niet voorstellen aan wie in de buurt zoekt."
+          },
+          "businessHours": {
+            "title": "Je openingstijden",
+            "missing": "Een assistent beantwoordt ‘is het open?’ met je openingstijden."
+          },
+          "products": {
+            "title": "Producten met foto en prijs",
+            "count": "{ready} van {total} producten hebben een foto en een prijs",
+            "none": "Nog geen product online"
+          }
+        },
+        "status": {
+          "ready": "klaar",
+          "missing": "aan te vullen"
+        },
+        "fix": "Aanvullen",
+        "stats": {
+          "visits": "Bezoeken via een AI-assistent",
+          "crawls": "Bezoeken van AI-crawlers",
+          "period": "Afgelopen 28 dagen",
+          "bookings": "Reserveringen tijdens die bezoeken"
+        },
+        "details": "Details",
+        "table": {
+          "assistant": "Assistent",
+          "visits": "Bezoeken",
+          "reads": "Crawls",
+          "bookings": "Reserveringen"
+        },
+        "assistants": {
+          "other": "Andere AI"
+        },
+        "empty": "Nog geen bezoeken of crawls: AI-assistenten doen er vaak een paar weken over om een nieuwe winkel te ontdekken.",
+        "llmsTxt": {
+          "reads": "Je pagina voor AI (llms.txt): {count, plural, =0 {nog niet gelezen} one {één keer gelezen} other {# keer gelezen}}",
+          "open": "Pagina bekijken"
+        },
+        "note": "Een assistent vermeldt niet altijd waar een bezoeker vandaan komt: deze cijfers zijn een minimum.",
+        "readiness": {
+          "title": "Wat AI-assistenten moeten weten"
+        },
+        "results": {
+          "title": "Wat AI-assistenten je opleverden",
+          "openAnalytics": "Bekijk het verloop in Analyses"
+        },
+        "summary": {
+          "fold": "Inklappen",
+          "unfold": "Uitklappen",
+          "openPage": "Details bekijken",
+          "complete": "Mijn gegevens aanvullen"
+        },
+        "notIncluded": {
+          "title": "Niet in je abonnement",
+          "description": "Gevonden worden door AI-assistenten hoort niet bij je huidige abonnement."
+        }
       }
     }
   },
@@ -9130,6 +9238,48 @@
         "acquisitionSourceDetail": "Toelichting",
         "socialLinks": "Sociale media en links"
       }
+    },
+    "llms": {
+      "summary": "Verhuur van materiaal bij {store}.",
+      "intro": "{store} verhuurt online: reserveer op {url}.",
+      "practicalTitle": "Praktische informatie",
+      "address": "Adres: {address}",
+      "map": "Kaart: {url}",
+      "phone": "Telefoon: {phone}",
+      "email": "E-mail: {email}",
+      "hours": "Openingstijden: {hours}",
+      "closed": "gesloten",
+      "bookingPayment": "Reserveren en betalen online, direct bevestigd",
+      "bookingPartialPayment": "Online reserveren met een aanbetaling van {percent}%; de rest betaal je bij de winkel",
+      "bookingRequest": "Online reserveren op aanvraag: de winkel bevestigt elke reservering",
+      "minDuration": "Minimale huurperiode: {duration}",
+      "maxDuration": "Maximale huurperiode: {duration}",
+      "advanceNotice": "Minstens {duration} van tevoren reserveren",
+      "pickup": "Ophalen en terugbrengen bij de winkel",
+      "pickupLocations": "Ophalen en terugbrengen bij de winkel of op een van haar ophaalpunten",
+      "delivery": {
+        "optional": "Bezorging mogelijk",
+        "required": "Alleen bezorging, niet ophalen",
+        "included": "Bezorging inbegrepen"
+      },
+      "currency": "Prijzen in {currency}",
+      "catalogTitle": "Catalogus",
+      "pricesNote": "Tarieven per huurperiode; de exacte prijs en beschikbaarheid voor bepaalde data staan op de pagina van elk product.",
+      "noProducts": "Nog geen product online.",
+      "otherProducts": "Andere producten",
+      "deposit": "Borg: {amount}",
+      "truncated": "De volledige catalogus staat online: {url}",
+      "pagesTitle": "Pagina's",
+      "pages": {
+        "home": "Home",
+        "catalog": "Catalogus",
+        "about": "Over ons",
+        "contact": "Contact",
+        "terms": "Algemene voorwaarden",
+        "legal": "Juridische informatie"
+      },
+      "fullFile": "Alle producten met hun beschrijving",
+      "footer": "Gegevens van de webwinkel, bijgewerkt op {date}."
     }
   },
   "onboarding": {
@@ -9837,7 +9987,8 @@
       "needsStripe": "Louez heeft bij Stripe een autorisatie voor dit verzoek gevonden, maar die komt niet overeen met wat werd gevraagd (bedrag, kaart of referentie gewijzigd): Louez heeft ze niet geregistreerd en het verzoek blijft open. Annuleer ze via het Stripe-dashboard en klik daarna op ‘Verzoek sluiten’. Int u ze in plaats daarvan in Stripe, dan registreert Louez dat bedrag niet en blijft het verzoek open: neem contact op met Louez-support.",
       "none": "Deze reservering heeft geen onbevestigde autorisatie meer."
     },
-    "planOfferUnavailable": "Dit aanbod geldt niet meer voor je winkel. De abonnementen staan op de pagina Abonnement."
+    "planOfferUnavailable": "Dit aanbod geldt niet meer voor je winkel. De abonnementen staan op de pagina Abonnement.",
+    "aiVisibilityNotIncluded": "Je abonnement bevat geen zichtbaarheid bij AI-assistenten."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

@@ -1629,6 +1629,20 @@ export const capabilities = [
     actors: ["session"],
   },
   {
+    id: "online_store.getAiVisibility",
+    sources: [procedure("visibility", "getAi")],
+    kind: "read",
+    plan: { exclude: VISIBILITY_GUIDE },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.getAiTraffic",
+    sources: [procedure("visibility", "getAiTraffic")],
+    kind: "read",
+    plan: { exclude: VISIBILITY_GUIDE },
+    actors: ["session"],
+  },
+  {
     id: "online_store.setVisibilityStep",
     sources: [procedure("visibility", "setStep")],
     kind: "write",

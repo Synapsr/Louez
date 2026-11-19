@@ -996,7 +996,11 @@
       "analyticsSales": "Vendite",
       "analyticsTraffic": "Traffico",
       "multiStore": "Multi-negozio",
-      "aiCredits": "Crediti IA"
+      "aiCredits": "Crediti IA",
+      "visibility": "Farsi conoscere",
+      "visibilityFirstCustomers": "Primi clienti",
+      "visibilityAi": "Farsi trovare dalle IA",
+      "analyticsAi": "Assistenti IA"
     },
     "home": {
       "viewAll": "Vedi tutto",
@@ -3661,6 +3665,39 @@
         "productViews": "Visualizzazioni prodotti",
         "cartAdditions": "Aggiunte al carrello",
         "orders": "Ordini"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Visite dagli assistenti IA",
+          "vsPrevious": "vs periodo precedente",
+          "share": "Quota delle tue visite",
+          "shareOf": "su {count, plural, one {# visita} other {# visite}} in totale",
+          "bookings": "Prenotazioni",
+          "bookingsSubtitle": "durante queste visite",
+          "crawls": "Letture dei crawler IA",
+          "llmsTxt": "{count, plural, =0 {nessuna del tuo llms.txt} one {di cui # del tuo llms.txt} other {di cui # del tuo llms.txt}}"
+        },
+        "trend": {
+          "title": "Visite dagli assistenti IA",
+          "description": "E le loro prenotazioni",
+          "visits": "Visite",
+          "bookings": "Prenotazioni"
+        },
+        "byAssistant": {
+          "title": "Per assistente"
+        },
+        "improve": "Migliora ciò che le IA sanno di te",
+        "notIncluded": {
+          "title": "Non incluso nel tuo piano",
+          "description": "Le visite dagli assistenti IA non fanno parte del tuo piano attuale."
+        },
+        "note": {
+          "title": "Come contiamo",
+          "visits": "Una visita conta per un assistente quando arriva dalla sua pagina (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) o da un link da lui marcato.",
+          "bookings": "Una prenotazione conta quando è fatta online durante quella visita, nella stessa scheda. Dice che il cliente è arrivato tramite un assistente, non che l'assistente l'abbia decisa.",
+          "minimum": "Alcune app di assistenti non dicono da dove arriva il visitatore: quelle visite contano come dirette. Queste cifre sono un minimo.",
+          "crawls": "Le letture sono i passaggi dei robot degli assistenti sul tuo negozio e sul suo llms.txt: un contatore, niente sulle persone."
+        }
       }
     },
     "multiStore": {
@@ -7085,7 +7122,9 @@
       "reservationsEdit": "Modifica",
       "settingsCustomerFields": "Scheda cliente",
       "needsALook": "Da verificare",
-      "visibility": "Fatti conoscere"
+      "visibility": "Fatti conoscere",
+      "visibilityAi": "Farsi trovare dalle IA",
+      "analyticsAi": "Assistenti IA"
     },
     "notificationsCenter": {
       "title": "Notifiche",
@@ -7514,6 +7553,75 @@
         "next": "Prossimo passo: {step}",
         "action": "Continua",
         "dismiss": "Nascondi"
+      },
+      "ai": {
+        "title": "Farsi trovare dalle IA",
+        "description": "ChatGPT, Claude, Perplexity e Gemini leggono il tuo negozio per rispondere ai tuoi futuri clienti.",
+        "readyCount": "{ready} su {total} pronti",
+        "indexingOff": "Questa istanza nasconde i suoi negozi ai motori di ricerca e agli assistenti IA (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "Una descrizione del negozio",
+            "missing": "Qualche frase su cosa noleggi e dove: è ciò che un assistente riprende."
+          },
+          "address": {
+            "title": "Il tuo indirizzo",
+            "missing": "Senza indirizzo, un assistente non può proporti a chi cerca nelle vicinanze."
+          },
+          "businessHours": {
+            "title": "I tuoi orari di apertura",
+            "missing": "Un assistente risponde a «è aperto?» con i tuoi orari."
+          },
+          "products": {
+            "title": "Prodotti con foto e prezzo",
+            "count": "{ready} prodotti su {total} hanno foto e prezzo",
+            "none": "Ancora nessun prodotto online"
+          }
+        },
+        "status": {
+          "ready": "pronto",
+          "missing": "da completare"
+        },
+        "fix": "Completa",
+        "stats": {
+          "visits": "Visite da un assistente IA",
+          "crawls": "Letture dei crawler IA",
+          "period": "Ultimi 28 giorni",
+          "bookings": "Prenotazioni durante queste visite"
+        },
+        "details": "Dettagli",
+        "table": {
+          "assistant": "Assistente",
+          "visits": "Visite",
+          "reads": "Letture",
+          "bookings": "Prenotazioni"
+        },
+        "assistants": {
+          "other": "Altre IA"
+        },
+        "empty": "Ancora nessuna visita né lettura: gli assistenti IA impiegano spesso qualche settimana a scoprire un nuovo negozio.",
+        "llmsTxt": {
+          "reads": "La tua pagina per le IA (llms.txt): {count, plural, =0 {non ancora letta} one {letta una volta} other {letta # volte}}",
+          "open": "Vedi la pagina"
+        },
+        "note": "Un assistente non indica sempre da dove arriva un visitatore: queste cifre sono un minimo.",
+        "readiness": {
+          "title": "Cosa devono sapere le IA"
+        },
+        "results": {
+          "title": "Cosa ti hanno portato le IA",
+          "openAnalytics": "Vedi l'andamento in Analisi"
+        },
+        "summary": {
+          "fold": "Comprimi",
+          "unfold": "Espandi",
+          "openPage": "Vedi i dettagli",
+          "complete": "Completa le mie informazioni"
+        },
+        "notIncluded": {
+          "title": "Non incluso nel tuo piano",
+          "description": "Farsi trovare dagli assistenti IA non fa parte del tuo piano attuale."
+        }
       }
     }
   },
@@ -9130,6 +9238,48 @@
         "acquisitionSourceDetail": "Specifica",
         "socialLinks": "Social e link"
       }
+    },
+    "llms": {
+      "summary": "Noleggio di attrezzatura da {store}.",
+      "intro": "{store} noleggia online: prenota su {url}.",
+      "practicalTitle": "Informazioni pratiche",
+      "address": "Indirizzo: {address}",
+      "map": "Mappa: {url}",
+      "phone": "Telefono: {phone}",
+      "email": "E-mail: {email}",
+      "hours": "Orari: {hours}",
+      "closed": "chiuso",
+      "bookingPayment": "Prenotazione e pagamento online, confermati subito",
+      "bookingPartialPayment": "Prenotazione online con un acconto del {percent}%; il resto si paga in negozio",
+      "bookingRequest": "Prenotazione online su richiesta: il negozio conferma ogni prenotazione",
+      "minDuration": "Noleggio minimo: {duration}",
+      "maxDuration": "Noleggio massimo: {duration}",
+      "advanceNotice": "Prenotare con almeno {duration} di anticipo",
+      "pickup": "Ritiro e riconsegna in negozio",
+      "pickupLocations": "Ritiro e riconsegna in negozio o in uno dei suoi punti di ritiro",
+      "delivery": {
+        "optional": "Consegna disponibile",
+        "required": "Solo consegna, nessun ritiro",
+        "included": "Consegna inclusa"
+      },
+      "currency": "Prezzi in {currency}",
+      "catalogTitle": "Catalogo",
+      "pricesNote": "Tariffe per durata di noleggio; il prezzo esatto e la disponibilità per date precise sono sulla pagina di ogni prodotto.",
+      "noProducts": "Ancora nessun prodotto online.",
+      "otherProducts": "Altri prodotti",
+      "deposit": "Cauzione: {amount}",
+      "truncated": "Il catalogo completo è online: {url}",
+      "pagesTitle": "Pagine",
+      "pages": {
+        "home": "Home",
+        "catalog": "Catalogo",
+        "about": "Chi siamo",
+        "contact": "Contatti",
+        "terms": "Condizioni generali",
+        "legal": "Note legali"
+      },
+      "fullFile": "Tutti i prodotti con la loro descrizione",
+      "footer": "Dati del negozio online, aggiornati al {date}."
     }
   },
   "onboarding": {
@@ -9837,7 +9987,8 @@
       "needsStripe": "Louez ha trovato su Stripe un'autorizzazione per questa richiesta, ma non corrisponde a quanto richiesto (importo, carta o riferimento modificati): Louez non l'ha registrata e la richiesta resta aperta. Annullala dalla dashboard di Stripe, poi fai clic su «Chiudi la richiesta». Se invece la incassi su Stripe, Louez non registra quell'importo e la richiesta resta aperta: contatta l'assistenza Louez.",
       "none": "Questa prenotazione non ha più autorizzazioni non confermate."
     },
-    "planOfferUnavailable": "Questa offerta non vale più per il tuo negozio. Trovi gli abbonamenti nella pagina Abbonamento."
+    "planOfferUnavailable": "Questa offerta non vale più per il tuo negozio. Trovi gli abbonamenti nella pagina Abbonamento.",
+    "aiVisibilityNotIncluded": "Il tuo piano non include la visibilità presso gli assistenti IA."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

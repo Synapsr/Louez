@@ -996,7 +996,11 @@
       "settings": "Pengaturan",
       "store": "Toko saya",
       "multiStore": "Multi-toko",
-      "aiCredits": "Kredit AI"
+      "aiCredits": "Kredit AI",
+      "visibility": "Dikenal pelanggan",
+      "visibilityFirstCustomers": "Pelanggan pertama",
+      "visibilityAi": "Ditemukan oleh AI",
+      "analyticsAi": "Asisten AI"
     },
     "multiStore": {
       "title": "Multi-toko",
@@ -3700,6 +3704,39 @@
         "productViews": "Tampilan produk",
         "cartAdditions": "Penambahan keranjang",
         "orders": "Pesanan"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Kunjungan dari asisten AI",
+          "vsPrevious": "vs periode sebelumnya",
+          "share": "Bagian dari kunjungan Anda",
+          "shareOf": "dari total {count, plural, other {# kunjungan}}",
+          "bookings": "Pemesanan",
+          "bookingsSubtitle": "selama kunjungan tersebut",
+          "crawls": "Pembacaan oleh robot AI",
+          "llmsTxt": "{count, plural, =0 {llms.txt Anda belum dibaca} other {termasuk # dari llms.txt Anda}}"
+        },
+        "trend": {
+          "title": "Kunjungan dari asisten AI",
+          "description": "Dan pemesanannya",
+          "visits": "Kunjungan",
+          "bookings": "Pemesanan"
+        },
+        "byAssistant": {
+          "title": "Per asisten"
+        },
+        "improve": "Tingkatkan apa yang diketahui AI tentang Anda",
+        "notIncluded": {
+          "title": "Tidak termasuk dalam paket Anda",
+          "description": "Kunjungan dari asisten AI tidak termasuk dalam paket Anda saat ini."
+        },
+        "note": {
+          "title": "Cara kami menghitung",
+          "visits": "Kunjungan dihitung untuk sebuah asisten jika datang dari halamannya (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) atau lewat tautan yang ditandainya.",
+          "bookings": "Pemesanan dihitung jika dibuat secara online selama kunjungan itu, di tab yang sama. Artinya pelanggan datang lewat asisten, bukan asisten yang memutuskan pemesanan.",
+          "minimum": "Beberapa aplikasi asisten tidak menyebut asal pengunjung: kunjungan itu dihitung sebagai langsung. Angka ini adalah angka minimum.",
+          "crawls": "Pembacaan adalah kunjungan robot asisten ke toko Anda dan llms.txt-nya: hanya penghitung, tanpa data tentang orang."
+        }
       }
     },
     "settings": {
@@ -7085,7 +7122,9 @@
       "reservationsEdit": "Sunting",
       "settingsCustomerFields": "Data pelanggan",
       "needsALook": "Perlu dicek",
-      "visibility": "Perkenalkan toko Anda"
+      "visibility": "Perkenalkan toko Anda",
+      "visibilityAi": "Ditemukan oleh AI",
+      "analyticsAi": "Asisten AI"
     },
     "notificationsCenter": {
       "title": "Pemberitahuan",
@@ -7514,6 +7553,75 @@
         "next": "Langkah berikutnya: {step}",
         "action": "Lanjutkan",
         "dismiss": "Sembunyikan"
+      },
+      "ai": {
+        "title": "Ditemukan oleh AI",
+        "description": "ChatGPT, Claude, Perplexity, dan Gemini membaca toko Anda untuk menjawab calon pelanggan Anda.",
+        "readyCount": "{ready} dari {total} siap",
+        "indexingOff": "Instans ini menyembunyikan tokonya dari mesin pencari dan asisten AI (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "Deskripsi toko Anda",
+            "missing": "Beberapa kalimat tentang apa yang Anda sewakan dan di mana: inilah yang diulang oleh asisten."
+          },
+          "address": {
+            "title": "Alamat Anda",
+            "missing": "Tanpa alamat, asisten tidak bisa menyarankan Anda kepada orang yang mencari di sekitar."
+          },
+          "businessHours": {
+            "title": "Jam buka Anda",
+            "missing": "Asisten menjawab \"apakah buka?\" dengan jam buka Anda."
+          },
+          "products": {
+            "title": "Produk dengan foto dan harga",
+            "count": "{ready} dari {total} produk memiliki foto dan harga",
+            "none": "Belum ada produk online"
+          }
+        },
+        "status": {
+          "ready": "siap",
+          "missing": "perlu dilengkapi"
+        },
+        "fix": "Lengkapi",
+        "stats": {
+          "visits": "Kunjungan dari asisten AI",
+          "crawls": "Pembacaan oleh robot AI",
+          "period": "28 hari terakhir",
+          "bookings": "Pemesanan selama kunjungan tersebut"
+        },
+        "details": "Detail",
+        "table": {
+          "assistant": "Asisten",
+          "visits": "Kunjungan",
+          "reads": "Pembacaan",
+          "bookings": "Pemesanan"
+        },
+        "assistants": {
+          "other": "AI lainnya"
+        },
+        "empty": "Belum ada kunjungan atau pembacaan: asisten AI sering butuh beberapa minggu untuk menemukan toko baru.",
+        "llmsTxt": {
+          "reads": "Halaman Anda untuk AI (llms.txt): {count, plural, =0 {belum dibaca} other {dibaca # kali}}",
+          "open": "Lihat halaman"
+        },
+        "note": "Asisten tidak selalu menyebut asal pengunjung: angka ini adalah angka minimum.",
+        "readiness": {
+          "title": "Yang perlu diketahui AI"
+        },
+        "results": {
+          "title": "Yang dibawa AI untuk Anda",
+          "openAnalytics": "Lihat tren di Analitik"
+        },
+        "summary": {
+          "fold": "Ciutkan",
+          "unfold": "Bentangkan",
+          "openPage": "Lihat detail",
+          "complete": "Lengkapi informasi saya"
+        },
+        "notIncluded": {
+          "title": "Tidak termasuk dalam paket Anda",
+          "description": "Ditemukan oleh asisten AI tidak termasuk dalam paket Anda saat ini."
+        }
       }
     }
   },
@@ -9130,6 +9238,48 @@
         "acquisitionSourceDetail": "Harap sebutkan",
         "socialLinks": "Media sosial dan tautan"
       }
+    },
+    "llms": {
+      "summary": "Penyewaan peralatan di {store}.",
+      "intro": "{store} menyewakan secara online: pesan di {url}.",
+      "practicalTitle": "Informasi praktis",
+      "address": "Alamat: {address}",
+      "map": "Peta: {url}",
+      "phone": "Telepon: {phone}",
+      "email": "Email: {email}",
+      "hours": "Jam buka: {hours}",
+      "closed": "tutup",
+      "bookingPayment": "Pemesanan dan pembayaran online, langsung dikonfirmasi",
+      "bookingPartialPayment": "Pemesanan online dengan uang muka {percent}%; sisanya dibayar di toko",
+      "bookingRequest": "Pemesanan online atas permintaan: toko mengonfirmasi setiap pemesanan",
+      "minDuration": "Sewa minimum: {duration}",
+      "maxDuration": "Sewa maksimum: {duration}",
+      "advanceNotice": "Pesan paling lambat {duration} sebelumnya",
+      "pickup": "Ambil dan kembalikan di toko",
+      "pickupLocations": "Ambil dan kembalikan di toko atau di salah satu titik pengambilannya",
+      "delivery": {
+        "optional": "Pengiriman tersedia",
+        "required": "Hanya pengiriman, tanpa pengambilan",
+        "included": "Termasuk pengiriman"
+      },
+      "currency": "Harga dalam {currency}",
+      "catalogTitle": "Katalog",
+      "pricesNote": "Tarif per periode sewa; harga pasti dan ketersediaan untuk tanggal tertentu ada di halaman setiap produk.",
+      "noProducts": "Belum ada produk online.",
+      "otherProducts": "Produk lainnya",
+      "deposit": "Deposit: {amount}",
+      "truncated": "Katalog lengkap tersedia online: {url}",
+      "pagesTitle": "Halaman",
+      "pages": {
+        "home": "Beranda",
+        "catalog": "Katalog",
+        "about": "Tentang kami",
+        "contact": "Kontak",
+        "terms": "Syarat dan ketentuan",
+        "legal": "Informasi hukum"
+      },
+      "fullFile": "Semua produk beserta deskripsinya",
+      "footer": "Data dari toko online, diperbarui pada {date}."
     }
   },
   "onboarding": {
@@ -9837,7 +9987,8 @@
       "needsStripe": "Louez menemukan otorisasi di Stripe untuk permintaan ini, tetapi tidak sesuai dengan yang diminta (jumlah, kartu, atau referensi berubah): Louez tidak mencatatnya dan permintaan tetap terbuka. Batalkan dari dasbor Stripe, lalu klik “Tutup permintaan”. Jika Anda malah mengambilnya di Stripe, Louez tidak mencatat jumlah itu dan permintaan tetap terbuka: hubungi dukungan Louez.",
       "none": "Reservasi ini tidak lagi memiliki otorisasi yang belum dikonfirmasi."
     },
-    "planOfferUnavailable": "Penawaran ini tidak berlaku lagi untuk toko Anda. Paket tersedia di halaman Langganan."
+    "planOfferUnavailable": "Penawaran ini tidak berlaku lagi untuk toko Anda. Paket tersedia di halaman Langganan.",
+    "aiVisibilityNotIncluded": "Paket Anda tidak mencakup visibilitas di asisten AI."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getClientIp } from '@/lib/request'
 import { visitSourceSchema } from '@louez/api/contracts/visibility'
+import { aiAssistantSchema } from '@louez/api/contracts/ai-visibility'
 
 // Validation schemas
 const pageViewSchema = z.object({
@@ -18,6 +19,8 @@ const pageViewSchema = z.object({
   device: z.enum(['mobile', 'tablet', 'desktop']).optional(),
   // The channel of the shared link the visit came in by (`?via=`)
   source: visitSourceSchema.optional(),
+  // The AI assistant whose answer the visit came from (classifyAiReferral)
+  aiAssistant: aiAssistantSchema.optional(),
 })
 
 const eventSchema = z.object({
@@ -225,6 +228,7 @@ export async function POST(request: NextRequest) {
           referrer: data.referrer,
           device: data.device || 'desktop',
           source: data.source,
+          aiAssistant: data.aiAssistant,
         })
         .catch((err) => console.error('[Analytics] Failed to insert page view:', err))
     } else {

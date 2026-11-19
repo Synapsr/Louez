@@ -996,7 +996,11 @@
       "settings": "设置",
       "store": "我的商店",
       "multiStore": "多店",
-      "aiCredits": "AI 额度"
+      "aiCredits": "AI 额度",
+      "visibility": "让人知道你",
+      "visibilityFirstCustomers": "第一批客户",
+      "visibilityAi": "让 AI 找到你",
+      "analyticsAi": "AI 助手"
     },
     "multiStore": {
       "title": "多店",
@@ -3700,6 +3704,39 @@
         "productViews": "产品浏览",
         "cartAdditions": "购物车添加",
         "orders": "订单"
+      },
+      "ai": {
+        "stats": {
+          "visits": "来自 AI 助手的访问",
+          "vsPrevious": "与上一周期相比",
+          "share": "占你访问量的比例",
+          "shareOf": "共 {count, plural, other {# 次访问}}",
+          "bookings": "预订",
+          "bookingsSubtitle": "在这些访问中",
+          "crawls": "AI 爬虫读取次数",
+          "llmsTxt": "{count, plural, =0 {你的 llms.txt 尚未被读取} other {其中你的 llms.txt 被读取 # 次}}"
+        },
+        "trend": {
+          "title": "来自 AI 助手的访问",
+          "description": "以及其中的预订",
+          "visits": "访问",
+          "bookings": "预订"
+        },
+        "byAssistant": {
+          "title": "按助手"
+        },
+        "improve": "完善 AI 对你的了解",
+        "notIncluded": {
+          "title": "你的套餐未包含",
+          "description": "来自 AI 助手的访问不在你当前的套餐中。"
+        },
+        "note": {
+          "title": "我们如何统计",
+          "visits": "当访问来自某个助手的页面（ChatGPT、Perplexity、Claude、Gemini、Copilot、Le Chat 等）或其标记的链接时，计入该助手。",
+          "bookings": "在该次访问中、同一浏览器标签页内在线完成的预订才计入。这说明客户经由助手而来，而不是助手做出了预订决定。",
+          "minimum": "部分助手应用不会告知访客来源：这些访问计为直接访问。因此这些数字是最低值。",
+          "crawls": "读取是助手的机器人访问你的店铺及其 llms.txt 的次数：只是计数，不涉及任何个人信息。"
+        }
       }
     },
     "settings": {
@@ -7085,7 +7122,9 @@
       "reservationsEdit": "编辑",
       "settingsCustomerFields": "客户档案",
       "needsALook": "待检查",
-      "visibility": "让客户找到你"
+      "visibility": "让客户找到你",
+      "visibilityAi": "让 AI 找到你",
+      "analyticsAi": "AI 助手"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7514,6 +7553,75 @@
         "next": "下一步：{step}",
         "action": "继续",
         "dismiss": "隐藏"
+      },
+      "ai": {
+        "title": "让 AI 找到你",
+        "description": "ChatGPT、Claude、Perplexity 和 Gemini 会读取你的店铺，来回答你未来的客户。",
+        "readyCount": "{ready}/{total} 项已就绪",
+        "indexingOff": "此实例对搜索引擎和 AI 助手隐藏其店铺（LOUEZ_SEARCH_INDEXING=off）。",
+        "items": {
+          "description": {
+            "title": "店铺简介",
+            "missing": "用几句话说明你出租什么、在哪里：AI 助手会引用这些内容。"
+          },
+          "address": {
+            "title": "你的地址",
+            "missing": "没有地址，AI 助手无法向附近的人推荐你。"
+          },
+          "businessHours": {
+            "title": "营业时间",
+            "missing": "AI 助手会用你的营业时间回答“现在营业吗?”。"
+          },
+          "products": {
+            "title": "带照片和价格的商品",
+            "count": "{total} 件商品中有 {ready} 件带照片和价格",
+            "none": "暂无上线商品"
+          }
+        },
+        "status": {
+          "ready": "已就绪",
+          "missing": "待完善"
+        },
+        "fix": "去完善",
+        "stats": {
+          "visits": "来自 AI 助手的访问",
+          "crawls": "AI 爬虫读取次数",
+          "period": "最近 28 天",
+          "bookings": "这些访问中产生的预订"
+        },
+        "details": "详情",
+        "table": {
+          "assistant": "助手",
+          "visits": "访问",
+          "reads": "读取",
+          "bookings": "预订"
+        },
+        "assistants": {
+          "other": "其他 AI"
+        },
+        "empty": "暂无访问或读取：AI 助手通常需要几周时间才能发现新店铺。",
+        "llmsTxt": {
+          "reads": "你为 AI 准备的页面（llms.txt）：{count, plural, =0 {尚未被读取} other {已被读取 # 次}}",
+          "open": "查看页面"
+        },
+        "note": "AI 助手并不总会注明访客来源：这些数字是最低值。",
+        "readiness": {
+          "title": "AI 需要知道的信息"
+        },
+        "results": {
+          "title": "AI 为你带来的成果",
+          "openAnalytics": "在分析中查看趋势"
+        },
+        "summary": {
+          "fold": "收起",
+          "unfold": "展开",
+          "openPage": "查看详情",
+          "complete": "完善我的信息"
+        },
+        "notIncluded": {
+          "title": "你的套餐未包含",
+          "description": "被 AI 助手找到不在你当前的套餐中。"
+        }
       }
     }
   },
@@ -9130,6 +9238,48 @@
         "acquisitionSourceDetail": "请具体说明",
         "socialLinks": "社交媒体与链接"
       }
+    },
+    "llms": {
+      "summary": "{store} 设备租赁。",
+      "intro": "{store} 提供在线租赁：请在 {url} 预订。",
+      "practicalTitle": "实用信息",
+      "address": "地址：{address}",
+      "map": "地图：{url}",
+      "phone": "电话：{phone}",
+      "email": "邮箱：{email}",
+      "hours": "营业时间：{hours}",
+      "closed": "休息",
+      "bookingPayment": "在线预订并付款，即时确认",
+      "bookingPartialPayment": "在线预订需支付 {percent}% 定金，余款在店内支付",
+      "bookingRequest": "在线申请预订：每笔预订由店铺确认",
+      "minDuration": "最短租期：{duration}",
+      "maxDuration": "最长租期：{duration}",
+      "advanceNotice": "至少提前 {duration} 预订",
+      "pickup": "在店内取还",
+      "pickupLocations": "在店内或其取货点取还",
+      "delivery": {
+        "optional": "可配送",
+        "required": "仅配送，不可自取",
+        "included": "含配送"
+      },
+      "currency": "价格单位：{currency}",
+      "catalogTitle": "商品目录",
+      "pricesNote": "按租期计价;具体日期的准确价格和可租情况请见各商品页面。",
+      "noProducts": "暂无上线商品。",
+      "otherProducts": "其他商品",
+      "deposit": "押金：{amount}",
+      "truncated": "完整目录在线查看：{url}",
+      "pagesTitle": "页面",
+      "pages": {
+        "home": "首页",
+        "catalog": "商品目录",
+        "about": "关于我们",
+        "contact": "联系我们",
+        "terms": "条款与条件",
+        "legal": "法律声明"
+      },
+      "fullFile": "所有商品及其描述",
+      "footer": "数据来自在线店铺，更新于 {date}。"
     }
   },
   "onboarding": {
@@ -9837,7 +9987,8 @@
       "needsStripe": "Louez 在 Stripe 中找到了此请求的授权，但它与所请求的内容不符（金额、卡片或参考信息已更改）：Louez 未记录它，请求仍保持打开。请在 Stripe 控制台中取消，然后点击“关闭请求”。如果您改为在 Stripe 中扣款，Louez 不会记录这笔金额，请求仍保持打开：请联系 Louez 客服。",
       "none": "此预订已没有未确认的授权。"
     },
-    "planOfferUnavailable": "此优惠已不再适用于您的店铺。请在订阅页面查看套餐。"
+    "planOfferUnavailable": "此优惠已不再适用于您的店铺。请在订阅页面查看套餐。",
+    "aiVisibilityNotIncluded": "你的套餐不包含 AI 助手可见性。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

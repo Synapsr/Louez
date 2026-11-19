@@ -996,7 +996,11 @@
       "settings": "설정",
       "store": "내 가게",
       "multiStore": "다중 매장",
-      "aiCredits": "AI 크레딧"
+      "aiCredits": "AI 크레딧",
+      "visibility": "알리기",
+      "visibilityFirstCustomers": "첫 고객",
+      "visibilityAi": "AI에 노출되기",
+      "analyticsAi": "AI 어시스턴트"
     },
     "multiStore": {
       "title": "다중 매장",
@@ -3700,6 +3704,39 @@
         "productViews": "제품 조회수",
         "cartAdditions": "장바구니 추가",
         "orders": "주문"
+      },
+      "ai": {
+        "stats": {
+          "visits": "AI 어시스턴트에서 온 방문",
+          "vsPrevious": "이전 기간 대비",
+          "share": "전체 방문 중 비율",
+          "shareOf": "전체 방문 {count, plural, other {#건}} 중",
+          "bookings": "예약",
+          "bookingsSubtitle": "해당 방문 중",
+          "crawls": "AI 크롤러의 읽기",
+          "llmsTxt": "{count, plural, =0 {llms.txt는 아직 읽히지 않음} other {그중 llms.txt #회}}"
+        },
+        "trend": {
+          "title": "AI 어시스턴트에서 온 방문",
+          "description": "그리고 해당 예약",
+          "visits": "방문",
+          "bookings": "예약"
+        },
+        "byAssistant": {
+          "title": "어시스턴트별"
+        },
+        "improve": "AI가 아는 매장 정보 보완하기",
+        "notIncluded": {
+          "title": "요금제에 포함되지 않음",
+          "description": "AI 어시스턴트에서 온 방문은 현재 요금제에 포함되어 있지 않습니다."
+        },
+        "note": {
+          "title": "집계 방식",
+          "visits": "어시스턴트의 페이지(ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat 등)나 어시스턴트가 표시한 링크에서 온 방문을 해당 어시스턴트로 집계합니다.",
+          "bookings": "해당 방문 중 같은 브라우저 탭에서 온라인으로 이루어진 예약을 집계합니다. 고객이 어시스턴트를 통해 왔다는 뜻이지, 어시스턴트가 예약을 결정했다는 뜻은 아닙니다.",
+          "minimum": "일부 어시스턴트 앱은 방문자의 출처를 알려 주지 않아 직접 방문으로 집계됩니다. 이 수치는 최솟값입니다.",
+          "crawls": "읽기는 어시스턴트의 로봇이 매장과 llms.txt를 방문한 횟수입니다. 개인에 대한 정보 없이 횟수만 셉니다."
+        }
       }
     },
     "settings": {
@@ -7085,7 +7122,9 @@
       "reservationsEdit": "편집",
       "settingsCustomerFields": "고객 정보",
       "needsALook": "확인 필요",
-      "visibility": "가게 알리기"
+      "visibility": "가게 알리기",
+      "visibilityAi": "AI에 노출되기",
+      "analyticsAi": "AI 어시스턴트"
     },
     "notificationsCenter": {
       "title": "알림",
@@ -7514,6 +7553,75 @@
         "next": "다음 단계: {step}",
         "action": "계속",
         "dismiss": "숨기기"
+      },
+      "ai": {
+        "title": "AI에 노출되기",
+        "description": "ChatGPT, Claude, Perplexity, Gemini가 매장을 읽고 미래의 고객에게 답합니다.",
+        "readyCount": "{total}개 중 {ready}개 준비됨",
+        "indexingOff": "이 인스턴스는 검색 엔진과 AI 어시스턴트에 매장을 숨깁니다(LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "매장 소개",
+            "missing": "무엇을 어디서 대여하는지 몇 문장으로 적어 주세요. AI 어시스턴트가 이 내용을 인용합니다."
+          },
+          "address": {
+            "title": "주소",
+            "missing": "주소가 없으면 AI 어시스턴트가 근처에서 찾는 사람에게 매장을 추천할 수 없습니다."
+          },
+          "businessHours": {
+            "title": "영업시간",
+            "missing": "AI 어시스턴트는 \"지금 영업 중인가요?\"에 영업시간으로 답합니다."
+          },
+          "products": {
+            "title": "사진과 가격이 있는 상품",
+            "count": "상품 {total}개 중 {ready}개에 사진과 가격이 있습니다",
+            "none": "아직 공개된 상품이 없습니다"
+          }
+        },
+        "status": {
+          "ready": "준비됨",
+          "missing": "보완 필요"
+        },
+        "fix": "보완하기",
+        "stats": {
+          "visits": "AI 어시스턴트에서 온 방문",
+          "crawls": "AI 크롤러의 읽기",
+          "period": "최근 28일",
+          "bookings": "해당 방문 중 예약"
+        },
+        "details": "자세히",
+        "table": {
+          "assistant": "어시스턴트",
+          "visits": "방문",
+          "reads": "읽기",
+          "bookings": "예약"
+        },
+        "assistants": {
+          "other": "기타 AI"
+        },
+        "empty": "아직 방문이나 읽기가 없습니다. AI 어시스턴트가 새 매장을 발견하는 데 몇 주가 걸리는 경우가 많습니다.",
+        "llmsTxt": {
+          "reads": "AI용 페이지(llms.txt): {count, plural, =0 {아직 읽히지 않음} other {#회 읽힘}}",
+          "open": "페이지 보기"
+        },
+        "note": "AI 어시스턴트가 방문자의 출처를 항상 알려 주지는 않습니다. 이 수치는 최솟값입니다.",
+        "readiness": {
+          "title": "AI가 알아야 할 정보"
+        },
+        "results": {
+          "title": "AI가 가져다준 성과",
+          "openAnalytics": "분석에서 추이 보기"
+        },
+        "summary": {
+          "fold": "접기",
+          "unfold": "펼치기",
+          "openPage": "자세히 보기",
+          "complete": "내 정보 보완하기"
+        },
+        "notIncluded": {
+          "title": "요금제에 포함되지 않음",
+          "description": "AI 어시스턴트 노출은 현재 요금제에 포함되어 있지 않습니다."
+        }
       }
     }
   },
@@ -9130,6 +9238,48 @@
         "acquisitionSourceDetail": "자세히 적어 주세요",
         "socialLinks": "소셜 및 링크"
       }
+    },
+    "llms": {
+      "summary": "{store} 장비 대여.",
+      "intro": "{store}는 온라인으로 대여합니다: {url}에서 예약하세요.",
+      "practicalTitle": "이용 안내",
+      "address": "주소: {address}",
+      "map": "지도: {url}",
+      "phone": "전화: {phone}",
+      "email": "이메일: {email}",
+      "hours": "영업시간: {hours}",
+      "closed": "휴무",
+      "bookingPayment": "온라인 예약 및 결제, 즉시 확정",
+      "bookingPartialPayment": "온라인 예약 시 {percent}% 선금, 나머지는 매장에서 결제",
+      "bookingRequest": "온라인 예약 요청: 매장이 각 예약을 확정합니다",
+      "minDuration": "최소 대여 기간: {duration}",
+      "maxDuration": "최대 대여 기간: {duration}",
+      "advanceNotice": "최소 {duration} 전에 예약",
+      "pickup": "매장에서 수령 및 반납",
+      "pickupLocations": "매장 또는 수령 지점에서 수령 및 반납",
+      "delivery": {
+        "optional": "배송 가능",
+        "required": "배송만 가능(수령 불가)",
+        "included": "배송 포함"
+      },
+      "currency": "가격 통화: {currency}",
+      "catalogTitle": "카탈로그",
+      "pricesNote": "대여 기간별 요금입니다. 특정 날짜의 정확한 가격과 재고는 각 상품 페이지에 있습니다.",
+      "noProducts": "아직 공개된 상품이 없습니다.",
+      "otherProducts": "기타 상품",
+      "deposit": "보증금: {amount}",
+      "truncated": "전체 카탈로그는 온라인에서 볼 수 있습니다: {url}",
+      "pagesTitle": "페이지",
+      "pages": {
+        "home": "홈",
+        "catalog": "카탈로그",
+        "about": "매장 소개",
+        "contact": "문의",
+        "terms": "이용약관",
+        "legal": "법적 고지"
+      },
+      "fullFile": "모든 상품과 설명",
+      "footer": "온라인 매장 데이터, {date} 기준."
     }
   },
   "onboarding": {
@@ -9837,7 +9987,8 @@
       "needsStripe": "Louez가 Stripe에서 이 요청에 대한 승인을 찾았지만 요청한 내용과 일치하지 않습니다(금액, 카드 또는 참조가 변경됨). Louez는 이를 기록하지 않았으며 요청은 열린 상태로 유지됩니다. Stripe 대시보드에서 취소한 다음 '요청 닫기'를 클릭하세요. 대신 Stripe에서 회수하면 Louez는 그 금액을 기록하지 않으며 요청은 열린 상태로 유지됩니다. Louez 지원팀에 문의하세요.",
       "none": "이 예약에는 더 이상 확인되지 않은 승인이 없습니다."
     },
-    "planOfferUnavailable": "이 제안은 더 이상 스토어에 적용되지 않습니다. 요금제는 구독 페이지에서 확인하세요."
+    "planOfferUnavailable": "이 제안은 더 이상 스토어에 적용되지 않습니다. 요금제는 구독 페이지에서 확인하세요.",
+    "aiVisibilityNotIncluded": "현재 요금제에는 AI 어시스턴트 노출이 포함되어 있지 않습니다."
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",

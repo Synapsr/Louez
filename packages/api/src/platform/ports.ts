@@ -21,6 +21,11 @@ import type { RefusalLogEvent } from "./refusal-log";
 export interface ApiPorts {
   /** Features of the plan in force for the store (billing owns plans). */
   planFeatures: (storeId: string) => Promise<{ apiAccess: boolean }>;
+  /**
+   * Whether the store gets « Être trouvé par les IA » (the app's
+   * `canUseAiVisibility`, where it is decided). Absent: it does not.
+   */
+  aiVisibility?: (storeId: string) => Promise<boolean>;
   storage: StoragePort;
   /**
    * The effects of a committed write that the app still owns: page

@@ -996,7 +996,11 @@
       "settings": "設定",
       "store": "私の店",
       "multiStore": "多店舗展開",
-      "aiCredits": "AIクレジット"
+      "aiCredits": "AIクレジット",
+      "visibility": "知ってもらう",
+      "visibilityFirstCustomers": "最初のお客様",
+      "visibilityAi": "AI に見つけてもらう",
+      "analyticsAi": "AI アシスタント"
     },
     "multiStore": {
       "title": "多店舗展開",
@@ -3700,6 +3704,39 @@
         "productViews": "製品ビュー",
         "cartAdditions": "カートの追加",
         "orders": "注文"
+      },
+      "ai": {
+        "stats": {
+          "visits": "AI アシスタントからの訪問",
+          "vsPrevious": "前期間との比較",
+          "share": "訪問全体に占める割合",
+          "shareOf": "全 {count, plural, other {# 件}}の訪問のうち",
+          "bookings": "予約",
+          "bookingsSubtitle": "その訪問中",
+          "crawls": "AI クローラーの読み取り",
+          "llmsTxt": "{count, plural, =0 {llms.txt はまだ読まれていません} other {うち llms.txt が # 回}}"
+        },
+        "trend": {
+          "title": "AI アシスタントからの訪問",
+          "description": "その予約も表示",
+          "visits": "訪問",
+          "bookings": "予約"
+        },
+        "byAssistant": {
+          "title": "アシスタント別"
+        },
+        "improve": "AI が知っている情報を充実させる",
+        "notIncluded": {
+          "title": "ご利用のプランに含まれていません",
+          "description": "AI アシスタントからの訪問は現在のプランに含まれていません。"
+        },
+        "note": {
+          "title": "集計方法",
+          "visits": "アシスタントのページ（ChatGPT、Perplexity、Claude、Gemini、Copilot、Le Chat など）や、アシスタントが付けたリンクから来た訪問を、そのアシスタントに数えます。",
+          "bookings": "その訪問中に同じブラウザタブでオンライン予約された場合に数えます。お客様がアシスタント経由で来たことを示すもので、アシスタントが予約を決めたことを示すものではありません。",
+          "minimum": "一部のアシスタントアプリは訪問者の出どころを伝えません。それらの訪問は直接の訪問として数えられるため、これらの数値は最低値です。",
+          "crawls": "読み取りは、アシスタントのロボットがショップと llms.txt を訪れた回数です。カウントのみで、個人に関する情報は含みません。"
+        }
       }
     },
     "settings": {
@@ -7085,7 +7122,9 @@
       "reservationsEdit": "編集",
       "settingsCustomerFields": "顧客情報",
       "needsALook": "要確認",
-      "visibility": "お店を知ってもらう"
+      "visibility": "お店を知ってもらう",
+      "visibilityAi": "AI に見つけてもらう",
+      "analyticsAi": "AI アシスタント"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7514,6 +7553,75 @@
         "next": "次のステップ：{step}",
         "action": "続ける",
         "dismiss": "非表示"
+      },
+      "ai": {
+        "title": "AI に見つけてもらう",
+        "description": "ChatGPT、Claude、Perplexity、Gemini はあなたのショップを読み、将来のお客様の質問に答えます。",
+        "readyCount": "{total} 項目中 {ready} 項目が完了",
+        "indexingOff": "このインスタンスはショップを検索エンジンと AI アシスタントから隠しています（LOUEZ_SEARCH_INDEXING=off）。",
+        "items": {
+          "description": {
+            "title": "ショップの説明",
+            "missing": "何をどこでレンタルしているかを数文で。AI アシスタントはこれを引用します。"
+          },
+          "address": {
+            "title": "住所",
+            "missing": "住所がないと、AI アシスタントは近くで探している人にあなたを紹介できません。"
+          },
+          "businessHours": {
+            "title": "営業時間",
+            "missing": "AI アシスタントは「今開いている?」に営業時間で答えます。"
+          },
+          "products": {
+            "title": "写真と価格のある商品",
+            "count": "{total} 件中 {ready} 件の商品に写真と価格があります",
+            "none": "公開中の商品はまだありません"
+          }
+        },
+        "status": {
+          "ready": "完了",
+          "missing": "未完了"
+        },
+        "fix": "入力する",
+        "stats": {
+          "visits": "AI アシスタントからの訪問",
+          "crawls": "AI クローラーの読み取り",
+          "period": "過去 28 日間",
+          "bookings": "その訪問中の予約"
+        },
+        "details": "詳細",
+        "table": {
+          "assistant": "アシスタント",
+          "visits": "訪問",
+          "reads": "読み取り",
+          "bookings": "予約"
+        },
+        "assistants": {
+          "other": "その他の AI"
+        },
+        "empty": "訪問も読み取りもまだありません。AI アシスタントが新しいショップを見つけるには数週間かかることがよくあります。",
+        "llmsTxt": {
+          "reads": "AI 向けページ（llms.txt）：{count, plural, =0 {まだ読まれていません} other {# 回読まれました}}",
+          "open": "ページを見る"
+        },
+        "note": "AI アシスタントは訪問者の出どころを必ず伝えるわけではありません。これらの数値は最低値です。",
+        "readiness": {
+          "title": "AI が知っておくべきこと"
+        },
+        "results": {
+          "title": "AI がもたらした成果",
+          "openAnalytics": "分析で推移を見る"
+        },
+        "summary": {
+          "fold": "折りたたむ",
+          "unfold": "展開する",
+          "openPage": "詳細を見る",
+          "complete": "情報を入力する"
+        },
+        "notIncluded": {
+          "title": "ご利用のプランに含まれていません",
+          "description": "AI アシスタントに見つけてもらう機能は現在のプランに含まれていません。"
+        }
       }
     }
   },
@@ -9130,6 +9238,48 @@
         "acquisitionSourceDetail": "具体的にご記入ください",
         "socialLinks": "SNS・リンク"
       }
+    },
+    "llms": {
+      "summary": "{store} の機材レンタル。",
+      "intro": "{store} はオンラインでレンタルを受け付けています：{url} で予約できます。",
+      "practicalTitle": "基本情報",
+      "address": "住所：{address}",
+      "map": "地図：{url}",
+      "phone": "電話：{phone}",
+      "email": "メール：{email}",
+      "hours": "営業時間：{hours}",
+      "closed": "休業",
+      "bookingPayment": "オンラインで予約・決済、すぐに確定",
+      "bookingPartialPayment": "オンライン予約時に {percent}% の前金、残りはショップで支払い",
+      "bookingRequest": "オンラインでリクエスト予約：各予約はショップが確定します",
+      "minDuration": "最短レンタル期間：{duration}",
+      "maxDuration": "最長レンタル期間：{duration}",
+      "advanceNotice": "{duration} 以上前に予約",
+      "pickup": "ショップで受け取り・返却",
+      "pickupLocations": "ショップまたは受け取り拠点で受け取り・返却",
+      "delivery": {
+        "optional": "配送あり",
+        "required": "配送のみ（受け取り不可）",
+        "included": "配送料込み"
+      },
+      "currency": "価格の通貨：{currency}",
+      "catalogTitle": "カタログ",
+      "pricesNote": "レンタル期間ごとの料金です。特定の日程の正確な価格と在庫は各商品ページをご覧ください。",
+      "noProducts": "公開中の商品はまだありません。",
+      "otherProducts": "その他の商品",
+      "deposit": "保証金：{amount}",
+      "truncated": "全カタログはオンラインで見られます：{url}",
+      "pagesTitle": "ページ",
+      "pages": {
+        "home": "ホーム",
+        "catalog": "カタログ",
+        "about": "ショップについて",
+        "contact": "お問い合わせ",
+        "terms": "利用規約",
+        "legal": "法的表示"
+      },
+      "fullFile": "すべての商品とその説明",
+      "footer": "オンラインショップのデータ、{date} 時点。"
     }
   },
   "onboarding": {
@@ -9837,7 +9987,8 @@
       "needsStripe": "Louez はこの要求に対するオーソリを Stripe で見つけましたが、要求した内容と一致しません（金額、カード、または参照が変更されています）。Louez はこれを記録しておらず、要求は開いたままです。Stripe ダッシュボードでキャンセルしてから、「要求を閉じる」をクリックしてください。代わりに Stripe で回収した場合、Louez はその金額を記録せず、要求は開いたままになります。Louez サポートにお問い合わせください。",
       "none": "この予約には未確認のオーソリはもうありません。"
     },
-    "planOfferUnavailable": "このオファーはストアに適用されなくなりました。プランはサブスクリプションのページでご確認ください。"
+    "planOfferUnavailable": "このオファーはストアに適用されなくなりました。プランはサブスクリプションのページでご確認ください。",
+    "aiVisibilityNotIncluded": "ご利用のプランには AI アシスタントでの表示が含まれていません。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { connection } from "next/server";
 
+import { AI_ROBOTS_TOKENS } from "@louez/api/contracts/ai-visibility";
+
 import { isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { isLoopbackHost } from "@/lib/util.host";
 import { getRequestHost, isStorefrontHost } from "@/lib/util.storefront-host";
@@ -64,11 +66,13 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const protocol = forwardedProtocol || (isLoopbackHost(host.split(":")[0]) ? "http" : "https");
 
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-      disallow: PRIVATE_PATHS,
-    },
+    rules: [
+      // AI assistants' crawlers, named so a store reads as open to them: a
+      // crawler follows its own group only, hence the same private paths.
+      // Counted in « Se faire connaître » (docs/product/visibilite-boutiques.md).
+      { userAgent: [...AI_ROBOTS_TOKENS], allow: "/", disallow: PRIVATE_PATHS },
+      { userAgent: "*", allow: "/", disallow: PRIVATE_PATHS },
+    ],
     sitemap: `${protocol}://${host}/sitemap.xml`,
   };
 }

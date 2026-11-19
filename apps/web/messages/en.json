@@ -996,7 +996,11 @@
       "settings": "Settings",
       "store": "My store",
       "multiStore": "Multi-store",
-      "aiCredits": "AI credits"
+      "aiCredits": "AI credits",
+      "visibility": "Get known",
+      "visibilityFirstCustomers": "First customers",
+      "visibilityAi": "Be found by AI",
+      "analyticsAi": "AI assistants"
     },
     "multiStore": {
       "title": "Multi-store",
@@ -3700,6 +3704,39 @@
         "productViews": "Product views",
         "cartAdditions": "Cart additions",
         "orders": "Orders"
+      },
+      "ai": {
+        "stats": {
+          "visits": "Visits from AI assistants",
+          "vsPrevious": "vs previous period",
+          "share": "Share of your visits",
+          "shareOf": "of {count, plural, one {# visit} other {# visits}} in total",
+          "bookings": "Bookings",
+          "bookingsSubtitle": "during those visits",
+          "crawls": "Reads by AI crawlers",
+          "llmsTxt": "{count, plural, =0 {none of your llms.txt yet} one {incl. # of your llms.txt} other {incl. # of your llms.txt}}"
+        },
+        "trend": {
+          "title": "Visits from AI assistants",
+          "description": "And their bookings",
+          "visits": "Visits",
+          "bookings": "Bookings"
+        },
+        "byAssistant": {
+          "title": "By assistant"
+        },
+        "improve": "Improve what AI assistants know about you",
+        "notIncluded": {
+          "title": "Not included in your plan",
+          "description": "Visits from AI assistants are not part of your current plan."
+        },
+        "note": {
+          "title": "How we count",
+          "visits": "A visit counts for an assistant when it arrives from the assistant's page (ChatGPT, Perplexity, Claude, Gemini, Copilot, Le Chat…) or through a link it tagged.",
+          "bookings": "A booking counts when it is made online during that visit, in the same browser tab. It says the customer came through an assistant, not that the assistant decided it.",
+          "minimum": "Some assistant apps do not say where a visitor comes from: those visits count as direct. These figures are a minimum.",
+          "crawls": "Reads are visits of the assistants' robots to your store and its llms.txt: a counter, nothing about people."
+        }
       }
     },
     "settings": {
@@ -7085,7 +7122,9 @@
       "reservationsEdit": "Edit",
       "settingsCustomerFields": "Customer record",
       "needsALook": "To check",
-      "visibility": "Get known"
+      "visibility": "Get known",
+      "visibilityAi": "Be found by AI",
+      "analyticsAi": "AI assistants"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7514,6 +7553,75 @@
         "next": "Next step: {step}",
         "action": "Continue",
         "dismiss": "Hide"
+      },
+      "ai": {
+        "title": "Be found by AI assistants",
+        "description": "ChatGPT, Claude, Perplexity and Gemini read your store to answer your future customers.",
+        "readyCount": "{ready} of {total} ready",
+        "indexingOff": "This instance hides its stores from search engines and AI assistants (LOUEZ_SEARCH_INDEXING=off).",
+        "items": {
+          "description": {
+            "title": "A description of your store",
+            "missing": "A few sentences on what you rent and where: this is what an assistant repeats."
+          },
+          "address": {
+            "title": "Your address",
+            "missing": "Without it, an assistant cannot suggest you to someone searching nearby."
+          },
+          "businessHours": {
+            "title": "Your opening hours",
+            "missing": "An assistant answers \"is it open?\" with your hours."
+          },
+          "products": {
+            "title": "Products with a photo and a price",
+            "count": "{ready} of {total} products have a photo and a price",
+            "none": "No product online yet"
+          }
+        },
+        "status": {
+          "ready": "ready",
+          "missing": "to complete"
+        },
+        "fix": "Complete",
+        "stats": {
+          "visits": "Visits from an AI assistant",
+          "crawls": "Reads by AI crawlers",
+          "period": "Last 28 days",
+          "bookings": "Bookings made during those visits"
+        },
+        "details": "Details",
+        "table": {
+          "assistant": "Assistant",
+          "visits": "Visits",
+          "reads": "Reads",
+          "bookings": "Bookings"
+        },
+        "assistants": {
+          "other": "Other AI"
+        },
+        "empty": "No visit or read yet: AI assistants often take a few weeks to discover a new store.",
+        "llmsTxt": {
+          "reads": "Your page for AI assistants (llms.txt): read {count, plural, =0 {no times yet} one {once} other {# times}}",
+          "open": "View the page"
+        },
+        "note": "An assistant does not always say where a visitor comes from: these figures are a minimum.",
+        "readiness": {
+          "title": "What AI assistants need to know"
+        },
+        "results": {
+          "title": "What AI assistants brought you",
+          "openAnalytics": "See the trend in Analytics"
+        },
+        "summary": {
+          "fold": "Fold",
+          "unfold": "Unfold",
+          "openPage": "See the details",
+          "complete": "Complete my information"
+        },
+        "notIncluded": {
+          "title": "Not included in your plan",
+          "description": "Being found by AI assistants is not part of your current plan."
+        }
       }
     }
   },
@@ -9130,6 +9238,48 @@
         "acquisitionSourceDetail": "Please specify",
         "socialLinks": "Social and links"
       }
+    },
+    "llms": {
+      "summary": "Equipment rental at {store}.",
+      "intro": "{store} rents online: book at {url}.",
+      "practicalTitle": "Practical information",
+      "address": "Address: {address}",
+      "map": "Map: {url}",
+      "phone": "Phone: {phone}",
+      "email": "Email: {email}",
+      "hours": "Opening hours: {hours}",
+      "closed": "closed",
+      "bookingPayment": "Booking and payment online, confirmed at once",
+      "bookingPartialPayment": "Booking online with a {percent}% down payment; the rest is paid to the store",
+      "bookingRequest": "Booking online on request: the store confirms each booking",
+      "minDuration": "Minimum rental: {duration}",
+      "maxDuration": "Maximum rental: {duration}",
+      "advanceNotice": "Book at least {duration} ahead",
+      "pickup": "Pickup and return at the store",
+      "pickupLocations": "Pickup and return at the store or one of its pickup points",
+      "delivery": {
+        "optional": "Delivery available",
+        "required": "Delivery only, no pickup",
+        "included": "Delivery included"
+      },
+      "currency": "Prices in {currency}",
+      "catalogTitle": "Catalog",
+      "pricesNote": "Rates per rental period; the exact price and availability for given dates are on each product's page.",
+      "noProducts": "No product online yet.",
+      "otherProducts": "Other products",
+      "deposit": "Deposit: {amount}",
+      "truncated": "The full catalog is online: {url}",
+      "pagesTitle": "Pages",
+      "pages": {
+        "home": "Home",
+        "catalog": "Catalog",
+        "about": "About",
+        "contact": "Contact",
+        "terms": "Terms and conditions",
+        "legal": "Legal notice"
+      },
+      "fullFile": "Every product with its description",
+      "footer": "Data from the online store, up to date on {date}."
     }
   },
   "onboarding": {
@@ -9837,7 +9987,8 @@
       "needsStripe": "Louez found an authorization at Stripe for this hold request, but it does not match what was asked (amount, card or reference changed): Louez did not record it, and the request stays open. Cancel it from the Stripe dashboard, then click “Close the request”. If you capture it in Stripe instead, Louez does not record that amount and the request stays open: contact Louez support.",
       "none": "This reservation has no unconfirmed authorization left."
     },
-    "planOfferUnavailable": "This offer no longer applies to your store. You can find the plans on the Subscription page."
+    "planOfferUnavailable": "This offer no longer applies to your store. You can find the plans on the Subscription page.",
+    "aiVisibilityNotIncluded": "Your plan does not include visibility with AI assistants."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
