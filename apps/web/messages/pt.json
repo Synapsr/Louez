@@ -10838,7 +10838,11 @@
     "paidBy": "{store} paga-lhe diretamente. A Louez calcula estes montantes; nenhum dinheiro passa pela Louez.",
     "eyebrow": "Área de parceiro · {store}",
     "visitStore": "Ver a loja",
-    "poweredBy": "Com tecnologia"
+    "poweredBy": "Com tecnologia",
+    "quick": {
+      "copy": "Copiar o meu link",
+      "poster": "O meu cartaz QR"
+    }
   },
   "demo": {
     "launcher": {

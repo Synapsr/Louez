@@ -10838,7 +10838,11 @@
     "paidBy": "{store} vous paie directement. Louez calcule ces montants ; aucun argent ne passe par Louez.",
     "eyebrow": "Espace partenaire · {store}",
     "visitStore": "Voir la boutique",
-    "poweredBy": "Propulsé par"
+    "poweredBy": "Propulsé par",
+    "quick": {
+      "copy": "Copier mon lien",
+      "poster": "Mon affiche QR"
+    }
   },
   "demo": {
     "launcher": {

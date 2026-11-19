@@ -10838,7 +10838,11 @@
     "paidBy": "{store} zahlt Sie direkt. Louez berechnet diese Beträge; kein Geld läuft über Louez.",
     "eyebrow": "Partnerbereich · {store}",
     "visitStore": "Zum Shop",
-    "poweredBy": "Bereitgestellt von"
+    "poweredBy": "Bereitgestellt von",
+    "quick": {
+      "copy": "Meinen Link kopieren",
+      "poster": "Mein QR-Plakat"
+    }
   },
   "demo": {
     "launcher": {

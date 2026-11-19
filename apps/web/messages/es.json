@@ -10838,7 +10838,11 @@
     "paidBy": "{store} le paga directamente. Louez calcula estos importes; ningún dinero pasa por Louez.",
     "eyebrow": "Espacio de socio · {store}",
     "visitStore": "Ver la tienda",
-    "poweredBy": "Con la tecnología de"
+    "poweredBy": "Con la tecnología de",
+    "quick": {
+      "copy": "Copiar mi enlace",
+      "poster": "Mi cartel QR"
+    }
   },
   "demo": {
     "launcher": {

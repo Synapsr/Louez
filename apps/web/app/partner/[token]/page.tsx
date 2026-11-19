@@ -11,6 +11,7 @@ import { cn, formatCurrency } from "@louez/utils";
 
 import { PartnerSpaceHeader } from "@/components/partners/partner-space-header";
 import { PartnerSpaceLink } from "@/components/partners/partner-space-link";
+import { PartnerSpaceQuickActions } from "@/components/partners/partner-space-quick-actions";
 import { PartnerSpaceNotifications } from "@/components/partners/partner-space-notifications";
 import { PartnerSpaceSection } from "@/components/partners/partner-space-section";
 import { partnerLinkUrl } from "@/lib/partners/util.partner-link";
@@ -75,6 +76,15 @@ export default async function PartnerSpacePage({
     theme.mode === "dark" && space.store.darkLogoUrl
       ? space.store.darkLogoUrl
       : space.store.logoUrl;
+  // The partner's link and poster, in the banner and in their own section.
+  const poster = {
+    storeName: space.store.name,
+    link,
+    code: space.partner.code,
+    partnerName: space.partner.name,
+    accentColor: theme.primaryColor,
+    logoUrl: space.store.logoUrl,
+  };
   const tiles = [
     { key: "toReceive", amount: space.overview.toReceive, strong: true },
     { key: "upcoming", amount: space.overview.upcoming, strong: false },
@@ -100,6 +110,7 @@ export default async function PartnerSpacePage({
           space.partner.perkCode ? ` ${t("perk", { code: space.partner.perkCode })}` : ""
         }`}
         visitStore={t("visitStore")}
+        actions={space.partner.archived ? undefined : <PartnerSpaceQuickActions {...poster} />}
       />
 
       <main className="mx-auto max-w-2xl space-y-8 px-4 pt-8 pb-12">
@@ -193,14 +204,7 @@ export default async function PartnerSpacePage({
 
         {!space.partner.archived && (
           <PartnerSpaceSection title={t("link.title")} description={t("link.description")}>
-            <PartnerSpaceLink
-              storeName={space.store.name}
-              link={link}
-              code={space.partner.code}
-              partnerName={space.partner.name}
-              accentColor={theme.primaryColor}
-              logoUrl={space.store.logoUrl}
-            />
+            <PartnerSpaceLink {...poster} />
           </PartnerSpaceSection>
         )}
 

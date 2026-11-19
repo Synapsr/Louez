@@ -10838,7 +10838,11 @@
     "paidBy": "{store} pays you directly. Louez works out these amounts; no money goes through Louez.",
     "eyebrow": "Partner space · {store}",
     "visitStore": "Visit the store",
-    "poweredBy": "Powered by"
+    "poweredBy": "Powered by",
+    "quick": {
+      "copy": "Copy my link",
+      "poster": "My QR poster"
+    }
   },
   "demo": {
     "launcher": {

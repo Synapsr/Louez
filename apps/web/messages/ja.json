@@ -10838,7 +10838,11 @@
     "paidBy": "{store} から直接お支払いします。金額は Louez が計算していますが、お金が Louez を経由することはありません。",
     "eyebrow": "パートナーページ · {store}",
     "visitStore": "ストアを見る",
-    "poweredBy": "Powered by"
+    "poweredBy": "Powered by",
+    "quick": {
+      "copy": "リンクをコピー",
+      "poster": "QRポスター"
+    }
   },
   "demo": {
     "launcher": {

@@ -10838,7 +10838,11 @@
     "paidBy": "{store} betaalt u rechtstreeks. Louez berekent deze bedragen; er gaat geen geld via Louez.",
     "eyebrow": "Partnerpagina · {store}",
     "visitStore": "Naar de winkel",
-    "poweredBy": "Mogelijk gemaakt door"
+    "poweredBy": "Mogelijk gemaakt door",
+    "quick": {
+      "copy": "Mijn link kopiëren",
+      "poster": "Mijn QR-poster"
+    }
   },
   "demo": {
     "launcher": {
