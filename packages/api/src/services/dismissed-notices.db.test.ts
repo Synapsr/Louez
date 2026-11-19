@@ -74,11 +74,8 @@ describe("dismissed notices (database)", { skip: skipWithoutTestDatabase() }, ()
   test("two closes at once keep both", async () => {
     await raceOnLockedRow<unknown>(database, { table: "users", id: USER }, [
       () => service.dismissNotice({ userId: USER, noticeId: "agent-assistant" }),
-      () => service.dismissNotice({ userId: USER, noticeId: "reeent-cohort-member" }),
+      () => service.dismissNotice({ userId: USER, noticeId: "visibility-guide" }),
     ]);
-    assert.deepEqual([...((await stored()) ?? [])].sort(), [
-      "agent-assistant",
-      "reeent-cohort-member",
-    ]);
+    assert.deepEqual([...((await stored()) ?? [])].sort(), ["agent-assistant", "visibility-guide"]);
   });
 });

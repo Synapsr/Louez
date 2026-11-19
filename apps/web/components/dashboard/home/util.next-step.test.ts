@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
-  cohortNoticeOf,
+  canClaimLaunchSeat,
   homeNextSteps,
   isEstablishedStore,
   pickHomeNextStep,
@@ -20,7 +20,7 @@ const fresh: HomeNextStepFacts = {
   canOfferPlan: true,
   visibilityHasNextStep: false,
   agentAssistantOffered: true,
-  cohortNotice: "seats",
+  launchSeatOpen: true,
 };
 
 /** A product to book: the visibility guide opens with it. */
@@ -72,6 +72,11 @@ describe("home next step: one card for the store's stage", () => {
     ["established, owner on a billing instance", established, "planOffer"],
     ["established, not the owner", { ...established, canOfferPlan: false }, "cohort"],
     [
+      "established reeent member, not the owner",
+      { ...established, canOfferPlan: false, launchSeatOpen: false },
+      null,
+    ],
+    [
       "established, reeent store waiting for Stripe",
       { ...established, reeentAwaitsStripe: true },
       "reeentStripe",
@@ -105,7 +110,7 @@ describe("home next step: one card for the store's stage", () => {
         canOfferPlan: false,
         visibilityHasNextStep: false,
         agentAssistantOffered: false,
-        cohortNotice: null,
+        launchSeatOpen: false,
       },
       null,
     ],
@@ -146,7 +151,7 @@ describe("home next step: one card for the store's stage", () => {
       pickHomeNextStep({
         ...established,
         canOfferPlan: false,
-        cohortNotice: null,
+        launchSeatOpen: false,
       }),
       { step: null, fallback: null },
     );
@@ -156,6 +161,13 @@ describe("home next step: one card for the store's stage", () => {
     assert.deepEqual(pickHomeNextStep(established), {
       step: "planOffer",
       fallback: "cohort",
+    });
+  });
+
+  test("an established reeent member: an empty plan offer leaves the slot empty", () => {
+    assert.deepEqual(pickHomeNextStep({ ...established, launchSeatOpen: false }), {
+      step: "planOffer",
+      fallback: null,
     });
   });
 
@@ -194,57 +206,48 @@ describe("established store", () => {
   });
 });
 
-describe("reeent launch notice", () => {
+describe("reeent launch seat on the home", () => {
   const base = {
     billingEnabled: true,
     isFromReeent: false,
     hasLifetimeFeeWaiver: false,
+    publishedOnReeent: false,
     remainingSeats: 10,
     dismissedNoticeIds: [],
   };
 
-  test("seats while some are left", () => {
-    assert.equal(cohortNoticeOf(base), "seats");
-    assert.equal(cohortNoticeOf({ ...base, remainingSeats: 0 }), null);
+  test("an invitation while the store can still claim a seat", () => {
+    assert.equal(canClaimLaunchSeat(base), true);
   });
 
-  test("no seats pitch to a store that came from reeent", () => {
-    assert.equal(cohortNoticeOf({ ...base, isFromReeent: true }), null);
+  test("nothing once the cohort is full", () => {
+    assert.equal(canClaimLaunchSeat({ ...base, remainingSeats: 0 }), false);
   });
 
-  test("the earned badge, wherever the store came from", () => {
+  test("nothing to a member: its badge stays in the sales channels settings", () => {
+    assert.equal(canClaimLaunchSeat({ ...base, hasLifetimeFeeWaiver: true }), false);
     assert.equal(
-      cohortNoticeOf({
-        ...base,
-        isFromReeent: true,
-        hasLifetimeFeeWaiver: true,
-        remainingSeats: 0,
-      }),
-      "member",
+      canClaimLaunchSeat({ ...base, isFromReeent: true, hasLifetimeFeeWaiver: true }),
+      false,
     );
   });
 
-  test("each state is closed on its own", () => {
-    assert.equal(cohortNoticeOf({ ...base, dismissedNoticeIds: ["reeent-cohort-seats"] }), null);
+  test("nothing to a store already published on reeent: the seat goes with the first publication", () => {
+    assert.equal(canClaimLaunchSeat({ ...base, publishedOnReeent: true }), false);
+  });
+
+  test("nothing to a store that came from reeent", () => {
+    assert.equal(canClaimLaunchSeat({ ...base, isFromReeent: true }), false);
+  });
+
+  test("nothing once closed", () => {
     assert.equal(
-      cohortNoticeOf({
-        ...base,
-        hasLifetimeFeeWaiver: true,
-        dismissedNoticeIds: ["reeent-cohort-seats"],
-      }),
-      "member",
-    );
-    assert.equal(
-      cohortNoticeOf({
-        ...base,
-        hasLifetimeFeeWaiver: true,
-        dismissedNoticeIds: ["reeent-cohort-member"],
-      }),
-      null,
+      canClaimLaunchSeat({ ...base, dismissedNoticeIds: ["reeent-cohort-seats"] }),
+      false,
     );
   });
 
   test("nothing on an instance that does not bill", () => {
-    assert.equal(cohortNoticeOf({ ...base, billingEnabled: false }), null);
+    assert.equal(canClaimLaunchSeat({ ...base, billingEnabled: false }), false);
   });
 });

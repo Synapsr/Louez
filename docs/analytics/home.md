@@ -14,7 +14,9 @@ Propriétés de base : `analytics_area: core_product`, `analytics_version: 1`,
 | `home_next_step_viewed` | L'accueil montre sa carte de prochaine étape (une fois par affichage) | `step`             |
 
 `step` : `reeentStripe`, `firstProduct`, `testReservation`, `planOffer`, `visibility`,
-`agentAssistant`, `cohort`. Rien ne part quand l'accueil n'a aucune carte à montrer.
+`agentAssistant`, `cohort`. Rien ne part quand l'accueil n'a aucune carte à montrer. Depuis le
+19 novembre 2026, `cohort` n'est plus que l'invitation à prendre une place de lancement reeent
+(boutique jamais publiée sur reeent) : le badge de membre ne s'affiche plus sur l'accueil.
 
 Les événements propres à chaque carte ne changent pas, mais ne partent plus que quand la carte
 est la prochaine étape : `visibility_viewed` (`placement: home_card`), `plan_offer_shown`, et
