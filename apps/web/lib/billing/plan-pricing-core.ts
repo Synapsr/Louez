@@ -1,83 +1,160 @@
 import { currencyMinorDigits } from "@louez/utils";
 
 import {
-  CODE_PRICED_CURRENCIES,
-  getPlanPriceId,
+  codePlanPricing,
+  DEFAULT_PLAN_CURRENCY,
   type Currency,
   type Plan,
+  type PlanAmounts,
+  type PlanPrices,
   type PlanPricing,
-  codePlanPricing,
 } from "@/lib/plans.shared";
 
-// The prices a store's plans are shown and sold in (docs/billing/devise-abonnement.md),
-// without Stripe: lib/billing/plan-pricing.ts reads the prices and caches them.
+// The currencies the plans sell in, and at which amounts (docs/billing/devise-abonnement.md),
+// without Stripe: lib/billing/plan-pricing.ts reads the prices and caches the catalog.
 
-/** What the plan page needs to know of a Stripe price. */
+type Interval = "monthly" | "yearly";
+
+/** What the catalog needs to know of a Stripe price. */
 export interface PlanStripePrice {
   readonly id: string;
   readonly active: boolean;
+  /** Its default currency. */
   readonly currency: string;
-  /** Minor units; null for a price Stripe computes (tiers, a custom amount). */
-  readonly unitAmount: number | null;
   readonly recurringInterval: string | null;
+  /**
+   * Its amount in minor units per currency, the default one included (Stripe's
+   * `currency_options`); null for an amount Stripe computes (tiers, a custom amount).
+   */
+  readonly amounts: Readonly<Record<string, number | null>>;
 }
 
-/** Why a currency's prices cannot sell a plan; null when they all can. */
-export type PlanPriceProblem =
-  | { readonly kind: "missing"; readonly priceId: string }
-  | { readonly kind: "mismatch"; readonly priceId: string; readonly field: string };
+/** One currency the plans sell in: each paid plan's amounts and the prices that bill them. */
+export interface PlanCatalogEntry {
+  readonly pricing: PlanPricing;
+  readonly priceIds: Readonly<Record<string, Readonly<Record<Interval, string>>>>;
+}
 
-type PricedPlan = Pick<Plan, "slug" | "price" | "stripePriceMonthly" | "stripePriceYearly" | "stripePrices">;
+/** The currencies the plans sell in, by lower-case code. */
+export type PlanCatalog = ReadonlyMap<Currency, PlanCatalogEntry>;
 
-const STRIPE_INTERVAL = { monthly: "month", yearly: "year" } as const;
+type PricedPlan = Pick<Plan, "slug" | "price" | "stripePrices" | "legacyStripePrices">;
 
-/** The price ids a currency's paid plans need, monthly and yearly. */
-export function planPriceIds(plans: readonly PricedPlan[], currency: Currency): string[] {
-  return plans.flatMap((plan) =>
-    plan.price > 0
-      ? (["monthly", "yearly"] as const).flatMap((interval) => {
-          const id = getPlanPriceId(plan, interval, currency);
-          return id ? [id] : [];
-        })
-      : [],
-  );
+const STRIPE_INTERVAL: Record<Interval, string> = { monthly: "month", yearly: "year" };
+const INTERVALS: readonly Interval[] = ["monthly", "yearly"];
+
+const toMajor = (minor: number, currency: string) =>
+  minor / 10 ** (currencyMinorDigits(currency) ?? 2);
+
+/** Every price id the paid plans name, theirs and their earlier ones. */
+export function planPriceIds(plans: readonly PricedPlan[]): string[] {
+  const ids = new Set<string>();
+  for (const plan of plans) {
+    if (plan.price <= 0) continue;
+    for (const prices of [plan.stripePrices, ...Object.values(plan.legacyStripePrices ?? {})]) {
+      for (const interval of INTERVALS) {
+        const id = prices?.[interval];
+        if (id) ids.add(id);
+      }
+    }
+  }
+  return [...ids];
 }
 
 /**
- * The amounts of every paid plan in `currency`, from its Stripe prices, or the first
- * problem that keeps them from selling: a price Stripe does not have, or one that bills
- * another currency, another interval, no fixed amount, or is archived. A currency the
- * code prices (EUR, USD) takes the code's amounts, as the plan page always showed them.
+ * The currencies a set of prices (one per paid plan and interval) sells in, with their
+ * amounts: those in which every price has a fixed amount. Empty when a price is missing,
+ * archived or bills another interval; `problems` then says which.
  */
-export function planPricingFromStripe(
+function sellableIn(
   plans: readonly PricedPlan[],
-  currency: Currency,
+  pricesOf: (plan: PricedPlan) => PlanPrices | undefined,
   prices: ReadonlyMap<string, PlanStripePrice>,
-): { pricing: PlanPricing; problem: null } | { pricing: null; problem: PlanPriceProblem } {
-  if (CODE_PRICED_CURRENCIES.includes(currency)) {
-    return { pricing: codePlanPricing(plans, currency), problem: null };
-  }
-  const digits = currencyMinorDigits(currency) ?? 2;
-  const amounts: PlanPricing["amounts"] = {};
-  for (const plan of plans) {
-    if (plan.price <= 0) continue;
-    const pair = { monthly: 0, yearly: 0 };
-    for (const interval of ["monthly", "yearly"] as const) {
-      const priceId = getPlanPriceId(plan, interval, currency);
-      if (!priceId) return { pricing: null, problem: { kind: "missing", priceId: `${plan.slug} ${interval}` } };
-      const price = prices.get(priceId);
-      if (!price) return { pricing: null, problem: { kind: "missing", priceId } };
-      const mismatch = (field: string) => ({
-        pricing: null,
-        problem: { kind: "mismatch", priceId, field } as const,
-      });
-      if (!price.active) return mismatch("active");
-      if (price.currency.toLowerCase() !== currency) return mismatch("currency");
-      if (price.recurringInterval !== STRIPE_INTERVAL[interval]) return mismatch("interval");
-      if (price.unitAmount === null) return mismatch("unit_amount");
-      pair[interval] = price.unitAmount / 10 ** digits;
+  problems: string[],
+): Map<Currency, PlanCatalogEntry> {
+  const paid = plans.filter((plan) => plan.price > 0);
+  const found: { slug: string; interval: Interval; price: PlanStripePrice }[] = [];
+  for (const plan of paid) {
+    for (const interval of INTERVALS) {
+      const id = pricesOf(plan)?.[interval];
+      const price = id ? prices.get(id) : undefined;
+      if (!id || !price) {
+        problems.push(`${plan.slug} ${interval}: ${id ? `${id} not found` : "no price"}`);
+        return new Map();
+      }
+      if (!price.active || price.recurringInterval !== STRIPE_INTERVAL[interval]) {
+        problems.push(`${id}: ${price.active ? `bills every ${price.recurringInterval}` : "archived"}`);
+        return new Map();
+      }
+      found.push({ slug: plan.slug, interval, price });
     }
-    amounts[plan.slug] = pair;
   }
-  return { pricing: { currency, amounts }, problem: null };
+  const sellable = new Map<Currency, PlanCatalogEntry>();
+  if (found.length === 0) return sellable;
+  const [first] = found;
+  for (const currency of Object.keys(first?.price.amounts ?? {})) {
+    const amounts: Record<string, PlanAmounts> = {};
+    const priceIds: Record<string, Record<Interval, string>> = {};
+    let complete = true;
+    for (const { slug, interval, price } of found) {
+      const minor = price.amounts[currency];
+      if (minor === undefined || minor === null) {
+        complete = false;
+        break;
+      }
+      amounts[slug] = { ...(amounts[slug] ?? { monthly: 0, yearly: 0 }), [interval]: toMajor(minor, currency) };
+      priceIds[slug] = { ...(priceIds[slug] ?? { monthly: "", yearly: "" }), [interval]: price.id };
+    }
+    if (complete) sellable.set(currency, { pricing: { currency, amounts }, priceIds });
+  }
+  return sellable;
+}
+
+/**
+ * The catalog of `prices`: every currency the plans' own prices have an amount in
+ * (`currency_options`), then each earlier single-currency set (USD) for a currency those
+ * lack. `problems` lists why a set sells nothing, for the logs.
+ */
+export function buildPlanCatalog(
+  plans: readonly PricedPlan[],
+  prices: ReadonlyMap<string, PlanStripePrice>,
+): { catalog: PlanCatalog; problems: string[] } {
+  const problems: string[] = [];
+  const catalog = sellableIn(plans, (plan) => plan.stripePrices, prices, problems);
+  const legacyCurrencies = new Set(plans.flatMap((plan) => Object.keys(plan.legacyStripePrices ?? {})));
+  for (const currency of legacyCurrencies) {
+    if (catalog.has(currency)) continue;
+    const legacy = sellableIn(
+      plans,
+      (plan) => plan.legacyStripePrices?.[currency],
+      prices,
+      [],
+    ).get(currency);
+    if (legacy) catalog.set(currency, legacy);
+  }
+  return { catalog, problems };
+}
+
+/**
+ * The catalog when Stripe cannot be read: EUR at the code's amounts, on the plans' own
+ * prices, so the page still sells as before.
+ */
+export function fallbackPlanCatalog(plans: readonly PricedPlan[]): PlanCatalog {
+  const priceIds: Record<string, Record<Interval, string>> = {};
+  for (const plan of plans) {
+    const monthly = plan.stripePrices?.monthly;
+    const yearly = plan.stripePrices?.yearly;
+    if (plan.price > 0 && monthly && yearly) priceIds[plan.slug] = { monthly, yearly };
+  }
+  const pricing = codePlanPricing(plans.filter((plan) => plan.slug in priceIds));
+  return new Map([[DEFAULT_PLAN_CURRENCY, { pricing, priceIds }]]);
+}
+
+/**
+ * The currency a store buys a plan in: its own (any case) when the catalog sells in it,
+ * EUR otherwise, as before stores were billed in their currency.
+ */
+export function planCurrencyFor(catalog: PlanCatalog, storeCurrency: string | null | undefined): Currency {
+  const code = (storeCurrency ?? "").trim().toLowerCase();
+  return catalog.has(code) ? code : DEFAULT_PLAN_CURRENCY;
 }

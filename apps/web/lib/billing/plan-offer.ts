@@ -27,7 +27,7 @@ import {
   getStoreCurrency,
 } from "@/lib/pay-as-you-go/metering";
 import { planInForce } from "@/lib/plan-limits";
-import { getPlanPriceId, getPlans, isPlanCurrency, type Currency } from "@/lib/plans";
+import { getPlans, type Currency } from "@/lib/plans";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import {
   createSubscriptionCheckoutSession,
@@ -88,18 +88,17 @@ function termsKey(policy: EffectivePolicy): string {
 
 /**
  * The plans the store can buy on Checkout in `currency`, monthly, at the amount its plan
- * page shows (getPlanPricing). None when the currency's prices cannot sell a plan, as the
- * plan page then sells in EUR, which the store's fees are not in.
+ * page shows (getPlanPricing). None when the plans do not sell in it, as the plan page
+ * then sells in EUR, which the store's fees are not in.
  */
 async function offerablePlans(currency: Currency): Promise<PlanOfferCandidate[]> {
-  const plans = getPlans();
-  const pricing = await getPlanPricing(currency, plans);
+  const pricing = await getPlanPricing(currency);
   if (!pricing) return [];
   const perUnit = 10 ** (currencyMinorDigits(currency) ?? 2);
-  return plans.flatMap((plan) => {
+  return getPlans().flatMap((plan) => {
     const { slug, features } = plan;
     const amounts = pricing.amounts[slug];
-    if (!isOfferedSlug(slug) || !amounts || !getPlanPriceId(plan, "monthly", currency)) return [];
+    if (!isOfferedSlug(slug) || !amounts) return [];
     return [
       {
         slug,
@@ -319,7 +318,6 @@ export async function evaluatePlanOffer(
   if (!source) return none("nothing_to_save");
 
   const currency = rawCurrency.toLowerCase();
-  if (!isPlanCurrency(currency)) return none("currency");
   const plans = await offerablePlans(currency);
   if (plans.length === 0) return none("currency");
 
@@ -425,7 +423,7 @@ export async function startPlanOfferCheckout(input: {
   now: Date;
 }): Promise<{ url: string; offer: PlanOfferView } | null> {
   const { offer } = await evaluatePlanOffer(input.storeId, input.now, { ignoreDismissal: true });
-  if (!offer || !isPlanCurrency(offer.currency)) return null;
+  if (!offer) return null;
   const currency = offer.currency;
   try {
     const session = await createSubscriptionCheckoutSession({

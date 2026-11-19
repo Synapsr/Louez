@@ -106,13 +106,10 @@ const plan = (slug: string, name: string): Plan => ({
   description: `${name} description`,
   price: 10,
   features,
-  stripePrices: {
-    eur: { monthly: `price_${slug}_month`, yearly: `price_${slug}_year` },
-    usd: { monthly: `price_${slug}_month_usd`, yearly: `price_${slug}_year_usd` },
-  },
+  stripePrices: { monthly: `price_${slug}_month`, yearly: `price_${slug}_year` },
 });
 const PLANS = [plan("pro", "Pro"), plan("ultra", "Ultra")];
-const EUR_PRICING = codePlanPricing(PLANS, "eur");
+const EUR_PRICING = codePlanPricing(PLANS);
 const USAGE = {
   products: 3,
   reservations: 4,
@@ -263,15 +260,7 @@ describe("plan page views", () => {
   });
 
   test("the plans are sold in the store's currency, at its Stripe amounts, without a currency switch", () => {
-    const gbpPlans = PLANS.map((each) => ({
-      ...each,
-      stripePrices: {
-        ...each.stripePrices,
-        gbp: { monthly: `price_${each.slug}_month_gbp`, yearly: `price_${each.slug}_year_gbp` },
-      },
-    }));
     const html = grid({
-      plans: gbpPlans,
       storeCurrency: "GBP",
       pricing: {
         currency: "gbp",
@@ -301,7 +290,7 @@ describe("plan page views", () => {
     const html = grid({
       subscription: { ...PRO_SUBSCRIPTION, billingCurrency: "usd" },
       hasLiveSubscription: true,
-      pricing: codePlanPricing(PLANS, "usd"),
+      pricing: { ...EUR_PRICING, currency: "usd" },
     });
     assert.ok(html.includes(">$10<"));
     assert.ok(html.includes("Votre abonnement est facturé en USD."));

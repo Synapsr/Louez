@@ -62,7 +62,6 @@ import { readAffiliateReferral } from '@/lib/acquisition/klibon-browser';
 import {
   PAY_AS_YOU_GO_PLAN,
   formatPlanPrice,
-  isPlanAvailable,
   type Currency,
   type Plan,
   type PlanPricing,
@@ -379,11 +378,9 @@ export function SubscriptionManagement({
     return currentPlanSlug === plan.slug;
   };
 
-  const canChangePlan = (plan: Plan) => {
-    if (plan.price === 0 || getPrice(plan) === null) return false;
-    // Allow changing billing interval even on the same plan
-    return isPlanAvailable(plan, isYearly ? 'yearly' : 'monthly', currency);
-  };
+  // A plan sells in the currency when it has an amount in it; the interval may change
+  // on the same plan.
+  const canChangePlan = (plan: Plan) => plan.price > 0 && getPrice(plan) !== null;
 
   // Get key limits to display prominently
   const getKeyLimits = (plan: Plan): string[] => {

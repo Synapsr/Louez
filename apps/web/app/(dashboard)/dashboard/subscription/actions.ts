@@ -22,7 +22,6 @@ import {
   switchToPayAsYouGo as switchToPayg,
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
-import { PLAN_CURRENCIES } from '@/lib/plans.shared'
 import { getStorePlanCurrency } from '@/lib/billing/plan-pricing'
 import type { PlanChangePreviewAnswer } from './util.plan-change-preview'
 import { env } from '@/env'
@@ -31,7 +30,7 @@ const planChangeSchema = z.object({
   planSlug: z.string().min(1).max(50),
   interval: z.enum(['monthly', 'yearly']),
   /** The live subscription's currency, which Stripe cannot change (planChangeTarget). */
-  currency: z.enum(PLAN_CURRENCIES),
+  currency: z.string().regex(/^[a-z]{3}$/),
 })
 
 type PlanChoice = Pick<z.infer<typeof planChangeSchema>, 'planSlug' | 'interval'>

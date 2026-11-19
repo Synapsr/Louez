@@ -59,6 +59,7 @@ type FakeInvoice = { id: string; customer: string; status: string; collection_me
 type FakeSubscription = {
   id: string;
   customer: string;
+  currency: string;
   status: string;
   cancel_at_period_end: boolean;
   metadata: Record<string, string>;
@@ -159,6 +160,7 @@ function createFakeStripe() {
       subscriptions.set(id, {
         id,
         customer: `cus_${id.replace(/^sub_/, "")}`,
+        currency: "eur",
         status: "active",
         cancel_at_period_end: false,
         metadata: { planSlug: "pro" },
@@ -210,6 +212,29 @@ function createFakeStripe() {
         ],
       });
       return id;
+    },
+    // The plans' prices, in EUR (lib/billing/plan-pricing.ts reads them, once per process).
+    prices: {
+      async retrieve(id: string) {
+        const known = Object.values(PRICE).find((price) => price === id);
+        if (!known) {
+          throw new Stripe.errors.StripeInvalidRequestError({
+            type: "invalid_request_error",
+            code: "resource_missing",
+            statusCode: 404,
+            message: `No such price: '${id}'`,
+          });
+        }
+        const currency = id.endsWith("_usd") ? "usd" : "eur";
+        return {
+          id,
+          active: true,
+          currency,
+          unit_amount: 1000,
+          recurring: { interval: id.includes("_year") ? "year" : "month" },
+          currency_options: { [currency]: { unit_amount: 1000 } },
+        };
+      },
     },
     subscriptions: {
       async retrieve(id: string) {

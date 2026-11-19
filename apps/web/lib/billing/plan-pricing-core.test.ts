@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { planPriceIds, planPricingFromStripe, type PlanStripePrice } from "./plan-pricing-core";
+import {
+  buildPlanCatalog,
+  fallbackPlanCatalog,
+  planCurrencyFor,
+  planPriceIds,
+  type PlanStripePrice,
+} from "./plan-pricing-core";
 
-// A currency other than EUR and USD shows the amounts of its Stripe prices, and sells a
-// plan only when Stripe bills each one as the plan page says
+// The plans sell in every currency their Stripe prices have an amount in
+// (`currency_options`), and in USD on the earlier USD prices while those lack it
 // (docs/billing/devise-abonnement.md).
 
 const plans = [
@@ -12,94 +18,117 @@ const plans = [
   {
     slug: "pro",
     price: 49,
-    stripePrices: {
-      eur: { monthly: "price_pro_month", yearly: "price_pro_year" },
-      gbp: { monthly: "price_pro_month_gbp", yearly: "price_pro_year_gbp" },
-    },
+    stripePrices: { monthly: "pro_m", yearly: "pro_y" },
+    legacyStripePrices: { usd: { monthly: "pro_m_usd", yearly: "pro_y_usd" } },
   },
   {
     slug: "ultra",
     price: 159,
-    stripePrices: {
-      eur: { monthly: "price_ultra_month", yearly: "price_ultra_year" },
-      gbp: { monthly: "price_ultra_month_gbp", yearly: "price_ultra_year_gbp" },
-    },
+    stripePrices: { monthly: "ultra_m", yearly: "ultra_y" },
+    legacyStripePrices: { usd: { monthly: "ultra_m_usd", yearly: "ultra_y_usd" } },
   },
 ];
 
 const price = (
   id: string,
-  unitAmount: number | null,
+  amounts: Record<string, number | null>,
   overrides: Partial<PlanStripePrice> = {},
 ): PlanStripePrice => ({
   id,
   active: true,
-  currency: "gbp",
-  unitAmount,
-  recurringInterval: id.includes("year") ? "year" : "month",
+  currency: Object.keys(amounts)[0] ?? "eur",
+  recurringInterval: id.includes("_y") ? "year" : "month",
+  amounts,
   ...overrides,
 });
 
-const gbpPrices = (...replaced: PlanStripePrice[]) =>
-  new Map(
-    [
-      price("price_pro_month_gbp", 3900),
-      price("price_pro_year_gbp", 39000),
-      price("price_ultra_month_gbp", 12900),
-      price("price_ultra_year_gbp", 129000),
-      ...replaced,
-    ].map((each) => [each.id, each]),
-  );
+const pricesOf = (...list: PlanStripePrice[]) => new Map(list.map((each) => [each.id, each]));
 
-test("the GBP amounts are its Stripe prices, in pounds", () => {
-  assert.deepEqual(planPriceIds(plans, "gbp"), [
-    "price_pro_month_gbp",
-    "price_pro_year_gbp",
-    "price_ultra_month_gbp",
-    "price_ultra_year_gbp",
-  ]);
-  assert.deepEqual(planPricingFromStripe(plans, "gbp", gbpPrices()), {
+/** The plans' own prices, in EUR with a GBP amount, and Ultra yearly without CHF. */
+const own = [
+  price("pro_m", { eur: 4900, gbp: 3900, chf: 4500 }),
+  price("pro_y", { eur: 49000, gbp: 39000, chf: 45000 }),
+  price("ultra_m", { eur: 15900, gbp: 12900, chf: 14900 }),
+  price("ultra_y", { eur: 159000, gbp: 129000 }),
+];
+const legacyUsd = [
+  price("pro_m_usd", { usd: 4900 }),
+  price("pro_y_usd", { usd: 49000 }),
+  price("ultra_m_usd", { usd: 15900 }),
+  price("ultra_y_usd", { usd: 159000 }),
+];
+
+test("every currency all four prices have an amount in sells, at those amounts", () => {
+  const { catalog, problems } = buildPlanCatalog(plans, pricesOf(...own));
+  assert.deepEqual(problems, []);
+  assert.deepEqual([...catalog.keys()].sort(), ["eur", "gbp"]);
+  assert.deepEqual(catalog.get("gbp"), {
     pricing: {
       currency: "gbp",
       amounts: { pro: { monthly: 39, yearly: 390 }, ultra: { monthly: 129, yearly: 1290 } },
     },
-    problem: null,
+    priceIds: {
+      pro: { monthly: "pro_m", yearly: "pro_y" },
+      ultra: { monthly: "ultra_m", yearly: "ultra_y" },
+    },
   });
+  // CHF lacks Ultra yearly: the store pays in EUR.
+  assert.equal(planCurrencyFor(catalog, "CHF"), "eur");
+  assert.equal(planCurrencyFor(catalog, " GBP "), "gbp");
+  assert.equal(planCurrencyFor(catalog, null), "eur");
 });
 
-test("EUR and USD keep the code's amounts, without reading Stripe", () => {
-  assert.deepEqual(planPricingFromStripe(plans, "eur", new Map()).pricing, {
-    currency: "eur",
-    amounts: { pro: { monthly: 49, yearly: 490 }, ultra: { monthly: 159, yearly: 1590 } },
-  });
+test("USD sells on the earlier USD prices until the plans' own prices have a USD amount", () => {
+  const before = buildPlanCatalog(plans, pricesOf(...own, ...legacyUsd)).catalog;
+  assert.deepEqual(before.get("usd")?.priceIds.pro, { monthly: "pro_m_usd", yearly: "pro_y_usd" });
+  assert.deepEqual(before.get("usd")?.pricing.amounts.ultra, { monthly: 159, yearly: 1590 });
+
+  const withUsd = own.map((each) =>
+    price(each.id, { ...each.amounts, usd: (each.amounts.eur ?? 0) + 100 }),
+  );
+  const after = buildPlanCatalog(plans, pricesOf(...withUsd, ...legacyUsd)).catalog;
+  assert.deepEqual(after.get("usd")?.priceIds.pro, { monthly: "pro_m", yearly: "pro_y" });
+  assert.deepEqual(after.get("usd")?.pricing.amounts.pro, { monthly: 50, yearly: 491 });
 });
 
-test("a price Stripe would bill otherwise than the page says keeps the currency from selling", () => {
-  const cases: [PlanStripePrice | null, string][] = [
-    [price("price_ultra_year_gbp", 129000, { currency: "eur" }), "currency"],
-    [price("price_ultra_year_gbp", 12900, { recurringInterval: "month" }), "interval"],
-    [price("price_ultra_year_gbp", null), "unit_amount"],
-    [price("price_ultra_year_gbp", 129000, { active: false }), "active"],
+test("a missing, archived or misbilled price sells nothing, and says why", () => {
+  const cases: [PlanStripePrice[], string][] = [
+    [own.slice(0, 3), "ultra yearly: ultra_y not found"],
+    [[...own.slice(0, 3), price("ultra_y", { eur: 159000 }, { active: false })], "ultra_y: archived"],
+    [
+      [...own.slice(0, 3), price("ultra_y", { eur: 159000 }, { recurringInterval: "month" })],
+      "ultra_y: bills every month",
+    ],
   ];
-  for (const [replaced, field] of cases) {
-    const result = planPricingFromStripe(plans, "gbp", gbpPrices(...(replaced ? [replaced] : [])));
-    assert.equal(result.pricing, null, field);
-    assert.deepEqual(
-      result.problem,
-      { kind: "mismatch", priceId: "price_ultra_year_gbp", field },
-      field,
-    );
+  for (const [list, problem] of cases) {
+    const { catalog, problems } = buildPlanCatalog(plans, pricesOf(...list));
+    assert.equal(catalog.size, 0, problem);
+    assert.deepEqual(problems, [problem]);
   }
+  // An amount Stripe computes (tiers) sells nothing in that currency.
+  const tiered = buildPlanCatalog(
+    plans,
+    pricesOf(...own.slice(0, 3), price("ultra_y", { eur: 159000, gbp: null })),
+  ).catalog;
+  assert.deepEqual([...tiered.keys()], ["eur"]);
+});
 
-  const missing = gbpPrices();
-  missing.delete("price_pro_year_gbp");
-  assert.deepEqual(planPricingFromStripe(plans, "gbp", missing).problem, {
-    kind: "missing",
-    priceId: "price_pro_year_gbp",
-  });
-  // No env price at all.
-  assert.deepEqual(planPricingFromStripe(plans, "chf", new Map()).problem, {
-    kind: "missing",
-    priceId: "pro monthly",
-  });
+test("the ids read are the plans' own and earlier ones, paid plans only", () => {
+  assert.deepEqual(planPriceIds(plans), [
+    "pro_m",
+    "pro_y",
+    "pro_m_usd",
+    "pro_y_usd",
+    "ultra_m",
+    "ultra_y",
+    "ultra_m_usd",
+    "ultra_y_usd",
+  ]);
+});
+
+test("when Stripe cannot be read, EUR sells at the code's amounts on the plans' own prices", () => {
+  const catalog = fallbackPlanCatalog(plans);
+  assert.deepEqual([...catalog.keys()], ["eur"]);
+  assert.deepEqual(catalog.get("eur")?.pricing.amounts.pro, { monthly: 49, yearly: 490 });
+  assert.deepEqual(catalog.get("eur")?.priceIds.ultra, { monthly: "ultra_m", yearly: "ultra_y" });
 });

@@ -58,72 +58,81 @@ ORDER BY stores DESC;
 
 Les résultats restent hors du dépôt (`.agent-docs/`).
 
-## 3. Prix séparés ou un prix multidevise
+## 3. Le choix : un prix multidevise (`currency_options`)
 
-| Critère                   | Un prix par devise (choix actuel)                                                                                                   | Un prix avec `currency_options`                                                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Choix de la devise        | Louez choisit le prix, donc la devise. Rien n'est laissé à Stripe.                                                                  | Stripe choisit l'option d'après la localisation du client, sauf si Checkout reçoit `currency`. Il faudrait toujours l'envoyer.                                                                               |
-| Code                      | Déjà en place (`stripePrices`, `findPlanPrice`, webhooks, analytics). Une devise de plus = quatre variables et une entrée de liste. | Un seul identifiant par plan et par intervalle. La devise ne se déduit plus du prix mais de l'abonnement : il faut migrer `findPlanPrice`, le webhook, les analytics et les prix EUR/USD live déjà utilisés. |
-| Coupons                   | `percent_off` : aucune différence. `amount_off` : un coupon par devise ou `currency_options` sur le coupon.                         | Pareil : la règle tient au coupon, pas au prix.                                                                                                                                                              |
-| Proratisation, changement | Le changement prend le prix de la devise de l'abonnement ; Stripe refuse de mélanger deux devises dans un abonnement.               | L'abonnement garde sa devise et utilise l'option correspondante. Même règle : un abonnement ne change jamais de devise.                                                                                      |
-| Lecture des montants      | Un prix = un montant.                                                                                                               | Il faut lire `currency_options` (avec `expand`).                                                                                                                                                             |
-| Risque                    | Une variable mal recopiée (prix d'une autre devise, autre intervalle). Louez le détecte : voir 4.2.                                 | Une option oubliée : Stripe facture dans la devise par défaut du prix, sans le dire à Louez.                                                                                                                 |
+| Option                                                       | Prix pour le client                                                 | À configurer                                        | Retenue |
+| ------------------------------------------------------------ | ------------------------------------------------------------------- | --------------------------------------------------- | ------- |
+| Adaptive Pricing (conversion Stripe)                         | Converti au taux du jour, 2 à 4 % de frais, varie à chaque échéance | Rien                                                | Non     |
+| Un prix par devise                                           | Fixe                                                                | Quatre prix et quatre variables par devise          | Non     |
+| Un prix avec `currency_options` (« manual currency prices ») | Fixe                                                                | Un montant par devise sur les quatre prix existants | **Oui** |
 
-Recommandation : garder un prix par devise. Le code et les prix live suivent déjà ce modèle,
-et Louez fixe la devise lui-même au lieu de laisser Stripe la déduire.
+Avec `currency_options`, chaque prix (Pro et Ultra, mensuel et annuel) reste en EUR par défaut
+et porte un montant fixe par autre devise. Stripe documente cette méthode pour afficher des prix
+fixes en monnaie locale. Une devise s'ajoute ou un montant change dans Stripe, sans variable ni
+déploiement.
+
+Ce que Stripe en fait, vérifié sur le compte de test le 19 novembre 2026 :
+
+- On peut ajouter des options à un prix existant, déjà utilisé par des abonnements.
+- Checkout reçoit le prix et `currency` : sans ce paramètre, il prendrait la devise du client.
+- L'abonnement garde sa devise pour toujours (`subscription.currency`). Un changement de plan
+  prend l'option de cette devise sur le nouveau prix, prorata compris, et un changement planifié
+  (schedule) garde la devise dans ses phases.
+- Un abonnement sur un ancien prix USD passe sur un prix multidevise qui a une option USD.
+- Un coupon `percent_off` s'applique dans toutes les devises.
+
+Frais : quand une boutique paie en GBP, Stripe convertit vers le compte en EUR au moment du
+versement et prend une commission sur la part de Louez (de l'ordre de 2 % sur les grilles
+européennes, à vérifier dans le Dashboard). Un compte de règlement en GBP l'évite.
 
 ## 4. Ce que fait le code maintenant
 
 ### 4.1 Règle
 
-- Devises possibles pour un abonnement : `PLAN_CURRENCIES` (`lib/plans.shared.ts`) = EUR, USD,
-  GBP, CHF, CAD.
-- Une boutique est facturée dans sa devise **si chaque plan payant a ses deux prix (mensuel et
-  annuel) dans cette devise** et que Stripe les confirme (4.2). Sinon, en EUR, comme avant
-  pour une interface en français (`planCurrencyFor`, `getStorePlanPricing`).
-- Le sélecteur EUR / USD disparaît : le serveur choisit la devise. `createCheckoutSession`
-  ignore toute devise envoyée par le navigateur.
-- Un abonnement en cours garde sa devise. Un changement de plan reste dans cette devise.
+- Le catalogue (`lib/billing/plan-pricing.ts`) lit les quatre prix (`STRIPE_PRICE_{PRO,ULTRA}_{MONTHLY,YEARLY}`)
+  avec leurs `currency_options`, une fois toutes les dix minutes par processus. Les plans se
+  vendent dans **chaque devise où les quatre prix ont un montant fixe** (`buildPlanCatalog`).
+- Les anciens prix USD (`STRIPE_PRICE_*_USD`) facturent toujours les abonnements USD en cours.
+  Ils vendent encore en USD tant que les prix multidevises n'ont pas d'option USD ; ensuite, ils
+  ne servent plus qu'à reconnaître ces abonnements (`findPlanPrice`).
+- Une boutique achète dans sa devise si le catalogue la vend, en EUR sinon (`planCurrencyFor`).
+  Le sélecteur EUR / USD disparaît : le serveur choisit, et `createCheckoutSession` ignore toute
+  devise envoyée par le navigateur.
+- Un abonnement en cours garde sa devise (`subscription.currency`) ; un changement de plan reste
+  dans cette devise, et il est refusé si les plans ne s'y vendent plus.
 - Une ligne sous le titre des plans l'explique quand la devise affichée n'est pas celle de la
   boutique : « Prix en EUR : les abonnements ne sont pas encore facturés en GBP. » ou
   « Votre abonnement est facturé en USD. »
 
-Sans nouvelle variable d'environnement, une boutique en EUR ou en USD est facturée dans sa
-devise, et toute autre en EUR. Seul changement visible : une boutique en EUR dont l'interface
-n'est pas en français ne se voit plus proposer USD par défaut.
-
 ### 4.2 Montants affichés
 
-- EUR et USD : `plan.price` du code (`CODE_PRICED_CURRENCIES`), mensuel ×10 pour l'année, comme
-  le site.
-- GBP, CHF, CAD : les montants des prix Stripe (`lib/billing/plan-pricing.ts`), lus une fois
-  toutes les dix minutes par processus. La page n'affiche donc jamais un montant que Stripe ne
-  facturerait pas.
-- Un prix introuvable, archivé, dans une autre devise, avec un autre intervalle ou sans montant
-  fixe empêche de vendre dans cette devise : la boutique reste en EUR et un avertissement est
-  journalisé (`planPricingFromStripe`).
+- Tous les montants viennent des prix Stripe, EUR compris. Si les prix live valent 49 € et 159 €,
+  rien ne change à l'écran. Sur le compte de test, ils valent 29 € et 79 €, et c'est ce que la
+  page de test affiche désormais.
+- Si Stripe ne répond pas, la page vend en EUR aux montants du code (`fallbackPlanCatalog`).
+- Un prix introuvable, archivé ou sur un autre intervalle bloque la vente et l'écrit dans les
+  journaux (`the plans' Stripe prices sell nothing: …`).
 - L'offre contextuelle compare ce que la boutique a payé avec le prix du plan **dans sa
-  devise** ; sans prix vendable dans sa devise, pas d'offre (exclusion `currency`, comme avant).
+  devise** ; si les plans ne s'y vendent pas, pas d'offre (exclusion `currency`).
+- Les analytics d'abonnement donnent la devise de l'abonnement et le montant du plan dans cette
+  devise, pas celui du prix par défaut.
 
-### 4.3 Ajouter une devise plus tard
+### 4.3 Ajouter une devise
 
-1. Ajouter le code à `PLAN_CURRENCIES` (`lib/plans.shared.ts`).
-2. Déclarer les quatre variables `STRIPE_PRICE_{PRO,ULTRA}_{MONTHLY,YEARLY}_<CODE>` dans
-   `apps/web/env.ts`, `getPlans()` (`lib/plans.ts`) et `.env.example`.
-3. Créer les prix dans Stripe et remplir les variables (section 6).
+Dans Stripe, sur chacun des quatre prix : « Ajouter une devise », avec son montant. Rien d'autre.
 
 ## 5. Décisions pour Téo
 
 ### 5.1 Devises au lancement
 
-| Devise | Proposition                             | À trancher                                          |
-| ------ | --------------------------------------- | --------------------------------------------------- |
-| EUR    | Inchangé                                | —                                                   |
-| USD    | Inchangé (prix déjà en live)            | Garder 1:1 avec EUR ?                               |
-| GBP    | Candidate                               | Oui / non, selon le nombre de boutiques (section 2) |
-| CHF    | Candidate                               | Oui / non, selon le nombre de boutiques             |
-| CAD    | Candidate                               | Oui / non, selon le nombre de boutiques             |
-| Autre  | Hors code ; ajout en trois étapes (4.3) | D'après les comptages                               |
+| Devise | Proposition                          | À trancher                                          |
+| ------ | ------------------------------------ | --------------------------------------------------- |
+| EUR    | Inchangé                             | —                                                   |
+| USD    | Option USD sur les prix multidevises | Garder 1:1 avec EUR ?                               |
+| GBP    | Candidate                            | Oui / non, selon le nombre de boutiques (section 2) |
+| CHF    | Candidate                            | Oui / non, selon le nombre de boutiques             |
+| CAD    | Candidate                            | Oui / non, selon le nombre de boutiques             |
+| Autre  | Une option de plus dans Stripe (4.3) | D'après les comptages                               |
 
 ### 5.2 Grille de prix, HT
 
@@ -132,12 +141,12 @@ Taux de référence BCE du 18 novembre 2026 : 1 EUR = 1,0968 USD = 0,8329 GBP = 
 L'annuel vaut dix mois : le badge « -17 % » de la page est écrit en dur, il faut garder ce
 rapport.
 
-| Plan        | EUR (actuel) | USD (actuel, 1:1) | Équivalent USD | GBP 1:1 | Équivalent GBP | CHF 1:1   | Équivalent CHF | CAD 1:1  | Équivalent CAD |
-| ----------- | ------------ | ----------------- | -------------- | ------- | -------------- | --------- | -------------- | -------- | -------------- |
-| Pro mensuel | 49 €         | $49               | $53.74         | £49     | £40.81         | CHF 49    | CHF 45.29      | CA$49    | CA$76.88       |
-| Pro annuel  | 490 €        | $490              | $537.43        | £490    | £408.12        | CHF 490   | CHF 452.91     | CA$490   | CA$768.81      |
-| Ultra mens. | 159 €        | $159              | $174.39        | £159    | £132.43        | CHF 159   | CHF 146.96     | CA$159   | CA$249.47      |
-| Ultra ann.  | 1 590 €      | $1,590            | $1,743.91      | £1,590  | £1,324.31      | CHF 1,590 | CHF 1,469.64   | CA$1,590 | CA$2,494.71    |
+| Plan        | EUR (actuel) | USD (actuel, 1:1) | Équivalent USD | Équivalent GBP | Équivalent CHF | Équivalent CAD |
+| ----------- | ------------ | ----------------- | -------------- | -------------- | -------------- | -------------- |
+| Pro mensuel | 49 €         | $49               | $53.74         | £40.81         | CHF 45.29      | CA$76.88       |
+| Pro annuel  | 490 €        | $490              | $537.43        | £408.12        | CHF 452.91     | CA$768.81      |
+| Ultra mens. | 159 €        | $159              | $174.39        | £132.43        | CHF 146.96     | CA$249.47      |
+| Ultra ann.  | 1 590 €      | $1,590            | $1,743.91      | £1,324.31      | CHF 1,469.64   | CA$2,494.71    |
 
 Autres décisions :
 
@@ -145,32 +154,24 @@ Autres décisions :
   afficher les prix locaux ?
 - **Codes promo** : BF2026-40 et les suivants doivent être des coupons `percent_off` sans
   restriction de devise, sinon ils ne valent qu'en EUR. À vérifier dans Stripe live.
+- **Comptes de règlement** : en ouvrir dans les devises qui comptent, pour éviter la commission
+  de conversion de Stripe.
 - **Boutiques déjà abonnées en EUR ou USD hors de leur devise** : elles le restent. Les passer
   dans leur devise demande un nouvel abonnement ; rien n'est fait sans décision.
 
-## 6. À faire à la main dans Stripe live (après accord de Téo)
+## 6. À faire dans Stripe live (après accord de Téo)
 
-Pour chaque devise retenue, sur les deux produits existants (Pro, Ultra), pas de nouveau
-produit :
-
-1. Créer quatre prix récurrents : Pro mensuel, Pro annuel, Ultra mensuel, Ultra annuel, dans la
-   devise, au montant décidé, avec le même `tax_behavior` que les prix EUR live (la
-   facturation active `automatic_tax`).
-2. Renseigner les variables de l'app de production, puis redéployer :
-   - `STRIPE_PRICE_PRO_MONTHLY_<CODE>`
-   - `STRIPE_PRICE_PRO_YEARLY_<CODE>`
-   - `STRIPE_PRICE_ULTRA_MONTHLY_<CODE>`
-   - `STRIPE_PRICE_ULTRA_YEARLY_<CODE>`
-
-   `<CODE>` vaut `GBP`, `CHF` ou `CAD`. Les mêmes clés vont dans Infisical (`dev` avec des prix
-   de test, `prod`).
-
+1. Vérifier que les quatre prix live valent 49 €, 490 €, 159 € et 1 590 € : la page affichera
+   leurs montants.
+2. Sur chacun des quatre prix, ajouter une option par devise retenue (USD compris), au montant
+   décidé, avec le même comportement de taxe que le prix (la facturation active
+   `automatic_tax`).
 3. Vérifier les codes promo actifs (`percent_off`, pas de restriction de devise).
-4. Ouvrir la page Abonnement d'une boutique de test dans cette devise : les montants doivent
-   être ceux des prix créés. S'ils sont en EUR, les journaux disent quel prix pose problème
-   (`plan prices in GBP cannot sell a plan …`).
+4. Ouvrir la page Abonnement d'une boutique de test dans chaque devise : les montants doivent
+   être ceux des options. S'ils sont en EUR, les journaux disent quel prix pose problème.
 
-Tant qu'une des quatre variables manque, les boutiques de cette devise restent en EUR.
+Aucune variable à ajouter : les anciennes variables USD restent, pour les abonnements USD en
+cours.
 
 ## Related
 

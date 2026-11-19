@@ -1,25 +1,13 @@
 import type { PlanFeatures } from "@louez/types";
 
 /**
- * The currencies a plan can be billed in (docs/billing/devise-abonnement.md). A store is
- * billed in its own currency once every paid plan has its four Stripe prices in it
- * (lib/plans.ts); otherwise in EUR, the first one.
+ * A currency, as Stripe writes it: ISO 4217, lower case (`eur`, `gbp`). A plan is sold in
+ * any currency its Stripe prices have (docs/billing/devise-abonnement.md).
  */
-export const PLAN_CURRENCIES = ["eur", "usd", "gbp", "chf", "cad"] as const;
+export type Currency = string;
 
-export type Currency = (typeof PLAN_CURRENCIES)[number];
-
-/** The currency a store falls back to when its own has no plan prices. */
+/** The currency a store falls back to when the plans' prices lack its own. */
 export const DEFAULT_PLAN_CURRENCY: Currency = "eur";
-
-/**
- * The currencies whose plan amounts are the code's `price` (1:1 with EUR, as the website
- * shows them). Any other one shows the amounts of its Stripe prices (lib/billing/plan-pricing.ts).
- */
-export const CODE_PRICED_CURRENCIES: readonly Currency[] = ["eur", "usd"];
-
-export const isPlanCurrency = (value: string): value is Currency =>
-  PLAN_CURRENCIES.some((currency) => currency === value);
 
 export interface PlanPrices {
   monthly?: string;
@@ -30,15 +18,20 @@ export interface Plan {
   slug: string;
   name: string;
   description: string;
-  // Monthly price in EUR and USD (CODE_PRICED_CURRENCIES).
+  // Monthly price in EUR, shown when Stripe cannot be read.
   price: number;
   features: PlanFeatures;
   isPopular?: boolean;
-  // Legacy EUR fields kept for backwards compatibility.
-  stripePriceMonthly?: string;
-  stripePriceYearly?: string;
-  // Multi-currency prices.
-  stripePrices?: Partial<Record<Currency, PlanPrices>>;
+  /**
+   * The plan's Stripe prices: one per interval, in EUR, with an amount per other currency
+   * (Stripe's `currency_options`).
+   */
+  stripePrices?: PlanPrices;
+  /**
+   * Earlier single-currency prices, by currency: they still bill the subscriptions bought
+   * on them, and sell in a currency `stripePrices` lacks.
+   */
+  legacyStripePrices?: Record<Currency, PlanPrices>;
 }
 
 /**
@@ -76,74 +69,25 @@ export const PAY_AS_YOU_GO_PLAN: Plan = {
   },
 };
 
-type PlanPriceConfig = Pick<Plan, "stripePriceMonthly" | "stripePriceYearly" | "stripePrices">;
-
-export function getPlanPriceId(
-  plan: PlanPriceConfig,
-  interval: "monthly" | "yearly",
-  currency: Currency = "eur",
-): string | undefined {
-  const prices = plan.stripePrices?.[currency];
-  if (prices) {
-    return interval === "monthly" ? prices.monthly : prices.yearly;
-  }
-  if (currency === "eur") {
-    return interval === "monthly" ? plan.stripePriceMonthly : plan.stripePriceYearly;
-  }
-  return undefined;
-}
+type PlanPriceConfig = Pick<Plan, "stripePrices" | "legacyStripePrices">;
 
 /**
- * The plan, interval and currency a Stripe price bills (getPlanPriceId read backwards),
+ * The plan and interval a Stripe price bills, the plan's own or one of its earlier prices,
  * or null for a price no plan has.
  */
 export function findPlanPrice<P extends PlanPriceConfig & Pick<Plan, "slug">>(
   plans: readonly P[],
   priceId: string,
-): { plan: P; interval: "monthly" | "yearly"; currency: Currency } | null {
+): { plan: P; interval: "monthly" | "yearly" } | null {
   for (const plan of plans) {
-    for (const currency of PLAN_CURRENCIES) {
+    const sets = [plan.stripePrices, ...Object.values(plan.legacyStripePrices ?? {})];
+    for (const prices of sets) {
       for (const interval of ["monthly", "yearly"] as const) {
-        if (getPlanPriceId(plan, interval, currency) === priceId)
-          return { plan, interval, currency };
+        if (prices?.[interval] === priceId) return { plan, interval };
       }
     }
   }
   return null;
-}
-
-export function isPlanAvailable(
-  plan: PlanPriceConfig,
-  interval: "monthly" | "yearly",
-  currency: Currency = "eur",
-): boolean {
-  return Boolean(getPlanPriceId(plan, interval, currency));
-}
-
-/** Whether every paid plan has both its Stripe prices in `currency`. */
-export function hasPlanPrices(
-  plans: readonly (PlanPriceConfig & Pick<Plan, "price">)[],
-  currency: Currency,
-): boolean {
-  const paid = plans.filter((plan) => plan.price > 0);
-  return (
-    paid.length > 0 &&
-    paid.every(
-      (plan) => isPlanAvailable(plan, "monthly", currency) && isPlanAvailable(plan, "yearly", currency),
-    )
-  );
-}
-
-/**
- * The currency a store's plan is bought in: its own (any case), when every paid plan has
- * its prices in it, EUR otherwise, as before stores were billed in their currency.
- */
-export function planCurrencyFor(
-  plans: readonly (PlanPriceConfig & Pick<Plan, "price">)[],
-  storeCurrency: string | null | undefined,
-): Currency {
-  const code = (storeCurrency ?? "").trim().toLowerCase();
-  return isPlanCurrency(code) && hasPlanPrices(plans, code) ? code : DEFAULT_PLAN_CURRENCY;
 }
 
 export function getYearlyPrice(plan: Pick<Plan, "price">): number {
@@ -165,16 +109,13 @@ export interface PlanPricing {
   amounts: Partial<Record<string, PlanAmounts>>;
 }
 
-/** The amounts of plans priced by the code (CODE_PRICED_CURRENCIES), for `currency`. */
-export function codePlanPricing(
-  plans: readonly (PlanPriceConfig & Pick<Plan, "price" | "slug">)[],
-  currency: Currency,
-): PlanPricing {
+/** The plans' EUR amounts as the code knows them, for when Stripe cannot be read. */
+export function codePlanPricing(plans: readonly Pick<Plan, "price" | "slug">[]): PlanPricing {
   const amounts: PlanPricing["amounts"] = {};
   for (const plan of plans) {
     if (plan.price > 0) amounts[plan.slug] = { monthly: plan.price, yearly: getYearlyPrice(plan) };
   }
-  return { currency, amounts };
+  return { currency: DEFAULT_PLAN_CURRENCY, amounts };
 }
 
 /**
@@ -185,10 +126,14 @@ export function formatPlanPrice(price: number, currency: Currency = "eur", local
   if (currency === "eur") return `${price}€`;
   if (currency === "usd") return `$${price}`;
   const whole = Number.isInteger(price);
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currency.toUpperCase(),
-    minimumFractionDigits: whole ? 0 : 2,
-    maximumFractionDigits: whole ? 0 : 2,
-  }).format(price);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: whole ? 0 : 2,
+      maximumFractionDigits: whole ? 0 : 2,
+    }).format(price);
+  } catch {
+    return `${price} ${currency.toUpperCase()}`;
+  }
 }

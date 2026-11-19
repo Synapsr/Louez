@@ -3,7 +3,7 @@ import * as nodeModule from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
-import { codePlanPricing, type Currency, type Plan, type PlanPricing } from "@/lib/plans.shared";
+import { codePlanPricing, type Currency, type PlanPricing } from "@/lib/plans.shared";
 import { EU_STANDARD_VAT_BPS, withVatMinor } from "./plan-offer-core";
 import {
   type FakeBillingService,
@@ -52,14 +52,18 @@ mock.module("@/lib/stripe/subscriptions", {
 mock.module("@/lib/api/effects", { namedExports: { dispatchApiEffects: () => {} } });
 process.env.STRIPE_PRICE_PRO_MONTHLY = "price_test_pro_monthly";
 process.env.STRIPE_PRICE_ULTRA_MONTHLY = "price_test_ultra_monthly";
-process.env.STRIPE_PRICE_PRO_MONTHLY_GBP = "price_test_pro_monthly_gbp";
-process.env.STRIPE_PRICE_ULTRA_MONTHLY_GBP = "price_test_ultra_monthly_gbp";
-/** The plans' amounts Stripe gives in GBP; null while it cannot sell a plan in GBP. */
+/**
+ * The plans' amounts in GBP, as their Stripe prices give them; null while those have no
+ * GBP amount. EUR sells at the code's amounts.
+ */
 let gbpPricing: PlanPricing | null = null;
 mock.module("@/lib/billing/plan-pricing", {
   namedExports: {
-    getPlanPricing: async (currency: Currency, plans: readonly Plan[]) =>
-      currency === "gbp" ? gbpPricing : codePlanPricing(plans, currency),
+    getPlanPricing: async (currency: Currency) => {
+      const { getPlans } = await import("@/lib/plans");
+      if (currency === "eur") return codePlanPricing(getPlans());
+      return currency === "gbp" ? gbpPricing : null;
+    },
   },
 });
 
