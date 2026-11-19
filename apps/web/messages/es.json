@@ -7514,7 +7514,6 @@
         "headline": "Reserva en línea",
         "scanHint": "Escanea con la cámara del móvil",
         "save": "Guardar el cartel",
-        "hint": "Imprímelo en A4 para tu mostrador o escaparate, o muéstralo desde el móvil.",
         "previewAlt": "Vista previa del cartel",
         "fileName": "cartel"
       },
@@ -7692,7 +7691,6 @@
         "poster": "Cartel QR",
         "posterTitle": "Cartel para {partner}",
         "posterDescription": "El código QR abre tu tienda con su enlace.",
-        "posterHint": "Imprímelo para su recepción o envíaselo.",
         "posterFileName": "cartel-socio",
         "sendEmail": "Correo",
         "emailSubject": "Su enlace de socio de {store}",
@@ -10778,7 +10776,6 @@
       "poster": "Cartel QR",
       "posterTitle": "Su cartel",
       "posterDescription": "El código QR abre la tienda con su enlace.",
-      "posterHint": "Imprímalo para su recepción.",
       "posterFileName": "cartel",
       "code": "Su código, para dar de palabra: {code}",
       "posterRecommended": "Recomendado por {partner}"

@@ -7514,7 +7514,6 @@
         "headline": "オンライン予約",
         "scanHint": "スマホのカメラで読み取り",
         "save": "ポスターを保存",
-        "hint": "A4で印刷してカウンターや窓に貼るか、スマホで見せましょう。",
         "previewAlt": "ポスターのプレビュー",
         "fileName": "poster"
       },
@@ -7692,7 +7691,6 @@
         "poster": "QRポスター",
         "posterTitle": "{partner} 用のポスター",
         "posterDescription": "QRコードから、パートナーのリンク付きでストアが開きます。",
-        "posterHint": "印刷してパートナーの受付に置くか、パートナーに送りましょう。",
         "posterFileName": "partner-poster",
         "sendEmail": "メール",
         "emailSubject": "{store} のパートナーリンク",
@@ -10778,7 +10776,6 @@
       "poster": "QRポスター",
       "posterTitle": "あなたのポスター",
       "posterDescription": "QRコードを読み取ると、あなたのリンク経由でストアが開きます。",
-      "posterHint": "印刷して受付に置いてください。",
       "posterFileName": "poster",
       "code": "口頭で伝えるためのコード：{code}",
       "posterRecommended": "{partner} のおすすめ"

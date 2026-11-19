@@ -7514,7 +7514,6 @@
         "headline": "Бронируйте онлайн",
         "scanHint": "Наведите камеру телефона",
         "save": "Сохранить плакат",
-        "hint": "Распечатайте на A4 для прилавка или витрины или покажите с телефона.",
         "previewAlt": "Предпросмотр плаката",
         "fileName": "poster"
       },
@@ -7692,7 +7691,6 @@
         "poster": "Плакат с QR-кодом",
         "posterTitle": "Плакат для партнёра {partner}",
         "posterDescription": "QR-код открывает ваш магазин по ссылке партнёра.",
-        "posterHint": "Распечатайте его для стойки регистрации партнёра или отправьте ему.",
         "posterFileName": "partner-poster",
         "sendEmail": "Email",
         "emailSubject": "Ваша партнёрская ссылка {store}",
@@ -10778,7 +10776,6 @@
       "poster": "Плакат с QR-кодом",
       "posterTitle": "Ваш плакат",
       "posterDescription": "QR-код открывает магазин с вашей ссылкой.",
-      "posterHint": "Распечатайте его для стойки регистрации.",
       "posterFileName": "plakat",
       "code": "Ваш код, чтобы называть его устно: {code}",
       "posterRecommended": "Рекомендует {partner}"

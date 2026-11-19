@@ -30,12 +30,12 @@ test("keeps a word wider than a line whole", () => {
   ]);
 });
 
-test("prints the address without protocol or trailing slash", () => {
+test("shows the address without protocol or trailing slash", () => {
   assert.equal(toDisplayUrl("https://velos.louez.io/"), "velos.louez.io");
   assert.equal(toDisplayUrl("http://localhost:3000/velos"), "localhost:3000/velos");
 });
 
-test("a dark store colour paints the band and the code", () => {
+test("a dark store colour paints the band and the code's eyes", () => {
   assert.deepEqual(posterColors("#0F3D2E"), {
     accent: "#0F3D2E",
     onAccent: posterColors("#0F3D2E").onAccent,
@@ -62,7 +62,7 @@ test("no colour, or one that is not a colour, prints in ink", () => {
   }
 });
 
-test("the code's badge shows a squarish logo, else the store's initial", () => {
+test("the code's centre shows a squarish logo, else the store's initial", () => {
   assert.equal(isSquarish({ naturalWidth: 200, naturalHeight: 200 }), true);
   assert.equal(isSquarish({ naturalWidth: 480, naturalHeight: 140 }), false);
   assert.equal(monogram("  Vélo Évasion"), "V");

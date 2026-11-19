@@ -7514,7 +7514,6 @@
         "headline": "Online buchen",
         "scanHint": "Mit der Handykamera scannen",
         "save": "Poster speichern",
-        "hint": "Drucken Sie es auf A4 für Theke oder Schaufenster oder zeigen Sie es auf dem Handy.",
         "previewAlt": "Vorschau des Posters",
         "fileName": "poster"
       },
@@ -7692,7 +7691,6 @@
         "poster": "QR-Poster",
         "posterTitle": "Poster für {partner}",
         "posterDescription": "Der QR-Code öffnet Ihren Shop mit seinem Link.",
-        "posterHint": "Drucken Sie es für seinen Empfang aus oder schicken Sie es ihm.",
         "posterFileName": "partner-poster",
         "sendEmail": "E-Mail",
         "emailSubject": "Ihr Partnerlink für {store}",
@@ -10778,7 +10776,6 @@
       "poster": "QR-Poster",
       "posterTitle": "Ihr Poster",
       "posterDescription": "Der QR-Code öffnet den Shop mit Ihrem Link.",
-      "posterHint": "Drucken Sie es für Ihren Empfang aus.",
       "posterFileName": "poster",
       "code": "Ihr Code zum mündlichen Weitergeben: {code}",
       "posterRecommended": "Empfohlen von {partner}"

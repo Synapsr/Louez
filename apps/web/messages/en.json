@@ -7514,7 +7514,6 @@
         "headline": "Book online",
         "scanHint": "Scan with your phone's camera",
         "save": "Save the poster",
-        "hint": "Print it on A4 for your counter or window, or show it from your phone.",
         "previewAlt": "Preview of the poster",
         "fileName": "poster"
       },
@@ -7692,7 +7691,6 @@
         "poster": "QR poster",
         "posterTitle": "Poster for {partner}",
         "posterDescription": "The QR code opens your store with their link.",
-        "posterHint": "Print it for their front desk, or send it to them.",
         "posterFileName": "partner-poster",
         "sendEmail": "Email",
         "emailSubject": "Your {store} partner link",
@@ -10778,7 +10776,6 @@
       "poster": "QR poster",
       "posterTitle": "Your poster",
       "posterDescription": "The QR code opens the store with your link.",
-      "posterHint": "Print it for your front desk.",
       "posterFileName": "poster",
       "code": "Your code, to give by word of mouth: {code}",
       "posterRecommended": "Recommended by {partner}"

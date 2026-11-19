@@ -7514,7 +7514,6 @@
         "headline": "Pesan online",
         "scanHint": "Pindai dengan kamera ponsel Anda",
         "save": "Simpan poster",
-        "hint": "Cetak di kertas A4 untuk meja kasir atau etalase, atau tunjukkan dari ponsel.",
         "previewAlt": "Pratinjau poster",
         "fileName": "poster"
       },
@@ -7692,7 +7691,6 @@
         "poster": "Poster QR",
         "posterTitle": "Poster untuk {partner}",
         "posterDescription": "Kode QR membuka toko Anda dengan tautan mitra.",
-        "posterHint": "Cetak untuk meja resepsionisnya, atau kirimkan kepadanya.",
         "posterFileName": "poster-mitra",
         "sendEmail": "Email",
         "emailSubject": "Tautan mitra {store} Anda",
@@ -10778,7 +10776,6 @@
       "poster": "Poster QR",
       "posterTitle": "Poster Anda",
       "posterDescription": "Kode QR membuka toko dengan tautan Anda.",
-      "posterHint": "Cetak untuk meja resepsionis Anda.",
       "posterFileName": "poster",
       "code": "Kode Anda, untuk disampaikan secara lisan: {code}",
       "posterRecommended": "Direkomendasikan oleh {partner}"

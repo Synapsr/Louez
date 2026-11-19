@@ -7514,7 +7514,6 @@
         "headline": "Réservez en ligne",
         "scanHint": "Scannez avec l'appareil photo de votre téléphone",
         "save": "Enregistrer l'affiche",
-        "hint": "Imprimez-la en A4 pour votre comptoir ou votre vitrine, ou montrez-la depuis votre téléphone.",
         "previewAlt": "Aperçu de l'affiche",
         "fileName": "affiche"
       },
@@ -7692,7 +7691,6 @@
         "poster": "Affiche QR",
         "posterTitle": "Affiche pour {partner}",
         "posterDescription": "Le QR code ouvre votre boutique avec son lien.",
-        "posterHint": "Imprimez-la pour son accueil, ou envoyez-la-lui.",
         "posterFileName": "affiche-partenaire",
         "sendEmail": "E-mail",
         "emailSubject": "Votre lien partenaire {store}",
@@ -10778,7 +10776,6 @@
       "poster": "Affiche QR",
       "posterTitle": "Votre affiche",
       "posterDescription": "Le QR code ouvre la boutique avec votre lien.",
-      "posterHint": "Imprimez-la pour votre accueil.",
       "posterFileName": "affiche",
       "code": "Votre code, à donner de vive voix : {code}",
       "posterRecommended": "Recommandé par {partner}"

@@ -46,9 +46,7 @@ export const PartnerSpacePosterDialog = ({
           <QrPoster
             storeName={storeName}
             url={link}
-            displayUrl={link}
             fileName={`${t("posterFileName")}-${code}`}
-            hint={t("posterHint")}
             onSave={() => undefined}
             accentColor={accentColor}
             logoUrl={logoUrl}

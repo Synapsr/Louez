@@ -119,9 +119,7 @@ export const PartnerLinkCard = ({
             <QrPoster
               storeName={storeName}
               url={link}
-              displayUrl={link}
               fileName={`${t("posterFileName")}-${partner.code}`}
-              hint={t("posterHint")}
               onSave={() => onShared("qr")}
               accentColor={accentColor}
               logoUrl={logoUrl}

@@ -39,9 +39,7 @@ export const PosterPanel = ({
     <QrPoster
       storeName={storeName}
       url={withVisitSource(storeUrl, "qr")}
-      displayUrl={storeUrl}
       fileName={`${t("fileName")}-${storeSlug}`}
-      hint={t("hint")}
       onSave={() => analytics.shareUsed(placement, "qr", "store")}
       accentColor={accentColor}
       logoUrl={logoUrl}

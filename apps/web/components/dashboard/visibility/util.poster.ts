@@ -4,26 +4,23 @@ import { getContrastForeground, parseHexColor } from "@/lib/theme/util.store-the
  * The QR poster of « Se faire connaître » and of a store's partners, drawn on
  * a canvas in the browser: an A4 page at 150 dpi, in the store's colours, with
  * its logo. The code itself stays dark on white, so any phone reads it, and
- * any printer renders it.
+ * any printer renders it; only its corner eyes take the store's colour.
  */
 
 export const POSTER_WIDTH = 1240;
 export const POSTER_HEIGHT = 1754;
 const MARGIN = 110;
 const BAND_HEIGHT = 560;
-export const POSTER_QR_SIZE = 740;
-const QR_BADGE_SIZE = 168;
+export const POSTER_QR_SIZE = 800;
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-const INK = "#0a0a0a";
+export const INK = "#0a0a0a";
 const MUTED = "#525252";
 
 export interface PosterContent {
   storeName: string;
   headline: string;
   scanHint: string;
-  /** The address printed under the code, without protocol or marking. */
-  displayUrl: string;
-  /** The QR code, already drawn (qrcode.react's canvas), in `posterColors().code`. */
+  /** The QR code, already drawn with its centre (`usePosterCode`). */
   qr: CanvasImageSource;
   /** The store's colour (`#rrggbb`); the platform's ink when it has none. */
   accentColor?: string | null;
@@ -38,7 +35,7 @@ export interface PosterColors {
   accent: string;
   /** What reads on the band. */
   onAccent: string;
-  /** The code and the address: the store's colour when it is dark enough to scan, else ink. */
+  /** The code's eyes and the partner line: the store's colour when it is dark enough to scan, else ink. */
   code: string;
 }
 
@@ -126,11 +123,11 @@ function fittingSize(
   return smallest;
 }
 
-/** A logo that fits a square badge: no wider than twice its height. */
+/** A logo that fits the code's centre: no wider than twice its height. */
 export const isSquarish = (image: { naturalWidth: number; naturalHeight: number }): boolean =>
   image.naturalHeight > 0 && image.naturalWidth / image.naturalHeight <= 2;
 
-/** The store's initial, for the code's badge: its first letter or digit. */
+/** The store's initial, for the code's centre: its first letter or digit. */
 export const monogram = (storeName: string): string =>
   storeName
     .trim()
@@ -241,46 +238,16 @@ export function drawPoster(canvas: HTMLCanvasElement, content: PosterContent): v
     qrTop += 70;
   }
 
-  // The code, framed in the store's colour, its logo at the centre.
-  const footerTop = POSTER_HEIGHT - MARGIN - 130;
-  const qrSize = Math.min(POSTER_QR_SIZE, footerTop - qrTop - 60);
-  const qrLeft = center - qrSize / 2;
-  roundedRect(ctx, qrLeft - 36, qrTop - 36, qrSize + 72, qrSize + 72, 40);
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = colors.code;
-  ctx.stroke();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(content.qr, qrLeft, qrTop, qrSize, qrSize);
-  if (content.logo && content.logo.naturalWidth > 0) {
-    const badge = (QR_BADGE_SIZE * qrSize) / POSTER_QR_SIZE;
-    const badgeTop = qrTop + qrSize / 2 - badge / 2;
-    roundedRect(ctx, center - badge / 2, badgeTop, badge, badge, 24);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    if (isSquarish(content.logo)) {
-      drawContained(ctx, content.logo, {
-        x: center - badge / 2 + 16,
-        y: badgeTop + 16,
-        width: badge - 32,
-        height: badge - 32,
-      });
-    } else {
-      // A wide logo would shrink to a line here: the store's initial reads better.
-      ctx.fillStyle = colors.code;
-      ctx.font = `800 ${Math.round(badge * 0.6)}px ${FONT}`;
-      ctx.textBaseline = "middle";
-      ctx.fillText(monogram(content.storeName), center, badgeTop + badge / 2 + badge * 0.04);
-      ctx.textBaseline = "alphabetic";
-    }
-  }
+  // The code, centred between the band and the hint under it.
+  const hintBaseline = POSTER_HEIGHT - MARGIN;
+  const room = hintBaseline - 100 - qrTop;
+  const qrSize = Math.min(POSTER_QR_SIZE, room);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(content.qr, center - qrSize / 2, qrTop + (room - qrSize) / 2, qrSize, qrSize);
 
-  // How to scan it, and the address for those who type it.
+  // How to scan it.
   ctx.fillStyle = MUTED;
   ctx.font = `400 40px ${FONT}`;
   const hint = wrapLines(content.scanHint, width, (value) => ctx.measureText(value).width, 1)[0];
-  ctx.fillText(hint ?? "", center, footerTop + 40);
-  ctx.fillStyle = colors.code;
-  const urlSize = fittingSize(ctx, content.displayUrl, 700, 52, 28, width);
-  ctx.font = `700 ${urlSize}px ${FONT}`;
-  ctx.fillText(content.displayUrl, center, footerTop + 40 + urlSize * 1.8);
+  ctx.fillText(hint ?? "", center, hintBaseline);
 }
