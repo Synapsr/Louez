@@ -48,6 +48,7 @@ export const RESERVED_SLUGS = [
   "ingest",
   "multi-store",
   "online-store",
+  "partner-statements",
   "styles",
 
   // Brand protection

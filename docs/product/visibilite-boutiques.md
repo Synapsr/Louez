@@ -295,6 +295,8 @@ boutique qui prend l'option voie son passé.
   mesurent la portée réelle.
 - Score SEO chiffré : un score de « visibilité » sans mesure réelle de visites serait un faux
   indicateur. On montre des actions faites, puis des visites réelles (phase 2).
+- Les commissions aux partenaires locaux (campings, hôtels) : une spec à part,
+  [liens-partenaires.md](liens-partenaires.md), troisième entrée de « Se faire connaître ».
 
 ## Événements à mesurer
 

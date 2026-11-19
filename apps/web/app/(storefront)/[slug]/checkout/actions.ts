@@ -18,6 +18,8 @@ import { log } from "@/lib/evlog";
 import { getClientIp } from "@/lib/request";
 import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-mode";
 import { SALES_CHANNEL_COOKIE, salesChannelFromCookie } from "@/lib/util.sales-channel";
+import { PARTNER_COOKIE, partnerCodeFromCookie } from "@/lib/partners/partner-cookie";
+import { attributeReservationFromLink } from "@louez/api/services/partners";
 import { getTulipCoverageSummary } from "@/lib/integrations/tulip/contracts";
 import {
   searchFrenchCompanies,
@@ -242,6 +244,33 @@ const isSignedInAs = async (storeId: string, email: string): Promise<boolean> =>
 };
 
 /**
+ * Credits the partner the customer agreed to on its link (the storefront's
+ * partner cookie, docs/product/liens-partenaires.md). Never fails the
+ * checkout: a reservation is worth more than its attribution, which the
+ * store can still set by hand.
+ */
+const creditPartner = async (
+  storeId: string,
+  reservationId: string,
+  cookieValue: string | undefined | null,
+): Promise<void> => {
+  const code = partnerCodeFromCookie(cookieValue ?? undefined, storeId);
+  if (!code) return;
+  try {
+    await attributeReservationFromLink({ storeId, reservationId, code });
+  } catch (error) {
+    log.warn({
+      partner: {
+        event: "attribution_failed",
+        storeId,
+        reservationId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+};
+
+/**
  * Public checkout submission. The payload is validated with Zod, the source
  * is always "online" (trusted callers use the internal function), and the
  * result keeps the shape the current client reads: `error`/`errorParams`/
@@ -257,10 +286,11 @@ export async function createReservation(input: unknown): Promise<CreateReservati
 
   // Test mode is read from its signed cookie only (lib/test-reservations).
   const testMode = await getStorefrontTestMode(parsed.data.storeId);
+  const cookieStore = await cookies();
   const result = await createReservationInternal({
     ...parsed.data,
     source: "online",
-    salesChannel: salesChannelFromCookie((await cookies()).get(SALES_CHANNEL_COOKIE)?.value),
+    salesChannel: salesChannelFromCookie(cookieStore.get(SALES_CHANNEL_COOKIE)?.value),
     customerSignedIn: testMode
       ? false
       : await isSignedInAs(parsed.data.storeId, parsed.data.customer.email),
@@ -275,6 +305,12 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       ...(result.details ? { details: result.details } : {}),
     };
   }
+
+  await creditPartner(
+    parsed.data.storeId,
+    result.reservationId,
+    testMode ? null : cookieStore.get(PARTNER_COOKIE)?.value,
+  );
 
   return {
     success: true,

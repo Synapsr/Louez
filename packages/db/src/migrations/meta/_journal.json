@@ -862,6 +862,13 @@
       "when": 1795429263349,
       "tag": "0117_demo_stores",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "5",
+      "when": 1795619636490,
+      "tag": "0118_partner_links",
+      "breakpoints": true
     }
   ]
 }

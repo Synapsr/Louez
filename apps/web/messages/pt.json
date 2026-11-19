@@ -1000,7 +1000,8 @@
       "visibility": "Dar-se a conhecer",
       "visibilityFirstCustomers": "Primeiros clientes",
       "visibilityAi": "Ser encontrado pelas IA",
-      "analyticsAi": "Assistentes de IA"
+      "analyticsAi": "Assistentes de IA",
+      "visibilityPartners": "Parceiros"
     },
     "home": {
       "viewAll": "Ver tudo",
@@ -7129,7 +7130,8 @@
       "needsALook": "A verificar",
       "visibility": "Dê-se a conhecer",
       "visibilityAi": "Ser encontrado pelas IA",
-      "analyticsAi": "Assistentes de IA"
+      "analyticsAi": "Assistentes de IA",
+      "visibilityPartners": "Parceiros"
     },
     "notificationsCenter": {
       "title": "Notificações",
@@ -7626,6 +7628,139 @@
         "notIncluded": {
           "title": "Não incluído no seu plano",
           "description": "Ser encontrado pelos assistentes de IA não faz parte do seu plano atual."
+        }
+      }
+    },
+    "partners": {
+      "title": "Parceiros",
+      "description": "Parques de campismo, hotéis, postos de turismo: dê-lhes um link. Quando um cliente reserva através dele, deve-lhes a comissão que escolheu e paga-lhes diretamente.",
+      "add": "Adicionar um parceiro",
+      "toPay": "Por pagar:",
+      "archived": "Arquivado",
+      "bookings": "{count, plural, =0 {Nenhuma reserva} one {# reserva} other {# reservas}}",
+      "dueAmount": "{amount} por pagar",
+      "archivedNotice": "Este parceiro está arquivado: o link dele já não lhe atribui novas reservas. Os extratos continuam disponíveis.",
+      "empty": {
+        "title": "Recompense quem o recomenda",
+        "description": "O parque de campismo, o hotel ou o posto de turismo da zona já lhe envia clientes? Dê-lhes um link: a Louez conta as reservas e calcula a comissão.",
+        "steps": {
+          "add": "Adicione um parceiro e a respetiva comissão, por exemplo 10%.",
+          "share": "Entregue-lhe o link e o cartaz QR.",
+          "pay": "Todos os meses, a Louez calcula quanto lhe deve; o pagamento é feito por si."
+        }
+      },
+      "rule": {
+        "percent": "{value}% do aluguer",
+        "fixed": "{value} por reserva"
+      },
+      "form": {
+        "titleCreate": "Novo parceiro",
+        "titleEdit": "Editar parceiro",
+        "description": "Basta um nome e uma comissão. O link fica pronto assim que guardar.",
+        "name": "Nome",
+        "namePlaceholder": "Camping Os Pinheiros",
+        "nameRequired": "Indique o nome do parceiro.",
+        "commission": "Comissão",
+        "types": {
+          "percent": "Percentagem do aluguer",
+          "fixed": "Valor fixo por reserva"
+        },
+        "rate": "Taxa",
+        "amount": "Valor",
+        "percentInvalid": "Entre 0 e 100.",
+        "amountInvalid": "Indique um valor positivo.",
+        "baseHint": "Calculada sobre o preço do aluguer com descontos, sem a caução, a entrega nem o seguro.",
+        "rateChangeHint": "Uma alteração aplica-se às próximas reservas.",
+        "contact": "Contactos (opcional)",
+        "contactName": "Pessoa de contacto",
+        "contactEmail": "E-mail",
+        "contactPhone": "Telefone",
+        "emailInvalid": "Este e-mail não é válido.",
+        "cancel": "Cancelar",
+        "create": "Adicionar",
+        "save": "Guardar"
+      },
+      "link": {
+        "title": "Link do parceiro",
+        "description": "O cliente que o abre escolhe se atribui a reserva a {partner}. O preço não muda.",
+        "copy": "Copiar",
+        "copied": "Link copiado",
+        "poster": "Cartaz QR",
+        "posterTitle": "Cartaz para {partner}",
+        "posterDescription": "O código QR abre a sua loja com o link do parceiro.",
+        "posterHint": "Imprima-o para a receção do parceiro ou envie-lho.",
+        "posterFileName": "cartaz-parceiro",
+        "sendEmail": "E-mail",
+        "emailSubject": "O seu link de parceiro {store}",
+        "message": "Olá,\n\nAqui está o seu link de parceiro para {store}: {link}\nRecebe {rule} por cada aluguer reservado através deste link, quando o aluguer terminar.\n\nO seu extrato, sempre atualizado: {statement}\n\nObrigado por nos recomendar!"
+      },
+      "menu": {
+        "label": "Ações do parceiro",
+        "edit": "Editar",
+        "copyStatement": "Copiar o link do extrato",
+        "statementCopied": "Link do extrato copiado",
+        "rotateStatement": "Alterar o link do extrato",
+        "rotated": "Novo link do extrato: o anterior já não funciona.",
+        "archive": "Arquivar",
+        "restore": "Reativar"
+      },
+      "statement": {
+        "title": "Extrato",
+        "due": "Devido",
+        "paid": "Pago",
+        "remaining": "Por pagar",
+        "upcoming": "A vencer: {amount}",
+        "visits": "{count, plural, =0 {Nenhuma visita pelo link} one {# visita pelo link} other {# visitas pelo link}}",
+        "export": "Exportar (CSV)",
+        "markPaid": "Marcar como pago",
+        "markPaidTitle": "Marcar {amount} como pago para {month}?",
+        "markPaidDescription": "O pagamento a {partner} é feito por si (transferência, numerário…). A Louez regista-o para que nunca pague duas vezes.",
+        "cancel": "Cancelar",
+        "payout": "Pago {amount} em {date}",
+        "cancelPayout": "Anular",
+        "empty": "Nenhuma reserva através deste parceiro este mês.",
+        "rules": "A comissão incide sobre o preço do aluguer com descontos, sem a caução, a entrega nem o seguro. É devida quando o aluguer termina e anulada se a reserva for cancelada. O mês é aquele em que o aluguer termina. Este extrato não é uma fatura.",
+        "manual": "adicionada manualmente",
+        "adjusted": "Ajustada (cálculo: {amount})",
+        "actions": "Ações",
+        "adjust": "Ajustar a comissão",
+        "remove": "Retirar do parceiro",
+        "removed": "Reserva retirada do parceiro",
+        "states": {
+          "upcoming": "A vencer",
+          "due": "Devida",
+          "cancelled": "Anulada"
+        },
+        "csv": {
+          "number": "Reserva",
+          "startDate": "Início",
+          "endDate": "Fim",
+          "base": "Aluguer",
+          "rule": "Regra",
+          "commission": "Comissão",
+          "state": "Estado",
+          "note": "Nota"
+        }
+      },
+      "adjust": {
+        "title": "Comissão da reserva {number}",
+        "description": "A regra dá {amount}. Indique quanto deve realmente, por exemplo após um reembolso parcial.",
+        "amount": "Valor devido",
+        "amountInvalid": "Indique um valor igual ou superior a zero.",
+        "note": "Motivo",
+        "notePlaceholder": "Reembolso parcial",
+        "reset": "Voltar à regra",
+        "save": "Guardar"
+      },
+      "reservation": {
+        "title": "Parceiro",
+        "attribute": "Atribuir a um parceiro",
+        "change": "Mudar de parceiro",
+        "remove": "Retirar o parceiro",
+        "commission": "{amount}, {state}",
+        "origin": {
+          "link": "Pelo link do parceiro",
+          "manual": "Adicionado manualmente"
         }
       }
     }
@@ -9294,6 +9429,13 @@
       },
       "fullFile": "Todos os produtos com a sua descrição",
       "footer": "Dados da loja online, atualizados a {date}."
+    },
+    "partnerLink": {
+      "title": "Recomendado por {partner}",
+      "question": "Deseja que {partner} seja agradecido se reservar? O preço não muda.",
+      "accept": "Sim, com todo o gosto",
+      "decline": "Não, obrigado",
+      "note": "Se aceitar, um cookie guarda esta escolha durante 30 dias, apenas nesta loja."
     }
   },
   "onboarding": {
@@ -10003,6 +10145,9 @@
     },
     "planOfferUnavailable": "Esta oferta já não se aplica à sua loja. Encontra as assinaturas na página Assinatura.",
     "aiVisibilityNotIncluded": "O seu plano não inclui a visibilidade junto dos assistentes de IA.",
+    "partnerNotFound": "Este parceiro não existe ou foi arquivado.",
+    "partnerNothingToPay": "Não há nada por pagar a este parceiro neste mês.",
+    "partnerReservationNotAttributed": "Esta reserva não está atribuída a nenhum parceiro.",
     "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
@@ -10573,6 +10718,24 @@
         }
       }
     }
+  },
+  "partnerStatement": {
+    "metaTitle": "Extrato de parceiro",
+    "title": "Extrato de {partner}",
+    "months": "Meses",
+    "due": "Devido",
+    "paid": "Pago",
+    "remaining": "Por pagar",
+    "upcoming": "A vencer: {amount} de alugueres ainda não terminados.",
+    "empty": "Nenhuma reserva através do seu link este mês.",
+    "rentalEnded": "Aluguer terminado em {date}",
+    "states": {
+      "upcoming": "A vencer",
+      "due": "Devida",
+      "cancelled": "Anulada"
+    },
+    "rules": "A comissão incide sobre as reservas feitas através do seu link. É devida quando o aluguer termina e anulada se a reserva for cancelada. Este extrato não mostra nada sobre os clientes e não é uma fatura.",
+    "paidBy": "{store} paga-lhe diretamente. A Louez calcula este extrato; nenhum dinheiro passa pela Louez."
   },
   "demo": {
     "launcher": {
