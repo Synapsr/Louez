@@ -25,6 +25,7 @@ import { formatCurrency, formatNumber } from "@louez/utils";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { settleNegotiableReservationItemPrice } from "../reservation-pricing-actions";
+import { NetGrossPrice } from "../new/utils/net-gross-price";
 
 export interface ReservationDisplayItem {
   id: string;
@@ -52,6 +53,8 @@ export interface ReservationItemsDisplay {
   promoCodeSnapshot?: { code: string } | null;
   deliveryFee?: string | null;
   depositAmount: string;
+  productionStartDate?: Date | null;
+  productionEndDate?: Date | null;
 }
 export const ReservationItemsCard = ({
   reservation,
@@ -138,6 +141,40 @@ export const ReservationItemsCard = ({
           </div>
         </div>
 
+        {(reservation.productionStartDate || reservation.productionEndDate) && (
+          <div className="flex items-start gap-3 rounded-lg border border-dashed bg-muted/20 p-3 text-xs">
+            <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-medium text-muted-foreground">
+                Okres produkcji (informacja wewnętrzna):
+              </span>
+              {reservation.productionStartDate && (
+                <span>
+                  {formatStoreDate(
+                    reservation.productionStartDate,
+                    storeTimezone,
+                    "SHORT_DATETIME",
+                    formatLocale,
+                  )}
+                </span>
+              )}
+              {reservation.productionStartDate && reservation.productionEndDate && (
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+              )}
+              {reservation.productionEndDate && (
+                <span>
+                  {formatStoreDate(
+                    reservation.productionEndDate,
+                    storeTimezone,
+                    "SHORT_DATETIME",
+                    formatLocale,
+                  )}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="border rounded-lg overflow-x-auto">
           <Table className="min-w-[520px]">
             <TableHeader>
@@ -211,29 +248,40 @@ export const ReservationItemsCard = ({
                                 {t("negotiablePricePending")}
                               </p>
                               {canWrite ? (
-                                <form
-                                  className="flex max-w-sm items-center gap-2"
-                                  onSubmit={(event) => handleSetPrice(event, item)}
-                                >
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    inputMode="decimal"
-                                    aria-label={t("agreedUnitPrice")}
-                                    placeholder={t("agreedUnitPrice")}
-                                    value={priceInputs[item.id] ?? ""}
-                                    onChange={(event) =>
-                                      setPriceInputs((current) => ({
-                                        ...current,
-                                        [item.id]: event.target.value,
-                                      }))
-                                    }
-                                  />
-                                  <Button type="submit" size="sm" disabled={isSavingPrice}>
-                                    {isSavingPrice ? t("savingAgreedPrice") : t("saveAgreedPrice")}
-                                  </Button>
-                                </form>
+                                <div className="space-y-1.5">
+                                  <form
+                                    className="flex max-w-sm items-center gap-2"
+                                    onSubmit={(event) => handleSetPrice(event, item)}
+                                  >
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      inputMode="decimal"
+                                      aria-label={t("agreedUnitPrice")}
+                                      placeholder={t("agreedUnitPrice")}
+                                      value={priceInputs[item.id] ?? ""}
+                                      onChange={(event) =>
+                                        setPriceInputs((current) => ({
+                                          ...current,
+                                          [item.id]: event.target.value,
+                                        }))
+                                      }
+                                    />
+                                    <Button type="submit" size="sm" disabled={isSavingPrice}>
+                                      {isSavingPrice ? t("savingAgreedPrice") : t("saveAgreedPrice")}
+                                    </Button>
+                                  </form>
+                                  {Number(priceInputs[item.id]) > 0 && (
+                                    <NetGrossPrice
+                                      amount={Number(priceInputs[item.id])}
+                                      currency={currency}
+                                      locale={formatLocale}
+                                      align="left"
+                                      size="sm"
+                                    />
+                                  )}
+                                </div>
                               ) : null}
                               {priceSaveError ? (
                                 <p role="alert" className="text-xs text-destructive">

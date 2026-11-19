@@ -268,6 +268,8 @@ export interface BaseContext {
       };
       startDate: Date;
       endDate: Date;
+      productionStartDate?: Date;
+      productionEndDate?: Date;
       items: Array<{
         productId: string;
         quantity: number;

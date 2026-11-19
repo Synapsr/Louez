@@ -13,7 +13,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
   InputPrice,
   Label,
   Separator,
@@ -27,6 +26,7 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { useReservationDurationLabel } from "../hooks/use-reservation-duration-label";
 import type { Customer, DetailedDuration, ReservationStepId } from "../types";
+import { NetGrossPrice } from "../utils/net-gross-price";
 
 export type ReservationSectionId = Exclude<ReservationStepId, "confirm">;
 
@@ -47,6 +47,8 @@ interface NewReservationSummaryPanelProps {
   isNewCustomer: boolean;
   startDate: Date | undefined;
   endDate: Date | undefined;
+  productionStartDate?: Date | undefined;
+  productionEndDate?: Date | undefined;
   duration: number;
   detailedDuration: DetailedDuration | null;
   timezone: string | undefined;
@@ -64,8 +66,8 @@ interface NewReservationSummaryPanelProps {
   onDiscountChange: (discount: ReservationDiscount) => void;
   depositOverride: number | null;
   onDepositOverrideChange: (value: number | null) => void;
-  sendConfirmationEmail: boolean;
-  onSendConfirmationEmailChange: (checked: boolean) => void;
+  sendConfirmationEmail?: boolean;
+  onSendConfirmationEmailChange?: (checked: boolean) => void;
   onNavigateToSection: (sectionId: ReservationSectionId) => void;
 }
 
@@ -74,6 +76,8 @@ export function NewReservationSummaryPanel({
   isNewCustomer,
   startDate,
   endDate,
+  productionStartDate,
+  productionEndDate,
   duration,
   detailedDuration,
   timezone,
@@ -90,8 +94,6 @@ export function NewReservationSummaryPanel({
   onDiscountChange,
   depositOverride,
   onDepositOverrideChange,
-  sendConfirmationEmail,
-  onSendConfirmationEmailChange,
   onNavigateToSection,
 }: NewReservationSummaryPanelProps) {
   const t = useTranslations("dashboard.reservations.manualForm");
@@ -100,7 +102,6 @@ export function NewReservationSummaryPanel({
   const [isEditingDeposit, setIsEditingDeposit] = useState(false);
 
   const effectiveDeposit = depositOverride ?? deposit;
-  const hasSelectedCustomerWithoutEmail = Boolean(selectedCustomer && !selectedCustomer.email);
 
   const isCustomerDone = Boolean(selectedCustomer);
   const isPeriodDone = Boolean(startDate && endDate && endDate >= startDate);
@@ -198,23 +199,62 @@ export function NewReservationSummaryPanel({
 
         {/* Period recap — duplicated by the confirmation sheet on a phone. */}
         {isPeriodDone && startDate && endDate && (
-          <div className="max-lg:hidden space-y-1 text-sm">
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">{t("startDate")}</span>
-              <span className="tabular-nums">
-                {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
-              </span>
+          <div className="max-lg:hidden space-y-2.5 text-sm">
+            <div className="space-y-1">
+              <p className="text-muted-foreground text-xs font-medium">
+                Okres rezerwacji (kalendarz i wycena)
+              </p>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">{t("startDate")}</span>
+                <span className="tabular-nums">
+                  {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">{t("endDate")}</span>
+                <span className="tabular-nums">
+                  {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2 font-medium">
+                <span>{t("duration")}</span>
+                <span>{durationLabel}</span>
+              </div>
             </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">{t("endDate")}</span>
-              <span className="tabular-nums">
-                {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-2 font-medium">
-              <span>{t("duration")}</span>
-              <span>{durationLabel}</span>
-            </div>
+
+            {(productionStartDate || productionEndDate) && (
+              <div className="space-y-1 rounded-lg border border-dashed bg-muted/30 p-2.5 text-xs">
+                <p className="text-muted-foreground font-medium">
+                  Okres produkcji (informacja wewnętrzna)
+                </p>
+                {productionStartDate && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Start produkcji</span>
+                    <span className="tabular-nums">
+                      {formatStoreDate(
+                        productionStartDate,
+                        timezone,
+                        "d MMM yyyy HH:mm",
+                        formatLocale,
+                      )}
+                    </span>
+                  </div>
+                )}
+                {productionEndDate && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Koniec produkcji</span>
+                    <span className="tabular-nums">
+                      {formatStoreDate(
+                        productionEndDate,
+                        timezone,
+                        "d MMM yyyy HH:mm",
+                        formatLocale,
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -222,38 +262,41 @@ export function NewReservationSummaryPanel({
         <Separator className="max-lg:hidden" />
 
         {/* Totals */}
-        <div className="space-y-1.5 text-sm">
-          <div className="flex justify-between gap-2">
+        <div className="space-y-2.5 text-sm">
+          <div className="flex items-start justify-between gap-2">
             <span className="text-muted-foreground">{t("subtotal")}</span>
-            <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+            <NetGrossPrice amount={subtotal} locale={formatLocale} />
           </div>
           {(tulipInsuranceAmount > 0 || isTulipInsuranceQuoteLoading) && (
-            <div className="flex justify-between gap-2">
+            <div className="flex items-start justify-between gap-2">
               <span className="text-muted-foreground">{t("tulipInsurance.title")}</span>
               {isTulipInsuranceQuoteLoading ? (
                 <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
               ) : (
-                <span className="tabular-nums">{formatCurrency(tulipInsuranceAmount)}</span>
+                <NetGrossPrice amount={tulipInsuranceAmount} locale={formatLocale} />
               )}
             </div>
           )}
           {deliveryFee > 0 && (
-            <div className="flex justify-between gap-2">
+            <div className="flex items-start justify-between gap-2">
               <span className="text-muted-foreground">{t("totalDeliveryFee")}</span>
-              <span className="tabular-nums">{formatCurrency(deliveryFee)}</span>
+              <NetGrossPrice amount={deliveryFee} locale={formatLocale} />
             </div>
           )}
 
           {/* Commercial discount */}
           {isEditingDiscount || discount.value != null ? (
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <span className="text-muted-foreground">{t("globalDiscount.label")}</span>
                 <span className="flex items-center gap-1">
                   {discountAmount > 0 && (
-                    <span className="tabular-nums text-green-600">
-                      -{formatCurrency(discountAmount)}
-                    </span>
+                    <NetGrossPrice
+                      amount={discountAmount}
+                      prefix="-"
+                      locale={formatLocale}
+                      netClassName="text-green-600"
+                    />
                   )}
                   <Button
                     type="button"
@@ -361,34 +404,11 @@ export function NewReservationSummaryPanel({
           </div>
 
           <Separator className="my-2" />
-          <div className="flex justify-between gap-2 text-base font-semibold">
-            <span>{t("total")}</span>
-            <span className="tabular-nums">{formatCurrency(total)}</span>
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold">{t("total")}</span>
+            <NetGrossPrice amount={total} size="lg" locale={formatLocale} />
           </div>
         </div>
-
-        <Separator />
-
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="sendConfirmationEmail"
-            checked={sendConfirmationEmail && !hasSelectedCustomerWithoutEmail}
-            disabled={hasSelectedCustomerWithoutEmail}
-            onCheckedChange={(checked) => onSendConfirmationEmailChange(checked === true)}
-          />
-          <label
-            htmlFor="sendConfirmationEmail"
-            className={cn(
-              "text-muted-foreground min-w-0 cursor-pointer text-sm leading-tight",
-              hasSelectedCustomerWithoutEmail && "cursor-not-allowed opacity-50",
-            )}
-          >
-            {t("sendConfirmationEmail")}
-          </label>
-        </div>
-        {hasSelectedCustomerWithoutEmail && (
-          <p className="text-muted-foreground pl-6 text-xs">{t("customerEmailNotConfigured")}</p>
-        )}
       </CardContent>
     </Card>
   );

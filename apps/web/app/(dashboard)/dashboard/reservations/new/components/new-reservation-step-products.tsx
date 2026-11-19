@@ -58,6 +58,7 @@ import type {
   SelectedProduct,
   ManualReservationUnitAvailability,
 } from "../types";
+import { calculateGrossFromNet, NetGrossPrice } from "../utils/net-gross-price";
 import { buildProductCombinations, getLineQuantityConstraints } from "../utils/variant-lines";
 
 interface NewReservationStepProductsProps {
@@ -518,16 +519,22 @@ export function NewReservationStepProducts({
                         <div className="mt-0.5">
                           {summaryPricing.productDuration > 0 ? (
                             <>
-                              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                                <span className="text-primary text-sm font-semibold">
-                                  {product.priceNegotiable && !productLines[0]?.priceOverride
-                                    ? t("priceNegotiable")
-                                    : formatCurrency(summaryPricing.lineSubtotal)}
-                                </span>
+                              <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
+                                {product.priceNegotiable && !productLines[0]?.priceOverride ? (
+                                  <span className="text-primary text-sm font-semibold">
+                                    {t("priceNegotiable")}
+                                  </span>
+                                ) : (
+                                  <NetGrossPrice
+                                    amount={summaryPricing.lineSubtotal}
+                                    align="left"
+                                    netClassName="text-primary"
+                                  />
+                                )}
                                 {summaryPricing.lineSavings > 0 && (
                                   <>
                                     <span className="text-muted-foreground text-xs line-through">
-                                      {formatCurrency(summaryPricing.lineOriginalSubtotal)}
+                                      {formatCurrency(summaryPricing.lineOriginalSubtotal)} netto
                                     </span>
                                     {discountDisplay != null && discountDisplay > 0 && (
                                       <Badge variant="success" className="text-xs">
@@ -537,7 +544,7 @@ export function NewReservationStepProducts({
                                   </>
                                 )}
                               </div>
-                              <p className="text-muted-foreground text-xs wrap-break-word">
+                              <p className="text-muted-foreground mt-0.5 text-xs wrap-break-word">
                                 {summaryPricing.isRateBased &&
                                 summaryPricing.ratePlan &&
                                 summaryPricing.ratePlan.length > 0
@@ -547,16 +554,22 @@ export function NewReservationStepProducts({
                                     )
                                   : product.priceNegotiable && !productLines[0]?.priceOverride
                                     ? t("priceNegotiable")
-                                    : `${formatCurrency(basePrice)}/${getProductPeriodLabel(product, productPricingMode)}`}
+                                    : `${formatCurrency(basePrice)} netto (${formatCurrency(calculateGrossFromNet(basePrice))} brutto)/${getProductPeriodLabel(product, productPricingMode)}`}
                               </p>
                             </>
                           ) : (
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-muted-foreground text-sm">
-                                {product.priceNegotiable && !productLines[0]?.priceOverride
-                                  ? t("priceNegotiable")
-                                  : `${formatCurrency(basePrice)}/${getProductPeriodLabel(product, productPricingMode)}`}
-                              </span>
+                              {product.priceNegotiable && !productLines[0]?.priceOverride ? (
+                                <span className="text-muted-foreground text-sm">
+                                  {t("priceNegotiable")}
+                                </span>
+                              ) : (
+                                <NetGrossPrice
+                                  amount={basePrice}
+                                  suffix={`/${getProductPeriodLabel(product, productPricingMode)}`}
+                                  align="left"
+                                />
+                              )}
                             </div>
                           )}
                         </div>
@@ -802,38 +815,36 @@ export function NewReservationStepProducts({
                                       {t("priceNegotiable")}
                                     </span>
                                   ) : pricing.hasPriceOverride ? (
-                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <div className="flex flex-wrap items-start gap-x-2 gap-y-1 sm:justify-end">
                                       <span className="text-muted-foreground text-xs line-through">
                                         {formatCurrency(
                                           pricing.calculatedPrice *
                                             line.quantity *
                                             pricing.productDuration,
-                                        )}
+                                        )}{" "}
+                                        netto
                                       </span>
-                                      <span
-                                        className={cn(
-                                          "font-medium",
+                                      <NetGrossPrice
+                                        amount={pricing.lineSubtotal}
+                                        netClassName={
                                           pricing.effectivePrice < pricing.calculatedPrice
                                             ? "text-green-600"
-                                            : "text-orange-600",
-                                        )}
-                                      >
-                                        {formatCurrency(pricing.lineSubtotal)}
-                                      </span>
+                                            : "text-orange-600"
+                                        }
+                                      />
                                     </div>
                                   ) : pricing.hasDiscount ? (
-                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <div className="flex flex-wrap items-start gap-x-2 gap-y-1 sm:justify-end">
                                       <span className="text-muted-foreground text-xs line-through">
-                                        {formatCurrency(pricing.lineOriginalSubtotal)}
+                                        {formatCurrency(pricing.lineOriginalSubtotal)} netto
                                       </span>
-                                      <span className="font-medium text-green-600">
-                                        {formatCurrency(pricing.lineSubtotal)}
-                                      </span>
+                                      <NetGrossPrice
+                                        amount={pricing.lineSubtotal}
+                                        netClassName="text-green-600"
+                                      />
                                     </div>
                                   ) : (
-                                    <span className="font-medium">
-                                      {formatCurrency(pricing.lineSubtotal)}
-                                    </span>
+                                    <NetGrossPrice amount={pricing.lineSubtotal} />
                                   )}
                                 </div>
                               </div>
@@ -918,14 +929,20 @@ export function NewReservationStepProducts({
                             {t("customItem.badge")}
                           </Badge>
                         </div>
-                        <p className="text-muted-foreground mt-0.5 text-sm">
-                          {formatCurrency(item.unitPrice)}/
-                          {item.pricingMode === "hour"
-                            ? t("perHour")
-                            : item.pricingMode === "week"
-                              ? "week"
-                              : t("perDay")}
-                        </p>
+                        <div className="mt-0.5">
+                          <NetGrossPrice
+                            amount={item.unitPrice}
+                            suffix={`/${
+                              item.pricingMode === "hour"
+                                ? t("perHour")
+                                : item.pricingMode === "week"
+                                  ? "week"
+                                  : t("perDay")
+                            }`}
+                            align="left"
+                            size="sm"
+                          />
+                        </div>
                         {item.description && (
                           <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
                             {item.description}
@@ -974,9 +991,7 @@ export function NewReservationStepProducts({
                               ? "sem"
                               : "j"}
                         </span>
-                        <span className="font-medium">
-                          {formatCurrency(getCustomItemTotal(item))}
-                        </span>
+                        <NetGrossPrice amount={getCustomItemTotal(item)} />
                       </div>
                     )}
                   </div>
@@ -1026,38 +1041,41 @@ export function NewReservationStepProducts({
 
           {hasItems && (
             <div className="space-y-3">
-              <div className="bg-muted/50 space-y-2 rounded-lg p-4">
+              <div className="bg-muted/50 space-y-2.5 rounded-lg p-4">
                 {totalSavings > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("originalPrice")}</span>
                     <span className="text-muted-foreground line-through">
-                      {formatCurrency(originalSubtotal)}
+                      {formatCurrency(originalSubtotal)} netto
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm">
+                <div className="flex items-start justify-between text-sm">
                   <span className="text-muted-foreground">{t("subtotal")}</span>
-                  <span className={totalSavings > 0 ? "font-medium text-green-600" : ""}>
-                    {formatCurrency(subtotal)}
-                  </span>
+                  <NetGrossPrice
+                    amount={subtotal}
+                    netClassName={totalSavings > 0 ? "text-green-600" : undefined}
+                  />
                 </div>
                 {totalSavings > 0 && (
-                  <div className="flex justify-between text-sm">
+                  <div className="flex items-start justify-between text-sm">
                     <span className="text-green-600">{t("totalSavings")}</span>
-                    <span className="font-medium text-green-600">
-                      -{formatCurrency(totalSavings)}
-                    </span>
+                    <NetGrossPrice
+                      amount={totalSavings}
+                      prefix="-"
+                      netClassName="text-green-600"
+                    />
                   </div>
                 )}
                 {isTulipInsuranceEnabledForReservation &&
                   (visibleTulipInsuranceAmount > 0 || isTulipInsuranceQuoteLoading) && (
-                    <div className="flex justify-between text-sm">
+                    <div className="flex items-start justify-between text-sm">
                       <span className="text-muted-foreground">{t("tulipInsurance.title")}</span>
-                      <span className="font-medium">
-                        {isTulipInsuranceQuoteLoading
-                          ? t("tulipInsurance.calculating")
-                          : formatCurrency(visibleTulipInsuranceAmount)}
-                      </span>
+                      {isTulipInsuranceQuoteLoading ? (
+                        <span className="font-medium">{t("tulipInsurance.calculating")}</span>
+                      ) : (
+                        <NetGrossPrice amount={visibleTulipInsuranceAmount} />
+                      )}
                     </div>
                   )}
                 <div className="flex justify-between text-sm">
@@ -1065,9 +1083,9 @@ export function NewReservationStepProducts({
                   <span>{formatCurrency(deposit)}</span>
                 </div>
                 <Separator className="my-2" />
-                <div className="flex justify-between font-medium">
+                <div className="flex items-start justify-between font-medium">
                   <span>{t("total")}</span>
-                  <span>{formatCurrency(totalWithInsurance)}</span>
+                  <NetGrossPrice amount={totalWithInsurance} size="lg" />
                 </div>
               </div>
 

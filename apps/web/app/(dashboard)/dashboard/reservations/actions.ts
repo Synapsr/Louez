@@ -1161,6 +1161,8 @@ interface CreateReservationData {
   internalTitle?: string;
   bookedByName: string;
   internalNotes?: string;
+  productionStartDate?: Date;
+  productionEndDate?: Date;
   /** Flat commercial discount in currency units; clamped to the subtotal. */
   discountAmount?: number;
   /** Replaces the computed deposit total when provided. */
@@ -1940,6 +1942,8 @@ export async function createManualReservation(data: CreateReservationData) {
           : "confirmed",
       startDate: data.startDate,
       endDate: data.endDate,
+      productionStartDate: data.productionStartDate ?? null,
+      productionEndDate: data.productionEndDate ?? null,
       subtotalAmount: subtotalAmount.toFixed(2),
       depositAmount: depositAmount.toFixed(2),
       totalAmount: totalAmount.toFixed(2),

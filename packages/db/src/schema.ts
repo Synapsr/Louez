@@ -1340,6 +1340,10 @@ export const reservations = mysqlTable(
     pickedUpAt: timestamp("picked_up_at", { mode: "date" }),
     returnedAt: timestamp("returned_at", { mode: "date" }),
 
+    // Internal production period (optional, informational only — not used for pricing or calendar blocking)
+    productionStartDate: timestamp("production_start_date", { mode: "date" }),
+    productionEndDate: timestamp("production_end_date", { mode: "date" }),
+
     // Notes
     customerNotes: text("customer_notes"),
     internalNotes: text("internal_notes"),

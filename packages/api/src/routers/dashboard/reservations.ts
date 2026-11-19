@@ -221,6 +221,12 @@ const createManualReservation = requirePermission("write")
         ...payload,
         startDate: toDate(payload.startDate)!,
         endDate: toDate(payload.endDate)!,
+        productionStartDate: payload.productionStartDate
+          ? toDate(payload.productionStartDate)
+          : undefined,
+        productionEndDate: payload.productionEndDate
+          ? toDate(payload.productionEndDate)
+          : undefined,
       });
       if (result.error === "errors.insufficientCapacity") {
         return {

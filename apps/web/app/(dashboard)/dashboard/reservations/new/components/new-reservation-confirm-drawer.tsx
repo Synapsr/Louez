@@ -22,6 +22,7 @@ import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import type { AvailabilityWarning, Customer, PeriodWarning } from "../types";
+import { NetGrossPrice } from "../utils/net-gross-price";
 import type { ReservationRecapDeliveryLeg, ReservationRecapItemLine } from "../utils/recap-lines";
 
 interface NewReservationConfirmDrawerProps {
@@ -37,6 +38,8 @@ interface NewReservationConfirmDrawerProps {
 
   startDate: Date | undefined;
   endDate: Date | undefined;
+  productionStartDate?: Date | undefined;
+  productionEndDate?: Date | undefined;
   durationLabel: string;
   timezone: string | undefined;
 
@@ -75,6 +78,8 @@ export function NewReservationConfirmDrawer({
   isNewCustomer,
   startDate,
   endDate,
+  productionStartDate,
+  productionEndDate,
   durationLabel,
   timezone,
   itemLines,
@@ -167,26 +172,62 @@ export function NewReservationConfirmDrawer({
 
           {/* Period */}
           {startDate && endDate && (
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
-                {t("period")}
-              </p>
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">{t("startDate")}</span>
-                <span className="tabular-nums">
-                  {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
-                </span>
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+                  Okres rezerwacji (kalendarz i wycena)
+                </p>
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">{t("startDate")}</span>
+                  <span className="tabular-nums">
+                    {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">{t("endDate")}</span>
+                  <span className="tabular-nums">
+                    {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 text-sm font-medium">
+                  <span>{t("duration")}</span>
+                  <span>{durationLabel}</span>
+                </div>
               </div>
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">{t("endDate")}</span>
-                <span className="tabular-nums">
-                  {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-3 text-sm font-medium">
-                <span>{t("duration")}</span>
-                <span>{durationLabel}</span>
-              </div>
+
+              {(productionStartDate || productionEndDate) && (
+                <div className="space-y-1 rounded-lg border border-dashed bg-muted/30 p-2.5 text-xs">
+                  <p className="text-muted-foreground font-medium">
+                    Okres produkcji (informacja wewnętrzna)
+                  </p>
+                  {productionStartDate && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-muted-foreground">Start produkcji</span>
+                      <span className="tabular-nums">
+                        {formatStoreDate(
+                          productionStartDate,
+                          timezone,
+                          "d MMM yyyy HH:mm",
+                          formatLocale,
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {productionEndDate && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-muted-foreground">Koniec produkcji</span>
+                      <span className="tabular-nums">
+                        {formatStoreDate(
+                          productionEndDate,
+                          timezone,
+                          "d MMM yyyy HH:mm",
+                          formatLocale,
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -212,7 +253,7 @@ export function NewReservationConfirmDrawer({
                       <p className="text-xs text-orange-600">{t("priceOverride.modified")}</p>
                     )}
                   </div>
-                  <span className="shrink-0 tabular-nums">{formatCurrency(line.total)}</span>
+                  <NetGrossPrice amount={line.total} locale={formatLocale} className="shrink-0" />
                 </li>
               ))}
             </ul>
@@ -234,7 +275,11 @@ export function NewReservationConfirmDrawer({
                     </p>
                   </div>
                   {(leg?.fee ?? 0) > 0 && (
-                    <span className="shrink-0 tabular-nums">{formatCurrency(leg?.fee ?? 0)}</span>
+                    <NetGrossPrice
+                      amount={leg?.fee ?? 0}
+                      locale={formatLocale}
+                      className="shrink-0"
+                    />
                   )}
                 </div>
               ))}
@@ -244,37 +289,40 @@ export function NewReservationConfirmDrawer({
           <Separator />
 
           {/* Totals */}
-          <div className="space-y-1.5 text-sm">
-            <div className="flex items-baseline justify-between gap-3">
+          <div className="space-y-2 text-sm">
+            <div className="flex items-start justify-between gap-3">
               <span className="text-muted-foreground">{t("subtotal")}</span>
-              <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+              <NetGrossPrice amount={subtotal} locale={formatLocale} />
             </div>
             {tulipInsuranceAmount > 0 && (
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">{t("tulipInsurance.title")}</span>
-                <span className="tabular-nums">{formatCurrency(tulipInsuranceAmount)}</span>
+                <NetGrossPrice amount={tulipInsuranceAmount} locale={formatLocale} />
               </div>
             )}
             {deliveryFee > 0 && (
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">{t("totalDeliveryFee")}</span>
-                <span className="tabular-nums">{formatCurrency(deliveryFee)}</span>
+                <NetGrossPrice amount={deliveryFee} locale={formatLocale} />
               </div>
             )}
             {discountAmount > 0 && (
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">{t("globalDiscount.label")}</span>
-                <span className="tabular-nums text-green-600">
-                  -{formatCurrency(discountAmount)}
-                </span>
+                <NetGrossPrice
+                  amount={discountAmount}
+                  prefix="-"
+                  locale={formatLocale}
+                  netClassName="text-green-600"
+                />
               </div>
             )}
 
             <Separator className="my-2" />
 
-            <div className="flex items-baseline justify-between gap-3 text-lg font-semibold">
-              <span>{t("total")}</span>
-              <span className="tabular-nums">{formatCurrency(total)}</span>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-lg font-semibold">{t("total")}</span>
+              <NetGrossPrice amount={total} size="lg" locale={formatLocale} />
             </div>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-muted-foreground">{t("deposit")}</span>

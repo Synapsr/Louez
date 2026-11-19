@@ -1,5 +1,14 @@
 {$NEXT_PUBLIC_APP_DOMAIN} {
     tls /etc/caddy/certs/certkey.pem /etc/caddy/certs/privkey.pem
     encode zstd gzip
+
+    log {
+        output file /data/access.log {
+            roll_size 20mb
+            roll_keep 5
+        }
+    }
+
     reverse_proxy louez:3000
 }
+

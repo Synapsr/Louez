@@ -600,6 +600,8 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
       .optional(),
     startDate: z.union([dateTimeOrDateSchema, z.date()]),
     endDate: z.union([dateTimeOrDateSchema, z.date()]),
+    productionStartDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
+    productionEndDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     items: z.array(
       z.object({
         productId: z.string().length(21),

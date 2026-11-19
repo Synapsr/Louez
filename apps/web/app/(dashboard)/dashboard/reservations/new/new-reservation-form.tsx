@@ -11,6 +11,8 @@ import {
   Calendar,
   Check,
   FileText,
+  Mail,
+  MailX,
   PenLine,
   Plus,
   ShieldCheckIcon,
@@ -81,6 +83,7 @@ import type {
   SelectedProduct,
   StepFieldName,
 } from "./types";
+import { NetGrossPrice } from "./utils/net-gross-price";
 import { buildRecapDeliveryLeg, buildRecapItemLines } from "./utils/recap-lines";
 import { buildProductCombinations, getLineQuantityConstraints } from "./utils/variant-lines";
 import { createManualReservationSchema } from "./validation";
@@ -224,6 +227,14 @@ export function NewReservationForm({
     isOpen: false,
     asQuote: false,
   });
+  const [emailConfirmDialog, setEmailConfirmDialog] = useState<{
+    isOpen: boolean;
+    values: NewReservationFormValues | null;
+  }>({
+    isOpen: false,
+    values: null,
+  });
+  const [productionEndDatePickerOpen, setProductionEndDatePickerOpen] = useState(false);
   const pendingSubmitValuesRef = useRef<NewReservationFormValues | null>(null);
 
   const isDeliveryEnabled = Boolean(
@@ -374,11 +385,19 @@ export function NewReservationForm({
 
   const submitManualReservation = async (
     value: NewReservationFormValues,
-    options: { allowOverbooking?: boolean } = {},
+    options: { allowOverbooking?: boolean; sendConfirmationEmail?: boolean } = {},
   ) => {
     if (!value.startDate || !value.endDate) {
       toastManager.add({ title: t("selectDatesError"), type: "error" });
       return;
+    }
+
+    const effectiveSendConfirmationEmail =
+      options.sendConfirmationEmail !== undefined
+        ? options.sendConfirmationEmail
+        : sendConfirmationEmail;
+    if (options.sendConfirmationEmail !== undefined) {
+      setSendConfirmationEmail(options.sendConfirmationEmail);
     }
 
     try {
@@ -394,6 +413,8 @@ export function NewReservationForm({
           customerId: value.customerId,
           startDate: value.startDate,
           endDate: value.endDate,
+          productionStartDate: value.productionStartDate || undefined,
+          productionEndDate: value.productionEndDate || undefined,
           items: selectedProducts,
           customItems: customItems.map((item) => ({
             name: item.name,
@@ -447,7 +468,8 @@ export function NewReservationForm({
           depositOverride: depositOverride ?? undefined,
           tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
           sendConfirmationEmail:
-            Boolean(selectedCustomer?.email) && (sendAsQuoteRef.current || sendConfirmationEmail),
+            Boolean(selectedCustomer?.email) &&
+            (sendAsQuoteRef.current || effectiveSendConfirmationEmail),
           sendAsQuote: sendAsQuoteRef.current,
           allowOverbooking: options.allowOverbooking,
         },
@@ -546,6 +568,8 @@ export function NewReservationForm({
       customerId: "",
       startDate: undefined as Date | undefined,
       endDate: undefined as Date | undefined,
+      productionStartDate: undefined as Date | undefined,
+      productionEndDate: undefined as Date | undefined,
       internalTitle: "",
       bookedByName: "",
       internalNotes: "",
@@ -576,6 +600,11 @@ export function NewReservationForm({
         return;
       }
 
+      if (!sendAsQuoteRef.current) {
+        setEmailConfirmDialog({ isOpen: true, values: value });
+        return;
+      }
+
       await submitManualReservation(value);
     },
   });
@@ -583,6 +612,14 @@ export function NewReservationForm({
   const watchCustomerId = useStore(form.store, (s) => s.values.customerId);
   const watchStartDate = useStore(form.store, (s) => s.values.startDate as Date | undefined);
   const watchEndDate = useStore(form.store, (s) => s.values.endDate as Date | undefined);
+  const watchProductionStartDate = useStore(
+    form.store,
+    (s) => s.values.productionStartDate as Date | undefined,
+  );
+  const watchProductionEndDate = useStore(
+    form.store,
+    (s) => s.values.productionEndDate as Date | undefined,
+  );
   const watchedValues = useStore(form.store, (s) => s.values as NewReservationFormValues);
   const isSaving = createReservationMutation.isPending;
 
@@ -1427,15 +1464,14 @@ export function NewReservationForm({
     if (!value) return;
 
     sendAsQuoteRef.current = confirmDrawer.asQuote;
+    setConfirmDrawer((current) => ({ ...current, isOpen: false }));
 
-    try {
-      await submitManualReservation(value);
-    } finally {
-      // Closed either way: a success navigates away, and a failure has to
-      // hand the screen back — an overbooking dialog cannot open under a
-      // sheet that is still covering it.
-      setConfirmDrawer((current) => ({ ...current, isOpen: false }));
+    if (!confirmDrawer.asQuote) {
+      setEmailConfirmDialog({ isOpen: true, values: value });
+      return;
     }
+
+    await submitManualReservation(value);
   };
 
   return (
@@ -1463,103 +1499,95 @@ export function NewReservationForm({
                     </CardTitle>
                     <CardDescription>{t("periodStepDescription")}</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-6 sm:grid-cols-2">
-                      <form.AppField name="startDate">
-                        {(field) => {
-                          const timeSlots = getTimeSlotsForDate(field.state.value);
-                          return (
-                            <field.ReservationDatePicker
-                              id="reservation-start-date"
-                              label={t("startDate")}
-                              minTime={timeSlots.minTime}
-                              maxTime={timeSlots.maxTime}
-                              timezone={timezone}
-                              onChange={() => clearStepFieldError("startDate")}
-                              defaultTime={defaultTimeSlot}
-                              range={{
-                                role: "start",
-                                otherValue: watchEndDate,
-                                onOtherChange: (date) => {
-                                  form.setFieldValue("endDate", date);
-                                  clearStepFieldError("endDate");
-                                },
-                              }}
-                            />
-                          );
-                        }}
-                      </form.AppField>
-                      <form.AppField name="endDate">
-                        {(field) => {
-                          const timeSlots = getTimeSlotsForDate(field.state.value);
-                          return (
-                            <field.ReservationDatePicker
-                              id="reservation-end-date"
-                              label={t("endDate")}
-                              minTime={timeSlots.minTime}
-                              maxTime={timeSlots.maxTime}
-                              timezone={timezone}
-                              referenceDate={watchStartDate}
-                              open={endDatePickerOpen}
-                              onOpenChange={setEndDatePickerOpen}
-                              onChange={() => clearStepFieldError("endDate")}
-                              defaultTime={defaultTimeSlot}
-                              range={{
-                                role: "end",
-                                otherValue: watchStartDate,
-                                onOtherChange: (date) => {
-                                  form.setFieldValue("startDate", date);
-                                  clearStepFieldError("startDate");
-                                },
-                              }}
-                            />
-                          );
-                        }}
-                      </form.AppField>
-                    </div>
+                  <CardContent className="space-y-8">
+                    {/* 1. Okres rezerwacji (kalendarz i wycena) */}
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-semibold">Okres rezerwacji</h3>
+                          <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                            Wyświetlany w kalendarzu i wyceniany
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Główny termin rezerwacji widoczny w kalendarzu oraz brany pod uwagę przy
+                          obliczaniu ceny i dostępności.
+                        </p>
+                      </div>
 
-                    {watchStartDate && watchEndDate && duration > 0 && (
-                      <div className="mt-6 space-y-2.5">
-                        <div className="bg-card relative flex items-center justify-between gap-3 rounded-xl border px-4 py-3 sm:gap-4">
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium tabular-nums">
-                              {formatStoreDate(
-                                watchStartDate,
-                                timezone,
-                                "d MMM yyyy",
-                                formatLocale,
-                              )}
-                            </p>
-                            <p className="text-muted-foreground text-[11px] tabular-nums">
-                              {formatStoreDate(watchStartDate, timezone, "HH:mm", formatLocale)}
-                            </p>
-                          </div>
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <form.AppField name="startDate">
+                          {(field) => {
+                            const timeSlots = getTimeSlotsForDate(field.state.value);
+                            return (
+                              <field.ReservationDatePicker
+                                id="reservation-start-date"
+                                label={t("startDate")}
+                                minTime={timeSlots.minTime}
+                                maxTime={timeSlots.maxTime}
+                                timezone={timezone}
+                                onChange={() => clearStepFieldError("startDate")}
+                                defaultTime={defaultTimeSlot}
+                                range={{
+                                  role: "start",
+                                  otherValue: watchEndDate,
+                                  onOtherChange: (date) => {
+                                    form.setFieldValue("endDate", date);
+                                    clearStepFieldError("endDate");
+                                  },
+                                }}
+                              />
+                            );
+                          }}
+                        </form.AppField>
+                        <form.AppField name="endDate">
+                          {(field) => {
+                            const timeSlots = getTimeSlotsForDate(field.state.value);
+                            return (
+                              <field.ReservationDatePicker
+                                id="reservation-end-date"
+                                label={t("endDate")}
+                                minTime={timeSlots.minTime}
+                                maxTime={timeSlots.maxTime}
+                                timezone={timezone}
+                                referenceDate={watchStartDate}
+                                open={endDatePickerOpen}
+                                onOpenChange={setEndDatePickerOpen}
+                                onChange={() => clearStepFieldError("endDate")}
+                                defaultTime={defaultTimeSlot}
+                                range={{
+                                  role: "end",
+                                  otherValue: watchStartDate,
+                                  onOtherChange: (date) => {
+                                    form.setFieldValue("startDate", date);
+                                    clearStepFieldError("startDate");
+                                  },
+                                }}
+                              />
+                            );
+                          }}
+                        </form.AppField>
+                      </div>
 
-                          {detailedDuration && (
-                            <span className="bg-card max-w-20 shrink-0 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums sm:hidden">
-                              {[
-                                detailedDuration.days > 0 &&
-                                  `${detailedDuration.days} ${tCommon("dayUnit", { count: detailedDuration.days })}`,
-                                detailedDuration.hours > 0 && `${detailedDuration.hours}h`,
-                                detailedDuration.minutes > 0 && `${detailedDuration.minutes} min`,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ") || `0 min`}
-                            </span>
-                          )}
-
-                          <div className="relative hidden h-3 flex-1 items-center justify-between sm:flex">
-                            <div className="timeline-dash-flow absolute inset-x-0 top-1/2 h-px -translate-y-1/2" />
-                            <div className="relative h-2 w-2 shrink-0">
-                              <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full" />
-                              <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
+                      {watchStartDate && watchEndDate && duration > 0 && (
+                        <div className="mt-4 space-y-2.5">
+                          <div className="bg-card relative flex items-center justify-between gap-3 rounded-xl border px-4 py-3 sm:gap-4">
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium tabular-nums">
+                                {formatStoreDate(
+                                  watchStartDate,
+                                  timezone,
+                                  "d MMM yyyy",
+                                  formatLocale,
+                                )}
+                              </p>
+                              <p className="text-muted-foreground text-[11px] tabular-nums">
+                                {formatStoreDate(watchStartDate, timezone, "HH:mm", formatLocale)}
+                              </p>
                             </div>
-                            <div className="relative h-2 w-2 shrink-0">
-                              <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full [animation-delay:1.2s]" />
-                              <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
-                            </div>
+
                             {detailedDuration && (
-                              <span className="bg-card absolute top-1/2 left-1/2 max-w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums">
+                              <span className="bg-card max-w-20 shrink-0 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums sm:hidden">
                                 {[
                                   detailedDuration.days > 0 &&
                                     `${detailedDuration.days} ${tCommon("dayUnit", { count: detailedDuration.days })}`,
@@ -1570,46 +1598,153 @@ export function NewReservationForm({
                                   .join(" · ") || `0 min`}
                               </span>
                             )}
-                          </div>
 
-                          <div className="min-w-0 text-right">
-                            <p className="text-xs font-medium tabular-nums">
-                              {formatStoreDate(watchEndDate, timezone, "d MMM yyyy", formatLocale)}
-                            </p>
-                            <p className="text-muted-foreground text-[11px] tabular-nums">
-                              {formatStoreDate(watchEndDate, timezone, "HH:mm", formatLocale)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {periodWarnings.length > 0 && (
-                          <div className="space-y-1.5">
-                            {periodWarnings.map((warning, index) => (
-                              <div
-                                key={`${warning.type}-${warning.field}-${index}`}
-                                className="bg-warning/10 flex items-start gap-2.5 rounded-lg px-3 py-2"
-                              >
-                                <AlertTriangle className="text-warning mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                <div className="min-w-0 space-y-0.5">
-                                  <p className="text-foreground text-xs font-medium">
-                                    {warning.message}
-                                  </p>
-                                  {warning.details && (
-                                    <p className="text-muted-foreground text-[11px]">
-                                      {warning.details}
-                                    </p>
-                                  )}
-                                </div>
+                            <div className="relative hidden h-3 flex-1 items-center justify-between sm:flex">
+                              <div className="timeline-dash-flow absolute inset-x-0 top-1/2 h-px -translate-y-1/2" />
+                              <div className="relative h-2 w-2 shrink-0">
+                                <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full" />
+                                <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
                               </div>
-                            ))}
-                            <p className="text-muted-foreground flex items-center gap-1.5 px-1 pt-1 text-[11px]">
-                              <ShieldCheckIcon className="h-3 w-3" />
-                              {t("warnings.canContinue")}
-                            </p>
+                              <div className="relative h-2 w-2 shrink-0">
+                                <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full [animation-delay:1.2s]" />
+                                <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
+                              </div>
+                              {detailedDuration && (
+                                <span className="bg-card absolute top-1/2 left-1/2 max-w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums">
+                                  {[
+                                    detailedDuration.days > 0 &&
+                                      `${detailedDuration.days} ${tCommon("dayUnit", { count: detailedDuration.days })}`,
+                                    detailedDuration.hours > 0 && `${detailedDuration.hours}h`,
+                                    detailedDuration.minutes > 0 &&
+                                      `${detailedDuration.minutes} min`,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ") || `0 min`}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 text-right">
+                              <p className="text-xs font-medium tabular-nums">
+                                {formatStoreDate(watchEndDate, timezone, "d MMM yyyy", formatLocale)}
+                              </p>
+                              <p className="text-muted-foreground text-[11px] tabular-nums">
+                                {formatStoreDate(watchEndDate, timezone, "HH:mm", formatLocale)}
+                              </p>
+                            </div>
                           </div>
+
+                          {periodWarnings.length > 0 && (
+                            <div className="space-y-1.5">
+                              {periodWarnings.map((warning, index) => (
+                                <div
+                                  key={`${warning.type}-${warning.field}-${index}`}
+                                  className="bg-warning/10 flex items-start gap-2.5 rounded-lg px-3 py-2"
+                                >
+                                  <AlertTriangle className="text-warning mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                  <div className="min-w-0 space-y-0.5">
+                                    <p className="text-foreground text-xs font-medium">
+                                      {warning.message}
+                                    </p>
+                                    {warning.details && (
+                                      <p className="text-muted-foreground text-[11px]">
+                                        {warning.details}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              <p className="text-muted-foreground flex items-center gap-1.5 px-1 pt-1 text-[11px]">
+                                <ShieldCheckIcon className="h-3 w-3" />
+                                {t("warnings.canContinue")}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 2. Okres produkcji (opcjonalny, informacja wewnętrzna) */}
+                    <div className="space-y-4 rounded-xl border border-dashed bg-muted/20 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-sm font-semibold">Okres produkcji</h3>
+                            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                              Opcjonalne · Informacja wewnętrzna
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Informacja wewnętrzna o godzinach zdjęć/produkcji. Nie jest brana pod
+                            uwagę przy wycenie ani blokadzie w kalendarzu.
+                          </p>
+                        </div>
+                        {(watchProductionStartDate || watchProductionEndDate) && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground"
+                            onClick={() => {
+                              form.setFieldValue("productionStartDate", undefined);
+                              form.setFieldValue("productionEndDate", undefined);
+                            }}
+                          >
+                            Wyczyść
+                          </Button>
                         )}
                       </div>
-                    )}
+
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <form.AppField name="productionStartDate">
+                          {(field) => {
+                            const timeSlots = getTimeSlotsForDate(field.state.value);
+                            return (
+                              <field.ReservationDatePicker
+                                id="production-start-date"
+                                label="Początek produkcji (opcjonalnie)"
+                                minTime={timeSlots.minTime}
+                                maxTime={timeSlots.maxTime}
+                                timezone={timezone}
+                                defaultTime={defaultTimeSlot}
+                                range={{
+                                  role: "start",
+                                  otherValue: watchProductionEndDate,
+                                  onOtherChange: (date) => {
+                                    form.setFieldValue("productionEndDate", date);
+                                  },
+                                }}
+                              />
+                            );
+                          }}
+                        </form.AppField>
+                        <form.AppField name="productionEndDate">
+                          {(field) => {
+                            const timeSlots = getTimeSlotsForDate(field.state.value);
+                            return (
+                              <field.ReservationDatePicker
+                                id="production-end-date"
+                                label="Koniec produkcji (opcjonalnie)"
+                                minTime={timeSlots.minTime}
+                                maxTime={timeSlots.maxTime}
+                                timezone={timezone}
+                                referenceDate={watchProductionStartDate ?? watchStartDate}
+                                open={productionEndDatePickerOpen}
+                                onOpenChange={setProductionEndDatePickerOpen}
+                                defaultTime={defaultTimeSlot}
+                                range={{
+                                  role: "end",
+                                  otherValue: watchProductionStartDate,
+                                  onOtherChange: (date) => {
+                                    form.setFieldValue("productionStartDate", date);
+                                  },
+                                }}
+                              />
+                            );
+                          }}
+                        </form.AppField>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1731,6 +1866,8 @@ export function NewReservationForm({
                 isNewCustomer={isNewCustomer}
                 startDate={watchStartDate}
                 endDate={watchEndDate}
+                productionStartDate={watchProductionStartDate}
+                productionEndDate={watchProductionEndDate}
                 duration={duration}
                 detailedDuration={detailedDuration}
                 timezone={timezone}
@@ -1823,6 +1960,8 @@ export function NewReservationForm({
         isNewCustomer={isNewCustomer}
         startDate={watchStartDate}
         endDate={watchEndDate}
+        productionStartDate={watchProductionStartDate}
+        productionEndDate={watchProductionEndDate}
         durationLabel={durationLabel}
         timezone={timezone}
         itemLines={recapItemLines}
@@ -2011,6 +2150,16 @@ export function NewReservationForm({
                       </div>
                     </div>
                   </div>
+                  {(Number(customItemForm.totalPrice) > 0 ||
+                    Number(customItemForm.unitPrice) > 0) && (
+                    <div className="flex items-start justify-between rounded-md border bg-background/80 px-3 py-2 text-xs">
+                      <span className="text-muted-foreground">Podgląd ceny pozycji (Netto / Brutto)</span>
+                      <NetGrossPrice
+                        amount={Number(customItemForm.totalPrice) || 0}
+                        size="sm"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               {customItemDuration === 0 && (
@@ -2056,14 +2205,14 @@ export function NewReservationForm({
             <div className="space-y-4">
               {/* Display calculated price for reference */}
               <div className="bg-muted/50 rounded-lg p-3">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-start justify-between text-sm">
                   <span className="text-muted-foreground">
                     {t("priceOverride.calculatedPrice")}
                   </span>
-                  <span className="font-medium">
-                    {formatCurrency(priceOverrideDialog.currentPrice)}/
-                    {getPricingUnitLabel(priceOverrideDialog.pricingMode)}
-                  </span>
+                  <NetGrossPrice
+                    amount={priceOverrideDialog.currentPrice}
+                    suffix={`/${getPricingUnitLabel(priceOverrideDialog.pricingMode)}`}
+                  />
                 </div>
               </div>
 
@@ -2106,23 +2255,21 @@ export function NewReservationForm({
 
               {/* Live preview: resulting unit price + total, delta vs calculated */}
               {resolvedOverrideUnitPrice != null && priceOverrideDialog.duration > 0 && (
-                <div className="space-y-1 rounded-lg border p-3 text-sm">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-2 rounded-lg border p-3 text-sm">
+                  <div className="flex items-start justify-between">
                     <span className="text-muted-foreground">
                       {t("priceOverride.resultingUnitPrice")}
                     </span>
-                    <span className="font-medium tabular-nums">
-                      {formatCurrency(resolvedOverrideUnitPrice)}/
-                      {getPricingUnitLabel(priceOverrideDialog.pricingMode)}
-                    </span>
+                    <NetGrossPrice
+                      amount={resolvedOverrideUnitPrice}
+                      suffix={`/${getPricingUnitLabel(priceOverrideDialog.pricingMode)}`}
+                    />
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between">
                     <span className="text-muted-foreground">
                       {t("priceOverride.totalForPeriod")}
                     </span>
-                    <span className="font-medium tabular-nums">
-                      {formatCurrency(resolvedOverrideUnitPrice * priceOverrideDivisor)}
-                    </span>
+                    <NetGrossPrice amount={resolvedOverrideUnitPrice * priceOverrideDivisor} />
                   </div>
                   {Math.abs(resolvedOverrideUnitPrice - priceOverrideDialog.currentPrice) >=
                     0.005 && (
@@ -2237,6 +2384,136 @@ export function NewReservationForm({
             >
               {t("overbooking.createAnyway")}
             </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
+
+      {/* Confirmation Email Decision Popup */}
+      <Dialog
+        open={emailConfirmDialog.isOpen}
+        onOpenChange={(open) => {
+          if (!open && !isSaving) {
+            setEmailConfirmDialog((current) => ({ ...current, isOpen: false }));
+          }
+        }}
+      >
+        <DialogPopup className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              Czy wysłać potwierdzenie rezerwacji do klienta?
+            </DialogTitle>
+            <DialogDescription>
+              Wybierz, czy po utworzeniu rezerwacji system ma automatycznie wysłać powiadomienie
+              e-mail do klienta.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogPanel>
+            <div className="space-y-3 text-sm">
+              {selectedCustomer?.email ? (
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">Adresat powiadomienia</p>
+                  <p className="font-medium text-foreground">
+                    {[selectedCustomer.firstName, selectedCustomer.lastName]
+                      .filter(Boolean)
+                      .join(" ") || selectedCustomer.companyName}{" "}
+                    <span className="text-muted-foreground">({selectedCustomer.email})</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-foreground">
+                      Wybrany klient nie posiada skonfigurowanego adresu e-mail
+                    </p>
+                    <p className="text-muted-foreground">
+                      Rezerwacja może zostać utworzona wyłącznie bez wysyłania powiadomienia e-mail.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3">
+                <div className="flex items-start gap-2.5">
+                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">
+                      Wysłanie powiadomienia do klienta
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Klient natychmiast otrzyma wiadomość e-mail z potwierdzeniem utworzenia
+                      rezerwacji, szczegółami terminu, listą zarezerwowanych pozycji oraz
+                      podsumowaniem kosztów.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">
+                      Ostrzeżenie: konsekwencje braku wysyłki powiadomienia
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Jeśli wybierzesz opcję <strong>„Utwórz bez powiadomienia”</strong>, klient{" "}
+                      <strong>nie otrzyma żadnego e-maila</strong> o utworzeniu zamówienia ani linku
+                      do podglądu rezerwacji. Będziesz musiał poinformować klienta o rezerwacji
+                      samodzielnie lub wysłać potwierdzenie ręcznie w późniejszym terminie.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogPanel>
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isSaving}
+              onClick={() => setEmailConfirmDialog({ isOpen: false, values: null })}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                isPending={isSaving && !sendConfirmationEmail}
+                disabled={isSaving}
+                onClick={async () => {
+                  const targetValues = emailConfirmDialog.values ?? watchedValues;
+                  setSendConfirmationEmail(false);
+                  setEmailConfirmDialog({ isOpen: false, values: null });
+                  await submitManualReservation(targetValues, {
+                    sendConfirmationEmail: false,
+                  });
+                }}
+              >
+                <MailX data-slot="icon" />
+                Utwórz bez powiadomienia
+              </Button>
+              {Boolean(selectedCustomer?.email) && (
+                <Button
+                  type="button"
+                  isPending={isSaving && sendConfirmationEmail}
+                  disabled={isSaving}
+                  onClick={async () => {
+                    const targetValues = emailConfirmDialog.values ?? watchedValues;
+                    setSendConfirmationEmail(true);
+                    setEmailConfirmDialog({ isOpen: false, values: null });
+                    await submitManualReservation(targetValues, {
+                      sendConfirmationEmail: true,
+                    });
+                  }}
+                >
+                  <Mail data-slot="icon" />
+                  Wyślij potwierdzenie i utwórz
+                </Button>
+              )}
+            </div>
           </DialogFooter>
         </DialogPopup>
       </Dialog>
