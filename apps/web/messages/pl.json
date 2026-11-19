@@ -10823,6 +10823,10 @@
     "paidBy": "{store} płaci Państwu bezpośrednio. Louez wylicza te kwoty; żadne pieniądze nie przechodzą przez Louez.",
     "eyebrow": "Strefa partnera · {store}",
     "visitStore": "Zobacz sklep",
-    "poweredBy": "Działa dzięki"
+    "poweredBy": "Działa dzięki",
+    "quick": {
+      "copy": "Kopiuj mój link",
+      "poster": "Mój plakat QR"
+    }
   }
 }

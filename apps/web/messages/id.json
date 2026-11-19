@@ -10823,6 +10823,10 @@
     "paidBy": "{store} membayar Anda secara langsung. Louez menghitung jumlah ini; tidak ada uang yang melewati Louez.",
     "eyebrow": "Halaman mitra · {store}",
     "visitStore": "Kunjungi toko",
-    "poweredBy": "Didukung oleh"
+    "poweredBy": "Didukung oleh",
+    "quick": {
+      "copy": "Salin tautan saya",
+      "poster": "Poster QR saya"
+    }
   }
 }

@@ -10823,6 +10823,10 @@
     "paidBy": "{store} 直接向您付款。这些金额由 Louez 计算，款项不经过 Louez。",
     "eyebrow": "合作伙伴专区 · {store}",
     "visitStore": "访问店铺",
-    "poweredBy": "技术支持"
+    "poweredBy": "技术支持",
+    "quick": {
+      "copy": "复制我的链接",
+      "poster": "我的二维码海报"
+    }
   }
 }

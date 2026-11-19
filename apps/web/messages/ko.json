@@ -10823,6 +10823,10 @@
     "paidBy": "{store}에서 직접 지급합니다. Louez는 이 금액을 계산할 뿐, 돈이 Louez를 거치지 않습니다.",
     "eyebrow": "파트너 페이지 · {store}",
     "visitStore": "매장 보기",
-    "poweredBy": "Powered by"
+    "poweredBy": "Powered by",
+    "quick": {
+      "copy": "내 링크 복사",
+      "poster": "내 QR 포스터"
+    }
   }
 }

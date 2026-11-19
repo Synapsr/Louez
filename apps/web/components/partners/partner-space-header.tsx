@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { ArrowUpRight } from "lucide-react";
 
 import { cn } from "@louez/utils";
@@ -12,6 +14,8 @@ interface PartnerSpaceHeaderProps {
   title: string;
   intro: string;
   visitStore: string;
+  /** What the partner reaches without scrolling: its link and poster. */
+  actions?: ReactNode;
 }
 
 /**
@@ -27,6 +31,7 @@ export const PartnerSpaceHeader = ({
   title,
   intro,
   visitStore,
+  actions,
 }: PartnerSpaceHeaderProps) => (
   <header
     className={cn(
@@ -69,6 +74,7 @@ export const PartnerSpaceHeader = ({
       <p className="mt-10 text-sm font-medium opacity-85">{eyebrow}</p>
       <h1 className="mt-1 text-3xl font-bold tracking-tight text-balance sm:text-4xl">{title}</h1>
       <p className="mt-3 max-w-xl text-pretty opacity-90">{intro}</p>
+      {actions}
     </div>
   </header>
 );

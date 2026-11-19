@@ -10823,6 +10823,10 @@
     "paidBy": "{store} La paga direttamente. Louez calcola questi importi; nessun pagamento passa da Louez.",
     "eyebrow": "Area partner · {store}",
     "visitStore": "Vai al negozio",
-    "poweredBy": "Realizzato con"
+    "poweredBy": "Realizzato con",
+    "quick": {
+      "copy": "Copia il mio link",
+      "poster": "Il mio poster QR"
+    }
   }
 }
