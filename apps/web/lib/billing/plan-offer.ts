@@ -11,9 +11,11 @@ import {
   subscriptions,
 } from "@louez/db";
 import type { PlanOfferView } from "@louez/api/contracts/billing";
+import { currencyMinorDigits } from "@louez/utils";
 
 import { env } from "@/env";
 import { parseAffiliateReferral } from "@/lib/acquisition/klibon";
+import { getPlanPricing } from "@/lib/billing/plan-pricing";
 import { getEffectivePolicy, type EffectivePolicy } from "@/lib/billing/policy";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { getBillingStatement, getBillingStatements } from "@/lib/billing-sync/pages";
@@ -25,7 +27,7 @@ import {
   getStoreCurrency,
 } from "@/lib/pay-as-you-go/metering";
 import { planInForce } from "@/lib/plan-limits";
-import { getPlanPriceId, getPlans, type Currency, SUPPORTED_CURRENCIES } from "@/lib/plans";
+import { getPlans, type Currency } from "@/lib/plans";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import {
   createSubscriptionCheckoutSession,
@@ -70,9 +72,6 @@ function sourceOf(policy: EffectivePolicy): PlanOfferSource | null {
   return null;
 }
 
-const isCurrency = (value: string): value is Currency =>
-  SUPPORTED_CURRENCIES.some((currency) => currency === value);
-
 const isOfferedSlug = (slug: string): slug is PlanOfferCandidate["slug"] =>
   slug === "pro" || slug === "ultra";
 
@@ -87,15 +86,23 @@ function termsKey(policy: EffectivePolicy): string {
     : String(source);
 }
 
-/** The plans the store can buy on Checkout in `currency`, monthly. */
-function offerablePlans(currency: Currency): PlanOfferCandidate[] {
+/**
+ * The plans the store can buy on Checkout in `currency`, monthly, at the amount its plan
+ * page shows (getPlanPricing). None when the plans do not sell in it, as the plan page
+ * then sells in EUR, which the store's fees are not in.
+ */
+async function offerablePlans(currency: Currency): Promise<PlanOfferCandidate[]> {
+  const pricing = await getPlanPricing(currency);
+  if (!pricing) return [];
+  const perUnit = 10 ** (currencyMinorDigits(currency) ?? 2);
   return getPlans().flatMap((plan) => {
     const { slug, features } = plan;
-    if (!isOfferedSlug(slug) || !getPlanPriceId(plan, "monthly", currency)) return [];
+    const amounts = pricing.amounts[slug];
+    if (!isOfferedSlug(slug) || !amounts) return [];
     return [
       {
         slug,
-        monthlyPriceMinor: Math.round(plan.price * 100),
+        monthlyPriceMinor: Math.round(amounts.monthly * perUnit),
         limits: {
           products: features.maxProducts,
           reservationsPerMonth: features.maxReservationsPerMonth,
@@ -311,8 +318,7 @@ export async function evaluatePlanOffer(
   if (!source) return none("nothing_to_save");
 
   const currency = rawCurrency.toLowerCase();
-  if (!isCurrency(currency)) return none("currency");
-  const plans = offerablePlans(currency);
+  const plans = await offerablePlans(currency);
   if (plans.length === 0) return none("currency");
 
   // A month counts only when it was billed as the store is billed now, from its start to
@@ -417,7 +423,7 @@ export async function startPlanOfferCheckout(input: {
   now: Date;
 }): Promise<{ url: string; offer: PlanOfferView } | null> {
   const { offer } = await evaluatePlanOffer(input.storeId, input.now, { ignoreDismissal: true });
-  if (!offer || !isCurrency(offer.currency)) return null;
+  if (!offer) return null;
   const currency = offer.currency;
   try {
     const session = await createSubscriptionCheckoutSession({

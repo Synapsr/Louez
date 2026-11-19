@@ -3,6 +3,7 @@ import * as nodeModule from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import { codePlanPricing, type Currency, type PlanPricing } from "@/lib/plans.shared";
 import { EU_STANDARD_VAT_BPS, withVatMinor } from "./plan-offer-core";
 import {
   type FakeBillingService,
@@ -51,6 +52,20 @@ mock.module("@/lib/stripe/subscriptions", {
 mock.module("@/lib/api/effects", { namedExports: { dispatchApiEffects: () => {} } });
 process.env.STRIPE_PRICE_PRO_MONTHLY = "price_test_pro_monthly";
 process.env.STRIPE_PRICE_ULTRA_MONTHLY = "price_test_ultra_monthly";
+/**
+ * The plans' amounts in GBP, as their Stripe prices give them; null while those have no
+ * GBP amount. EUR sells at the code's amounts.
+ */
+let gbpPricing: PlanPricing | null = null;
+mock.module("@/lib/billing/plan-pricing", {
+  namedExports: {
+    getPlanPricing: async (currency: Currency) => {
+      const { getPlans } = await import("@/lib/plans");
+      if (currency === "eur") return codePlanPricing(getPlans());
+      return currency === "gbp" ? gbpPricing : null;
+    },
+  },
+});
 
 /** After the fake's BILLING_NEW_STORES_FROM, 2027-01-25: a store created since is new. */
 const NOW = new Date("2027-02-10T09:00:00Z");
@@ -182,7 +197,9 @@ describe("plan offer (database)", { skip: skipWithoutTestDatabase() }, () => {
     count: number;
     priceCents: number;
     reversedCents?: number;
+    currency?: string;
   }) {
+    const currency = input.currency ?? "eur";
     const { db, platformFees, subscriptions } = louezDb;
     await db.delete(platformFees).where(eq(platformFees.storeId, LEGACY));
     await db.delete(subscriptions).where(eq(subscriptions.storeId, LEGACY));
@@ -190,7 +207,7 @@ describe("plan offer (database)", { skip: skipWithoutTestDatabase() }, () => {
       storeId: LEGACY,
       planSlug: "pay_as_you_go",
       billingMode: "pay_as_you_go",
-      payAsYouGoConfig: { flatRateCents: input.tariffCents, currency: "eur" },
+      payAsYouGoConfig: { flatRateCents: input.tariffCents, currency },
       freeReservationsGranted: 0,
     });
     const rows = Array.from({ length: input.count }, (_, index) => ({
@@ -199,7 +216,7 @@ describe("plan offer (database)", { skip: skipWithoutTestDatabase() }, () => {
       dedupKey: `res:po_res_${input.month}_${index}`,
       amountCents: input.priceCents,
       amountReversedCents: index === 0 ? (input.reversedCents ?? 0) : 0,
-      currency: "eur",
+      currency,
       source: (index % 2 === 0 ? "online" : "manual") as "online" | "manual",
       status: (index % 2 === 0 ? "collected" : "pending") as "collected" | "pending",
       billingMonth: input.month,
@@ -212,7 +229,7 @@ describe("plan offer (database)", { skip: skipWithoutTestDatabase() }, () => {
       dedupKey: `mkt:po_mkt_${input.month}`,
       amountCents: 150,
       amountReversedCents: 0,
-      currency: "eur",
+      currency,
       source: "marketplace_online" as never,
       status: "collected",
       billingMonth: input.month,
@@ -303,6 +320,42 @@ describe("plan offer (database)", { skip: skipWithoutTestDatabase() }, () => {
       })
       .where(eq(subscriptions.storeId, LEGACY));
     assert.equal((await offers.evaluatePlanOffer(LEGACY, NOW)).exclusion, "plan_in_force");
+  });
+
+  test("a store in GBP gets no offer until Stripe sells plans in GBP, then one at its GBP price", async () => {
+    const { db, stores } = louezDb;
+    const settings = (currency: string) => ({
+      reservationMode: "request" as const,
+      advanceNoticeMinutes: 0,
+      currency,
+      country: "FR",
+    });
+    await db.update(stores).set({ settings: settings("GBP") }).where(eq(stores.id, LEGACY));
+    try {
+      await legacyMonth({
+        tariffCents: 90,
+        month: "2027-02",
+        count: 70,
+        priceCents: 90,
+        currency: "gbp",
+      });
+      // Its fees are in pounds, the plan page sells in euros: nothing to compare.
+      gbpPricing = null;
+      assert.equal((await offers.evaluatePlanOffer(LEGACY, NOW)).exclusion, "currency");
+
+      gbpPricing = {
+        currency: "gbp",
+        amounts: { pro: { monthly: 39, yearly: 390 }, ultra: { monthly: 129, yearly: 1290 } },
+      };
+      const { offer } = await offers.evaluatePlanOffer(LEGACY, NOW);
+      assert.equal(offer?.plan, "pro");
+      assert.equal(offer?.currency, "gbp");
+      assert.equal(offer?.planPriceMinor, 3900);
+      assert.equal(offer?.paidMinor, 70 * 90);
+    } finally {
+      gbpPricing = null;
+      await db.update(stores).set({ settings: settings("EUR") }).where(eq(stores.id, LEGACY));
+    }
   });
 
   test("a store the service bills: the avoidable statement lines of the month", async () => {

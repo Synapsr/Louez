@@ -81,13 +81,14 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     STRIPE_CONNECT_WEBHOOK_SECRET: z.string().optional(),
 
-    // Stripe Price IDs (EUR)
+    // Stripe Price IDs: in EUR, with an amount per other currency (currency_options)
     STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
     STRIPE_PRICE_PRO_YEARLY: z.string().optional(),
     STRIPE_PRICE_ULTRA_MONTHLY: z.string().optional(),
     STRIPE_PRICE_ULTRA_YEARLY: z.string().optional(),
 
-    // Stripe Price IDs (USD)
+    // The USD prices sold before: they still bill USD subscriptions, and sell in USD
+    // while the prices above have no USD amount
     STRIPE_PRICE_PRO_MONTHLY_USD: z.string().optional(),
     STRIPE_PRICE_PRO_YEARLY_USD: z.string().optional(),
     STRIPE_PRICE_ULTRA_MONTHLY_USD: z.string().optional(),

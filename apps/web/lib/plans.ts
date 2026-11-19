@@ -3,17 +3,16 @@ import { isBillingEnabled } from '@/lib/billing/mode';
 import { PAY_AS_YOU_GO_PLAN, type Plan } from '@/lib/plans.shared';
 
 export {
-  CURRENCY_SYMBOLS,
+  DEFAULT_PLAN_CURRENCY,
   PAY_AS_YOU_GO_PLAN,
-  SUPPORTED_CURRENCIES,
+  codePlanPricing,
   findPlanPrice,
   formatPlanPrice,
-  getPlanPriceId,
   getYearlyPrice,
-  isPlanAvailable,
   type Currency,
   type Plan,
   type PlanPrices,
+  type PlanPricing,
 } from '@/lib/plans.shared';
 
 // SMS top-up pricing per plan (in cents)
@@ -90,10 +89,7 @@ export function getAiCreditPackages(): AiCreditPackage[] {
 /**
  * Base plan definitions (without Stripe IDs)
  */
-const BASE_PLANS: Record<
-  string,
-  Omit<Plan, 'stripePriceMonthly' | 'stripePriceYearly'>
-> = {
+const BASE_PLANS: Record<string, Omit<Plan, 'stripePrices' | 'legacyStripePrices'>> = {
   pro: {
     slug: 'pro',
     name: 'Pro',
@@ -169,15 +165,13 @@ export function getPlans(): Plan[] {
         ...BASE_PLANS.pro.features,
         aiCreditsPerMonth: aiMonthly.pro ?? 0,
       },
-      // Legacy EUR prices (backwards compatibility)
-      stripePriceMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
-      stripePriceYearly: env.STRIPE_PRICE_PRO_YEARLY,
-      // Multi-currency support
+      // In EUR, with an amount per other currency (Stripe's currency_options).
       stripePrices: {
-        eur: {
-          monthly: env.STRIPE_PRICE_PRO_MONTHLY,
-          yearly: env.STRIPE_PRICE_PRO_YEARLY,
-        },
+        monthly: env.STRIPE_PRICE_PRO_MONTHLY,
+        yearly: env.STRIPE_PRICE_PRO_YEARLY,
+      },
+      // The USD prices sold before: they still bill USD subscriptions.
+      legacyStripePrices: {
         usd: {
           monthly: env.STRIPE_PRICE_PRO_MONTHLY_USD,
           yearly: env.STRIPE_PRICE_PRO_YEARLY_USD,
@@ -190,15 +184,13 @@ export function getPlans(): Plan[] {
         ...BASE_PLANS.ultra.features,
         aiCreditsPerMonth: aiMonthly.ultra ?? 0,
       },
-      // Legacy EUR prices (backwards compatibility)
-      stripePriceMonthly: env.STRIPE_PRICE_ULTRA_MONTHLY,
-      stripePriceYearly: env.STRIPE_PRICE_ULTRA_YEARLY,
-      // Multi-currency support
+      // In EUR, with an amount per other currency (Stripe's currency_options).
       stripePrices: {
-        eur: {
-          monthly: env.STRIPE_PRICE_ULTRA_MONTHLY,
-          yearly: env.STRIPE_PRICE_ULTRA_YEARLY,
-        },
+        monthly: env.STRIPE_PRICE_ULTRA_MONTHLY,
+        yearly: env.STRIPE_PRICE_ULTRA_YEARLY,
+      },
+      // The USD prices sold before: they still bill USD subscriptions.
+      legacyStripePrices: {
         usd: {
           monthly: env.STRIPE_PRICE_ULTRA_MONTHLY_USD,
           yearly: env.STRIPE_PRICE_ULTRA_YEARLY_USD,

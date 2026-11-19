@@ -4234,6 +4234,10 @@
         },
         "pricesExcludingTax": "Harga tidak termasuk. PPN",
         "excludingTax": "tidak termasuk. PPN",
+        "currencyNote": {
+          "subscription": "Langganan Anda ditagih dalam {currency}.",
+          "fallback": "Harga dalam {currency}: paket belum dapat ditagih dalam {storeCurrency}."
+        },
         "payAsYouGo": {
           "title": "Bayar sesuai kebutuhan",
           "description": "Anda ditagih per sewa. Tanpa paket bulanan, tanpa batasan.",

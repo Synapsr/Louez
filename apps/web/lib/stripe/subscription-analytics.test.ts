@@ -16,11 +16,12 @@ const prices: Record<string, AnalyticsPrice> = {
   ultra_m: { id: "ultra_m", unit_amount: 7900, currency: "eur", recurring: { interval: "month" } },
   unknown: { id: "unknown", unit_amount: 1000, currency: "usd", recurring: { interval: "month" } },
 };
-const planOf: PlanOfPrice = (id) =>
+/** The plans, and Pro monthly's amount in GBP, an option of its EUR price. */
+const planOf: PlanOfPrice = (id, currency) =>
   ({
-    pro_m: { plan: "pro", interval: "monthly" as const },
-    pro_y: { plan: "pro", interval: "yearly" as const },
-    ultra_m: { plan: "ultra", interval: "monthly" as const },
+    pro_m: { plan: "pro", interval: "monthly" as const, amountMinor: currency === "gbp" ? 3900 : null },
+    pro_y: { plan: "pro", interval: "yearly" as const, amountMinor: null },
+    ultra_m: { plan: "ultra", interval: "monthly" as const, amountMinor: null },
   })[id] ?? null;
 
 const subscription = (
@@ -28,6 +29,7 @@ const subscription = (
   overrides: Partial<AnalyticsSubscription> = {},
 ): AnalyticsSubscription => ({
   id: "sub_1",
+  currency: price.currency,
   status: "active",
   cancel_at_period_end: false,
   items: { data: [{ price, quantity: 1 }] },
@@ -48,6 +50,17 @@ describe("subscription_started", () => {
         is_trial: false,
       },
     });
+  });
+
+  test("a subscription in another currency than its price's says what it pays in it", () => {
+    const started = subscriptionStarted(subscription(prices.pro_m!, { currency: "gbp" }), planOf);
+    assert.equal(started.properties.plan, "pro");
+    assert.equal(started.properties.amount_cents, 3900);
+    assert.equal(started.properties.mrr_cents, 3900);
+    assert.equal(started.properties.currency, "GBP");
+    // Without the plan's amount in it, no amount rather than the EUR one.
+    const unknown = subscriptionStarted(subscription(prices.ultra_m!, { currency: "gbp" }), planOf);
+    assert.equal(unknown.properties.amount_cents, null);
   });
 
   test("a trial says so; a price no plan has keeps Stripe's interval", () => {
@@ -155,6 +168,7 @@ describe("subscription_canceled", () => {
     const canceled = subscriptionCanceled(
       {
         id: "sub_1",
+        currency: "eur",
         status: "canceled",
         cancel_at_period_end: true,
         items: { data: [] },

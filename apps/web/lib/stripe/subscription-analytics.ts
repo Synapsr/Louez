@@ -16,6 +16,8 @@ export interface AnalyticsPrice {
 /** What these read of a Stripe subscription. */
 export interface AnalyticsSubscription {
   readonly id: string;
+  /** The currency it bills, which its price may not default to (currency_options). */
+  readonly currency: string;
   readonly status: string;
   readonly cancel_at_period_end: boolean;
   readonly items: {
@@ -25,18 +27,25 @@ export interface AnalyticsSubscription {
   readonly metadata?: Record<string, string> | null;
 }
 
-/** The plan a price bills, as lib/plans.ts `findPlanPrice` finds it; null for none. */
+/**
+ * The plan a price bills, as lib/plans.ts `findPlanPrice` finds it, and its amount in
+ * minor units in `currency` when the plans sell in it (lib/billing/plan-pricing.ts);
+ * null for a price no plan has.
+ */
 export type PlanOfPrice = (
   priceId: string,
-) => { plan: string; interval: "monthly" | "yearly" } | null;
+  currency: string,
+) => { plan: string; interval: "monthly" | "yearly"; amountMinor: number | null } | null;
 
 export interface LifecycleAnalytic {
   event: StoreLifecycleEvent;
   properties: Record<string, string | number | boolean | null>;
 }
 
-const intervalOf = (price: AnalyticsPrice, planOf: PlanOfPrice): string | null => {
-  const billed = planOf(price.id);
+const intervalOf = (
+  price: AnalyticsPrice,
+  billed: ReturnType<PlanOfPrice>,
+): string | null => {
   if (billed) return billed.interval;
   const interval = price.recurring?.interval;
   if (interval === "month") return "monthly";
@@ -44,16 +53,26 @@ const intervalOf = (price: AnalyticsPrice, planOf: PlanOfPrice): string | null =
   return interval ?? null;
 };
 
-/** Plan, interval, amount (in cents, per period and per month) and currency of a price. */
+/**
+ * Plan, interval, amount (in cents, per period and per month) and currency of a price, as
+ * a subscription in `currency` pays it: the price's own amount in its default currency,
+ * the plan's amount in that currency otherwise.
+ */
 export function priceProperties(
   price: AnalyticsPrice | undefined,
   quantity: number | undefined,
   planOf: PlanOfPrice,
+  currency: string,
 ): Record<string, string | number | null> {
   if (!price)
     return { plan: null, interval: null, amount_cents: null, mrr_cents: null, currency: null };
-  const interval = intervalOf(price, planOf);
-  const amount = typeof price.unit_amount === "number" ? price.unit_amount * (quantity ?? 1) : null;
+  const billed = planOf(price.id, currency.toLowerCase());
+  const interval = intervalOf(price, billed);
+  const unit =
+    price.currency.toLowerCase() === currency.toLowerCase()
+      ? price.unit_amount
+      : (billed?.amountMinor ?? null);
+  const amount = typeof unit === "number" ? unit * (quantity ?? 1) : null;
   const months =
     interval === "yearly"
       ? 12
@@ -61,11 +80,11 @@ export function priceProperties(
         ? (price.recurring?.interval_count ?? 1)
         : null;
   return {
-    plan: planOf(price.id)?.plan ?? null,
+    plan: billed?.plan ?? null,
     interval,
     amount_cents: amount,
     mrr_cents: amount !== null && months ? Math.round(amount / months) : null,
-    currency: price.currency.toUpperCase(),
+    currency: currency.toUpperCase(),
   };
 }
 
@@ -81,7 +100,7 @@ export function subscriptionStarted(
   return {
     event: "subscription_started",
     properties: {
-      ...priceProperties(item?.price, item?.quantity, planOf),
+      ...priceProperties(item?.price, item?.quantity, planOf, subscription.currency),
       subscription_status: subscription.status,
       is_trial: subscription.status === "trialing",
     },
@@ -109,13 +128,13 @@ export function subscriptionChanged(
 ): LifecycleAnalytic | null {
   if (!previous) return null;
   const item = firstItem(subscription);
-  const current = priceProperties(item?.price, item?.quantity, planOf);
+  const current = priceProperties(item?.price, item?.quantity, planOf, subscription.currency);
   const before = previous.items?.data[0];
   let changeType: string | null = null;
   let was: Record<string, string | number | null> = {};
 
   if (before && item && (before.price.id !== item.price.id || before.quantity !== item.quantity)) {
-    was = priceProperties(before.price, before.quantity, planOf);
+    was = priceProperties(before.price, before.quantity, planOf, subscription.currency);
     changeType =
       was.plan !== current.plan ? "plan" : was.interval !== current.interval ? "interval" : "price";
   } else if (
@@ -157,7 +176,7 @@ export function subscriptionCanceled(
   return {
     event: "subscription_canceled",
     properties: {
-      ...priceProperties(item?.price, item?.quantity, planOf),
+      ...priceProperties(item?.price, item?.quantity, planOf, subscription.currency),
       // Stripe's reason: cancellation_requested, payment_failed, payment_disputed.
       cancellation_reason: subscription.cancellation_details?.reason ?? null,
       // The owner chose pay-as-you-go from the plan page, rather than a lapse or a cancel in Stripe.

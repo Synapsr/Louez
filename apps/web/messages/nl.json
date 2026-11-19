@@ -3886,6 +3886,10 @@
         },
         "pricesExcludingTax": "Prijzen excl. BTW",
         "excludingTax": "excl. BTW",
+        "currencyNote": {
+          "subscription": "Je abonnement wordt gefactureerd in {currency}.",
+          "fallback": "Prijzen in {currency}: abonnementen kunnen nog niet in {storeCurrency} worden gefactureerd."
+        },
         "payAsYouGo": {
           "title": "Betalen per gebruik",
           "description": "U wordt per verhuur gefactureerd. Geen maandplan, geen limieten.",

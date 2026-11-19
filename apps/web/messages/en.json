@@ -4235,6 +4235,10 @@
         },
         "pricesExcludingTax": "Prices excl. VAT",
         "excludingTax": "excl. VAT",
+        "currencyNote": {
+          "subscription": "Your subscription is billed in {currency}.",
+          "fallback": "Prices in {currency}: plans cannot be billed in {storeCurrency} yet."
+        },
         "payAsYouGo": {
           "title": "Pay as you go",
           "description": "You are billed per rental. No monthly plan, no caps.",

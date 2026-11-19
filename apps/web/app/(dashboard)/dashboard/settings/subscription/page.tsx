@@ -16,6 +16,7 @@ import {
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { BILLING_SETTINGS_PATH } from "@/lib/billing/billing-routes";
 import { getBillingAccess } from "@/lib/billing/billing-access";
+import { getPlanPagePricing } from "@/lib/billing/plan-pricing";
 import {
   getEffectivePolicy,
   getUncreatedStorePolicy,
@@ -176,10 +177,15 @@ const SettingsSubscriptionPage = async ({ searchParams }: SettingsSubscriptionPa
   }
 
   const plans = getPlans();
-  const [usage, teamStatus, smsStatus] = await Promise.all([
+  const storeCurrency = store.settings?.currency || "EUR";
+  const [usage, teamStatus, smsStatus, pricing] = await Promise.all([
     getStoreUsage(store.id),
     canAddTeamMember(store.id),
     canSendSms(store.id),
+    getPlanPagePricing({
+      storeCurrency,
+      liveCurrency: grid.hasLiveSubscription ? (grid.subscription?.billingCurrency ?? null) : null,
+    }),
   ]);
   const tSms = await getTranslations("dashboard.sms");
 
@@ -197,6 +203,8 @@ const SettingsSubscriptionPage = async ({ searchParams }: SettingsSubscriptionPa
       <SubscriptionManagement
         {...grid}
         plans={plans}
+        pricing={pricing}
+        storeCurrency={storeCurrency}
         showSuccess={params.success === "true"}
         showCanceled={params.canceled === "true"}
         usage={{

@@ -3886,6 +3886,10 @@
         },
         "pricesExcludingTax": "Prezzi IVA esclusa",
         "excludingTax": "IVA escl.",
+        "currencyNote": {
+          "subscription": "Il tuo abbonamento è fatturato in {currency}.",
+          "fallback": "Prezzi in {currency}: i piani non possono ancora essere fatturati in {storeCurrency}."
+        },
         "payAsYouGo": {
           "title": "Pagamento a consumo",
           "description": "Vieni fatturato per noleggio. Nessun piano mensile, nessun limite.",

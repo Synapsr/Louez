@@ -4234,6 +4234,10 @@
         },
         "pricesExcludingTax": "价格不含税。增值税",
         "excludingTax": "不包括。增值税",
+        "currencyNote": {
+          "subscription": "您的订阅以 {currency} 计费。",
+          "fallback": "价格以 {currency} 显示：套餐暂不支持以 {storeCurrency} 计费。"
+        },
         "payAsYouGo": {
           "title": "随用随付",
           "description": "您按租金计费。没有月度计划，没有上限。",

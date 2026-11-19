@@ -59,6 +59,7 @@ type FakeInvoice = { id: string; customer: string; status: string; collection_me
 type FakeSubscription = {
   id: string;
   customer: string;
+  currency: string;
   status: string;
   cancel_at_period_end: boolean;
   metadata: Record<string, string>;
@@ -159,6 +160,7 @@ function createFakeStripe() {
       subscriptions.set(id, {
         id,
         customer: `cus_${id.replace(/^sub_/, "")}`,
+        currency: "eur",
         status: "active",
         cancel_at_period_end: false,
         metadata: { planSlug: "pro" },
@@ -210,6 +212,29 @@ function createFakeStripe() {
         ],
       });
       return id;
+    },
+    // The plans' prices, in EUR (lib/billing/plan-pricing.ts reads them, once per process).
+    prices: {
+      async retrieve(id: string) {
+        const known = Object.values(PRICE).find((price) => price === id);
+        if (!known) {
+          throw new Stripe.errors.StripeInvalidRequestError({
+            type: "invalid_request_error",
+            code: "resource_missing",
+            statusCode: 404,
+            message: `No such price: '${id}'`,
+          });
+        }
+        const currency = id.endsWith("_usd") ? "usd" : "eur";
+        return {
+          id,
+          active: true,
+          currency,
+          unit_amount: 1000,
+          recurring: { interval: id.includes("_year") ? "year" : "month" },
+          currency_options: { [currency]: { unit_amount: 1000 } },
+        };
+      },
     },
     subscriptions: {
       async retrieve(id: string) {
@@ -1402,7 +1427,6 @@ describe(
         subscriptionActions.createCheckoutSession({
           planSlug: "pro",
           interval: "monthly",
-          currency: "eur",
         });
       // No customer in the policy or on a row: Louez creates one, kept on a row with no
       // pricing, which nothing bills.
@@ -1447,7 +1471,6 @@ describe(
         await subscriptionActions.createCheckoutSession({
           planSlug: "no-such-plan",
           interval: "monthly",
-          currency: "eur",
         }),
         { error: "Plan not found", url: null },
       );
@@ -1679,7 +1702,6 @@ describe(
           subscriptionActions.createCheckoutSession({
             planSlug: "ultra",
             interval: "monthly",
-            currency: "eur",
           });
         // Stripe has not ended the subscription, whether it collects it or not.
         for (const [status, stripeStatus] of [
@@ -2541,7 +2563,6 @@ describe(
         const opened = await subscriptionActions.createCheckoutSession({
           planSlug: "pro",
           interval: "monthly",
-          currency: "eur",
         });
         assert.ok("sessionId" in opened, "a Checkout is opened");
         return opened.sessionId;

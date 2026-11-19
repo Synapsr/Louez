@@ -4234,6 +4234,10 @@
         },
         "pricesExcludingTax": "価格は含まれておりません。 VAT",
         "excludingTax": "除くVAT",
+        "currencyNote": {
+          "subscription": "サブスクリプションは{currency}で請求されます。",
+          "fallback": "価格は{currency}です。プランはまだ{storeCurrency}で請求できません。"
+        },
         "payAsYouGo": {
           "title": "従量課金制",
           "description": "レンタルごとに請求されます。月額プランや上限はありません。",

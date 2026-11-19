@@ -4,14 +4,8 @@ import { stripe } from './client'
 import { db, markSubscriptionRow, type Transaction } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
-import {
-  findPlanPrice,
-  getPlan,
-  getPlans,
-  getPlanPriceId,
-  type Plan,
-  type Currency,
-} from '@/lib/plans'
+import { findPlanPrice, getPlan, getPlans, type Plan, type Currency } from '@/lib/plans'
+import { getPlanPriceIn } from '@/lib/billing/plan-pricing'
 import { BillingDisabledError, isBillingEnabled } from '@/lib/billing/mode'
 import { getEffectivePolicy } from '@/lib/billing/policy'
 import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
@@ -474,8 +468,9 @@ export async function createSubscriptionCheckoutSession({
     throw new Error('Plan not found')
   }
 
-  // Determine the price ID based on interval and currency
-  const priceId = getPlanPriceId(plan, interval, currency)
+  // The plan's price that bills `currency`: its own, with an amount in that currency, or
+  // an earlier one in it (lib/billing/plan-pricing.ts).
+  const priceId = await getPlanPriceIn(currency, plan.slug, interval)
 
   if (!priceId) {
     throw new Error(`Price not configured for this plan in ${currency.toUpperCase()}`)
@@ -508,6 +503,8 @@ export async function createSubscriptionCheckoutSession({
         quantity: 1,
       },
     ],
+    // The price may bill several currencies: Checkout would otherwise pick the customer's.
+    currency,
     success_url: successUrl,
     cancel_url: cancelUrl,
     // Klibon reads the affiliate's code here, and credits the subscription's invoices.
@@ -794,9 +791,10 @@ async function planChangeTarget(
   if (!plan) {
     throw new Error('Plan not found')
   }
-  const priceId = getPlanPriceId(plan, interval, currency)
+  // The plans may no longer sell in the subscription's currency: no change then.
+  const priceId = await getPlanPriceIn(currency, plan.slug, interval)
   if (!priceId) {
-    throw new Error(`Price not configured for this plan in ${currency.toUpperCase()}`)
+    throw new SubscriptionPlanError('currency')
   }
 
   const row = await db.query.subscriptions.findFirst({
@@ -811,7 +809,8 @@ async function planChangeTarget(
   if (!item || others.length > 0) {
     throw new SubscriptionPlanError('subscription_items')
   }
-  if (item.price.currency.toLowerCase() !== currency) {
+  // A price may bill several currencies: the subscription's is the one it bills.
+  if (current.currency.toLowerCase() !== currency.toLowerCase()) {
     throw new SubscriptionPlanError('currency')
   }
   return { plan, priceId, row, current, item }
@@ -1246,13 +1245,8 @@ export async function getSubscriptionWithPlan(storeId: string) {
       } else if (firstItem?.price?.recurring?.interval === 'month') {
         billingInterval = 'monthly'
       }
-      // Get the actual currency used for this subscription
-      if (firstItem?.price?.currency) {
-        const currency = firstItem.price.currency.toLowerCase()
-        if (currency === 'eur' || currency === 'usd') {
-          billingCurrency = currency as Currency
-        }
-      }
+      // The currency the subscription bills, which its price may not default to.
+      billingCurrency = stripeSubscription.currency.toLowerCase()
       if (hasLiveSubscription(subscription)) {
         pendingPlanChange = await readPendingPlanChange(storeId, stripeSubscription)
       }

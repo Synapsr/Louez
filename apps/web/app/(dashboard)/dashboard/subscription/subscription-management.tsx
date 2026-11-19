@@ -60,13 +60,11 @@ import { cn } from '@louez/utils';
 
 import { readAffiliateReferral } from '@/lib/acquisition/klibon-browser';
 import {
-  CURRENCY_SYMBOLS,
   PAY_AS_YOU_GO_PLAN,
-  SUPPORTED_CURRENCIES,
-  getYearlyPrice,
-  isPlanAvailable,
+  formatPlanPrice,
   type Currency,
   type Plan,
+  type PlanPricing,
 } from '@/lib/plans.shared';
 
 import {
@@ -118,6 +116,13 @@ interface UsageStats {
 export interface SubscriptionManagementProps {
   subscription: Subscription | null;
   plans: Plan[];
+  /**
+   * The currency the plans are sold in and their amounts (lib/billing/plan-pricing.ts): a
+   * live subscription's own, or the store's when its plans have prices in it, EUR otherwise.
+   */
+  pricing: PlanPricing;
+  /** The store's own currency, to say why the plans are sold in another one. */
+  storeCurrency: string;
   canAccessBillingPortal: boolean;
   showSuccess?: boolean;
   showCanceled?: boolean;
@@ -152,15 +157,6 @@ interface PendingPlanChange {
   price: number;
 }
 
-// Helper function to format price with currency
-function formatPrice(amount: number, currency: Currency): string {
-  const symbol = CURRENCY_SYMBOLS[currency];
-  if (currency === 'eur') {
-    return `${amount}${symbol}`;
-  }
-  return `${symbol}${amount}`;
-}
-
 // Helper function to apply discount to price
 function applyDiscount(price: number, discountPercent: number): number {
   return Math.round(price * (1 - discountPercent / 100));
@@ -169,6 +165,8 @@ function applyDiscount(price: number, discountPercent: number): number {
 export function SubscriptionManagement({
   subscription,
   plans,
+  pricing,
+  storeCurrency,
   canAccessBillingPortal,
   showSuccess,
   showCanceled,
@@ -185,15 +183,11 @@ export function SubscriptionManagement({
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isYearly, setIsYearly] = useState(false);
-  // A live subscription keeps its currency, which Stripe cannot change. Otherwise the
-  // default follows the locale: EUR for French, USD for all others.
-  const [currency, setCurrency] = useState<Currency>(
-    hasLiveSubscription && subscription?.billingCurrency
-      ? subscription.billingCurrency
-      : locale === 'fr'
-        ? 'eur'
-        : 'usd',
-  );
+  // The server chose it (pricing): Stripe cannot change a live subscription's currency.
+  const { currency } = pricing;
+  const formatPrice = (amount: number, priceCurrency: Currency) =>
+    formatPlanPrice(amount, priceCurrency, locale);
+  const storeCurrencyCode = storeCurrency.toLowerCase();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [pendingChange, setPendingChange] = useState<PendingPlanChange | null>(null);
   // Why the plan change failed, shown in its dialog, where the owner is looking.
@@ -240,7 +234,6 @@ export function SubscriptionManagement({
       const result = await createCheckoutSession({
         planSlug,
         interval: isYearly ? 'yearly' : 'monthly',
-        currency,
         affiliateReferral: readAffiliateReferral(),
       });
 
@@ -373,23 +366,21 @@ export function SubscriptionManagement({
     }
   };
 
-  const getPrice = (plan: Plan) => {
+  /** The plan's amount in the selected interval, or null when it has none in the currency. */
+  const getPrice = (plan: Plan, yearly = isYearly): number | null => {
     if (plan.price === 0) return 0;
-    if (isYearly) {
-      return getYearlyPrice(plan);
-    }
-    return plan.price;
+    const amounts = pricing.amounts[plan.slug];
+    if (!amounts) return null;
+    return yearly ? amounts.yearly : amounts.monthly;
   };
 
   const isCurrentPlan = (plan: Plan) => {
     return currentPlanSlug === plan.slug;
   };
 
-  const canChangePlan = (plan: Plan) => {
-    if (plan.price === 0) return false;
-    // Allow changing billing interval even on the same plan
-    return isPlanAvailable(plan, isYearly ? 'yearly' : 'monthly', currency);
-  };
+  // A plan sells in the currency when it has an amount in it; the interval may change
+  // on the same plan.
+  const canChangePlan = (plan: Plan) => plan.price > 0 && getPrice(plan) !== null;
 
   // Get key limits to display prominently
   const getKeyLimits = (plan: Plan): string[] => {
@@ -478,6 +469,20 @@ export function SubscriptionManagement({
   const showsOfferLabel = offerLabel !== undefined && currentPlan?.price === 0;
   const hasPaidSubscription =
     subscription?.stripeSubscriptionId && currentPlan?.price !== 0;
+  // Why the plans are not sold in the store's currency: its live subscription's, or the
+  // fallback while the store's currency has no plan prices.
+  const currencyNote =
+    currency === storeCurrencyCode
+      ? null
+      : hasLiveSubscription && subscription?.billingCurrency === currency
+        ? t('currencyNote.subscription', { currency: currency.toUpperCase() })
+        : t('currencyNote.fallback', {
+            currency: currency.toUpperCase(),
+            storeCurrency: storeCurrency.toUpperCase(),
+          });
+  const currentPlanPrice = currentPlan
+    ? getPrice(currentPlan, subscription?.billingInterval === 'yearly')
+    : 0;
   const pendingPlanChange = subscription?.pendingPlanChange ?? null;
   const pendingPlanName = pendingPlanChange
     ? (plans.find((p) => p.slug === pendingPlanChange.planSlug)?.name ??
@@ -654,14 +659,7 @@ export function SubscriptionManagement({
           ) : (
             <div className="flex items-baseline gap-1">
               <span className="text-4xl font-bold">
-                {formatPrice(
-                  currentPlan?.price
-                    ? subscription?.billingInterval === 'yearly'
-                      ? getYearlyPrice(currentPlan)
-                      : currentPlan.price
-                    : 0,
-                  subscription?.billingCurrency || currency,
-                )}
+                {currentPlanPrice === null ? '—' : formatPrice(currentPlanPrice, currency)}
               </span>
               {currentPlan?.price !== 0 && (
                 <span className="text-muted-foreground">
@@ -833,28 +831,13 @@ export function SubscriptionManagement({
                 ? t('changePlanDescription')
                 : t('noSubscription.description')}
             </p>
+            {currencyNote && (
+              <p className="text-muted-foreground mt-1 text-xs">{currencyNote}</p>
+            )}
           </div>
 
-          {/* Billing Toggle and Currency Selector */}
+          {/* Billing Toggle */}
           <div className="flex flex-wrap items-center gap-3">
-            {/* Currency Selector */}
-            <div className="bg-muted/50 flex items-center rounded-full p-1">
-              {SUPPORTED_CURRENCIES.map((curr) => (
-                <button
-                  key={curr}
-                  onClick={() => setCurrency(curr)}
-                  className={cn(
-                    'rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
-                    currency === curr
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {curr.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
             {/* Billing Toggle */}
             <div className="bg-muted/50 flex items-center gap-2 rounded-full px-3 py-1.5">
               <Label
@@ -907,7 +890,9 @@ export function SubscriptionManagement({
         {/* Plan Cards */}
         <div className="grid gap-4 md:grid-cols-2">
           {plans.map((plan) => {
-            const originalPrice = getPrice(plan);
+            // Null: no amount in this currency, and the plan is not available.
+            const planPrice = getPrice(plan);
+            const originalPrice = planPrice ?? 0;
             const discountedPrice = hasDiscount
               ? applyDiscount(originalPrice, discountPercent)
               : originalPrice;
@@ -995,7 +980,9 @@ export function SubscriptionManagement({
                 <CardContent className="flex-1 pt-3">
                   {/* Pricing with discount */}
                   <div className="mb-4 text-center">
-                    {hasDiscount && !isFree ? (
+                    {planPrice === null ? (
+                      <span className="text-muted-foreground text-3xl font-bold">—</span>
+                    ) : hasDiscount && !isFree ? (
                       <div className="space-y-0.5">
                         <div className="flex items-center justify-center gap-2">
                           <span className="text-muted-foreground text-lg line-through">

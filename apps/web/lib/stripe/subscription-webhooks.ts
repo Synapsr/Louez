@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
 
 import { db, legacyBillingAppliesAt, stores, subscriptions } from "@louez/db";
+import { currencyMinorDigits } from "@louez/utils";
 
 import { isStripeNotFound } from "@/lib/billing-sync/gross-backfill-core";
 import {
@@ -11,6 +12,7 @@ import {
   notifySubscriptionCancelled,
 } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
+import { getPlanCatalog } from "@/lib/billing/plan-pricing";
 import { findPlanPrice, getPlans } from "@/lib/plans";
 import { stripe } from "@/lib/stripe/client";
 import {
@@ -46,11 +48,29 @@ import {
 /** The Stripe subscription an event is about. */
 type SubscriptionRef = { readonly id: string };
 
-/** The plan a price bills, for analytics. */
-const planOfPrice: PlanOfPrice = (priceId) => {
-  const billed = findPlanPrice(getPlans(), priceId);
-  return billed ? { plan: billed.plan.slug, interval: billed.interval } : null;
-};
+/**
+ * The plan a price bills, for analytics, with its amount in a currency the plans sell
+ * in: a price with several currencies only says its default one's.
+ */
+async function planOfPrice(): Promise<PlanOfPrice> {
+  const catalog = await getPlanCatalog();
+  return (priceId, currency) => {
+    const billed = findPlanPrice(getPlans(), priceId);
+    if (!billed) return null;
+    const { slug } = billed.plan;
+    const entry = catalog.get(currency);
+    const amount =
+      entry?.priceIds[slug]?.[billed.interval] === priceId
+        ? entry.pricing.amounts[slug]?.[billed.interval]
+        : undefined;
+    return {
+      plan: slug,
+      interval: billed.interval,
+      amountMinor:
+        amount === undefined ? null : Math.round(amount * 10 ** (currencyMinorDigits(currency) ?? 2)),
+    };
+  };
+}
 
 /** What `customer.subscription.updated` says changed, for `subscription_changed`. */
 export type SubscriptionUpdateEvent = {
@@ -166,6 +186,7 @@ export async function handleSubscriptionCheckoutCompleted(
   }
   if (!planSlug) return;
 
+  const planOf = await planOfPrice();
   await activatePlanSubscription({
     storeId,
     planSlug,
@@ -177,7 +198,7 @@ export async function handleSubscriptionCheckoutCompleted(
     // change finds it there and reports nothing, rather than the plan billed now.
     lifecycle: (before) => {
       if (before.stripeSubscriptionId === stripeSubscription.id) return null;
-      const event = { storeId, ...subscriptionStarted(stripeSubscription, planOfPrice) };
+      const event = { storeId, ...subscriptionStarted(stripeSubscription, planOf) };
       return Number.isFinite(stripeSubscription.start_date)
         ? {
             ...event,
@@ -244,7 +265,8 @@ export async function handleSubscriptionUpdated(
   // the row is written from Stripe's current state. Keyed on the event: a redelivery
   // counts it once.
   const changed =
-    update && subscriptionChanged(update.subscription, update.previousAttributes, planOfPrice);
+    update &&
+    subscriptionChanged(update.subscription, update.previousAttributes, await planOfPrice());
 
   // Most updates, such as a renewal, keep the plan in force: then no early sync.
   await updateSubscriptionRow(
@@ -281,6 +303,8 @@ export async function handleSubscriptionUpdated(
 export async function handleSubscriptionDeleted(
   stripeSubscription: SubscriptionRef & {
     readonly metadata: Stripe.Metadata | null;
+    /** The currency it billed; its price's when the event leaves it out. */
+    readonly currency?: string;
     readonly items?: AnalyticsSubscription["items"];
     readonly status?: string;
     readonly cancel_at_period_end?: boolean;
@@ -306,13 +330,15 @@ export async function handleSubscriptionDeleted(
   const canceled = subscriptionCanceled(
     {
       id: stripeSubscription.id,
+      currency:
+        stripeSubscription.currency ?? stripeSubscription.items?.data[0]?.price.currency ?? "eur",
       status: stripeSubscription.status ?? "canceled",
       cancel_at_period_end: stripeSubscription.cancel_at_period_end ?? false,
       items: stripeSubscription.items ?? { data: [] },
       cancellation_details: stripeSubscription.cancellation_details ?? null,
       metadata: stripeSubscription.metadata,
     },
-    planOfPrice,
+    await planOfPrice(),
   );
   const endedAt = Number.isFinite(stripeSubscription.ended_at)
     ? stripeSubscription.ended_at

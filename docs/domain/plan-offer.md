@@ -82,7 +82,8 @@ Aucune offre ne s'affiche dans les cas suivants :
 - la boutique a un coupon ou une remise admin ;
 - la carte a été fermée il y a moins de 30 jours ;
 - le tarif d'aujourd'hui est gratuit ;
-- la devise de la boutique n'a pas de prix Stripe pour le plan.
+- la devise de la boutique n'a pas de prix Stripe vendable pour le plan. Le prix comparé est
+  celui du plan dans cette devise ([devise-abonnement.md](../billing/devise-abonnement.md)).
 
 ## Le bouton
 

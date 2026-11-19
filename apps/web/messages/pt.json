@@ -3886,6 +3886,10 @@
         },
         "pricesExcludingTax": "Preços s/ IVA",
         "excludingTax": "s/ IVA",
+        "currencyNote": {
+          "subscription": "A sua assinatura é faturada em {currency}.",
+          "fallback": "Preços em {currency}: os planos ainda não podem ser faturados em {storeCurrency}."
+        },
         "payAsYouGo": {
           "title": "Pagamento por utilização",
           "description": "É faturado por aluguer. Sem plano mensal, sem limites.",

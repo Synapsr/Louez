@@ -4234,6 +4234,10 @@
         },
         "pricesExcludingTax": "Цены без учета НДС",
         "excludingTax": "искл. НДС",
+        "currencyNote": {
+          "subscription": "Ваша подписка оплачивается в {currency}.",
+          "fallback": "Цены в {currency}: тарифы пока нельзя оплачивать в {storeCurrency}."
+        },
         "payAsYouGo": {
           "title": "Платите по мере использования",
           "description": "Вам выставляется счет за аренду. Никакого ежемесячного плана, никаких ограничений.",

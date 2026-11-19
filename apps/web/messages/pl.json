@@ -3886,6 +3886,10 @@
         },
         "pricesExcludingTax": "Ceny netto",
         "excludingTax": "netto",
+        "currencyNote": {
+          "subscription": "Twoja subskrypcja jest rozliczana w {currency}.",
+          "fallback": "Ceny w {currency}: plany nie mogą być jeszcze rozliczane w {storeCurrency}."
+        },
         "payAsYouGo": {
           "title": "Płatność za użycie",
           "description": "Rozliczasz się za wynajem. Bez planu miesięcznego, bez limitów.",
