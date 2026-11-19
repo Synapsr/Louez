@@ -1,6 +1,9 @@
 import { z } from "zod";
 
+import { PARTNER_ATTRIBUTION_DAY_OPTIONS } from "./partner-code";
+
 import { apiError } from "../platform/errors";
+import { resourceLinksSchema } from "./links";
 
 /**
  * Liens partenaires (docs/product/liens-partenaires.md): a store's local
@@ -8,39 +11,25 @@ import { apiError } from "../platform/errors";
  * owes them and what it says it paid. Louez computes; the store pays.
  */
 
-/** The query parameter of a partner link: `https://<store>/?partner=les-pins`. */
-export const PARTNER_LINK_PARAM = "partner";
-
-/** How long a customer's "yes, credit them" holds, from the link to the booking. */
-export const PARTNER_ATTRIBUTION_DAYS = 30;
-
-/** Lowercase letters, digits and inner dashes, 2 to 40 characters. */
-export const PARTNER_CODE_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])$/;
-
-/** The code a link names, or null for anything that cannot be a code. */
-export const parsePartnerCode = (value: unknown): string | null => {
-  if (typeof value !== "string") return null;
-  const code = value.trim().toLowerCase();
-  return PARTNER_CODE_PATTERN.test(code) ? code : null;
-};
-
-/**
- * A code drawn from the partner's name, accents and punctuation dropped:
- * "Camping Les Pins" gives `camping-les-pins`. Null when nothing is left.
- */
-export const partnerCodeFromName = (name: string): string | null => {
-  const code = name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 34)
-    .replace(/-+$/g, "");
-  return parsePartnerCode(code);
-};
+export {
+  DEFAULT_PARTNER_ATTRIBUTION_DAYS,
+  PARTNER_ATTRIBUTION_DAY_OPTIONS,
+  PARTNER_CODE_PATTERN,
+  PARTNER_LINK_PARAM,
+  parsePartnerCode,
+  partnerAttributionDays,
+  partnerCodeFromName,
+  type PartnerAttributionDays,
+} from "./partner-code";
 
 export const PARTNER_COMMISSION_TYPES = ["percent", "fixed"] as const;
+
+/**
+ * How a reservation came to a partner: its link (the storefront's cookie at
+ * checkout), its code typed by the customer at checkout, or the store's choice.
+ */
+export const PARTNER_BOOKING_ORIGINS = ["link", "code", "manual"] as const;
+export type PartnerBookingOrigin = (typeof PARTNER_BOOKING_ORIGINS)[number];
 export type PartnerCommissionType = (typeof PARTNER_COMMISSION_TYPES)[number];
 
 /** A percentage of the rental (10 is 10 %) or an amount per booking, in the store's currency. */
@@ -87,6 +76,8 @@ export const partnerFieldsSchema = z.object({
     .optional(),
   contactPhone: optionalText(40),
   commission: partnerCommissionSchema,
+  /** One of the store's promo codes, applied at checkout for the partner's customers. */
+  promoCodeId: z.string().min(1).max(21).nullable().optional(),
 });
 export type PartnerFields = z.infer<typeof partnerFieldsSchema>;
 
@@ -102,6 +93,10 @@ export const partnerSchema = z.object({
   code: z.string(),
   commission: z.object({ type: z.enum(PARTNER_COMMISSION_TYPES), value: z.number() }),
   contact: contactSchema,
+  /** The customer perk of its link: a promo code of the store, or null. */
+  perk: z.object({ promoCodeId: z.string(), code: z.string() }).nullable(),
+  /** Whether the partner gets any e-mail (an address, and at least one kind turned on). */
+  notified: z.boolean(),
   archived: z.boolean(),
   createdAt: z.date(),
 });
@@ -138,7 +133,7 @@ export const partnerBookingSchema = z.object({
   adjustment: z.object({ amount: z.number(), note: z.string().nullable() }).nullable(),
   rule: z.object({ type: z.enum(PARTNER_COMMISSION_TYPES), value: z.number() }),
   state: z.enum(PARTNER_COMMISSION_STATES),
-  origin: z.enum(["link", "manual"]),
+  origin: z.enum(PARTNER_BOOKING_ORIGINS),
 });
 export type PartnerBooking = z.infer<typeof partnerBookingSchema>;
 
@@ -161,23 +156,45 @@ export type PartnerStatement = z.infer<typeof partnerStatementSchema>;
 
 // --- Procedures ---------------------------------------------------------------
 
-export const listPartnersInput = z.object({ month: partnerMonthSchema.optional() });
+export const listPartnersInput = z.object({
+  month: partnerMonthSchema
+    .optional()
+    .describe(
+      "The month to sum up, YYYY-MM, in the store's time zone. Defaults to the current one.",
+    ),
+});
+/** The store's settings of Liens partenaires. */
+export const partnerSettingsSchema = z.object({
+  /** How long a partner link holds, from the click to the booking. */
+  attributionDays: z.number().int(),
+});
+export type PartnerSettings = z.infer<typeof partnerSettingsSchema>;
+
 export const listPartnersOutput = z.object({
   currency: z.string(),
   month: partnerMonthSchema,
   partners: z.array(partnerSchema.extend({ totals: partnerMonthTotalsSchema })),
+  settings: partnerSettingsSchema,
+  /** The store's active promo codes, to offer as a partner's customer perk. */
+  promoCodes: z.array(z.object({ id: z.string(), code: z.string() })),
+  /** The dashboard's partners page. */
+  links: resourceLinksSchema,
 });
 export type PartnerList = z.infer<typeof listPartnersOutput>;
 
 export const getPartnerStatementInput = z.object({
-  partnerId: z.string().min(1).max(21),
-  month: partnerMonthSchema.optional(),
+  partnerId: z.string().min(1).max(21).describe("The partner's id, from partners_list."),
+  month: partnerMonthSchema
+    .optional()
+    .describe("The month, YYYY-MM: the month the rentals end in. Defaults to the current one."),
 });
 export const getPartnerStatementOutput = partnerStatementSchema.extend({
   /** The months the picker offers, most recent first (`PARTNER_STATEMENT_MONTHS`). */
   months: z.array(partnerMonthSchema),
-  /** The secret of the partner's read-only page (`/partner-statements/<token>`). */
+  /** The secret of the partner's own space (`/partner/<token>`). */
   statementToken: z.string(),
+  /** The partner's page of the dashboard. */
+  links: resourceLinksSchema,
 });
 export type PartnerStatementView = z.infer<typeof getPartnerStatementOutput>;
 
@@ -190,6 +207,15 @@ export const partnerOutput = partnerSchema;
 export const setPartnerArchivedInput = z.object({
   partnerId: z.string().min(1).max(21),
   archived: z.boolean(),
+});
+
+export const updatePartnerSettingsInput = z.object({
+  attributionDays: z
+    .number()
+    .int()
+    .refine((days) => (PARTNER_ATTRIBUTION_DAY_OPTIONS as readonly number[]).includes(days), {
+      message: "One of the attribution windows on offer.",
+    }),
 });
 
 export const rotatePartnerStatementTokenInput = z.object({
@@ -222,7 +248,7 @@ export const reservationPartnerSchema = z.object({
     .object({
       partnerId: z.string(),
       name: z.string(),
-      origin: z.enum(["link", "manual"]),
+      origin: z.enum(PARTNER_BOOKING_ORIGINS),
       commission: z.number(),
       state: z.enum(PARTNER_COMMISSION_STATES),
     })
@@ -239,6 +265,18 @@ export const setReservationPartnerInput = z.object({
   partnerId: z.string().min(1).max(21).nullable(),
 });
 
+/** What a partner sets in its own space: where its e-mails go, and which ones. */
+export const partnerNotificationsSchema = z.object({
+  email: z
+    .union([z.literal(""), z.string().trim().email().max(255)])
+    .transform((value) => value || null)
+    .nullable(),
+  bookings: z.boolean(),
+  payouts: z.boolean(),
+  statements: z.boolean(),
+});
+export type PartnerNotifications = z.infer<typeof partnerNotificationsSchema>;
+
 export const partnerErrors = {
   notFound: () =>
     apiError("NOT_FOUND", "PARTNER_NOT_FOUND", {
@@ -254,6 +292,11 @@ export const partnerErrors = {
     apiError("CONFLICT", "PARTNER_RESERVATION_NOT_ATTRIBUTED", {
       message: "This reservation is not attributed to a partner.",
       i18nKey: "errors.partnerReservationNotAttributed",
+    }),
+  perkNotFound: () =>
+    apiError("NOT_FOUND", "PARTNER_PERK_NOT_FOUND", {
+      message: "This promo code does not exist in this store.",
+      i18nKey: "errors.partnerPerkNotFound",
     }),
   nothingToPay: () =>
     apiError("CONFLICT", "PARTNER_NOTHING_TO_PAY", {

@@ -5,7 +5,7 @@ CREATE TABLE `partner_bookings` (
 	`reservation_id` varchar(21) NOT NULL,
 	`commission_type` enum('percent','fixed') NOT NULL,
 	`commission_value` decimal(10,2) NOT NULL,
-	`origin` enum('link','manual') NOT NULL,
+	`origin` enum('link','code','manual') NOT NULL,
 	`adjusted_amount` decimal(10,2),
 	`adjustment_note` varchar(200),
 	`attributed_by` varchar(21),
@@ -26,6 +26,13 @@ CREATE TABLE `partner_payouts` (
 	CONSTRAINT `partner_payouts_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `store_partner_settings` (
+	`store_id` varchar(21) NOT NULL,
+	`attribution_days` int NOT NULL DEFAULT 30,
+	`updated_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `store_partner_settings_store_id` PRIMARY KEY(`store_id`)
+);
+--> statement-breakpoint
 CREATE TABLE `store_partners` (
 	`id` varchar(21) NOT NULL,
 	`store_id` varchar(21) NOT NULL,
@@ -37,6 +44,12 @@ CREATE TABLE `store_partners` (
 	`commission_type` enum('percent','fixed') NOT NULL,
 	`commission_value` decimal(10,2) NOT NULL,
 	`statement_token` varchar(43) NOT NULL,
+	`promo_code_id` varchar(21),
+	`notify_email` varchar(255),
+	`notify_bookings` boolean NOT NULL DEFAULT true,
+	`notify_payouts` boolean NOT NULL DEFAULT true,
+	`notify_statements` boolean NOT NULL DEFAULT true,
+	`statement_sent_month` varchar(7),
 	`archived_at` timestamp,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()),

@@ -109,6 +109,7 @@ const TITLES: Record<NeedsALookItem["type"], string> = {
   message_not_sent: "messageNotSent.title",
   invitation_not_sent: "invitationNotSent.title",
   operation_unknown: "operationUnknown.title",
+  partner_payout_due: "partnerPayoutDue.title",
 };
 
 /** Said when a sentence would miss one of its values: nothing wrong, nothing blank. */
@@ -317,6 +318,32 @@ function describeItem(item: NeedsALookItem, format: DisplayFormat): NeedsALookDi
         action: toCustomer
           ? viewBooking(reservationId)
           : { label: "actions.notificationSettings", href: "/dashboard/settings/notifications" },
+      };
+    }
+    case "partner_payout_due": {
+      const partner = text(d.partnerName) ?? "";
+      const partnerId = text(d.partnerId);
+      const [year, month] = (text(d.month) ?? "").split("-");
+      return {
+        ...base,
+        title: { key: "partnerPayoutDue.title" },
+        line: [partner, amount].filter((part): part is string => Boolean(part)),
+        sentences: [
+          {
+            key: "partnerPayoutDue.summary",
+            values: {
+              partner,
+              amount: amount ?? "",
+              month: year && month ? `${month}/${year}` : "",
+            },
+          },
+        ],
+        action: partnerId
+          ? {
+              label: "actions.openPartner",
+              href: `/dashboard/visibility/partners/${encodeURIComponent(partnerId)}`,
+            }
+          : null,
       };
     }
     case "invitation_not_sent": {

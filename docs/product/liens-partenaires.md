@@ -1,6 +1,6 @@
 # Liens partenaires — les recommandations locales qui rapportent
 
-Statut : spec ; phase 1 en revue (novembre 2026). Propriétaire : Téo.
+Statut : spec ; phases 1 et 2 sur une branche, pas fusionnées (novembre 2026). Propriétaire : Téo.
 Origine : note « Liens partenaires » de Téo (8 novembre 2026).
 
 ## Problème
@@ -22,7 +22,7 @@ outil tiers payant (voir « Ce que font les autres »).
 ## L'idée
 
 Chaque boutique donne **un lien à chacun de ses partenaires locaux**. Quand un client réserve
-par ce lien et accepte de créditer le partenaire, Louez **attribue la réservation** et
+par ce lien (ou donne son code), Louez **attribue la réservation** et
 **calcule la commission** que la boutique a fixée (par exemple 10 % de la location). En fin de
 mois, la boutique voit ce qu'elle doit à chaque partenaire, **le paie elle-même**, et le marque
 payé.
@@ -40,8 +40,8 @@ offre payante.
 | Qui                                                   | Ce qu'il veut                                                                              | Ce dont il a besoin                                                                                           |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | **Le loueur** (souvent seul, sur son téléphone)       | Plus de clients via les gens qui le recommandent déjà ; les remercier sans tenir de carnet | Ajouter un partenaire en 30 secondes ; un lien et une affiche prêts ; savoir ce qu'il doit, à qui, ce mois-ci |
-| **Le partenaire** (accueil d'un camping, d'un hôtel…) | Recommander sans effort, et être sûr d'être payé de ce qu'il a apporté                     | Un QR à poser au comptoir, un lien pour le mail de bienvenue ; vérifier ce que son lien a rapporté            |
-| **Le client final** (vacancier, futur marié…)         | Réserver vite, au même prix                                                                | Rien de nouveau : la boutique, ses prix, son paiement. Une question, une fois, s'il vient d'un lien           |
+| **Le partenaire** (accueil d'un camping, d'un hôtel…) | Recommander sans effort, et être sûr d'être payé de ce qu'il a apporté                     | Un QR à poser au comptoir, un lien pour le mail de bienvenue ; voir où il en est, être prévenu de ses gains   |
+| **Le client final** (vacancier, futur marié…)         | Réserver vite, au même prix                                                                | Rien de nouveau : la boutique, ses prix, son paiement ; un code partenaire facultatif au paiement             |
 
 Le partenaire **n'a pas de compte Louez** : un compte serait une barrière pour quelqu'un qui
 n'est pas client de Louez. Un office de tourisme public peut ne pas avoir le droit de toucher
@@ -104,29 +104,33 @@ Pas de paliers, pas de commission par produit : la boutique change le taux quand
 le changement vaut pour les réservations attribuées **après** (le taux est copié sur la
 réservation au moment de l'attribution).
 
-### Le lien, et le choix du client
+### Le lien et le code
 
 `https://<boutique>/?partner=camping-les-pins` (ou n'importe quelle page de la boutique avec
 `?partner=`). Lisible, imprimable, et il marche sur les liens de produit.
 
-- **Le client choisit.** La vitrine ouverte par ce lien affiche une petite carte : « Recommandé
-  par Camping Les Pins — Voulez-vous que Camping Les Pins soit remercié si vous réservez ? Le
-  prix ne change pas. [Non merci] [Oui, avec plaisir] ». Rien n'est enregistré avant le « oui » :
-  la CNIL range les traceurs servant à facturer l'affiliation hors des exemptions de
-  consentement, et nos vitrines n'ont pas de bandeau cookies. La carte est aussi un argument :
-  le client voit que la boutique est recommandée.
-- **Attribution** : au « oui », la vitrine pose un cookie httpOnly `louez_partner` sur son
-  domaine, **30 jours**, qui nomme la boutique et le code. **Dernier lien partenaire accepté** :
-  un autre le remplace ; les liens `via` de la boutique ne le touchent pas.
-- **À la réservation** : le checkout lit le cookie côté serveur et attribue la réservation au
-  partenaire actif de **cette** boutique qui porte ce code. Un code inconnu ou archivé
-  n'attribue rien, une réservation test jamais, une réservation déjà attribuée garde son
-  partenaire. Une erreur d'attribution ne fait jamais échouer une réservation.
-- **La visite** : `/api/track` lit le même cookie et note le partenaire sur les pages vues
-  (`page_views.partner_id`) : la boutique voit si l'affiche sert, avant la première réservation.
-- **À la main** : sur la fiche d'une réservation, la boutique l'attribue à un partenaire
-  (client venu « de la part du camping » par téléphone, au comptoir, depuis un autre appareil),
-  la change, ou la retire.
+- **Attribution** : le proxy de la vitrine lit `?partner=` et pose un cookie httpOnly
+  `louez_partner` sur le domaine de la boutique (le slug de la boutique, le code, l'heure du
+  clic), sans rien demander au client : **décision de Téo du 19 novembre 2026**, en
+  connaissance de la position de la CNIL (voir « Vie privée »). **Dernier lien cliqué** : un
+  autre lien partenaire le remplace ; les liens `via` de la boutique ne le touchent pas.
+- **Durée** : réglable par boutique (7, 14, 30, 60 ou 90 jours ; 30 par défaut). Le cookie vit
+  90 jours ; la durée de la boutique est vérifiée à la réservation.
+- **Code partenaire** au paiement : « Un partenaire vous a recommandé ? » (replié), pour le
+  client recommandé de vive voix ou passé d'un appareil à l'autre. Un code tapé compte toujours,
+  sans durée, et passe avant le lien. Le champ n'apparaît que si la boutique a des partenaires,
+  et pas quand le client est déjà arrivé par un lien.
+- **À la réservation** : le checkout attribue la réservation au partenaire actif de **cette**
+  boutique (code tapé, sinon lien dans la durée). Un code inconnu ou archivé n'attribue rien,
+  une réservation test jamais, une réservation déjà attribuée garde son partenaire. Une erreur
+  d'attribution ne fait jamais échouer une réservation.
+- **L'avantage client** (facultatif) : un des codes promo de la boutique, appliqué tout seul au
+  paiement quand le client arrive par le lien ou tape le code. Il se voit comme un code promo ;
+  il ne marche que tant que le code promo est actif.
+- **La visite** : `/api/track` note le partenaire sur les pages vues (`page_views.partner_id`) :
+  la boutique voit si l'affiche sert, avant la première réservation.
+- **À la main** : en créant une réservation (carte « Partenaire »), ou sur la fiche d'une
+  réservation, la boutique l'attribue à un partenaire, la change ou la retire.
 
 ### La commission
 
@@ -166,15 +170,29 @@ boutique. Pour chaque partenaire et chaque mois (les 12 derniers) :
 - **export CSV** pour la comptabilité de la boutique (cellules neutralisées contre les
   formules).
 
-### Ce que voit le partenaire
+### L'espace partenaire
 
-Un **lien de relevé** secret (`/partner-statements/<secret>`, 43 caractères aléatoires) que la
-boutique lui envoie, avec son lien, dans un message prêt (e-mail, WhatsApp). Il ouvre une page
-en lecture seule, sans compte : nom de la boutique, mois par mois, dû / payé / reste / à venir,
-et pour chaque réservation **la date de fin, la commission et l'état seulement** : pas de
-numéro, pas de montant de location, pas d'articles, qui ensemble pourraient désigner une
-famille du camping. La page dit que le relevé n'est pas une facture et que la boutique paie
-directement. La boutique peut **changer ce lien** (l'ancien cesse de marcher).
+Un **lien secret** (`/partner/<secret>`, 43 caractères aléatoires), sans compte, que la boutique
+envoie avec le lien dans un message prêt (e-mail, WhatsApp). Il ouvre l'espace du partenaire :
+
+- **où il en est**, d'un coup d'œil : **À recevoir** (commissions dues, pas encore payées, tous
+  mois confondus), **À venir** (locations réservées, pas encore terminées), **Reçu** (ce que la
+  boutique a noté payé) ;
+- la règle en une phrase (taux, durée du lien, avantage client s'il y en a un) ;
+- **l'activité récente** : nouvelles réservations (date, fin de location, commission, état) et
+  paiements ;
+- **son lien, son affiche QR et son code** à donner de vive voix : il peut imprimer sa propre
+  affiche ;
+- **le détail par mois** (12 derniers) : dû, payé, reste, et pour chaque réservation la date de
+  fin, la commission et l'état seulement : ni numéro, ni montant de location, ni articles, qui
+  ensemble pourraient désigner une famille du camping ;
+- **ses notifications** : son adresse (celle que la boutique a donnée par défaut) et trois
+  interrupteurs : **nouvelle réservation**, **paiement reçu**, **relevé mensuel** (au début de
+  chaque mois, s'il a eu des réservations finies le mois passé). Tous activés par défaut ;
+  chaque e-mail mène à l'espace, où il les coupe.
+
+La page dit que ce n'est pas une facture et que la boutique paie directement. La boutique peut
+**changer ce lien** (l'ancien cesse de marcher).
 
 ## Où le loueur le trouve
 
@@ -183,38 +201,32 @@ Dans « Se faire connaître », une troisième entrée **« Partenaires »**
 **Pas de carte sur l'accueil.**
 
 - **Liste** : le mois en cours et le total à payer ; un partenaire par ligne (nom, commission,
-  réservations du mois, montant à payer). Vide : trois lignes qui expliquent le principe
-  (ajouter, partager, payer) et le bouton.
-- **Ajout** : nom et commission (10 % par défaut) ; les coordonnées sont repliées. Après
-  l'ajout, la fiche du partenaire s'ouvre, son lien prêt.
-- **Fiche partenaire** (`/dashboard/visibility/partners/<id>`) : **son lien** (Copier, Affiche
-  QR au nom de la boutique avec le lien du partenaire, E-mail, WhatsApp), puis **le relevé**
-  (mois, dû / payé / reste, Exporter, Marquer comme payé, la liste avec Ajuster et Retirer par
-  ligne, les règles en une ligne). Modifier, copier ou changer le lien du relevé, archiver :
-  derrière un menu.
-- **Fiche réservation** : une carte « Partenaire » (qui, par son lien ou à la main, commission
-  et état ; changer ou retirer), absente pour une boutique sans partenaire.
+  réservations du mois, montant à payer). Sous la liste, la durée d'un lien et « Modifier ».
+  Vide : trois lignes qui expliquent le principe et le bouton.
+- **Ajout** : nom et commission (10 % par défaut) ; l'avantage client (un code promo) s'il y en
+  a ; les coordonnées repliées. Après l'ajout, la fiche du partenaire s'ouvre, son lien prêt.
+- **Fiche partenaire** (`/dashboard/visibility/partners/<id>`) : sa règle, son avantage, s'il
+  reçoit les e-mails ; **son lien** (Copier, Affiche QR, E-mail, WhatsApp), puis **le relevé**
+  (mois, dû / payé / reste, Exporter, Marquer comme payé, Ajuster et Retirer par ligne). Modifier,
+  copier ou changer le lien de son espace, archiver : derrière un menu.
+- **Création d'une réservation** : une carte « Partenaire » (absente sans partenaire).
+- **Fiche réservation** : une carte « Partenaire » (qui, par son lien, son code ou à la main,
+  commission et état ; changer ou retirer).
+- **« À regarder »** (la cloche et sa page) : « Commission à payer » pour chaque mois terminé
+  qui doit encore quelque chose à un partenaire, avec le lien vers sa fiche. Elle se marque
+  traitée comme les autres.
 
 ## Phases
 
-### Phase 1 — Le lien, le choix du client, la commission, le relevé (cette PR)
+### Phases 1 et 2 — sur la branche, pas fusionnées
 
-Tout ce qui précède. Procédures `partners.*` en session du dashboard uniquement (comme
-`visibility.*`) ; 13 langues ; événements PostHog ; effacement avec la boutique. À tester
-d'abord avec quelques boutiques volontaires et un partenaire chacune.
-
-### Phase 2 — Selon ce que les premières boutiques en disent
-
-- **Rappel** quand un mois est dû et pas marqué payé, dans « À regarder » (inbox), pas sur
-  l'accueil.
-- **Code à dire** au téléphone ou au comptoir, saisi au checkout (« Code partenaire ») ; et le
-  partenaire au moment de créer une réservation à la main.
-- **Relevé envoyé par e-mail** au partenaire en début de mois.
-- **Avantage client** facultatif lié au partenaire (ex. –5 % via le camping), avec les codes
-  promo existants.
-- **MCP / API** : `partners.list` et `partners.getStatement` en lecture pour les assistants
-  (« combien je dois au camping ce mois-ci ? »).
-- Fenêtre d'attribution réglable par boutique, si 30 jours ne suffit pas.
+Tout ce qui précède : partenaires, lien (cookie sans question), code au paiement, durée
+réglable, avantage client, attribution à la main (création et fiche), commission en % ou fixe,
+ajustements, états, relevé mensuel, payé, CSV, espace partenaire avec ses notifications
+(e-mails par l'outbox : réservation, paiement, relevé du mois), rappel « Commission à payer »,
+lecture des partenaires et des relevés pour les assistants (`partners_list`,
+`partners_get_statement`, API `GET /partners` et `GET /partners/{id}/statement`). Les écritures
+restent dans le dashboard. 13 langues ; événements PostHog ; effacement avec la boutique.
 
 ### Phase 3 — Seulement si la demande est forte
 
@@ -233,26 +245,31 @@ d'abord avec quelques boutiques volontaires et un partenaire chacune.
 
 - Le partenaire **ne voit aucune donnée du client**, ni ce qui permettrait de le retrouver
   facilement (numéro, montant de location, articles) : une date de fin, une commission, un état.
-- Le cookie `louez_partner` n'existe qu'après le « oui » du client ; il nomme la boutique et le
-  code du partenaire, sur le domaine de la boutique, httpOnly, 30 jours. Un « non » n'enregistre
-  rien.
+- Le cookie `louez_partner` est posé sans question au client (décision de Téo du 19 novembre
+  2026). La CNIL range les traceurs servant à facturer l'affiliation hors des exemptions de
+  consentement (position examinée par le Conseil d'État le 8 avril 2022, n° 452668) : c'est un
+  risque assumé, comme pour le cookie reeent `louez_channel`. Si une carte de consentement
+  devient nécessaire, elle se pose devant le cookie sans toucher au reste (une première version
+  l'avait). Le cookie ne contient que le slug de la boutique, le code et l'heure du clic, sur le
+  domaine de la boutique, httpOnly, 90 jours au plus.
 - Les coordonnées du partenaire (souvent une personne) sont des données de la boutique :
-  effacées avec elle.
-- Le lien de relevé est un secret : page `noindex`, sans analytics, sans référent, comme les
-  pages de handoff ; en mode standalone, elle ne passe pas par la vitrine.
+  effacées avec elle. Ses e-mails ne parlent que de ses gains, et se coupent depuis son espace.
+- Le lien de l'espace est un secret : page `noindex`, sans analytics, sans référent, comme les
+  pages de handoff ; en mode standalone, il ne passe pas par la vitrine.
 
 ## Abus
 
-| Risque                                                             | Réponse en phase 1                                                                                                                             |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Le partenaire publie son lien partout (site de bons plans)         | Les visites le montrent ; la boutique archive ou baisse le taux. Le client voit à chaque fois qui il crédite                                   |
-| Commission sur des clients que la boutique avait déjà              | Le client choisit de créditer ; la boutique retire ou ajuste une attribution                                                                   |
-| Le loueur teste le lien sur la tablette du comptoir et dit « oui » | Les réservations faites sur cette tablette depuis la vitrine iraient au partenaire 30 jours : la boutique les retire ; ne pas accepter en test |
-| Un partenaire réserve pour lui-même par son lien                   | La boutique choisit ses partenaires ; elle retire l'attribution                                                                                |
-| Commission sur une réservation annulée                             | Annulée avec elle ; une annulation après paiement apparaît en écart négatif                                                                    |
-| Deux partenaires pour une réservation                              | Un seul : le dernier lien accepté, ou le choix de la boutique                                                                                  |
-| Lien de relevé transmis à un tiers                                 | Il ne montre rien du client ; la boutique change le lien                                                                                       |
-| Faux code dans l'URL                                               | Un code inconnu de la boutique n'affiche rien et n'attribue rien                                                                               |
+| Risque                                                     | Réponse                                                                                                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Le partenaire publie son lien partout (site de bons plans) | Les visites le montrent ; la boutique archive, baisse le taux ou raccourcit la durée                                |
+| Commission sur des clients que la boutique avait déjà      | La boutique retire ou ajuste une attribution ; la durée du lien est réglable                                        |
+| Le loueur teste le lien sur la tablette du comptoir        | Les réservations faites ensuite depuis la vitrine sur cette tablette iraient au partenaire : la boutique les retire |
+| Un partenaire réserve pour lui-même par son lien           | La boutique choisit ses partenaires ; elle retire l'attribution                                                     |
+| Deviner un code partenaire au paiement                     | Il ne donne que le nom du partenaire et son avantage, un code promo fait pour circuler                              |
+| Commission sur une réservation annulée                     | Annulée avec elle ; une annulation après paiement apparaît en écart négatif                                         |
+| Deux partenaires pour une réservation                      | Un seul : le code tapé, sinon le dernier lien, ou le choix de la boutique                                           |
+| Lien de l'espace transmis à un tiers                       | Il ne montre rien du client ; il ne permet que de changer les e-mails du partenaire ; la boutique change le lien    |
+| Faux code dans l'URL                                       | Un code inconnu de la boutique n'attribue rien                                                                      |
 
 ## Auto-hébergé
 
@@ -263,19 +280,23 @@ base suffit.
 ## Données
 
 - `store_partners` : boutique, nom, contact (nom, e-mail, téléphone), code (unique par
-  boutique), type et valeur de commission, secret du relevé (unique), `archived_at`, dates.
+  boutique), type et valeur de commission, avantage (code promo), secret de l'espace (unique),
+  notifications (adresse, trois choix), dernier mois de relevé envoyé, `archived_at`, dates.
 - `partner_bookings` : une ligne par réservation attribuée (réservation unique) : partenaire,
-  type et valeur de commission **copiés**, origine (`link` | `manual`), ajustement (montant,
-  motif), qui l'a attribuée, quand.
+  type et valeur de commission **copiés**, origine (`link` | `code` | `manual`), ajustement
+  (montant, motif), qui l'a attribuée, quand.
 - `partner_payouts` : partenaire, mois (`YYYY-MM`), montant, devise, date, qui.
+- `store_partner_settings` : la durée d'un lien, par boutique.
 - `page_views.partner_id`.
+- Outbox (`api_effects`) : `partner.bookingEmail`, `partner.payoutEmail`,
+  `partner.statementEmail`, lus au moment de l'envoi.
 
-Migration additive `0117_partner_links` (trois tables, une colonne nullable, pas d'index sur
+Migration additive `0117_partner_links` (quatre tables, une colonne nullable, pas d'index sur
 `page_views`).
 
 ## Mesure
 
-- **Base** : partenaires créés, réservations attribuées (par lien / à la main), commissions
+- **Base** : partenaires créés, réservations attribuées (lien, code, à la main), commissions
   dues et payées, visites par partenaire.
 - **PostHog** ([docs/analytics/partners.md](../analytics/partners.md)) : pages vues,
   partenaire ajouté, lien partagé (canal), relevé exporté, mois marqué payé, attribution changée.
@@ -285,11 +306,12 @@ Migration additive `0117_partner_links` (trois tables, une colonne nullable, pas
 
 ## Questions ouvertes
 
-- Faut-il un avantage pour le client (–5 %) pour qu'il passe par le lien ? (Phase 2, à tester.)
-- La part de clients qui disent « oui » à la carte : si elle est faible, l'attribution à la main
-  et le code à dire comptent davantage.
-- Commission due seulement quand la réservation est **intégralement payée** ? Pas en phase 1 :
-  la boutique ajuste quand un solde reste impayé.
+- Le cookie sans consentement (voir « Vie privée ») : à revoir si la CNIL ou un client le
+  conteste.
+- Commission due seulement quand la réservation est **intégralement payée** ? Pas pour
+  l'instant : la boutique ajuste quand un solde reste impayé.
+- Un compte partenaire commun à plusieurs boutiques (un office de tourisme qui recommande
+  plusieurs loueurs) : phase 3.
 
 ## Annexe — revues croisées
 
@@ -354,6 +376,13 @@ Gardé malgré les critiques :
   la carte de la fiche réservation le fait en un clic.
 - **Rappel d'un mois dû** (Grok) : phase 2, dans l'inbox, jamais sur l'accueil (consigne de
   Téo).
+
+### Décisions de Téo (19 novembre 2026)
+
+- Pas de carte de consentement sur la vitrine : le cookie est posé au clic, risque CNIL assumé.
+- Un vrai espace pour le partenaire, pour que « ce ne soit pas flou », avec des notifications
+  de ses gains.
+- Toute la phase 2 avec, sur la branche, sans fusion tant que ce n'est pas propre.
 
 ## Related
 

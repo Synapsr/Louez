@@ -5,6 +5,7 @@ import { pruneInboxAcknowledgements } from "@louez/api/services/inbox";
 
 import { runApiEffectsCron } from "@/lib/api/effects";
 import { runApiJobsCron } from "@/lib/api/jobs";
+import { runPartnerStatementsCron } from "@/lib/partners/partner-statements-cron";
 import { settleAbandonedCheckouts } from "@/lib/reservations/abandoned-checkouts";
 import { runDepositReleaseDebtsCron } from "@/lib/reservations/deposit-hold-debts";
 import { runStaleRefundOperationsCron } from "@/lib/reservations/stripe-refund-cron";
@@ -15,7 +16,8 @@ import type { IsolatedTask } from "./isolated-tasks";
  * The agent-ready API's tasks, on every cron call: the releases of deposit holds
  * Louez owes and whose outbox row is gone or abandoned get a new one
  * (lib/reservations/deposit-hold-debts.ts), and so do the refunds of online payments
- * still requested (lib/reservations/stripe-refund-cron.ts), then the outbox, then the
+ * still requested (lib/reservations/stripe-refund-cron.ts), the partners' monthly
+ * statements are queued once their month has ended (lib/partners), then the outbox, then the
  * purges past their retention, each on its own and each bounded per run (the
  * inbox's acknowledgements, the handoffs, the writes' records after 12 months,
  * the OAuth tokens 7 days after they lapse), then the background jobs (those
@@ -34,6 +36,12 @@ export function apiTasks(): IsolatedTask[] {
       task: "stale-refund-operations",
       key: "staleRefundOperations",
       run: () => runStaleRefundOperationsCron(),
+    },
+    // Before the outbox: a partner's statement queued now goes out in this run.
+    {
+      task: "partner-statements",
+      key: "partnerStatements",
+      run: () => runPartnerStatementsCron(),
     },
     { task: "api-effects", key: "apiEffects", run: () => runApiEffectsCron() },
     {

@@ -176,7 +176,8 @@ function feeNumbersIn(code, file) {
     if (node.type === "AssignmentExpression") check(targetName(node.left), node.right, node);
     if (node.type === "ClassProperty") check(propertyKey(node), node.value, node);
     // fees.md §2: rhu(x, bps).
-    if (isCall(node) && calleeName(node.callee) === "rhu") record("rhu bps", node.arguments[1], node);
+    if (isCall(node) && calleeName(node.callee) === "rhu")
+      record("rhu bps", node.arguments[1], node);
   });
   return found;
 }

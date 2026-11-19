@@ -28,7 +28,7 @@ interface PartnerLinkCardProps {
   partner: Partner;
   storeName: string;
   link: string;
-  /** The ready message: the link, the rule and the statement page. */
+  /** The ready message: the link, the rule and the partner's space. */
   message: string;
   onShared: (channel: PartnerShareChannel) => void;
 }

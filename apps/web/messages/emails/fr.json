@@ -407,5 +407,25 @@
     "savingsLabel": "Économie :",
     "cta": "Voir l'offre",
     "footer": "Abonnement mensuel, sans engagement, résiliable à tout moment. Les frais Stripe et ceux de la marketplace reeent restent dus."
+  },
+  "partnerNotification": {
+    "greeting": "Bonjour {partner},",
+    "cta": "Voir mon espace partenaire",
+    "footer": "Vous recevez cet e-mail parce que {store} vous a ajouté comme partenaire. Choisissez les e-mails que vous recevez depuis votre espace partenaire.",
+    "booking": {
+      "subject": "Nouvelle réservation grâce à vous chez {store}",
+      "title": "Une nouvelle réservation grâce à vous",
+      "body": "Un client a réservé chez {store} grâce à vous. Votre commission prévue : {amount}, due quand la location se termine, le {endDate}."
+    },
+    "payout": {
+      "subject": "{store} vous a payé {amount}",
+      "title": "Paiement reçu",
+      "body": "{store} a enregistré vous avoir payé {amount} pour les locations terminées en {month}. Merci pour vos recommandations !"
+    },
+    "statement": {
+      "subject": "Votre relevé de {month} chez {store}",
+      "title": "Votre relevé de {month}",
+      "body": "{bookings, plural, one {# réservation} other {# réservations}} grâce à vous. Dû : {due}. Déjà payé : {paid}. Reste à payer : {remaining}."
+    }
   }
 }

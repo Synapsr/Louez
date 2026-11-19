@@ -2807,7 +2807,8 @@
           "label": "Discount",
           "add": "Add a discount",
           "remove": "Remove discount"
-        }
+        },
+        "partnerNotCredited": "Booking created, but the partner was not credited. Add them from the booking."
       },
       "rejectDialog": {
         "title": "Reject request",
@@ -7383,7 +7384,8 @@
         "viewProduct": "View product",
         "invoicingSettings": "Invoicing settings",
         "notificationSettings": "Notification settings",
-        "openTeam": "Open team"
+        "openTeam": "Open team",
+        "openPartner": "Open the partner"
       },
       "facts": {
         "stripeCharge": "Stripe charge",
@@ -7460,7 +7462,11 @@
       },
       "unknownTitle": "Something to check",
       "neutral": "Louez couldn't settle this on its own. Open it to see what happened.",
-      "viewAll": "See all"
+      "viewAll": "See all",
+      "partnerPayoutDue": {
+        "title": "Commission to pay",
+        "summary": "You owe {partner} {amount} for the rentals that ended in {month}. Pay them, then mark the month as paid."
+      }
     },
     "visibility": {
       "title": "Get known",
@@ -7673,11 +7679,14 @@
         "emailInvalid": "This email is not valid.",
         "cancel": "Cancel",
         "create": "Add",
-        "save": "Save"
+        "save": "Save",
+        "perk": "Perk for their customers",
+        "perkHint": "One of your promo codes, applied automatically when a customer comes through their link or types their code.",
+        "perkNone": "None"
       },
       "link": {
         "title": "Their link",
-        "description": "A customer who opens it chooses whether to credit {partner}. The price stays the same.",
+        "description": "Every booking made after a click on this link is credited to {partner}. The price stays the same for the customer.",
         "copy": "Copy",
         "copied": "Link copied",
         "poster": "QR poster",
@@ -7687,17 +7696,7 @@
         "posterFileName": "partner-poster",
         "sendEmail": "Email",
         "emailSubject": "Your {store} partner link",
-        "message": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nYour statement, always up to date: {statement}\n\nThank you for recommending us!"
-      },
-      "menu": {
-        "label": "Partner actions",
-        "edit": "Edit",
-        "copyStatement": "Copy their statement link",
-        "statementCopied": "Statement link copied",
-        "rotateStatement": "Change their statement link",
-        "rotated": "New statement link: the old one no longer works.",
-        "archive": "Archive",
-        "restore": "Restore"
+        "message": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nYour partner space, to follow your earnings and choose your notifications: {space}\n\nThank you for recommending us!"
       },
       "statement": {
         "title": "Statement",
@@ -7735,7 +7734,8 @@
           "commission": "Commission",
           "state": "Status",
           "note": "Note"
-        }
+        },
+        "byCode": "by their code"
       },
       "adjust": {
         "title": "Commission for booking {number}",
@@ -7755,8 +7755,39 @@
         "commission": "{amount}, {state}",
         "origin": {
           "link": "Through their link",
-          "manual": "Added by hand"
+          "manual": "Added by hand",
+          "code": "By their code"
         }
+      },
+      "menu": {
+        "label": "Partner actions",
+        "edit": "Edit",
+        "copySpace": "Copy their space link",
+        "spaceCopied": "Space link copied",
+        "rotateSpace": "Change their space link",
+        "rotated": "New space link: the old one no longer works.",
+        "archive": "Archive",
+        "restore": "Restore"
+      },
+      "window": "{count, plural, one {A partner link holds # day, from the click to the booking.} other {A partner link holds # days, from the click to the booking.}}",
+      "changeWindow": "Change",
+      "perkLine": "customer perk: {code}",
+      "notified": {
+        "yes": "They get an email for every booking and every payment.",
+        "no": "They get no email: add their address, or they turn emails on from their space."
+      },
+      "settings": {
+        "title": "How long a partner link holds",
+        "description": "A booking is credited to the partner if the customer clicked their link within this time. A code typed at checkout always counts.",
+        "window": "Duration",
+        "days": "{count, plural, one {# day} other {# days}}",
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "newReservation": {
+        "title": "Partner",
+        "description": "Did a partner send this customer? The booking will be credited to them.",
+        "none": "No partner"
       }
     }
   },
@@ -8587,6 +8618,14 @@
       "customFields": {
         "savedSummary": "Details already on file",
         "detailsIntro": "This helps {store} get your equipment ready."
+      },
+      "partnerCode": {
+        "question": "Did a partner recommend us?",
+        "placeholder": "Partner code",
+        "apply": "Apply",
+        "notFound": "This code matches no partner.",
+        "credited": "Recommended by {partner}",
+        "remove": "Remove the partner"
       }
     },
     "confirmation": {
@@ -9415,13 +9454,6 @@
       },
       "fullFile": "Every product with its description",
       "footer": "Data from the online store, up to date on {date}."
-    },
-    "partnerLink": {
-      "title": "Recommended by {partner}",
-      "question": "Would you like {partner} to be thanked if you book? The price stays the same.",
-      "accept": "Yes, gladly",
-      "decline": "No thanks",
-      "note": "If you agree, a cookie remembers it for 30 days, on this store only."
     }
   },
   "onboarding": {
@@ -10133,7 +10165,8 @@
     "aiVisibilityNotIncluded": "Your plan does not include visibility with AI assistants.",
     "partnerNotFound": "This partner does not exist or was archived.",
     "partnerNothingToPay": "Nothing is left to pay this partner for this month.",
-    "partnerReservationNotAttributed": "This booking is not credited to any partner."
+    "partnerReservationNotAttributed": "This booking is not credited to any partner.",
+    "partnerPerkNotFound": "This promo code does not exist in your store."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
@@ -10704,22 +10737,88 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "Partner statement",
-    "title": "{partner}'s statement",
-    "months": "Months",
-    "due": "Due",
-    "paid": "Paid",
-    "remaining": "Left to pay",
-    "upcoming": "Upcoming: {amount} for rentals not over yet.",
-    "empty": "No bookings through your link this month.",
-    "rentalEnded": "Rental ended on {date}",
-    "states": {
-      "upcoming": "Upcoming",
-      "due": "Due",
-      "cancelled": "Cancelled"
+  "partnerSpace": {
+    "metaTitle": "Partner space",
+    "store": "{store}",
+    "title": "Hello {partner}",
+    "howItWorks": "You earn {rule} on every rental booked thanks to you, through your link or your code. A link holds {days} days after the click. The commission is due once the rental is over.",
+    "perk": "Your customers get the code {code}.",
+    "archived": "The store has paused this partnership: new bookings are no longer credited to you.",
+    "rule": {
+      "percent": "{value}% of the rental",
+      "fixed": "{value} per booking"
     },
-    "rules": "The commission is on bookings made through your link. It is due once the rental is over, and cancelled if the booking is. This statement shows nothing about the customers and is not an invoice.",
-    "paidBy": "{store} pays you directly. Louez works out this statement; no money goes through Louez."
+    "overview": {
+      "toReceive": {
+        "label": "To receive",
+        "hint": "Rentals over, not paid yet."
+      },
+      "upcoming": {
+        "label": "Coming",
+        "hint": "Rentals booked, not over yet."
+      },
+      "received": {
+        "label": "Received",
+        "hint": "What the store paid you."
+      }
+    },
+    "activity": {
+      "title": "Recent activity",
+      "empty": "No bookings thanks to you yet. Share your link or your poster.",
+      "booking": "New booking",
+      "bookingWhen": "on {date} · rental until {end}",
+      "payout": "Payment for {month}",
+      "payoutWhen": "on {date}"
+    },
+    "link": {
+      "title": "Your link",
+      "description": "Give it to your guests: welcome email, poster at the front desk, message.",
+      "copy": "Copy",
+      "copied": "Link copied",
+      "poster": "QR poster",
+      "posterTitle": "Your poster",
+      "posterDescription": "The QR code opens the store with your link.",
+      "posterHint": "Print it for your front desk.",
+      "posterFileName": "poster",
+      "code": "Your code, to give by word of mouth: {code}"
+    },
+    "months": {
+      "title": "Month by month",
+      "due": "Due",
+      "paid": "Paid",
+      "remaining": "Left to pay",
+      "upcoming": "Coming: {amount} for rentals not over yet.",
+      "empty": "No bookings thanks to you this month.",
+      "rentalEnds": "Rental until {date}"
+    },
+    "states": {
+      "upcoming": "Coming",
+      "due": "Due",
+      "cancelled": "Cancelled",
+      "paid": "Paid"
+    },
+    "notifications": {
+      "title": "My notifications",
+      "description": "Get an email when you earn something.",
+      "email": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "bookings": {
+        "title": "New booking",
+        "description": "When a customer books thanks to you."
+      },
+      "payouts": {
+        "title": "Payment received",
+        "description": "When the store records paying you."
+      },
+      "statements": {
+        "title": "Monthly statement",
+        "description": "At the start of each month, the past month's summary."
+      },
+      "save": "Save",
+      "saved": "Notifications saved",
+      "failed": "Could not save. Try again."
+    },
+    "rules": "The commission is on bookings made thanks to you. It is due once the rental is over, and cancelled if the booking is. This page shows nothing about the customers and is not an invoice.",
+    "paidBy": "{store} pays you directly. Louez works out these amounts; no money goes through Louez."
   }
 }

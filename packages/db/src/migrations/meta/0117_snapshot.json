@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "6abc2c81-8e60-418e-a744-f1e4179ff066",
+  "id": "8d87e6fb-e882-4ab1-accb-3ef66b53ea23",
   "prevId": "2c602708-0ab3-47bf-8499-affdc054a338",
   "tables": {
     "account_departure_reason_counters": {
@@ -7536,7 +7536,7 @@
         },
         "origin": {
           "name": "origin",
-          "type": "enum('link','manual')",
+          "type": "enum('link','code','manual')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -13799,6 +13799,46 @@
       },
       "checkConstraint": {}
     },
+    "store_partner_settings": {
+      "name": "store_partner_settings",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "attribution_days": {
+          "name": "attribution_days",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 30
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "store_partner_settings_store_id": {
+          "name": "store_partner_settings_store_id",
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "store_partners": {
       "name": "store_partners",
       "columns": {
@@ -13870,6 +13910,51 @@
           "type": "varchar(43)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "promo_code_id": {
+          "name": "promo_code_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notify_email": {
+          "name": "notify_email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notify_bookings": {
+          "name": "notify_bookings",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "notify_payouts": {
+          "name": "notify_payouts",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "notify_statements": {
+          "name": "notify_statements",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "statement_sent_month": {
+          "name": "statement_sent_month",
+          "type": "varchar(7)",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "archived_at": {

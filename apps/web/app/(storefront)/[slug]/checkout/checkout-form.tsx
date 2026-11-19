@@ -49,6 +49,7 @@ import { useCheckoutAdvisorGate } from "./hooks/use-checkout-advisor-gate";
 import { useCheckoutCustomFields } from "./hooks/use-checkout-custom-fields";
 import { useCheckoutDelivery } from "./hooks/use-checkout-delivery";
 import { useCheckoutLineResolutions } from "./hooks/use-checkout-line-resolutions";
+import { useCheckoutPartner } from "./hooks/use-checkout-partner";
 import { useCheckoutPromo } from "./hooks/use-checkout-promo";
 import { useCheckoutStepFlow } from "./hooks/use-checkout-step-flow";
 import { useCheckoutSubmit } from "./hooks/use-checkout-submit";
@@ -113,6 +114,8 @@ export const CheckoutForm = ({
   locations,
   tulipInsurance,
   hasActivePromoCodes = false,
+  linkPartner = null,
+  acceptsPartnerCode = false,
   advisorMode,
   businessHours,
   advanceNoticeMinutes,
@@ -165,6 +168,12 @@ export const CheckoutForm = ({
 
   const advisorGate = useCheckoutAdvisorGate(advisorMode ?? null);
   const promo = useCheckoutPromo({ items, subtotal });
+  const partner = useCheckoutPartner({
+    storeId,
+    linkPartner,
+    promo,
+    cartReady: isHydrated && items.length > 0,
+  });
   const delivery = useCheckoutDelivery({
     deliverySettings,
     storeLatitude,
@@ -320,6 +329,7 @@ export const CheckoutForm = ({
     isDeliveryEnabled: delivery.isDeliveryEnabled,
     tulipInsuranceMode: tulipQuote.mode,
     promoCode: promo.promo?.code,
+    partnerCode: partner.typed?.code,
     advisorConversationId: advisorGate.conversationId ?? undefined,
     blockedReason,
     checkoutFields,
@@ -572,6 +582,8 @@ export const CheckoutForm = ({
               advisorGate={advisorGate}
               promo={promo}
               hasActivePromoCodes={hasActivePromoCodes}
+              // A visitor a partner's link brought is already credited to it.
+              partner={acceptsPartnerCode && !linkPartner ? partner : null}
               totalDeposit={totalDeposit}
               submitLabel={submitLabel}
               blockedReason={blockedReason}

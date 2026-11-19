@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { isPartnerStatementPath, partnerStatementUrl } from "./partner-statement-path";
+import { isPartnerSpacePath, partnerSpaceUrl } from "./partner-space-path";
 import { partnerLinkUrl } from "./util.partner-link";
 
 describe("partner links", () => {
@@ -16,12 +16,16 @@ describe("partner links", () => {
     );
   });
 
-  test("the statement page lives on the dashboard's address", () => {
+  test("the partner's space lives on the dashboard's address", () => {
     assert.equal(
-      partnerStatementUrl("https://app.louez.io/", "abc"),
-      "https://app.louez.io/partner-statements/abc",
+      partnerSpaceUrl("https://app.louez.io/", "abc"),
+      "https://app.louez.io/partner/abc",
     );
-    assert.equal(isPartnerStatementPath("/partner-statements/abc"), true);
-    assert.equal(isPartnerStatementPath("/partner-statementsx"), false);
+    assert.equal(
+      partnerSpaceUrl("https://app.louez.io/dashboard", "abc"),
+      "https://app.louez.io/partner/abc",
+    );
+    assert.equal(isPartnerSpacePath("/partner/abc"), true);
+    assert.equal(isPartnerSpacePath("/partners"), false);
   });
 });

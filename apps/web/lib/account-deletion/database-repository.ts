@@ -1006,6 +1006,9 @@ const purgeOwnedData = async (
       await transaction
         .delete(schema.storePartners)
         .where(inArray(schema.storePartners.storeId, storeIds));
+      await transaction
+        .delete(schema.storePartnerSettings)
+        .where(inArray(schema.storePartnerSettings.storeId, storeIds));
       await transaction.delete(schema.products).where(inArray(schema.products.storeId, storeIds));
       await transaction
         .delete(schema.variantDefinitions)

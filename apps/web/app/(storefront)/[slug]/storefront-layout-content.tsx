@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getMessages } from "next-intl/server";
 
-import { PartnerLinkPromptGate } from "@/components/storefront/partners/partner-link-prompt-gate";
 import { MarketplaceChannelBadge } from "@/components/storefront/shell/marketplace-channel-badge";
 import { ReservationGateOwnerBanner } from "@/components/storefront/shell/reservation-gate-owner-banner";
 import {
@@ -105,11 +104,6 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
       >
         {children}
       </StorefrontShell>
-      {variant === "store" && (
-        <Suspense fallback={null}>
-          <PartnerLinkPromptGate storeId={store.id} />
-        </Suspense>
-      )}
     </StorefrontProviders>
   );
 };

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
@@ -8,7 +9,8 @@ import {
   getCustomerFieldValues,
   listCustomerFieldDefinitions,
 } from "@louez/api/services/customer-fields";
-import { db, promoCodes, storeLocations } from "@louez/db";
+import { db, promoCodes, storeLocations, storePartners } from "@louez/db";
+import { findCheckoutPartner } from "@louez/api/services/partners";
 import {
   listAskedProfileFields,
   pickCustomerProfileValues,
@@ -29,6 +31,7 @@ import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug, type StorefrontStore } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-mode";
+import { PARTNER_COOKIE, readPartnerCookie } from "@/lib/partners/partner-cookie";
 import { getMinRentalMinutes } from "@louez/utils";
 
 import { getCustomerSession } from "../account/actions";
@@ -161,6 +164,24 @@ export async function generateMetadata({ params }: CheckoutPageProps): Promise<M
   });
 }
 
+/** True when the store has an active partner: the checkout offers a partner code field. */
+const hasActivePartners = async (storeId: string): Promise<boolean> => {
+  const [row] = await db
+    .select({ id: storePartners.id })
+    .from(storePartners)
+    .where(and(eq(storePartners.storeId, storeId), isNull(storePartners.archivedAt)))
+    .limit(1);
+  return Boolean(row);
+};
+
+/** The partner whose link brought the visitor, within the store's window (Liens partenaires). */
+const getLinkPartner = async (store: StorefrontStore) => {
+  const link = readPartnerCookie((await cookies()).get(PARTNER_COOKIE)?.value, store.slug);
+  if (!link) return null;
+  const partner = await findCheckoutPartner({ storeId: store.id, ...link });
+  return partner ? { name: partner.name, perkCode: partner.perkCode } : null;
+};
+
 const CheckoutPage = async ({ params }: CheckoutPageProps) => {
   const { slug } = await params;
   const store = await getStoreBySlug(slug);
@@ -169,15 +190,25 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
     notFound();
   }
 
-  const [tulip, locations, activePromoCodes, advisorReachable, signedInSession, testMode] =
-    await Promise.all([
-      resolveTulipIntegrationForStore(store.id),
-      getCheckoutLocations(store),
-      hasActivePromoCodes(store.id),
-      isAdvisorReachableForStore(store),
-      getCustomerSession(slug),
-      getStorefrontTestMode(store.id),
-    ]);
+  const [
+    tulip,
+    locations,
+    activePromoCodes,
+    advisorReachable,
+    signedInSession,
+    testMode,
+    activePartners,
+    linkPartner,
+  ] = await Promise.all([
+    resolveTulipIntegrationForStore(store.id),
+    getCheckoutLocations(store),
+    hasActivePromoCodes(store.id),
+    isAdvisorReachableForStore(store),
+    getCustomerSession(slug),
+    getStorefrontTestMode(store.id),
+    hasActivePartners(store.id),
+    getLinkPartner(store),
+  ]);
   // A test checkout books for the owner (lib/test-reservations): no customer's
   // values on file prefill it.
   const session = testMode ? null : signedInSession;
@@ -219,6 +250,9 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
             mode: tulipMode,
           }}
           hasActivePromoCodes={activePromoCodes}
+          // A test checkout credits no partner (lib/test-reservations).
+          linkPartner={testMode ? null : linkPartner}
+          acceptsPartnerCode={!testMode && activePartners}
           advisorMode={advisorReachable ? (store.aiAdvisorSettings?.mode ?? null) : null}
           businessHours={store.settings?.businessHours}
           advanceNoticeMinutes={store.settings?.advanceNoticeMinutes ?? 0}

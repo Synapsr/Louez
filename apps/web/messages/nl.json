@@ -2768,7 +2768,8 @@
           "label": "Korting",
           "add": "Korting toevoegen",
           "remove": "Korting verwijderen"
-        }
+        },
+        "partnerNotCredited": "Reservering aangemaakt, maar niet aan de partner toegekend. Voeg hem toe vanuit de reservering."
       },
       "rejectDialog": {
         "title": "Aanvraag afwijzen",
@@ -7383,7 +7384,8 @@
         "viewProduct": "Product bekijken",
         "invoicingSettings": "Factuurinstellingen",
         "notificationSettings": "Meldingsinstellingen",
-        "openTeam": "Team openen"
+        "openTeam": "Team openen",
+        "openPartner": "Partner openen"
       },
       "facts": {
         "stripeCharge": "Stripe-betaling",
@@ -7460,7 +7462,11 @@
       },
       "unknownTitle": "Iets te controleren",
       "neutral": "Louez kon dit niet zelf oplossen. Open het om te zien wat er is gebeurd.",
-      "viewAll": "Alles bekijken"
+      "viewAll": "Alles bekijken",
+      "partnerPayoutDue": {
+        "title": "Commissie te betalen",
+        "summary": "Je bent {partner} {amount} verschuldigd voor de huur die in {month} is afgelopen. Betaal hem en markeer de maand daarna als betaald."
+      }
     },
     "visibility": {
       "title": "Maak je bekend",
@@ -7673,11 +7679,14 @@
         "emailInvalid": "Dit e-mailadres is niet geldig.",
         "cancel": "Annuleren",
         "create": "Toevoegen",
-        "save": "Opslaan"
+        "save": "Opslaan",
+        "perk": "Voordeel voor zijn klanten",
+        "perkHint": "Een van je actiecodes, automatisch toegepast als een klant via zijn link komt of zijn code invoert.",
+        "perkNone": "Geen"
       },
       "link": {
         "title": "Zijn link",
-        "description": "Een klant die hem opent, kiest of {partner} de reservering krijgt toegekend. De prijs blijft hetzelfde.",
+        "description": "Elke reservering na een klik op deze link wordt toegekend aan {partner}. De prijs blijft voor de klant hetzelfde.",
         "copy": "Kopiëren",
         "copied": "Link gekopieerd",
         "poster": "QR-poster",
@@ -7687,17 +7696,7 @@
         "posterFileName": "partner-poster",
         "sendEmail": "E-mail",
         "emailSubject": "Uw partnerlink voor {store}",
-        "message": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nUw overzicht, altijd actueel: {statement}\n\nBedankt dat u ons aanbeveelt!"
-      },
-      "menu": {
-        "label": "Acties voor partner",
-        "edit": "Bewerken",
-        "copyStatement": "Link naar zijn overzicht kopiëren",
-        "statementCopied": "Link naar overzicht gekopieerd",
-        "rotateStatement": "Link naar zijn overzicht wijzigen",
-        "rotated": "Nieuwe overzichtslink: de oude werkt niet meer.",
-        "archive": "Archiveren",
-        "restore": "Herstellen"
+        "message": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nUw partnerpagina, om uw verdiensten te volgen en uw meldingen te kiezen: {space}\n\nBedankt dat u ons aanbeveelt!"
       },
       "statement": {
         "title": "Overzicht",
@@ -7735,7 +7734,8 @@
           "commission": "Commissie",
           "state": "Status",
           "note": "Notitie"
-        }
+        },
+        "byCode": "via zijn code"
       },
       "adjust": {
         "title": "Commissie voor reservering {number}",
@@ -7755,8 +7755,39 @@
         "commission": "{amount}, {state}",
         "origin": {
           "link": "Via zijn link",
-          "manual": "Handmatig toegevoegd"
+          "manual": "Handmatig toegevoegd",
+          "code": "Via zijn code"
         }
+      },
+      "menu": {
+        "label": "Acties voor partner",
+        "edit": "Bewerken",
+        "copySpace": "Link naar zijn partnerpagina kopiëren",
+        "spaceCopied": "Link naar partnerpagina gekopieerd",
+        "rotateSpace": "Link naar zijn partnerpagina wijzigen",
+        "rotated": "Nieuwe link naar de partnerpagina: de oude werkt niet meer.",
+        "archive": "Archiveren",
+        "restore": "Herstellen"
+      },
+      "window": "{count, plural, one {Een partnerlink geldt # dag, van klik tot reservering.} other {Een partnerlink geldt # dagen, van klik tot reservering.}}",
+      "changeWindow": "Wijzigen",
+      "perkLine": "klantvoordeel: {code}",
+      "notified": {
+        "yes": "Hij krijgt een e-mail bij elke reservering en elke betaling.",
+        "no": "Hij krijgt geen e-mails: voeg zijn adres toe, of hij zet ze zelf aan op zijn partnerpagina."
+      },
+      "settings": {
+        "title": "Geldigheid van een partnerlink",
+        "description": "Een reservering wordt aan de partner toegekend als de klant binnen deze periode op zijn link heeft geklikt. Een code die bij het afrekenen is ingevoerd, telt altijd.",
+        "window": "Duur",
+        "days": "{count, plural, one {# dag} other {# dagen}}",
+        "cancel": "Annuleren",
+        "save": "Opslaan"
+      },
+      "newReservation": {
+        "title": "Partner",
+        "description": "Komt deze klant via een partner? De reservering wordt aan hem toegekend.",
+        "none": "Geen partner"
       }
     }
   },
@@ -8587,6 +8618,14 @@
       "customFields": {
         "savedSummary": "Gegevens al opgeslagen",
         "detailsIntro": "Zo kan {store} uw materiaal klaarzetten."
+      },
+      "partnerCode": {
+        "question": "Komt u via een partner?",
+        "placeholder": "Partnercode",
+        "apply": "Toepassen",
+        "notFound": "Deze code hoort bij geen enkele partner.",
+        "credited": "Aanbevolen door {partner}",
+        "remove": "Partner verwijderen"
       }
     },
     "confirmation": {
@@ -9415,13 +9454,6 @@
       },
       "fullFile": "Alle producten met hun beschrijving",
       "footer": "Gegevens van de webwinkel, bijgewerkt op {date}."
-    },
-    "partnerLink": {
-      "title": "Aanbevolen door {partner}",
-      "question": "Wilt u dat {partner} wordt bedankt als u boekt? De prijs blijft hetzelfde.",
-      "accept": "Ja, graag",
-      "decline": "Nee, bedankt",
-      "note": "Als u akkoord gaat, onthoudt een cookie dit 30 dagen, alleen in deze winkel."
     }
   },
   "onboarding": {
@@ -10133,7 +10165,8 @@
     "aiVisibilityNotIncluded": "Je abonnement bevat geen zichtbaarheid bij AI-assistenten.",
     "partnerNotFound": "Deze partner bestaat niet of is gearchiveerd.",
     "partnerNothingToPay": "Er staat voor deze maand niets meer open voor deze partner.",
-    "partnerReservationNotAttributed": "Deze reservering is aan geen enkele partner toegekend."
+    "partnerReservationNotAttributed": "Deze reservering is aan geen enkele partner toegekend.",
+    "partnerPerkNotFound": "Deze actiecode bestaat niet in je winkel."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",
@@ -10704,22 +10737,88 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "Partneroverzicht",
-    "title": "Overzicht van {partner}",
-    "months": "Maanden",
-    "due": "Verschuldigd",
-    "paid": "Betaald",
-    "remaining": "Nog te betalen",
-    "upcoming": "Binnenkort: {amount} voor huur die nog niet is afgelopen.",
-    "empty": "Geen reserveringen via uw link deze maand.",
-    "rentalEnded": "Huur afgelopen op {date}",
+  "partnerSpace": {
+    "metaTitle": "Partnerpagina",
+    "store": "{store}",
+    "title": "Goedendag {partner}",
+    "howItWorks": "U ontvangt {rule} op elke huur die dankzij u is geboekt, via uw link of uw code. Een link geldt {days} dagen na de klik. De commissie is verschuldigd zodra de huur is afgelopen.",
+    "perk": "Uw klanten krijgen de code {code}.",
+    "archived": "De winkel heeft dit partnerschap gepauzeerd: nieuwe reserveringen worden niet meer aan u toegekend.",
+    "rule": {
+      "percent": "{value}% van de huur",
+      "fixed": "{value} per reservering"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "Te ontvangen",
+        "hint": "Huur afgelopen, nog niet betaald."
+      },
+      "upcoming": {
+        "label": "Binnenkort",
+        "hint": "Huur geboekt, nog niet afgelopen."
+      },
+      "received": {
+        "label": "Ontvangen",
+        "hint": "Wat de winkel u heeft betaald."
+      }
+    },
+    "activity": {
+      "title": "Recente activiteit",
+      "empty": "Nog geen reserveringen dankzij u. Deel uw link of uw poster.",
+      "booking": "Nieuwe reservering",
+      "bookingWhen": "op {date} · huur tot {end}",
+      "payout": "Betaling voor {month}",
+      "payoutWhen": "op {date}"
+    },
+    "link": {
+      "title": "Uw link",
+      "description": "Geef hem aan uw gasten: welkomstmail, poster bij de receptie, bericht.",
+      "copy": "Kopiëren",
+      "copied": "Link gekopieerd",
+      "poster": "QR-poster",
+      "posterTitle": "Uw poster",
+      "posterDescription": "De QR-code opent de winkel met uw link.",
+      "posterHint": "Print hem voor uw receptie.",
+      "posterFileName": "poster",
+      "code": "Uw code, om mondeling door te geven: {code}"
+    },
+    "months": {
+      "title": "Per maand",
+      "due": "Verschuldigd",
+      "paid": "Betaald",
+      "remaining": "Nog te betalen",
+      "upcoming": "Binnenkort: {amount} voor huur die nog niet is afgelopen.",
+      "empty": "Geen reserveringen dankzij u deze maand.",
+      "rentalEnds": "Huur tot {date}"
+    },
     "states": {
       "upcoming": "Binnenkort",
       "due": "Verschuldigd",
-      "cancelled": "Geannuleerd"
+      "cancelled": "Geannuleerd",
+      "paid": "Betaald"
     },
-    "rules": "De commissie geldt voor reserveringen via uw link. Ze is verschuldigd zodra de huur is afgelopen en vervalt als de reservering wordt geannuleerd. Dit overzicht toont niets over de klanten en is geen factuur.",
-    "paidBy": "{store} betaalt u rechtstreeks. Louez berekent dit overzicht; er gaat geen geld via Louez."
+    "notifications": {
+      "title": "Mijn meldingen",
+      "description": "Ontvang een e-mail als u iets verdient.",
+      "email": "E-mailadres",
+      "emailPlaceholder": "naam@voorbeeld.nl",
+      "bookings": {
+        "title": "Nieuwe reservering",
+        "description": "Als een klant dankzij u boekt."
+      },
+      "payouts": {
+        "title": "Betaling ontvangen",
+        "description": "Als de winkel registreert dat u bent betaald."
+      },
+      "statements": {
+        "title": "Maandoverzicht",
+        "description": "Aan het begin van elke maand, het overzicht van de vorige maand."
+      },
+      "save": "Opslaan",
+      "saved": "Meldingen opgeslagen",
+      "failed": "Opslaan mislukt. Probeer het opnieuw."
+    },
+    "rules": "De commissie geldt voor reserveringen die dankzij u zijn gemaakt. Ze is verschuldigd zodra de huur is afgelopen en vervalt als de reservering wordt geannuleerd. Deze pagina toont niets over de klanten en is geen factuur.",
+    "paidBy": "{store} betaalt u rechtstreeks. Louez berekent deze bedragen; er gaat geen geld via Louez."
   }
 }

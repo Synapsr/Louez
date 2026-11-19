@@ -397,5 +397,25 @@
     "savingsLabel": "Poupança:",
     "cta": "Ver a oferta",
     "footer": "Assinatura mensal, sem fidelização, cancele quando quiser. As taxas da Stripe e do marketplace reeent continuam devidas."
+  },
+  "partnerNotification": {
+    "greeting": "Olá {partner},",
+    "cta": "Ver a minha área de parceiro",
+    "footer": "Recebe este e-mail porque {store} o adicionou como parceiro. Escolha os e-mails que recebe na sua área de parceiro.",
+    "booking": {
+      "subject": "Uma nova reserva graças a si em {store}",
+      "title": "Uma nova reserva graças a si",
+      "body": "Um cliente reservou em {store} graças a si. A sua comissão prevista: {amount}, devida quando o aluguer terminar, a {endDate}."
+    },
+    "payout": {
+      "subject": "{store} pagou-lhe {amount}",
+      "title": "Pagamento recebido",
+      "body": "{store} registou que lhe pagou {amount} pelos alugueres terminados em {month}. Obrigado pelas suas recomendações!"
+    },
+    "statement": {
+      "subject": "O seu extrato de {month} em {store}",
+      "title": "O seu extrato de {month}",
+      "body": "{bookings, plural, one {# reserva} other {# reservas}} graças a si. Devido: {due}. Já pago: {paid}. Por pagar: {remaining}."
+    }
   }
 }

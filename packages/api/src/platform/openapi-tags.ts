@@ -73,6 +73,12 @@ export const REFERENCE_GROUPS: readonly ReferenceGroup[] = [
     prefixes: ["/analytics"],
   },
   {
+    name: "Partners",
+    description:
+      "The store's local partners, such as campsites and hotels that send customers through their own link, and their monthly statements: what each booking earns them and what the store owes.",
+    prefixes: ["/partners"],
+  },
+  {
     name: "Online store",
     description: "The store's public site: its address, its appearance and its images.",
     prefixes: ["/online-store"],

@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import { eq } from "drizzle-orm";
 
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
@@ -30,9 +31,11 @@ mock.module("@louez/auth", {
   },
 });
 
-// Liens partenaires: a partner's link attributes a storefront booking, the
-// statement computes the commission from the reservation and its status,
-// and the store records what it paid.
+// Liens partenaires: a partner's link or code attributes a storefront booking
+// within the store's window, the statement computes the commission from the
+// reservation and its status, the store records what it paid, the partner is
+// told by e-mail and reads its own space, and the store is reminded of what
+// it still owes.
 
 const OWNER = "pl_owner_user_000001";
 const STORE = "pl_store_a_000000001";
@@ -46,6 +49,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   let louezDb: typeof import("@louez/db");
   let orpc: typeof import("@orpc/server");
   let service: typeof import("../../services/partners");
+  let space: typeof import("../../services/partner-space");
   let router: typeof import("./partners").dashboardPartnersRouter;
 
   const session = () => ({
@@ -69,6 +73,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     louezDb = await import("@louez/db");
     orpc = await import("@orpc/server");
     service = await import("../../services/partners");
+    space = await import("../../services/partner-space");
     ({ dashboardPartnersRouter: router } = await import("./partners"));
 
     await louezDb.db.insert(louezDb.users).values([{ id: OWNER, email: "owner@partners.test" }]);
@@ -84,6 +89,9 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
 
   beforeEach(async () => {
     const { db } = louezDb;
+    await db.delete(louezDb.apiEffects);
+    await db.delete(louezDb.promoCodes);
+    await db.delete(louezDb.storePartnerSettings);
     await db.delete(louezDb.partnerPayouts);
     await db.delete(louezDb.partnerBookings);
     await db.delete(louezDb.storePartners);
@@ -143,6 +151,34 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       commission: { type: "percent", value: 10 },
     });
 
+  const CLICK = new Date("2026-11-10T09:00:00Z");
+
+  const credit = (reservationId: string, code: string, now = NOW) =>
+    service.attributeReservation({
+      storeId: STORE,
+      reservationId,
+      code,
+      origin: "link",
+      clickedAt: CLICK,
+      now,
+    });
+
+  const effects = () =>
+    louezDb.db
+      .select({ type: louezDb.apiEffects.type, payload: louezDb.apiEffects.payload })
+      .from(louezDb.apiEffects)
+      .orderBy(louezDb.apiEffects.seq);
+
+  const promo = (id: string, code: string, storeId = STORE, isActive = true) =>
+    louezDb.db.insert(louezDb.promoCodes).values({
+      id,
+      storeId,
+      code,
+      type: "percentage",
+      value: "5.00",
+      isActive,
+    });
+
   test("a partner's code comes from its name, stays unique in the store and never changes", async () => {
     const first = await campsite();
     const second = await service.createPartner(STORE, {
@@ -165,7 +201,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(renamed.name, "Domaine des Pins");
   });
 
-  test("a link attributes a storefront booking with the rule of that moment, once", async () => {
+  test("a link attributes a storefront booking with the rule of that moment, once, and tells the partner", async () => {
     const partner = await campsite();
     await louezDb.db
       .insert(louezDb.reservations)
@@ -174,32 +210,18 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
         reservation("pl_resa_test_0000001", { isTest: true }),
       ]);
 
-    assert.equal(
-      await service.attributeReservationFromLink({
-        storeId: STORE,
-        reservationId: "pl_resa_link_0000001",
-        code: partner.code,
-      }),
-      true,
-    );
-    // Already attributed: the first attribution stays.
-    assert.equal(
-      await service.attributeReservationFromLink({
-        storeId: STORE,
-        reservationId: "pl_resa_link_0000001",
-        code: partner.code,
-      }),
-      false,
-    );
+    assert.equal((await credit("pl_resa_link_0000001", partner.code)).attributed, true);
+    // Already attributed: the first attribution stays, nothing more is sent.
+    assert.equal((await credit("pl_resa_link_0000001", partner.code)).attributed, false);
     // A test reservation is never attributed.
-    assert.equal(
-      await service.attributeReservationFromLink({
-        storeId: STORE,
-        reservationId: "pl_resa_test_0000001",
-        code: partner.code,
-      }),
-      false,
-    );
+    assert.equal((await credit("pl_resa_test_0000001", partner.code)).attributed, false);
+    assert.deepEqual(await effects(), [
+      {
+        type: "partner.bookingEmail",
+        payload: { partnerId: partner.id, reservationId: "pl_resa_link_0000001" },
+      },
+    ]);
+
     // A rate changed afterwards leaves the booking's rule as it was.
     await service.updatePartner(STORE, partner.id, {
       name: partner.name,
@@ -212,6 +234,43 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     );
   });
 
+  test("a link holds for the store's window; a code typed at checkout holds always", async () => {
+    const partner = await campsite();
+    await louezDb.db
+      .insert(louezDb.reservations)
+      .values([reservation("pl_resa_late_0000001"), reservation("pl_resa_code_0000001")]);
+    assert.deepEqual(await service.getPartnerSettings(STORE), { attributionDays: 30 });
+
+    // 40 days after the click: past the default 30.
+    const later = new Date(CLICK.getTime() + 40 * 24 * 60 * 60 * 1000);
+    assert.equal((await credit("pl_resa_late_0000001", partner.code, later)).attributed, false);
+    assert.equal(
+      await service.findCheckoutPartner({
+        storeId: STORE,
+        code: partner.code,
+        clickedAt: CLICK,
+        now: later,
+      }),
+      null,
+    );
+
+    await service.updatePartnerSettings(STORE, { attributionDays: 60 });
+    assert.equal((await credit("pl_resa_late_0000001", partner.code, later)).attributed, true);
+
+    const typed = await service.attributeReservation({
+      storeId: STORE,
+      reservationId: "pl_resa_code_0000001",
+      code: partner.code,
+      origin: "code",
+      now: new Date("2027-06-01T00:00:00Z"),
+    });
+    assert.equal(typed.attributed, true);
+    const origins = (await service.getPartnerStatement(STORE, partner.id, NOVEMBER, NOW)).bookings
+      .map((booking) => booking.origin)
+      .sort();
+    assert.deepEqual(origins, ["code", "link"]);
+  });
+
   test("an unknown, archived or other store's code attributes nothing", async () => {
     const partner = await campsite();
     const other = await service.createPartner(OTHER_STORE, {
@@ -219,18 +278,50 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       commission: { type: "percent", value: 10 },
     });
     await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_none_0000001")]);
-    const attribute = (code: string) =>
-      service.attributeReservationFromLink({
-        storeId: STORE,
-        reservationId: "pl_resa_none_0000001",
-        code,
-      });
 
-    assert.equal(await attribute("nobody"), false);
-    assert.equal(await attribute(other.code), false);
+    assert.equal((await credit("pl_resa_none_0000001", "nobody")).attributed, false);
+    assert.equal((await credit("pl_resa_none_0000001", other.code)).attributed, false);
     await service.setPartnerArchived(STORE, partner.id, true);
-    assert.equal(await attribute(partner.code), false);
+    assert.equal((await credit("pl_resa_none_0000001", partner.code)).attributed, false);
     assert.equal(await service.findActivePartnerByCode(STORE, partner.code), null);
+    assert.deepEqual(await effects(), []);
+  });
+
+  test("the perk: one of the store's promo codes, given at checkout while it can be used", async () => {
+    await promo("pl_promo_pins_000001", "PINS5");
+    await promo("pl_promo_other_00001", "ELSEWHERE", OTHER_STORE);
+    await assert.rejects(
+      service.createPartner(STORE, {
+        name: "Camping Les Pins",
+        commission: { type: "percent", value: 10 },
+        promoCodeId: "pl_promo_other_00001",
+      }),
+      (error: { data?: { code?: string } }) => error.data?.code === "PARTNER_PERK_NOT_FOUND",
+    );
+    const partner = await service.createPartner(STORE, {
+      name: "Camping Les Pins",
+      commission: { type: "percent", value: 10 },
+      promoCodeId: "pl_promo_pins_000001",
+    });
+    assert.deepEqual(partner.perk, { promoCodeId: "pl_promo_pins_000001", code: "PINS5" });
+    assert.deepEqual(
+      await service.findCheckoutPartner({ storeId: STORE, code: partner.code, now: NOW }),
+      {
+        code: "camping-les-pins",
+        name: "Camping Les Pins",
+        perkCode: "PINS5",
+      },
+    );
+
+    await louezDb.db
+      .update(louezDb.promoCodes)
+      .set({ isActive: false })
+      .where(eq(louezDb.promoCodes.id, "pl_promo_pins_000001"));
+    assert.equal(
+      (await service.findCheckoutPartner({ storeId: STORE, code: partner.code, now: NOW }))
+        ?.perkCode,
+      null,
+    );
   });
 
   test("the statement: base without insurance or discount, due, upcoming and cancelled, by month of the rental's end", async () => {
@@ -257,11 +348,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       "pl_resa_void_0000001",
       "pl_resa_octo_0000001",
     ]) {
-      await service.attributeReservationFromLink({
-        storeId: STORE,
-        reservationId: id,
-        code: partner.code,
-      });
+      await credit(id, partner.code);
     }
 
     const november = await service.getPartnerStatement(STORE, partner.id, NOVEMBER, NOW);
@@ -294,11 +381,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   test("an adjustment replaces the rule's amount, with its reason, and can be undone", async () => {
     const partner = await campsite();
     await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_adjt_0000001")]);
-    await service.attributeReservationFromLink({
-      storeId: STORE,
-      reservationId: "pl_resa_adjt_0000001",
-      code: partner.code,
-    });
+    await credit("pl_resa_adjt_0000001", partner.code);
 
     await service.adjustPartnerCommission({
       storeId: STORE,
@@ -316,13 +399,12 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       storeId: STORE,
       reservationId: "pl_resa_adjt_0000001",
       amount: null,
-      note: null,
     });
     [booking] = (await service.getPartnerStatement(STORE, partner.id, NOVEMBER, NOW)).bookings;
     assert.deepEqual([booking.commission, booking.adjustment], [11, null]);
   });
 
-  test("marking a month paid records what is left; a later change shows the difference", async () => {
+  test("marking a month paid records what is left and tells the partner; a later change shows the difference", async () => {
     const partner = await campsite();
     await louezDb.db.insert(louezDb.reservations).values([
       reservation("pl_resa_paid_0000001"),
@@ -332,12 +414,9 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       }),
     ]);
     for (const id of ["pl_resa_paid_0000001", "pl_resa_late_0000001"]) {
-      await service.attributeReservationFromLink({
-        storeId: STORE,
-        reservationId: id,
-        code: partner.code,
-      });
+      await credit(id, partner.code);
     }
+    await louezDb.db.delete(louezDb.apiEffects);
 
     const paid = await service.markPartnerMonthPaid({
       storeId: STORE,
@@ -346,7 +425,12 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       month: NOVEMBER,
       now: NOW,
     });
-    assert.deepEqual([paid.due, paid.paid, paid.remaining], [11, 11, 0]);
+    assert.deepEqual([paid.totals.due, paid.totals.paid, paid.totals.remaining], [11, 11, 0]);
+    assert.equal(paid.effectIds.length, 1);
+    assert.deepEqual(
+      (await effects()).map((row) => row.type),
+      ["partner.payoutEmail"],
+    );
     await assert.rejects(
       service.markPartnerMonthPaid({
         storeId: STORE,
@@ -366,13 +450,27 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       [22, 11, 11],
     );
 
-    // A payment recorded by mistake is removed.
+    // The store is reminded of the month it still owes, once that month is over.
+    assert.deepEqual(await space.readDuePartnerMonths(STORE, NOW), []);
+    assert.deepEqual(
+      (await space.readDuePartnerMonths(STORE, later)).map((due) => [
+        due.partnerName,
+        due.month,
+        due.remaining,
+      ]),
+      [["Camping Les Pins", NOVEMBER, 11]],
+    );
+
+    // A payment recorded by mistake is removed; its e-mail then has nothing to say.
     await service.cancelPartnerPayout(STORE, statement.payouts[0].id);
     const undone = await service.getPartnerStatement(STORE, partner.id, NOVEMBER, later);
     assert.equal(undone.totals.paid, 0);
+    assert.deepEqual(await space.readPartnerPayoutNotice(partner.id, statement.payouts[0].id), {
+      skipped: "payout_cancelled",
+    });
   });
 
-  test("by hand: attribute, change partner (the new rule is copied), remove", async () => {
+  test("by hand: attribute (the partner is told), change partner (the new rule is copied), remove", async () => {
     const partner = await campsite();
     const hotel = await service.createPartner(STORE, {
       name: "Hôtel du Port",
@@ -380,6 +478,13 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     });
     await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_hand_0000001")]);
     const read = () => service.getReservationPartner(STORE, "pl_resa_hand_0000001", NOW);
+    const set = (partnerId: string | null) =>
+      service.setReservationPartner({
+        storeId: STORE,
+        userId: OWNER,
+        reservationId: "pl_resa_hand_0000001",
+        partnerId,
+      });
 
     assert.equal((await read()).current, null);
     assert.deepEqual(
@@ -387,12 +492,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       ["Camping Les Pins", "Hôtel du Port"],
     );
 
-    await service.setReservationPartner({
-      storeId: STORE,
-      userId: OWNER,
-      reservationId: "pl_resa_hand_0000001",
-      partnerId: partner.id,
-    });
+    assert.equal((await set(partner.id)).effectIds.length, 1);
     assert.deepEqual((await read()).current, {
       partnerId: partner.id,
       name: "Camping Les Pins",
@@ -400,21 +500,13 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       commission: 11,
       state: "due",
     });
+    // The same partner again changes nothing and tells no one.
+    assert.equal((await set(partner.id)).effectIds.length, 0);
 
-    await service.setReservationPartner({
-      storeId: STORE,
-      userId: OWNER,
-      reservationId: "pl_resa_hand_0000001",
-      partnerId: hotel.id,
-    });
+    await set(hotel.id);
     assert.equal((await read()).current?.commission, 5);
 
-    await service.setReservationPartner({
-      storeId: STORE,
-      userId: OWNER,
-      reservationId: "pl_resa_hand_0000001",
-      partnerId: null,
-    });
+    await set(null);
     assert.equal((await read()).current, null);
   });
 
@@ -425,13 +517,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       createdAt: Date,
       storeId = STORE,
       partnerId: string | null = partner.id,
-    ) => ({
-      storeId,
-      sessionId,
-      page: "home" as const,
-      partnerId,
-      createdAt,
-    });
+    ) => ({ storeId, sessionId, page: "home" as const, partnerId, createdAt });
     await louezDb.db
       .insert(louezDb.pageViews)
       .values([
@@ -446,29 +532,120 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(list.partners[0].totals.visits, 2);
   });
 
-  test("the partner's page: found by its secret, no reservation number, a new secret ends the old one", async () => {
+  test("the partner's space: found by its secret, nothing about customers, its own e-mail settings, a new secret ends the old one", async () => {
     const partner = await campsite();
-    await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_publ_0000001")]);
-    await service.attributeReservationFromLink({
-      storeId: STORE,
-      reservationId: "pl_resa_publ_0000001",
-      code: partner.code,
-    });
+    await louezDb.db.insert(louezDb.reservations).values([
+      reservation("pl_resa_publ_0000001"),
+      reservation("pl_resa_soon_0000001", {
+        status: "confirmed",
+        endDate: new Date("2026-11-28T17:00:00Z"),
+      }),
+    ]);
+    await credit("pl_resa_publ_0000001", partner.code);
+    await credit("pl_resa_soon_0000001", partner.code);
     const { statementToken } = await service.getPartnerStatement(STORE, partner.id, NOVEMBER, NOW);
 
-    const page = await service.getPublicPartnerStatement(statementToken, NOVEMBER, NOW);
+    const page = await space.getPartnerSpace(statementToken, NOVEMBER, NOW);
     assert.ok(page);
-    assert.equal(page.partnerName, "Camping Les Pins");
-    assert.equal(page.totals.due, 11);
+    assert.equal(page.partner.name, "Camping Les Pins");
+    assert.deepEqual(page.overview, { upcoming: 11, toReceive: 11, received: 0, bookings: 2 });
+    assert.equal(page.activity.length, 2);
     assert.deepEqual(Object.keys(page.bookings[0]).sort(), ["commission", "endDate", "state"]);
-    assert.equal(JSON.stringify(page).includes("pl_resa_publ"), false);
+    const serialized = JSON.stringify(page);
+    for (const leak of ["pl_resa", "publ", "110", "@partners.test"]) {
+      assert.equal(serialized.includes(leak), false, leak);
+    }
+    // The contact e-mail the store gave is where its e-mails go, until it sets another.
+    assert.equal(page.notifications.email, "accueil@les-pins.test");
+
+    assert.equal(
+      await space.updatePartnerNotifications(statementToken, {
+        email: "compta@les-pins.test",
+        bookings: false,
+        payouts: true,
+        statements: true,
+      }),
+      true,
+    );
+    assert.deepEqual(
+      await space.readPartnerBookingNotice(partner.id, "pl_resa_publ_0000001", NOW),
+      { skipped: "partner_opted_out" },
+    );
+    const notified = await space.getPartnerSpace(statementToken, NOVEMBER, NOW);
+    assert.equal(notified?.notifications.email, "compta@les-pins.test");
 
     await service.rotatePartnerStatementToken(STORE, partner.id);
-    assert.equal(await service.getPublicPartnerStatement(statementToken, NOVEMBER, NOW), null);
-    assert.equal(await service.getPublicPartnerStatement("not-a-token", NOVEMBER, NOW), null);
+    assert.equal(await space.getPartnerSpace(statementToken, NOVEMBER, NOW), null);
+    assert.equal(await space.getPartnerSpace("not-a-token", NOVEMBER, NOW), null);
+    assert.equal(
+      await space.updatePartnerNotifications(statementToken, {
+        email: null,
+        bookings: true,
+        payouts: true,
+        statements: true,
+      }),
+      false,
+    );
   });
 
-  test("procedures stay in the session's store", async () => {
+  test("a credited booking's e-mail reads the booking when it goes out", async () => {
+    const partner = await campsite();
+    await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_mail_0000001")]);
+    await credit("pl_resa_mail_0000001", partner.code);
+    const notice = await space.readPartnerBookingNotice(partner.id, "pl_resa_mail_0000001", NOW);
+    assert.ok(!("skipped" in notice));
+    assert.equal(notice.to, "accueil@les-pins.test");
+    assert.equal(notice.booking.commission, 11);
+    // Taken away from the partner since: nothing to say.
+    await service.setReservationPartner({
+      storeId: STORE,
+      userId: OWNER,
+      reservationId: "pl_resa_mail_0000001",
+      partnerId: null,
+    });
+    assert.deepEqual(
+      await space.readPartnerBookingNotice(partner.id, "pl_resa_mail_0000001", NOW),
+      { skipped: "booking_not_partner" },
+    );
+  });
+
+  test("the monthly statement is queued once per month, for a partner with bookings ending in it", async () => {
+    const partner = await campsite();
+    const quiet = await service.createPartner(STORE, {
+      name: "Hôtel du Port",
+      contactEmail: "hotel@port.test",
+      commission: { type: "fixed", value: 5 },
+    });
+    await louezDb.db
+      .insert(louezDb.reservations)
+      .values([
+        reservation("pl_resa_mnth_0000001"),
+        reservation("pl_resa_dece_0000001", { endDate: new Date("2026-12-20T17:00:00Z") }),
+      ]);
+    await credit("pl_resa_mnth_0000001", partner.code);
+    // The hotel's only booking ends in December: no November statement for it.
+    await service.attributeReservation({
+      storeId: STORE,
+      reservationId: "pl_resa_dece_0000001",
+      code: quiet.code,
+      origin: "code",
+    });
+    await louezDb.db.delete(louezDb.apiEffects);
+
+    const december = new Date("2026-12-02T08:00:00Z");
+    assert.equal((await space.queueMonthlyPartnerStatements(december)).length, 1);
+    assert.deepEqual(await effects(), [
+      { type: "partner.statementEmail", payload: { partnerId: partner.id, month: NOVEMBER } },
+    ]);
+    // Again the same month: nothing more.
+    assert.equal((await space.queueMonthlyPartnerStatements(december)).length, 0);
+
+    const notice = await space.readPartnerStatementNotice(partner.id, NOVEMBER, december);
+    assert.ok(!("skipped" in notice));
+    assert.deepEqual([notice.totals.bookings, notice.totals.due], [1, 11]);
+  });
+
+  test("procedures stay in the session's store, and give their links", async () => {
     const created = await orpc.call(
       router.create,
       { name: "Office de tourisme", commission: { type: "percent", value: 8 } },
@@ -478,6 +655,17 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.deepEqual(
       list.partners.map((partner) => partner.name),
       ["Office de tourisme"],
+    );
+    assert.match(list.links.dashboard ?? "", /\/dashboard\/visibility\/partners\?store=/);
+
+    const settings = await orpc.call(
+      router.updateSettings,
+      { attributionDays: 14 },
+      { context: session() },
+    );
+    assert.deepEqual(settings, { attributionDays: 14 });
+    await assert.rejects(
+      orpc.call(router.updateSettings, { attributionDays: 15 }, { context: session() }),
     );
 
     const foreign = await service.createPartner(OTHER_STORE, {

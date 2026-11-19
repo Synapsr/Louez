@@ -2807,7 +2807,8 @@
           "label": "Descuento",
           "add": "Añadir un descuento",
           "remove": "Quitar el descuento"
-        }
+        },
+        "partnerNotCredited": "Reserva creada, pero no se atribuyó al socio. Añádelo desde la reserva."
       },
       "rejectDialog": {
         "title": "Rechazar solicitud",
@@ -7383,7 +7384,8 @@
         "viewProduct": "Ver el producto",
         "invoicingSettings": "Ajustes de facturación",
         "notificationSettings": "Ajustes de notificaciones",
-        "openTeam": "Abrir el equipo"
+        "openTeam": "Abrir el equipo",
+        "openPartner": "Abrir el socio"
       },
       "facts": {
         "stripeCharge": "Cargo de Stripe",
@@ -7460,7 +7462,11 @@
       },
       "unknownTitle": "Algo por revisar",
       "neutral": "Louez no pudo resolver esto por sí solo. Ábrelo para ver qué ha pasado.",
-      "viewAll": "Ver todo"
+      "viewAll": "Ver todo",
+      "partnerPayoutDue": {
+        "title": "Comisión por pagar",
+        "summary": "Debes {amount} a {partner} por los alquileres terminados en {month}. Págale y luego marca el mes como pagado."
+      }
     },
     "visibility": {
       "title": "Date a conocer",
@@ -7673,11 +7679,14 @@
         "emailInvalid": "Este correo electrónico no es válido.",
         "cancel": "Cancelar",
         "create": "Añadir",
-        "save": "Guardar"
+        "save": "Guardar",
+        "perk": "Ventaja para sus clientes",
+        "perkHint": "Uno de tus códigos promocionales, aplicado automáticamente cuando un cliente llega por su enlace o introduce su código.",
+        "perkNone": "Ninguno"
       },
       "link": {
         "title": "Su enlace",
-        "description": "El cliente que lo abre elige si atribuye la reserva a {partner}. El precio no cambia.",
+        "description": "Cada reserva hecha tras un clic en este enlace se atribuye a {partner}. El precio no cambia para el cliente.",
         "copy": "Copiar",
         "copied": "Enlace copiado",
         "poster": "Cartel QR",
@@ -7687,17 +7696,7 @@
         "posterFileName": "cartel-socio",
         "sendEmail": "Correo",
         "emailSubject": "Su enlace de socio de {store}",
-        "message": "Hola:\n\nAquí tiene su enlace de socio de {store}: {link}\nRecibe {rule} por cada alquiler reservado con este enlace, una vez terminado el alquiler.\n\nSu extracto, siempre actualizado: {statement}\n\n¡Gracias por recomendarnos!"
-      },
-      "menu": {
-        "label": "Acciones del socio",
-        "edit": "Editar",
-        "copyStatement": "Copiar el enlace de su extracto",
-        "statementCopied": "Enlace del extracto copiado",
-        "rotateStatement": "Cambiar el enlace de su extracto",
-        "rotated": "Nuevo enlace de extracto: el anterior ya no funciona.",
-        "archive": "Archivar",
-        "restore": "Restaurar"
+        "message": "Hola:\n\nAquí tiene su enlace de socio de {store}: {link}\nRecibe {rule} por cada alquiler reservado con este enlace, una vez terminado el alquiler.\n\nSu espacio de socio, para seguir sus ganancias y elegir sus notificaciones: {space}\n\n¡Gracias por recomendarnos!"
       },
       "statement": {
         "title": "Extracto",
@@ -7735,7 +7734,8 @@
           "commission": "Comisión",
           "state": "Estado",
           "note": "Nota"
-        }
+        },
+        "byCode": "por su código"
       },
       "adjust": {
         "title": "Comisión de la reserva {number}",
@@ -7755,8 +7755,39 @@
         "commission": "{amount}, {state}",
         "origin": {
           "link": "Por su enlace",
-          "manual": "Añadido a mano"
+          "manual": "Añadido a mano",
+          "code": "Por su código"
         }
+      },
+      "menu": {
+        "label": "Acciones del socio",
+        "edit": "Editar",
+        "copySpace": "Copiar el enlace de su espacio",
+        "spaceCopied": "Enlace del espacio copiado",
+        "rotateSpace": "Cambiar el enlace de su espacio",
+        "rotated": "Nuevo enlace del espacio: el anterior ya no funciona.",
+        "archive": "Archivar",
+        "restore": "Restaurar"
+      },
+      "window": "{count, plural, one {Un enlace de socio vale # día, del clic a la reserva.} other {Un enlace de socio vale # días, del clic a la reserva.}}",
+      "changeWindow": "Cambiar",
+      "perkLine": "ventaja para el cliente: {code}",
+      "notified": {
+        "yes": "Recibe un correo por cada reserva y cada pago.",
+        "no": "No recibe correos: añade su dirección, o puede activarlos desde su espacio."
+      },
+      "settings": {
+        "title": "Duración de un enlace de socio",
+        "description": "Una reserva se atribuye al socio si el cliente hizo clic en su enlace dentro de este plazo. Un código introducido al pagar siempre cuenta.",
+        "window": "Duración",
+        "days": "{count, plural, one {# día} other {# días}}",
+        "cancel": "Cancelar",
+        "save": "Guardar"
+      },
+      "newReservation": {
+        "title": "Socio",
+        "description": "¿Este cliente viene de parte de un socio? La reserva se le atribuirá.",
+        "none": "Ningún socio"
       }
     }
   },
@@ -8587,6 +8618,14 @@
       "customFields": {
         "savedSummary": "Datos ya registrados",
         "detailsIntro": "Esta información ayuda a {store} a preparar su material."
+      },
+      "partnerCode": {
+        "question": "¿Viene de parte de un socio?",
+        "placeholder": "Código de socio",
+        "apply": "Aplicar",
+        "notFound": "Este código no corresponde a ningún socio.",
+        "credited": "Recomendado por {partner}",
+        "remove": "Quitar el socio"
       }
     },
     "confirmation": {
@@ -9415,13 +9454,6 @@
       },
       "fullFile": "Todos los productos con su descripción",
       "footer": "Datos de la tienda en línea, actualizados el {date}."
-    },
-    "partnerLink": {
-      "title": "Recomendado por {partner}",
-      "question": "¿Desea que {partner} reciba un agradecimiento si reserva? El precio no cambia.",
-      "accept": "Sí, con gusto",
-      "decline": "No, gracias",
-      "note": "Si acepta, una cookie lo recuerda durante 30 días, solo en esta tienda."
     }
   },
   "onboarding": {
@@ -10133,7 +10165,8 @@
     "aiVisibilityNotIncluded": "Tu plan no incluye la visibilidad en los asistentes de IA.",
     "partnerNotFound": "Este socio no existe o fue archivado.",
     "partnerNothingToPay": "No queda nada por pagar a este socio en este mes.",
-    "partnerReservationNotAttributed": "Esta reserva no está atribuida a ningún socio."
+    "partnerReservationNotAttributed": "Esta reserva no está atribuida a ningún socio.",
+    "partnerPerkNotFound": "Este código promocional no existe en tu tienda."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",
@@ -10704,22 +10737,88 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "Extracto de socio",
-    "title": "Extracto de {partner}",
-    "months": "Meses",
-    "due": "Adeudado",
-    "paid": "Pagado",
-    "remaining": "Pendiente de pago",
-    "upcoming": "Próximamente: {amount} por alquileres aún no terminados.",
-    "empty": "Ninguna reserva por su enlace este mes.",
-    "rentalEnded": "Alquiler terminado el {date}",
+  "partnerSpace": {
+    "metaTitle": "Espacio de socio",
+    "store": "{store}",
+    "title": "Hola, {partner}",
+    "howItWorks": "Recibe {rule} por cada alquiler reservado gracias a usted, con su enlace o su código. Un enlace vale {days} días tras el clic. La comisión se debe cuando termina el alquiler.",
+    "perk": "Sus clientes disfrutan del código {code}.",
+    "archived": "La tienda ha pausado esta colaboración: las nuevas reservas ya no se le atribuyen.",
+    "rule": {
+      "percent": "{value} % del alquiler",
+      "fixed": "{value} por reserva"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "Por recibir",
+        "hint": "Alquileres terminados, aún no pagados."
+      },
+      "upcoming": {
+        "label": "Próximamente",
+        "hint": "Alquileres reservados, aún no terminados."
+      },
+      "received": {
+        "label": "Recibido",
+        "hint": "Lo que la tienda le ha pagado."
+      }
+    },
+    "activity": {
+      "title": "Actividad reciente",
+      "empty": "Aún no hay reservas gracias a usted. Comparta su enlace o su cartel.",
+      "booking": "Nueva reserva",
+      "bookingWhen": "el {date} · alquiler hasta el {end}",
+      "payout": "Pago de {month}",
+      "payoutWhen": "el {date}"
+    },
+    "link": {
+      "title": "Su enlace",
+      "description": "Compártalo con sus clientes: correo de bienvenida, cartel en recepción, mensaje.",
+      "copy": "Copiar",
+      "copied": "Enlace copiado",
+      "poster": "Cartel QR",
+      "posterTitle": "Su cartel",
+      "posterDescription": "El código QR abre la tienda con su enlace.",
+      "posterHint": "Imprímalo para su recepción.",
+      "posterFileName": "cartel",
+      "code": "Su código, para dar de palabra: {code}"
+    },
+    "months": {
+      "title": "Mes a mes",
+      "due": "Adeudado",
+      "paid": "Pagado",
+      "remaining": "Pendiente de pago",
+      "upcoming": "Próximamente: {amount} por alquileres aún no terminados.",
+      "empty": "Ninguna reserva gracias a usted este mes.",
+      "rentalEnds": "Alquiler hasta el {date}"
+    },
     "states": {
       "upcoming": "Próxima",
       "due": "Adeudada",
-      "cancelled": "Anulada"
+      "cancelled": "Anulada",
+      "paid": "Pagada"
     },
-    "rules": "La comisión se aplica a las reservas hechas con su enlace. Se debe cuando el alquiler termina y se anula si se cancela la reserva. Este extracto no muestra nada sobre los clientes y no es una factura.",
-    "paidBy": "{store} le paga directamente. Louez calcula este extracto; ningún dinero pasa por Louez."
+    "notifications": {
+      "title": "Mis notificaciones",
+      "description": "Reciba un correo cuando gane algo.",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "nombre@ejemplo.es",
+      "bookings": {
+        "title": "Nueva reserva",
+        "description": "Cuando un cliente reserva gracias a usted."
+      },
+      "payouts": {
+        "title": "Pago recibido",
+        "description": "Cuando la tienda registra que le ha pagado."
+      },
+      "statements": {
+        "title": "Extracto mensual",
+        "description": "A principios de cada mes, el resumen del mes anterior."
+      },
+      "save": "Guardar",
+      "saved": "Notificaciones guardadas",
+      "failed": "No se pudo guardar. Inténtelo de nuevo."
+    },
+    "rules": "La comisión se aplica a las reservas hechas gracias a usted. Se debe cuando el alquiler termina y se anula si se cancela la reserva. Esta página no muestra nada sobre los clientes y no es una factura.",
+    "paidBy": "{store} le paga directamente. Louez calcula estos importes; ningún dinero pasa por Louez."
   }
 }

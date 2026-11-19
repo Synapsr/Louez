@@ -1246,6 +1246,17 @@ export const storePartners = mysqlTable(
     // A percentage (10.00 is 10 %) or an amount in the store's currency.
     commissionValue: decimal("commission_value", { precision: 10, scale: 2 }).notNull(),
     statementToken: varchar("statement_token", { length: 43 }).notNull(),
+    // The customer perk of the partner's link: one of the store's promo codes,
+    // applied at checkout when the visitor came through the link. Null: none.
+    promoCodeId: varchar("promo_code_id", { length: 21 }),
+    // The partner's e-mail notifications, set from its own space: where they
+    // go (null: the contact e-mail) and which ones it wants.
+    notifyEmail: varchar("notify_email", { length: 255 }),
+    notifyBookings: boolean("notify_bookings").default(true).notNull(),
+    notifyPayouts: boolean("notify_payouts").default(true).notNull(),
+    notifyStatements: boolean("notify_statements").default(true).notNull(),
+    // The last month (`YYYY-MM`) whose statement e-mail was queued: one per month.
+    statementSentMonth: varchar("statement_sent_month", { length: 7 }),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
@@ -1255,6 +1266,15 @@ export const storePartners = mysqlTable(
     statementTokenUnique: unique("store_partners_statement_token_unique").on(table.statementToken),
   }),
 );
+
+/** A store's settings for Liens partenaires, one row once it changed one. */
+export const storePartnerSettings = mysqlTable("store_partner_settings", {
+  storeId: varchar("store_id", { length: 21 }).primaryKey(),
+  // How long a partner link holds, from the click to the booking
+  // (PARTNER_ATTRIBUTION_DAY_OPTIONS in @louez/api/contracts/partner-code).
+  attributionDays: int("attribution_days").default(30).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+});
 
 /**
  * A reservation attributed to a partner, one at most. The commission rule is
@@ -1271,8 +1291,9 @@ export const partnerBookings = mysqlTable(
     reservationId: varchar("reservation_id", { length: 21 }).notNull(),
     commissionType: mysqlEnum("commission_type", ["percent", "fixed"]).notNull(),
     commissionValue: decimal("commission_value", { precision: 10, scale: 2 }).notNull(),
-    // `link`: the storefront's partner cookie at checkout; `manual`: the store chose.
-    origin: mysqlEnum("origin", ["link", "manual"]).notNull(),
+    // `link`: the storefront's partner cookie at checkout; `code`: the partner's
+    // code typed by the customer at checkout; `manual`: the store chose.
+    origin: mysqlEnum("origin", ["link", "code", "manual"]).notNull(),
     // What the store decided to owe instead of the rule's amount (a partial
     // refund, a goodwill gesture), and why. Null: the rule applies.
     adjustedAmount: decimal("adjusted_amount", { precision: 10, scale: 2 }),

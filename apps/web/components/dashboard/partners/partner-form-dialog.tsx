@@ -45,6 +45,8 @@ interface PartnerFormDialogProps {
   onOpenChange: (open: boolean) => void;
   /** The partner to edit; null adds one. */
   partner: Partner | null;
+  /** The store's promo codes a partner's customers may get through its link. */
+  promoCodes: readonly { id: string; code: string }[];
 }
 
 interface PartnerFormValues {
@@ -54,7 +56,11 @@ interface PartnerFormValues {
   contactName: string;
   contactEmail: string;
   contactPhone: string;
+  /** A promo code's id, or `NO_PERK`. */
+  promoCodeId: string;
 }
+
+const NO_PERK = "none";
 
 const valuesOf = (partner: Partner | null): PartnerFormValues => ({
   name: partner?.name ?? "",
@@ -63,6 +69,7 @@ const valuesOf = (partner: Partner | null): PartnerFormValues => ({
   contactName: partner?.contact.name ?? "",
   contactEmail: partner?.contact.email ?? "",
   contactPhone: partner?.contact.phone ?? "",
+  promoCodeId: partner?.perk?.promoCodeId ?? NO_PERK,
 });
 
 /** Adds a partner, or changes one: its name and commission first, its contact folded. */
@@ -72,6 +79,7 @@ export const PartnerFormDialog = ({
   open,
   onOpenChange,
   partner,
+  promoCodes,
 }: PartnerFormDialogProps) => {
   const t = useTranslations("dashboard.partners.form");
   const tErrors = useTranslations("errors");
@@ -88,6 +96,7 @@ export const PartnerFormDialog = ({
       contactName: z.string().max(120),
       contactEmail: z.union([z.literal(""), z.string().trim().email(t("emailInvalid"))]),
       contactPhone: z.string().max(40),
+      promoCodeId: z.string().max(21),
     })
     .superRefine((values, context) => {
       const value = Number(values.commissionValue.replace(",", "."));
@@ -114,6 +123,7 @@ export const PartnerFormDialog = ({
         contactName: value.contactName,
         contactEmail: value.contactEmail,
         contactPhone: value.contactPhone,
+        promoCodeId: value.promoCodeId === NO_PERK ? null : value.promoCodeId,
         commission: {
           type: value.commissionType,
           value: Number(value.commissionValue.replace(",", ".")),
@@ -192,6 +202,35 @@ export const PartnerFormDialog = ({
                 {t("baseHint")}
                 {partner && ` ${t("rateChangeHint")}`}
               </p>
+
+              {(promoCodes.length > 0 || partner?.perk) && (
+                <form.AppField name="promoCodeId">
+                  {(field) => (
+                    <field.Select
+                      label={t("perk")}
+                      description={t("perkHint")}
+                      items={{
+                        [NO_PERK]: t("perkNone"),
+                        ...Object.fromEntries(promoCodes.map((promo) => [promo.id, promo.code])),
+                        ...(partner?.perk ? { [partner.perk.promoCodeId]: partner.perk.code } : {}),
+                      }}
+                    >
+                      <SelectItem value={NO_PERK}>{t("perkNone")}</SelectItem>
+                      {partner?.perk &&
+                        !promoCodes.some((promo) => promo.id === partner.perk?.promoCodeId) && (
+                          <SelectItem value={partner.perk.promoCodeId}>
+                            {partner.perk.code}
+                          </SelectItem>
+                        )}
+                      {promoCodes.map((promo) => (
+                        <SelectItem key={promo.id} value={promo.id}>
+                          {promo.code}
+                        </SelectItem>
+                      ))}
+                    </field.Select>
+                  )}
+                </form.AppField>
+              )}
 
               <Collapsible open={contactOpen} onOpenChange={setContactOpen}>
                 <CollapsibleTrigger
