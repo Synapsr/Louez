@@ -42,10 +42,12 @@ export const PartnerSpaceHeader = ({
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/65" />
+        {/* A store's photo can be light: a steady veil, darker under the text, keeps it readable. */}
+        <div className="absolute inset-0 bg-black/45" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
       </>
     )}
-    <div className="relative mx-auto max-w-2xl px-4 pt-6 pb-20 sm:pt-8">
+    <div className="relative mx-auto max-w-2xl px-4 pt-6 pb-24 sm:pt-8">
       <div className="flex items-center justify-between gap-3">
         {logoUrl ? (
           <span className="flex h-12 items-center rounded-xl bg-white px-3 shadow-sm">

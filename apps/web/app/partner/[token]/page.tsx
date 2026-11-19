@@ -102,7 +102,7 @@ export default async function PartnerSpacePage({
         visitStore={t("visitStore")}
       />
 
-      <main className="relative mx-auto -mt-12 max-w-2xl space-y-8 px-4 pb-12">
+      <main className="relative mx-auto -mt-10 max-w-2xl space-y-8 px-4 pb-12">
         {space.partner.archived && (
           <Card>
             <CardPanel className="p-4 text-sm">{t("archived")}</CardPanel>
