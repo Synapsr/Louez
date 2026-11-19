@@ -43,11 +43,11 @@ export const PartnerSpaceHeader = ({
           className="absolute inset-0 h-full w-full object-cover"
         />
         {/* A store's photo can be light: a steady veil, darker under the text, keeps it readable. */}
-        <div className="absolute inset-0 bg-black/45" />
-        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
       </>
     )}
-    <div className="relative mx-auto max-w-2xl px-4 pt-6 pb-24 sm:pt-8">
+    <div className="relative mx-auto max-w-2xl px-4 pt-6 pb-10 sm:pt-8 sm:pb-12">
       <div className="flex items-center justify-between gap-3">
         {logoUrl ? (
           <span className="flex h-12 items-center rounded-xl bg-white px-3 shadow-sm">
