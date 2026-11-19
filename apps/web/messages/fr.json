@@ -4235,6 +4235,10 @@
         },
         "pricesExcludingTax": "Prix HT",
         "excludingTax": "HT",
+        "currencyNote": {
+          "subscription": "Votre abonnement est facturé en {currency}.",
+          "fallback": "Prix en {currency} : les abonnements ne sont pas encore facturés en {storeCurrency}."
+        },
         "payAsYouGo": {
           "title": "Paiement à la location",
           "description": "Vous êtes facturé à la location. Pas de forfait mensuel, pas de limite.",

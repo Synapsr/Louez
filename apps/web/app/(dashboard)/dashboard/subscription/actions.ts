@@ -22,15 +22,19 @@ import {
   switchToPayAsYouGo as switchToPayg,
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
-import type { Currency } from '@/lib/plans.shared'
+import { PLAN_CURRENCIES } from '@/lib/plans.shared'
+import { getStorePlanCurrency } from '@/lib/billing/plan-pricing'
 import type { PlanChangePreviewAnswer } from './util.plan-change-preview'
 import { env } from '@/env'
 
 const planChangeSchema = z.object({
   planSlug: z.string().min(1).max(50),
   interval: z.enum(['monthly', 'yearly']),
-  currency: z.enum(['eur', 'usd']),
+  /** The live subscription's currency, which Stripe cannot change (planChangeTarget). */
+  currency: z.enum(PLAN_CURRENCIES),
 })
+
+type PlanChoice = Pick<z.infer<typeof planChangeSchema>, 'planSlug' | 'interval'>
 
 type CurrentStore = NonNullable<Awaited<ReturnType<typeof getCurrentStore>>>
 
@@ -46,19 +50,21 @@ const PLAN_PAYMENT_ERRORS: Partial<Record<SubscriptionPlanRefusal, string>> = {
 }
 
 /**
- * The plan's Stripe Checkout for the store, with its trial and coupon, and the Klibon
- * affiliate code the browser read (readAffiliateReferral) when it has Klibon's shape.
+ * The plan's Stripe Checkout for the store, in the store's own currency when its plans
+ * have prices in it, EUR otherwise (getStorePlanCurrency), with its trial and coupon, and
+ * the Klibon affiliate code the browser read (readAffiliateReferral) when it has Klibon's
+ * shape.
  */
-function openPlanCheckout(
+async function openPlanCheckout(
   store: CurrentStore,
-  { planSlug, interval, currency }: z.infer<typeof planChangeSchema>,
+  { planSlug, interval }: PlanChoice,
   affiliateReferral: string | null,
 ) {
   return createSubscriptionCheckoutSession({
     storeId: store.id,
     planSlug,
     interval,
-    currency,
+    currency: await getStorePlanCurrency(store.settings?.currency),
     trialDays: store.trialDays ?? 0,
     stripeCouponId: store.stripeCouponId ?? undefined,
     ...planCheckoutReturnUrls(env.NEXT_PUBLIC_APP_URL),
@@ -69,14 +75,8 @@ function openPlanCheckout(
 export async function createCheckoutSession({
   planSlug,
   interval,
-  currency,
   affiliateReferral = null,
-}: {
-  planSlug: string
-  interval: 'monthly' | 'yearly'
-  currency: Currency
-  affiliateReferral?: string | null
-}) {
+}: PlanChoice & { affiliateReferral?: string | null }) {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'not_authenticated', url: null }
@@ -87,7 +87,7 @@ export async function createCheckoutSession({
   }
 
   try {
-    return await openPlanCheckout(store, { planSlug, interval, currency }, affiliateReferral)
+    return await openPlanCheckout(store, { planSlug, interval }, affiliateReferral)
   } catch (error) {
     // A live subscription changes plan in place (changeSubscriptionPlan).
     if (error instanceof SubscriptionPlanError) {

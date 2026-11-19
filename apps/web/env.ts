@@ -93,6 +93,24 @@ export const env = createEnv({
     STRIPE_PRICE_ULTRA_MONTHLY_USD: z.string().optional(),
     STRIPE_PRICE_ULTRA_YEARLY_USD: z.string().optional(),
 
+    // Stripe Price IDs (GBP): a store in GBP is billed in GBP once all four are set.
+    STRIPE_PRICE_PRO_MONTHLY_GBP: z.string().optional(),
+    STRIPE_PRICE_PRO_YEARLY_GBP: z.string().optional(),
+    STRIPE_PRICE_ULTRA_MONTHLY_GBP: z.string().optional(),
+    STRIPE_PRICE_ULTRA_YEARLY_GBP: z.string().optional(),
+
+    // Stripe Price IDs (CHF): a store in CHF is billed in CHF once all four are set.
+    STRIPE_PRICE_PRO_MONTHLY_CHF: z.string().optional(),
+    STRIPE_PRICE_PRO_YEARLY_CHF: z.string().optional(),
+    STRIPE_PRICE_ULTRA_MONTHLY_CHF: z.string().optional(),
+    STRIPE_PRICE_ULTRA_YEARLY_CHF: z.string().optional(),
+
+    // Stripe Price IDs (CAD): a store in CAD is billed in CAD once all four are set.
+    STRIPE_PRICE_PRO_MONTHLY_CAD: z.string().optional(),
+    STRIPE_PRICE_PRO_YEARLY_CAD: z.string().optional(),
+    STRIPE_PRICE_ULTRA_MONTHLY_CAD: z.string().optional(),
+    STRIPE_PRICE_ULTRA_YEARLY_CAD: z.string().optional(),
+
     // ===== SMS (Required for SMS notifications) =====
     SMS_PROVIDER: z.enum(["smspartner", "twilio", "vonage"]).default("smspartner"),
     SMS_DEFAULT_SENDER: z.string().default("Louez"),
@@ -452,6 +470,18 @@ export const env = createEnv({
     STRIPE_PRICE_PRO_YEARLY_USD: process.env.STRIPE_PRICE_PRO_YEARLY_USD,
     STRIPE_PRICE_ULTRA_MONTHLY_USD: process.env.STRIPE_PRICE_ULTRA_MONTHLY_USD,
     STRIPE_PRICE_ULTRA_YEARLY_USD: process.env.STRIPE_PRICE_ULTRA_YEARLY_USD,
+    STRIPE_PRICE_PRO_MONTHLY_GBP: process.env.STRIPE_PRICE_PRO_MONTHLY_GBP,
+    STRIPE_PRICE_PRO_YEARLY_GBP: process.env.STRIPE_PRICE_PRO_YEARLY_GBP,
+    STRIPE_PRICE_ULTRA_MONTHLY_GBP: process.env.STRIPE_PRICE_ULTRA_MONTHLY_GBP,
+    STRIPE_PRICE_ULTRA_YEARLY_GBP: process.env.STRIPE_PRICE_ULTRA_YEARLY_GBP,
+    STRIPE_PRICE_PRO_MONTHLY_CHF: process.env.STRIPE_PRICE_PRO_MONTHLY_CHF,
+    STRIPE_PRICE_PRO_YEARLY_CHF: process.env.STRIPE_PRICE_PRO_YEARLY_CHF,
+    STRIPE_PRICE_ULTRA_MONTHLY_CHF: process.env.STRIPE_PRICE_ULTRA_MONTHLY_CHF,
+    STRIPE_PRICE_ULTRA_YEARLY_CHF: process.env.STRIPE_PRICE_ULTRA_YEARLY_CHF,
+    STRIPE_PRICE_PRO_MONTHLY_CAD: process.env.STRIPE_PRICE_PRO_MONTHLY_CAD,
+    STRIPE_PRICE_PRO_YEARLY_CAD: process.env.STRIPE_PRICE_PRO_YEARLY_CAD,
+    STRIPE_PRICE_ULTRA_MONTHLY_CAD: process.env.STRIPE_PRICE_ULTRA_MONTHLY_CAD,
+    STRIPE_PRICE_ULTRA_YEARLY_CAD: process.env.STRIPE_PRICE_ULTRA_YEARLY_CAD,
     SMS_PROVIDER: process.env.SMS_PROVIDER,
     SMS_DEFAULT_SENDER: process.env.SMS_DEFAULT_SENDER,
     SMS_PARTNER_API_KEY: process.env.SMS_PARTNER_API_KEY,

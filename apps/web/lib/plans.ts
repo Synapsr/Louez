@@ -3,17 +3,21 @@ import { isBillingEnabled } from '@/lib/billing/mode';
 import { PAY_AS_YOU_GO_PLAN, type Plan } from '@/lib/plans.shared';
 
 export {
-  CURRENCY_SYMBOLS,
+  CODE_PRICED_CURRENCIES,
+  DEFAULT_PLAN_CURRENCY,
   PAY_AS_YOU_GO_PLAN,
-  SUPPORTED_CURRENCIES,
+  codePlanPricing,
   findPlanPrice,
   formatPlanPrice,
   getPlanPriceId,
   getYearlyPrice,
   isPlanAvailable,
+  isPlanCurrency,
+  planCurrencyFor,
   type Currency,
   type Plan,
   type PlanPrices,
+  type PlanPricing,
 } from '@/lib/plans.shared';
 
 // SMS top-up pricing per plan (in cents)
@@ -182,6 +186,18 @@ export function getPlans(): Plan[] {
           monthly: env.STRIPE_PRICE_PRO_MONTHLY_USD,
           yearly: env.STRIPE_PRICE_PRO_YEARLY_USD,
         },
+        gbp: {
+          monthly: env.STRIPE_PRICE_PRO_MONTHLY_GBP,
+          yearly: env.STRIPE_PRICE_PRO_YEARLY_GBP,
+        },
+        chf: {
+          monthly: env.STRIPE_PRICE_PRO_MONTHLY_CHF,
+          yearly: env.STRIPE_PRICE_PRO_YEARLY_CHF,
+        },
+        cad: {
+          monthly: env.STRIPE_PRICE_PRO_MONTHLY_CAD,
+          yearly: env.STRIPE_PRICE_PRO_YEARLY_CAD,
+        },
       },
     },
     {
@@ -202,6 +218,18 @@ export function getPlans(): Plan[] {
         usd: {
           monthly: env.STRIPE_PRICE_ULTRA_MONTHLY_USD,
           yearly: env.STRIPE_PRICE_ULTRA_YEARLY_USD,
+        },
+        gbp: {
+          monthly: env.STRIPE_PRICE_ULTRA_MONTHLY_GBP,
+          yearly: env.STRIPE_PRICE_ULTRA_YEARLY_GBP,
+        },
+        chf: {
+          monthly: env.STRIPE_PRICE_ULTRA_MONTHLY_CHF,
+          yearly: env.STRIPE_PRICE_ULTRA_YEARLY_CHF,
+        },
+        cad: {
+          monthly: env.STRIPE_PRICE_ULTRA_MONTHLY_CAD,
+          yearly: env.STRIPE_PRICE_ULTRA_YEARLY_CAD,
         },
       },
     },

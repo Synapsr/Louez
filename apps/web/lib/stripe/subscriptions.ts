@@ -9,6 +9,7 @@ import {
   getPlan,
   getPlans,
   getPlanPriceId,
+  isPlanCurrency,
   type Plan,
   type Currency,
 } from '@/lib/plans'
@@ -1249,8 +1250,8 @@ export async function getSubscriptionWithPlan(storeId: string) {
       // Get the actual currency used for this subscription
       if (firstItem?.price?.currency) {
         const currency = firstItem.price.currency.toLowerCase()
-        if (currency === 'eur' || currency === 'usd') {
-          billingCurrency = currency as Currency
+        if (isPlanCurrency(currency)) {
+          billingCurrency = currency
         }
       }
       if (hasLiveSubscription(subscription)) {

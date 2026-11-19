@@ -1402,7 +1402,6 @@ describe(
         subscriptionActions.createCheckoutSession({
           planSlug: "pro",
           interval: "monthly",
-          currency: "eur",
         });
       // No customer in the policy or on a row: Louez creates one, kept on a row with no
       // pricing, which nothing bills.
@@ -1447,7 +1446,6 @@ describe(
         await subscriptionActions.createCheckoutSession({
           planSlug: "no-such-plan",
           interval: "monthly",
-          currency: "eur",
         }),
         { error: "Plan not found", url: null },
       );
@@ -1679,7 +1677,6 @@ describe(
           subscriptionActions.createCheckoutSession({
             planSlug: "ultra",
             interval: "monthly",
-            currency: "eur",
           });
         // Stripe has not ended the subscription, whether it collects it or not.
         for (const [status, stripeStatus] of [
@@ -2541,7 +2538,6 @@ describe(
         const opened = await subscriptionActions.createCheckoutSession({
           planSlug: "pro",
           interval: "monthly",
-          currency: "eur",
         });
         assert.ok("sessionId" in opened, "a Checkout is opened");
         return opened.sessionId;

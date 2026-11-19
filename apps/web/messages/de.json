@@ -3886,6 +3886,10 @@
         },
         "pricesExcludingTax": "Preise zzgl. MwSt.",
         "excludingTax": "zzgl. MwSt.",
+        "currencyNote": {
+          "subscription": "Ihr Abonnement wird in {currency} abgerechnet.",
+          "fallback": "Preise in {currency}: Abonnements können noch nicht in {storeCurrency} abgerechnet werden."
+        },
         "payAsYouGo": {
           "title": "Pay as you go",
           "description": "Sie werden pro Vermietung abgerechnet. Kein Monatstarif, keine Grenzen.",

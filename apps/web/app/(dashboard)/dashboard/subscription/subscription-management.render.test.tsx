@@ -12,7 +12,7 @@ import React, { type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PublicEnvProvider } from "@/components/shared/public-env-provider";
-import type { Plan } from "@/lib/plans.shared";
+import { codePlanPricing, type Plan } from "@/lib/plans.shared";
 
 import type { SubscriptionManagementProps } from "./subscription-management";
 import { publicEnvSchema } from "@/lib/validators/validator.public-env";
@@ -112,6 +112,7 @@ const plan = (slug: string, name: string): Plan => ({
   },
 });
 const PLANS = [plan("pro", "Pro"), plan("ultra", "Ultra")];
+const EUR_PRICING = codePlanPricing(PLANS, "eur");
 const USAGE = {
   products: 3,
   reservations: 4,
@@ -177,6 +178,8 @@ describe("plan page views", () => {
       <views.management.SubscriptionManagement
         subscription={null}
         plans={PLANS}
+        pricing={EUR_PRICING}
+        storeCurrency="EUR"
         canAccessBillingPortal={false}
         usage={USAGE}
         {...props}
@@ -257,6 +260,59 @@ describe("plan page views", () => {
       assert.ok(!html.includes(absent), absent);
     }
     assert.deepEqual(planButtons(html), ["Plan actuel:disabled", "Choisir ce plan:enabled"]);
+  });
+
+  test("the plans are sold in the store's currency, at its Stripe amounts, without a currency switch", () => {
+    const gbpPlans = PLANS.map((each) => ({
+      ...each,
+      stripePrices: {
+        ...each.stripePrices,
+        gbp: { monthly: `price_${each.slug}_month_gbp`, yearly: `price_${each.slug}_year_gbp` },
+      },
+    }));
+    const html = grid({
+      plans: gbpPlans,
+      storeCurrency: "GBP",
+      pricing: {
+        currency: "gbp",
+        amounts: { pro: { monthly: 9, yearly: 90 }, ultra: { monthly: 29, yearly: 290 } },
+      },
+    });
+    assert.ok(html.includes(">9 £GB<"));
+    assert.ok(html.includes(">29 £GB<"));
+    for (const absent of ["10€", ">EUR<", ">USD<", "Prix en"]) {
+      assert.ok(!html.includes(absent), absent);
+    }
+    assert.deepEqual(planButtons(html), ["Choisir ce plan:enabled", "Choisir ce plan:enabled"]);
+  });
+
+  test("a store whose currency has no plan prices sees EUR, and why", () => {
+    const html = grid({ storeCurrency: "GBP" });
+    assert.ok(html.includes(">10€<"));
+    assert.ok(
+      html.includes("Prix en EUR : les abonnements ne sont pas encore facturés en GBP."),
+      html,
+    );
+    // In its own currency, nothing to explain.
+    assert.ok(!grid({}).includes("Prix en EUR"));
+  });
+
+  test("a live subscription keeps its currency, and says so when it is not the store's", () => {
+    const html = grid({
+      subscription: { ...PRO_SUBSCRIPTION, billingCurrency: "usd" },
+      hasLiveSubscription: true,
+      pricing: codePlanPricing(PLANS, "usd"),
+    });
+    assert.ok(html.includes(">$10<"));
+    assert.ok(html.includes("Votre abonnement est facturé en USD."));
+    assert.deepEqual(planButtons(html), ["Plan actuel:disabled", "Choisir ce plan:enabled"]);
+  });
+
+  test("a plan with no amount in the currency shows none and cannot be bought", () => {
+    const html = grid({ pricing: { currency: "eur", amounts: { pro: { monthly: 10, yearly: 100 } } } });
+    assert.ok(html.includes("—"));
+    assert.ok(html.includes("Non disponible"));
+    assert.deepEqual(planButtons(html), ["Choisir ce plan:enabled"]);
   });
 
   /** The plan change dialog's body, Pro to Ultra monthly, with what the preview answered. */

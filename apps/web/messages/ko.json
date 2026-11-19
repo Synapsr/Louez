@@ -4234,6 +4234,10 @@
         },
         "pricesExcludingTax": "가격은 제외됩니다. 부가가치세",
         "excludingTax": "제외 부가가치세",
+        "currencyNote": {
+          "subscription": "구독은 {currency}(으)로 청구됩니다.",
+          "fallback": "가격은 {currency} 기준입니다. 아직 {storeCurrency}(으)로 요금제를 청구할 수 없습니다."
+        },
         "payAsYouGo": {
           "title": "사용한 만큼 지불하세요",
           "description": "대여 건당 요금이 청구됩니다. 월간 요금제나 한도가 없습니다.",

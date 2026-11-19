@@ -14,6 +14,7 @@ import { getStoreUsage, canAddTeamMember, canSendSms, getStorePlan } from '@/lib
 import { getStoreBilling, getCurrentMonthUsage, getRecentPayAsYouGoInvoices, summarizePayAsYouGoBands } from '@/lib/pay-as-you-go'
 import { getAiCreditsInfo, microToCredits } from '@/lib/ai/advisor/credits'
 import { areAiCreditsEnabled, getAiCreditPackages } from '@/lib/plans'
+import { getPlanPagePricing } from '@/lib/billing/plan-pricing'
 import { Button } from '@louez/ui'
 import { SubscriptionManagement } from './subscription-management'
 import { PayAsYouGoSummary } from './pay-as-you-go-summary'
@@ -170,11 +171,17 @@ export default async function SubscriptionPage({
   // Check if store has a Stripe customer (for billing portal access)
   const canAccessBillingPortal = await hasStripeCustomer(store.id)
 
-  // Get current usage statistics
-  const [usage, teamStatus, smsStatus] = await Promise.all([
+  // Get current usage statistics, and the currency the plans are sold in
+  const isLive = hasLiveSubscription(subscription)
+  const storeCurrency = store.settings?.currency || 'EUR'
+  const [usage, teamStatus, smsStatus, pricing] = await Promise.all([
     getStoreUsage(store.id),
     canAddTeamMember(store.id),
     canSendSms(store.id),
+    getPlanPagePricing({
+      storeCurrency,
+      liveCurrency: isLive ? (subscription?.billingCurrency ?? null) : null,
+    }),
   ])
 
   const tSms = await getTranslations('dashboard.sms')
@@ -195,6 +202,8 @@ export default async function SubscriptionPage({
       <SubscriptionManagement
         subscription={subscription}
         plans={plans}
+        pricing={pricing}
+        storeCurrency={storeCurrency}
         canAccessBillingPortal={canAccessBillingPortal}
         showSuccess={params.success === 'true'}
         showCanceled={params.canceled === 'true'}
@@ -211,7 +220,7 @@ export default async function SubscriptionPage({
         discountDurationMonths={store.discountDurationMonths}
         pendingBillingMode={subscription?.pendingBillingMode ?? null}
         showBackToPayAsYouGo={isPayAsYouGo}
-        hasLiveSubscription={hasLiveSubscription(subscription)}
+        hasLiveSubscription={isLive}
       />
 
       {credits && <AiCreditsSection {...credits} />}
