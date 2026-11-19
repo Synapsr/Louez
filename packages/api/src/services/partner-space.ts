@@ -52,7 +52,11 @@ export type PartnerSpaceActivity =
   | { kind: "payout"; at: Date; month: string; amount: number };
 
 export interface PartnerSpace {
-  store: { name: string; slug: string; logoUrl: string | null };
+  /** The store as its storefront shows itself: the space wears its look. */
+  store: Pick<
+    PartnerStore,
+    "name" | "slug" | "logoUrl" | "darkLogoUrl" | "theme" | "heroImage" | "address"
+  >;
   partner: {
     name: string;
     code: string;
@@ -170,7 +174,15 @@ export async function getPartnerSpace(
     .slice(0, ACTIVITY_LIMIT);
 
   return {
-    store: { name: store.name, slug: store.slug, logoUrl: store.logoUrl },
+    store: {
+      name: store.name,
+      slug: store.slug,
+      logoUrl: store.logoUrl,
+      darkLogoUrl: store.darkLogoUrl,
+      theme: store.theme,
+      heroImage: store.heroImage,
+      address: store.address,
+    },
     partner: {
       name: row.name,
       code: row.code,

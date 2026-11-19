@@ -7696,7 +7696,8 @@
         "posterFileName": "partner-poster",
         "sendEmail": "Email",
         "emailSubject": "Your {store} partner link",
-        "message": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nYour partner space, to follow your earnings and choose your notifications: {space}\n\nThank you for recommending us!"
+        "message": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nYour partner space, to follow your earnings and choose your notifications: {space}\n\nThank you for recommending us!",
+        "posterRecommended": "Recommended by {partner}"
       },
       "statement": {
         "title": "Statement",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Partner space",
-    "store": "{store}",
     "title": "Hello {partner}",
     "howItWorks": "You earn {rule} on every rental booked thanks to you, through your link or your code. A link holds {days} days after the click. The commission is due once the rental is over.",
     "perk": "Your customers get the code {code}.",
@@ -10780,7 +10780,8 @@
       "posterDescription": "The QR code opens the store with your link.",
       "posterHint": "Print it for your front desk.",
       "posterFileName": "poster",
-      "code": "Your code, to give by word of mouth: {code}"
+      "code": "Your code, to give by word of mouth: {code}",
+      "posterRecommended": "Recommended by {partner}"
     },
     "months": {
       "title": "Month by month",
@@ -10819,6 +10820,9 @@
       "failed": "Could not save. Try again."
     },
     "rules": "The commission is on bookings made thanks to you. It is due once the rental is over, and cancelled if the booking is. This page shows nothing about the customers and is not an invoice.",
-    "paidBy": "{store} pays you directly. Louez works out these amounts; no money goes through Louez."
+    "paidBy": "{store} pays you directly. Louez works out these amounts; no money goes through Louez.",
+    "eyebrow": "Partner space · {store}",
+    "visitStore": "Visit the store",
+    "poweredBy": "Powered by"
   }
 }

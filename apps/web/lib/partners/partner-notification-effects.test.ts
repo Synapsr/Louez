@@ -35,6 +35,10 @@ const STORE = {
   timezone: "Europe/Paris",
   country: "FR",
   logoUrl: null,
+  darkLogoUrl: null,
+  theme: { mode: "light" as const, primaryColor: "#0F3D2E" },
+  heroImage: null,
+  address: null,
 };
 const base = {
   to: "accueil@les-pins.test",
@@ -115,6 +119,8 @@ describe("partner e-mail senders", () => {
       endDate: "24 novembre",
     });
     assert.match(sent[0].spaceUrl, /\/partner\/t{43}$/);
+    // The e-mail wears the store's colour.
+    assert.equal(sent[0].primaryColor, "#0F3D2E");
   });
 
   test("a payment and a statement name the month in words", async () => {

@@ -64,7 +64,12 @@ export function createPartnerNotificationEffectSenders(
     context: EffectSendContext,
     notice: {
       to: string;
-      store: { name: string; logoUrl: string | null; country: string | null };
+      store: {
+        name: string;
+        logoUrl: string | null;
+        country: string | null;
+        theme: { primaryColor: string | null };
+      };
       partnerName: string;
       token: string;
     },
@@ -76,6 +81,7 @@ export function createPartnerNotificationEffectSenders(
       to: notice.to,
       storeName: notice.store.name,
       storeLogoUrl: notice.store.logoUrl,
+      primaryColor: notice.store.theme.primaryColor,
       partnerName: notice.partnerName,
       notification,
       spaceUrl: partnerSpaceUrl(apiUrls.dashboard("/"), notice.token),

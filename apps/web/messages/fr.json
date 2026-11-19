@@ -7696,7 +7696,8 @@
         "posterFileName": "affiche-partenaire",
         "sendEmail": "E-mail",
         "emailSubject": "Votre lien partenaire {store}",
-        "message": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nVotre espace partenaire, pour suivre vos gains et choisir vos notifications : {space}\n\nMerci de nous recommander !"
+        "message": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nVotre espace partenaire, pour suivre vos gains et choisir vos notifications : {space}\n\nMerci de nous recommander !",
+        "posterRecommended": "Recommandé par {partner}"
       },
       "statement": {
         "title": "Relevé",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Espace partenaire",
-    "store": "{store}",
     "title": "Bonjour {partner}",
     "howItWorks": "Vous touchez {rule} sur chaque location réservée grâce à vous, par votre lien ou votre code. Un lien compte {days} jours après le clic. La commission est due quand la location est terminée.",
     "perk": "Vos clients profitent du code {code}.",
@@ -10780,7 +10780,8 @@
       "posterDescription": "Le QR code ouvre la boutique avec votre lien.",
       "posterHint": "Imprimez-la pour votre accueil.",
       "posterFileName": "affiche",
-      "code": "Votre code, à donner de vive voix : {code}"
+      "code": "Votre code, à donner de vive voix : {code}",
+      "posterRecommended": "Recommandé par {partner}"
     },
     "months": {
       "title": "Détail par mois",
@@ -10819,6 +10820,9 @@
       "failed": "Impossible d'enregistrer. Réessayez."
     },
     "rules": "La commission porte sur les réservations faites grâce à vous. Elle est due quand la location est terminée, et annulée si la réservation l'est. Cette page ne montre rien sur les clients et n'est pas une facture.",
-    "paidBy": "{store} vous paie directement. Louez calcule ces montants ; aucun argent ne passe par Louez."
+    "paidBy": "{store} vous paie directement. Louez calcule ces montants ; aucun argent ne passe par Louez.",
+    "eyebrow": "Espace partenaire · {store}",
+    "visitStore": "Voir la boutique",
+    "poweredBy": "Propulsé par"
   }
 }

@@ -7696,7 +7696,8 @@
         "posterFileName": "poster-partner",
         "sendEmail": "Email",
         "emailSubject": "Il Suo link partner di {store}",
-        "message": "Buongiorno,\n\necco il Suo link partner per {store}: {link}\nRiceve {rule} su ogni noleggio prenotato tramite questo link, una volta concluso il noleggio.\n\nLa Sua area partner, per seguire i Suoi guadagni e scegliere le notifiche: {space}\n\nGrazie per averci consigliato!"
+        "message": "Buongiorno,\n\necco il Suo link partner per {store}: {link}\nRiceve {rule} su ogni noleggio prenotato tramite questo link, una volta concluso il noleggio.\n\nLa Sua area partner, per seguire i Suoi guadagni e scegliere le notifiche: {space}\n\nGrazie per averci consigliato!",
+        "posterRecommended": "Consigliato da {partner}"
       },
       "statement": {
         "title": "Estratto",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Area partner",
-    "store": "{store}",
     "title": "Buongiorno {partner}",
     "howItWorks": "Riceve {rule} su ogni noleggio prenotato grazie a Lei, tramite il Suo link o il Suo codice. Un link vale {days} giorni dopo il clic. La commissione è dovuta una volta concluso il noleggio.",
     "perk": "I Suoi clienti usufruiscono del codice {code}.",
@@ -10780,7 +10780,8 @@
       "posterDescription": "Il codice QR apre il negozio con il Suo link.",
       "posterHint": "Lo stampi per la Sua reception.",
       "posterFileName": "poster",
-      "code": "Il Suo codice, da comunicare a voce: {code}"
+      "code": "Il Suo codice, da comunicare a voce: {code}",
+      "posterRecommended": "Consigliato da {partner}"
     },
     "months": {
       "title": "Mese per mese",
@@ -10819,6 +10820,9 @@
       "failed": "Impossibile salvare. Riprovi."
     },
     "rules": "La commissione riguarda le prenotazioni fatte grazie a Lei. È dovuta quando il noleggio è concluso e annullata se la prenotazione viene annullata. Questa pagina non mostra nulla sui clienti e non è una fattura.",
-    "paidBy": "{store} La paga direttamente. Louez calcola questi importi; nessun pagamento passa da Louez."
+    "paidBy": "{store} La paga direttamente. Louez calcola questi importi; nessun pagamento passa da Louez.",
+    "eyebrow": "Area partner · {store}",
+    "visitStore": "Vai al negozio",
+    "poweredBy": "Realizzato con"
   }
 }

@@ -9,9 +9,8 @@ import { QRCodeCanvas } from "qrcode.react";
 
 import { Button, Spinner } from "@louez/ui";
 
-import { drawPoster, toDisplayUrl } from "./util.poster";
-
-const QR_RENDER_SIZE = 860;
+import { usePosterLogo } from "./use-poster-logo";
+import { POSTER_QR_SIZE, drawPoster, posterColors, toDisplayUrl } from "./util.poster";
 
 interface QrPosterProps {
   storeName: string;
@@ -23,22 +22,41 @@ interface QrPosterProps {
   fileName: string;
   hint: string;
   onSave: () => void;
+  /** The store's colour (`#rrggbb`): the band, and the code when it is dark enough. */
+  accentColor?: string | null;
+  /** The store's logo: on the band and at the centre of the code. */
+  logoUrl?: string | null;
+  /** On a partner's poster: "Recommandé par Camping Les Pins". */
+  recommendedBy?: string | null;
 }
 
 /**
- * An A4 poster: the store's name, a QR code and an address, saved as a PNG
- * the loueur (or its partner) prints or keeps on a phone.
+ * An A4 poster in the store's colours: its logo (or name), a QR code and an
+ * address, saved as a PNG the loueur (or its partner) prints or keeps on a phone.
  */
-export const QrPoster = ({ storeName, url, displayUrl, fileName, hint, onSave }: QrPosterProps) => {
+export const QrPoster = ({
+  storeName,
+  url,
+  displayUrl,
+  fileName,
+  hint,
+  onSave,
+  accentColor,
+  logoUrl,
+  recommendedBy,
+}: QrPosterProps) => {
   const t = useTranslations("dashboard.visibility.poster");
   const qrRef = useRef<HTMLCanvasElement>(null);
   const [poster, setPoster] = useState<{ canvas: HTMLCanvasElement; preview: string } | null>(null);
   const headline = t("headline");
   const scanHint = t("scanHint");
+  const logo = usePosterLogo(logoUrl);
+  const colors = posterColors(accentColor);
 
   useEffect(() => {
     const qr = qrRef.current;
-    if (!qr) return;
+    // Wait for the logo, so the poster is drawn once with it or without it.
+    if (!qr || logo === undefined) return;
     const canvas = document.createElement("canvas");
     drawPoster(canvas, {
       storeName,
@@ -46,9 +64,12 @@ export const QrPoster = ({ storeName, url, displayUrl, fileName, hint, onSave }:
       scanHint,
       displayUrl: toDisplayUrl(displayUrl),
       qr,
+      accentColor,
+      logo,
+      recommendedBy,
     });
     setPoster({ canvas, preview: canvas.toDataURL("image/png") });
-  }, [headline, scanHint, storeName, displayUrl, url]);
+  }, [headline, scanHint, storeName, displayUrl, url, accentColor, logo, recommendedBy]);
 
   const save = () => {
     if (!poster) return;
@@ -80,8 +101,10 @@ export const QrPoster = ({ storeName, url, displayUrl, fileName, hint, onSave }:
       <QRCodeCanvas
         ref={qrRef}
         value={url}
-        size={QR_RENDER_SIZE}
-        level="M"
+        size={POSTER_QR_SIZE}
+        // A logo covers its centre: the highest correction keeps it readable.
+        level={logo ? "H" : "M"}
+        fgColor={colors.code}
         marginSize={0}
         className="hidden"
         aria-hidden

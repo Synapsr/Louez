@@ -7696,7 +7696,8 @@
         "posterFileName": "partner-poster",
         "sendEmail": "이메일",
         "emailSubject": "{store} 파트너 링크 안내",
-        "message": "안녕하세요.\n\n{store}의 파트너 링크를 보내 드립니다: {link}\n이 링크로 예약된 대여마다, 대여가 끝난 후 다음 수수료를 받으실 수 있습니다: {rule}.\n\n수익을 확인하고 알림을 선택할 수 있는 파트너 페이지: {space}\n\n저희를 추천해 주셔서 감사합니다!"
+        "message": "안녕하세요.\n\n{store}의 파트너 링크를 보내 드립니다: {link}\n이 링크로 예약된 대여마다, 대여가 끝난 후 다음 수수료를 받으실 수 있습니다: {rule}.\n\n수익을 확인하고 알림을 선택할 수 있는 파트너 페이지: {space}\n\n저희를 추천해 주셔서 감사합니다!",
+        "posterRecommended": "{partner} 추천"
       },
       "statement": {
         "title": "정산 내역",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "파트너 페이지",
-    "store": "{store}",
     "title": "안녕하세요, {partner}님",
     "howItWorks": "귀하의 링크나 코드로 예약된 대여마다 다음 수수료를 받으실 수 있습니다: {rule}. 링크는 클릭 후 {days}일 동안 유효합니다. 수수료는 대여가 끝나면 지급 대상이 됩니다.",
     "perk": "귀하의 고객은 다음 코드로 혜택을 받습니다: {code}",
@@ -10780,7 +10780,8 @@
       "posterDescription": "QR 코드를 스캔하면 귀하의 링크로 스토어가 열립니다.",
       "posterHint": "인쇄해서 프런트에 두세요.",
       "posterFileName": "poster",
-      "code": "말로 전할 수 있는 내 코드: {code}"
+      "code": "말로 전할 수 있는 내 코드: {code}",
+      "posterRecommended": "{partner} 추천"
     },
     "months": {
       "title": "월별 내역",
@@ -10819,6 +10820,9 @@
       "failed": "저장하지 못했습니다. 다시 시도해 주세요."
     },
     "rules": "수수료는 귀하를 통해 이루어진 예약에 적용됩니다. 대여가 끝나면 지급 대상이 되고, 예약이 취소되면 함께 취소됩니다. 이 페이지에는 고객 정보가 표시되지 않으며, 청구서가 아닙니다.",
-    "paidBy": "{store}에서 직접 지급합니다. Louez는 이 금액을 계산할 뿐, 돈이 Louez를 거치지 않습니다."
+    "paidBy": "{store}에서 직접 지급합니다. Louez는 이 금액을 계산할 뿐, 돈이 Louez를 거치지 않습니다.",
+    "eyebrow": "파트너 페이지 · {store}",
+    "visitStore": "매장 보기",
+    "poweredBy": "Powered by"
   }
 }

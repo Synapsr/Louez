@@ -2484,6 +2484,7 @@ export async function sendPartnerNotificationEmail({
   to,
   storeName,
   storeLogoUrl,
+  primaryColor,
   partnerName,
   notification,
   spaceUrl,
@@ -2492,6 +2493,8 @@ export async function sendPartnerNotificationEmail({
   to: string
   storeName: string
   storeLogoUrl?: string | null
+  /** The store's colour: the e-mail wears it, as its customers' e-mails do. */
+  primaryColor?: string | null
   partnerName: string
   notification: PartnerNotification
   spaceUrl: string
@@ -2503,6 +2506,7 @@ export async function sendPartnerNotificationEmail({
     PartnerNotificationEmail({
       storeName,
       storeLogoUrl: logo.url,
+      primaryColor: primaryColor ?? undefined,
       partnerName,
       notification,
       spaceUrl,

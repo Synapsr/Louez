@@ -45,6 +45,9 @@ interface PartnerDetailProps {
   storeName: string;
   storeUrl: string;
   appUrl: string;
+  /** The store's colour and logo, for the partner's poster. */
+  accentColor: string | null;
+  logoUrl: string | null;
   initialStatement: PartnerStatementView;
 }
 
@@ -58,6 +61,8 @@ export const PartnerDetail = ({
   storeUrl,
   appUrl,
   initialStatement,
+  accentColor,
+  logoUrl,
 }: PartnerDetailProps) => {
   const t = useTranslations("dashboard.partners");
   const tErrors = useTranslations("errors");
@@ -190,6 +195,8 @@ export const PartnerDetail = ({
           link={link}
           message={t("link.message", { store: storeName, link, rule, space: spaceUrl })}
           onShared={analytics.linkShared}
+          accentColor={accentColor}
+          logoUrl={logoUrl}
         />
       )}
 

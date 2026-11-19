@@ -7696,7 +7696,8 @@
         "posterFileName": "partner-poster",
         "sendEmail": "E-mail",
         "emailSubject": "Uw partnerlink voor {store}",
-        "message": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nUw partnerpagina, om uw verdiensten te volgen en uw meldingen te kiezen: {space}\n\nBedankt dat u ons aanbeveelt!"
+        "message": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nUw partnerpagina, om uw verdiensten te volgen en uw meldingen te kiezen: {space}\n\nBedankt dat u ons aanbeveelt!",
+        "posterRecommended": "Aanbevolen door {partner}"
       },
       "statement": {
         "title": "Overzicht",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Partnerpagina",
-    "store": "{store}",
     "title": "Goedendag {partner}",
     "howItWorks": "U ontvangt {rule} op elke huur die dankzij u is geboekt, via uw link of uw code. Een link geldt {days} dagen na de klik. De commissie is verschuldigd zodra de huur is afgelopen.",
     "perk": "Uw klanten krijgen de code {code}.",
@@ -10780,7 +10780,8 @@
       "posterDescription": "De QR-code opent de winkel met uw link.",
       "posterHint": "Print hem voor uw receptie.",
       "posterFileName": "poster",
-      "code": "Uw code, om mondeling door te geven: {code}"
+      "code": "Uw code, om mondeling door te geven: {code}",
+      "posterRecommended": "Aanbevolen door {partner}"
     },
     "months": {
       "title": "Per maand",
@@ -10819,6 +10820,9 @@
       "failed": "Opslaan mislukt. Probeer het opnieuw."
     },
     "rules": "De commissie geldt voor reserveringen die dankzij u zijn gemaakt. Ze is verschuldigd zodra de huur is afgelopen en vervalt als de reservering wordt geannuleerd. Deze pagina toont niets over de klanten en is geen factuur.",
-    "paidBy": "{store} betaalt u rechtstreeks. Louez berekent deze bedragen; er gaat geen geld via Louez."
+    "paidBy": "{store} betaalt u rechtstreeks. Louez berekent deze bedragen; er gaat geen geld via Louez.",
+    "eyebrow": "Partnerpagina · {store}",
+    "visitStore": "Naar de winkel",
+    "poweredBy": "Mogelijk gemaakt door"
   }
 }

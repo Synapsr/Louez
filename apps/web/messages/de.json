@@ -7696,7 +7696,8 @@
         "posterFileName": "partner-poster",
         "sendEmail": "E-Mail",
         "emailSubject": "Ihr Partnerlink für {store}",
-        "message": "Guten Tag,\n\nhier ist Ihr Partnerlink für {store}: {link}\nSie erhalten {rule} für jede über diesen Link gebuchte Miete, sobald die Miete beendet ist.\n\nIhr Partnerbereich, um Ihre Einnahmen zu verfolgen und Ihre Benachrichtigungen zu wählen: {space}\n\nVielen Dank für Ihre Empfehlung!"
+        "message": "Guten Tag,\n\nhier ist Ihr Partnerlink für {store}: {link}\nSie erhalten {rule} für jede über diesen Link gebuchte Miete, sobald die Miete beendet ist.\n\nIhr Partnerbereich, um Ihre Einnahmen zu verfolgen und Ihre Benachrichtigungen zu wählen: {space}\n\nVielen Dank für Ihre Empfehlung!",
+        "posterRecommended": "Empfohlen von {partner}"
       },
       "statement": {
         "title": "Abrechnung",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Partnerbereich",
-    "store": "{store}",
     "title": "Guten Tag, {partner}",
     "howItWorks": "Sie erhalten {rule} für jede Miete, die dank Ihnen gebucht wird, über Ihren Link oder Ihren Code. Ein Link gilt {days} Tage nach dem Klick. Die Provision ist fällig, sobald die Miete beendet ist.",
     "perk": "Ihre Kunden erhalten den Code {code}.",
@@ -10780,7 +10780,8 @@
       "posterDescription": "Der QR-Code öffnet den Shop mit Ihrem Link.",
       "posterHint": "Drucken Sie es für Ihren Empfang aus.",
       "posterFileName": "poster",
-      "code": "Ihr Code zum mündlichen Weitergeben: {code}"
+      "code": "Ihr Code zum mündlichen Weitergeben: {code}",
+      "posterRecommended": "Empfohlen von {partner}"
     },
     "months": {
       "title": "Monat für Monat",
@@ -10819,6 +10820,9 @@
       "failed": "Speichern fehlgeschlagen. Versuchen Sie es erneut."
     },
     "rules": "Die Provision bezieht sich auf Buchungen, die dank Ihnen getätigt wurden. Sie ist fällig, sobald die Miete beendet ist, und entfällt, wenn die Buchung storniert wird. Diese Seite zeigt nichts über die Kunden und ist keine Rechnung.",
-    "paidBy": "{store} zahlt Sie direkt. Louez berechnet diese Beträge; kein Geld läuft über Louez."
+    "paidBy": "{store} zahlt Sie direkt. Louez berechnet diese Beträge; kein Geld läuft über Louez.",
+    "eyebrow": "Partnerbereich · {store}",
+    "visitStore": "Zum Shop",
+    "poweredBy": "Bereitgestellt von"
   }
 }

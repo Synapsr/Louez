@@ -75,6 +75,8 @@ export default async function VisibilityPage() {
       initialView={view}
       aiView={aiView}
       marketplaceAvailable={Boolean(env.MARKETPLACE_URL)}
+      accentColor={store.theme?.primaryColor ?? null}
+      logoUrl={store.logoUrl}
     />
   );
 }

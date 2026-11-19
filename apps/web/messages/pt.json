@@ -7696,7 +7696,8 @@
         "posterFileName": "cartaz-parceiro",
         "sendEmail": "E-mail",
         "emailSubject": "O seu link de parceiro {store}",
-        "message": "Olá,\n\nAqui está o seu link de parceiro para {store}: {link}\nRecebe {rule} por cada aluguer reservado através deste link, quando o aluguer terminar.\n\nA sua área de parceiro, para acompanhar os seus ganhos e escolher as suas notificações: {space}\n\nObrigado por nos recomendar!"
+        "message": "Olá,\n\nAqui está o seu link de parceiro para {store}: {link}\nRecebe {rule} por cada aluguer reservado através deste link, quando o aluguer terminar.\n\nA sua área de parceiro, para acompanhar os seus ganhos e escolher as suas notificações: {space}\n\nObrigado por nos recomendar!",
+        "posterRecommended": "Recomendado por {partner}"
       },
       "statement": {
         "title": "Extrato",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "Área de parceiro",
-    "store": "{store}",
     "title": "Olá, {partner}",
     "howItWorks": "Recebe {rule} por cada aluguer reservado graças a si, através do seu link ou do seu código. Um link conta {days} dias após o clique. A comissão é devida quando o aluguer termina.",
     "perk": "Os seus clientes beneficiam do código {code}.",
@@ -10780,7 +10780,8 @@
       "posterDescription": "O código QR abre a loja com o seu link.",
       "posterHint": "Imprima-o para a sua receção.",
       "posterFileName": "cartaz",
-      "code": "O seu código, para dar de viva voz: {code}"
+      "code": "O seu código, para dar de viva voz: {code}",
+      "posterRecommended": "Recomendado por {partner}"
     },
     "months": {
       "title": "Mês a mês",
@@ -10819,6 +10820,9 @@
       "failed": "Não foi possível guardar. Tente novamente."
     },
     "rules": "A comissão incide sobre as reservas feitas graças a si. É devida quando o aluguer termina e anulada se a reserva for cancelada. Esta página não mostra nada sobre os clientes e não é uma fatura.",
-    "paidBy": "{store} paga-lhe diretamente. A Louez calcula estes montantes; nenhum dinheiro passa pela Louez."
+    "paidBy": "{store} paga-lhe diretamente. A Louez calcula estes montantes; nenhum dinheiro passa pela Louez.",
+    "eyebrow": "Área de parceiro · {store}",
+    "visitStore": "Ver a loja",
+    "poweredBy": "Com tecnologia"
   }
 }

@@ -7696,7 +7696,8 @@
         "posterFileName": "partner-poster",
         "sendEmail": "邮件",
         "emailSubject": "您在 {store} 的合作伙伴链接",
-        "message": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n您的合作伙伴专区，可查看收益并选择通知：{space}\n\n感谢您的推荐！"
+        "message": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n您的合作伙伴专区，可查看收益并选择通知：{space}\n\n感谢您的推荐！",
+        "posterRecommended": "由 {partner} 推荐"
       },
       "statement": {
         "title": "对账单",
@@ -10739,7 +10740,6 @@
   },
   "partnerSpace": {
     "metaTitle": "合作伙伴专区",
-    "store": "{store}",
     "title": "{partner}，您好",
     "howItWorks": "通过您的链接或代码预订的每笔租赁，您都可获得 {rule}。链接在点击后 {days} 天内有效。佣金在租赁结束后才需支付。",
     "perk": "您的客户可使用代码 {code}。",
@@ -10780,7 +10780,8 @@
       "posterDescription": "扫描二维码即可通过您的链接打开店铺。",
       "posterHint": "打印出来放在前台。",
       "posterFileName": "haibao",
-      "code": "您的代码，可口头告知：{code}"
+      "code": "您的代码，可口头告知：{code}",
+      "posterRecommended": "由 {partner} 推荐"
     },
     "months": {
       "title": "按月明细",
@@ -10819,6 +10820,9 @@
       "failed": "保存失败，请重试。"
     },
     "rules": "佣金针对通过您产生的预订。租赁结束后才需支付，预订取消则佣金一并取消。此页面不显示任何客户信息，也不是发票。",
-    "paidBy": "{store} 直接向您付款。这些金额由 Louez 计算，款项不经过 Louez。"
+    "paidBy": "{store} 直接向您付款。这些金额由 Louez 计算，款项不经过 Louez。",
+    "eyebrow": "合作伙伴专区 · {store}",
+    "visitStore": "访问店铺",
+    "poweredBy": "技术支持"
   }
 }

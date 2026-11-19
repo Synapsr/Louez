@@ -27,6 +27,8 @@ export default async function PartnerPage({ params }: { params: Promise<{ partne
       storeUrl={getStorefrontUrl(store.slug, "/")}
       appUrl={env.NEXT_PUBLIC_APP_URL}
       initialStatement={statement}
+      accentColor={store.theme?.primaryColor ?? null}
+      logoUrl={store.logoUrl}
     />
   );
 }

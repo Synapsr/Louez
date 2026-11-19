@@ -30,6 +30,9 @@ interface PartnerLinkCardProps {
   link: string;
   /** The ready message: the link, the rule and the partner's space. */
   message: string;
+  /** The store's colour and logo, for the partner's poster. */
+  accentColor: string | null;
+  logoUrl: string | null;
   onShared: (channel: PartnerShareChannel) => void;
 }
 
@@ -40,6 +43,8 @@ export const PartnerLinkCard = ({
   link,
   message,
   onShared,
+  accentColor,
+  logoUrl,
 }: PartnerLinkCardProps) => {
   const t = useTranslations("dashboard.partners.link");
   const [posterOpen, setPosterOpen] = useState(false);
@@ -118,6 +123,9 @@ export const PartnerLinkCard = ({
               fileName={`${t("posterFileName")}-${partner.code}`}
               hint={t("posterHint")}
               onSave={() => onShared("qr")}
+              accentColor={accentColor}
+              logoUrl={logoUrl}
+              recommendedBy={t("posterRecommended", { partner: partner.name })}
             />
           </DialogPanel>
         </DialogPopup>
