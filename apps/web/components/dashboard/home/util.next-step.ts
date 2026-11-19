@@ -84,10 +84,11 @@ export function homeNextSteps(facts: HomeNextStepFacts): HomeNextStep[] {
   }
   // Only a store that has paid commissions gets an offer: past its first customers.
   if (facts.canOfferPlan && facts.hasRealReservation) steps.push("planOffer");
-  // "Trouvez vos premiers clients" is behind a store that rents already; the
-  // guide stays in the sidebar.
+  // Finding first customers and letting an assistant set the store up are
+  // behind a store that rents already: the guide stays in the sidebar, the
+  // assistant in Settings -> Integrations.
   if (facts.visibilityHasNextStep && !facts.established) steps.push("visibility");
-  if (facts.agentAssistantOffered) steps.push("agentAssistant");
+  if (facts.agentAssistantOffered && !facts.established) steps.push("agentAssistant");
   if (facts.cohortNotice) steps.push("cohort");
   return steps;
 }

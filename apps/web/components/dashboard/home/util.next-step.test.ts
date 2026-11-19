@@ -70,7 +70,7 @@ describe("home next step: one card for the store's stage", () => {
       "visibility",
     ],
     ["established, owner on a billing instance", established, "planOffer"],
-    ["established, not the owner", { ...established, canOfferPlan: false }, "agentAssistant"],
+    ["established, not the owner", { ...established, canOfferPlan: false }, "cohort"],
     [
       "established, reeent store waiting for Stripe",
       { ...established, reeentAwaitsStripe: true },
@@ -127,7 +127,7 @@ describe("home next step: one card for the store's stage", () => {
   });
 
   test("an established store sees no getting-started card", () => {
-    const gettingStarted = ["firstProduct", "testReservation", "visibility"];
+    const gettingStarted = ["firstProduct", "testReservation", "visibility", "agentAssistant"];
     for (const facts of [
       established,
       { ...established, hasActiveProduct: false },
@@ -146,7 +146,6 @@ describe("home next step: one card for the store's stage", () => {
       pickHomeNextStep({
         ...established,
         canOfferPlan: false,
-        agentAssistantOffered: false,
         cohortNotice: null,
       }),
       { step: null, fallback: null },
@@ -156,7 +155,7 @@ describe("home next step: one card for the store's stage", () => {
   test("an empty plan offer leaves an established store the next offer, not the guide", () => {
     assert.deepEqual(pickHomeNextStep(established), {
       step: "planOffer",
-      fallback: "agentAssistant",
+      fallback: "cohort",
     });
   });
 
