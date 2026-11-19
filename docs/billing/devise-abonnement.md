@@ -68,12 +68,14 @@ Les résultats restent hors du dépôt (`.agent-docs/`).
 
 Avec `currency_options`, chaque prix (Pro et Ultra, mensuel et annuel) reste en EUR par défaut
 et porte un montant fixe par autre devise. Stripe documente cette méthode pour afficher des prix
-fixes en monnaie locale. Une devise s'ajoute ou un montant change dans Stripe, sans variable ni
-déploiement.
+fixes en monnaie locale. Une devise s'ajoute dans Stripe, sans variable ni déploiement.
 
 Ce que Stripe en fait, vérifié sur le compte de test le 19 novembre 2026 :
 
 - On peut ajouter des options à un prix existant, déjà utilisé par des abonnements.
+- **Une option ne se modifie ni ne se retire** : Stripe refuse de changer le montant d'une
+  devise déjà présente sur un prix (« immutable field for an existing currency »). Le montant de
+  chaque devise est donc définitif sur ces quatre prix (4.4).
 - Checkout reçoit le prix et `currency` : sans ce paramètre, il prendrait la devise du client.
 - L'abonnement garde sa devise pour toujours (`subscription.currency`). Un changement de plan
   prend l'option de cette devise sur le nouveau prix, prorata compris, et un changement planifié
@@ -121,6 +123,15 @@ européennes, à vérifier dans le Dashboard). Un compte de règlement en GBP l'
 
 Dans Stripe, sur chacun des quatre prix : « Ajouter une devise », avec son montant. Rien d'autre.
 
+### 4.4 Changer un montant plus tard
+
+Une option ne se modifie pas : changer un prix demande quatre nouveaux prix Stripe (avec toutes
+leurs devises), leurs identifiants dans les quatre variables, et un déploiement. Les anciens prix
+continuent de facturer les abonnements en cours ; aujourd'hui, le code ne reconnaît comme
+anciens prix que les prix USD (`legacyStripePrices`). Avant un tel changement, il faudra lui
+apprendre la liste des anciens prix multidevises, sans quoi les webhooks ne retrouveraient plus
+le plan de ces abonnements.
+
 ## 5. Décisions pour Téo
 
 ### 5.1 Devises au lancement
@@ -128,7 +139,7 @@ Dans Stripe, sur chacun des quatre prix : « Ajouter une devise », avec son mon
 | Devise | Proposition                          | À trancher                                          |
 | ------ | ------------------------------------ | --------------------------------------------------- |
 | EUR    | Inchangé                             | —                                                   |
-| USD    | Option USD sur les prix multidevises | Garder 1:1 avec EUR ?                               |
+| USD    | Option USD sur les prix multidevises | $59 / $189 proposés (section 5.2)                   |
 | GBP    | Candidate                            | Oui / non, selon le nombre de boutiques (section 2) |
 | CHF    | Candidate                            | Oui / non, selon le nombre de boutiques             |
 | CAD    | Candidate                            | Oui / non, selon le nombre de boutiques             |
@@ -148,6 +159,16 @@ rapport.
 | Ultra mens. | 159 €        | $159              | $174.39        | £132.43        | CHF 146.96     | CA$249.47      |
 | Ultra ann.  | 1 590 €      | $1,590            | $1,743.91      | £1,324.31      | CHF 1,469.64   | CA$2,494.71    |
 
+Proposition du 19 novembre 2026, à valider par Téo (prix « psychologiques », en 9) :
+
+| Devise | Pro mensuel | Ultra mensuel | Pro annuel | Ultra annuel | Pro en € | Ultra en € |
+| ------ | ----------- | ------------- | ---------- | ------------ | -------- | ---------- |
+| EUR    | 49 €        | 159 €         | 490 €      | 1 590 €      | 49       | 159        |
+| USD    | $59         | $189          | $590       | $1,890       | 53,8     | 172,3      |
+| GBP    | £39         | £129          | £390       | £1,290       | 46,8     | 154,9      |
+| CHF    | CHF 49      | CHF 159       | CHF 490    | CHF 1,590    | 53,0     | 172,0      |
+| CAD    | CA$69       | CA$229        | CA$690     | CA$2,290     | 44,0     | 146,0      |
+
 Autres décisions :
 
 - **Site marketing** : il montre USD = EUR 1:1 hors Europe. Avec GBP, CHF ou CAD, faut-il y
@@ -165,7 +186,7 @@ Autres décisions :
    leurs montants.
 2. Sur chacun des quatre prix, ajouter une option par devise retenue (USD compris), au montant
    décidé, avec le même comportement de taxe que le prix (la facturation active
-   `automatic_tax`).
+   `automatic_tax`). Que ce soit dans le Dashboard ou par script, vérifier d'abord les montants : celui d'une devise ajoutée est définitif (4.4).
 3. Vérifier les codes promo actifs (`percent_off`, pas de restriction de devise).
 4. Ouvrir la page Abonnement d'une boutique de test dans chaque devise : les montants doivent
    être ceux des options. S'ils sont en EUR, les journaux disent quel prix pose problème.
