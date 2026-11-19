@@ -5,8 +5,8 @@ Instrumentation de « Partenaires » (`/dashboard/visibility/partners`), décrit
 
 - **la base**, source de vérité : `store_partners`, `partner_bookings` (une ligne par
   réservation attribuée, `origin` = `link` | `manual`), `partner_payouts` (ce que la boutique a
-  noté payé) et `page_views.partner_id` (les pages vues d'un client qui a accepté de créditer
-  un partenaire) ;
+  noté payé) et `page_views.partner_id` (les pages vues d'un visiteur venu par le lien d'un
+  partenaire, pendant la durée du lien) ;
 - **PostHog**, pour les funnels : des événements envoyés par le navigateur du dashboard.
 
 ## Événements PostHog
@@ -27,7 +27,7 @@ codes et des compteurs : jamais un nom de partenaire, un contact, un lien ni un 
 
 - `placement` : `list`, `partner`.
 - `commission_type` : `percent`, `fixed`.
-- `channel` : `copy`, `qr`, `email`, `whatsapp`, `statement_link`.
+- `channel` : `copy`, `qr`, `email`, `whatsapp`, `space_link` (le lien de l'espace du partenaire).
 - `action` : `attributed`, `removed`, `adjusted`, `adjustment_removed`.
 
 Sans `NEXT_PUBLIC_POSTHOG_KEY`, rien ne part ; la base suffit.
@@ -37,8 +37,10 @@ Sans `NEXT_PUBLIC_POSTHOG_KEY`, rien ne part ; la base suffit.
 - Boutiques avec un partenaire, et parmi elles celles qui ont une réservation `origin = link`.
 - **Succès** (spec) : un premier mois marqué payé (`partner_payouts`), puis une réservation par
   lien le mois suivant pour le même partenaire.
-- Le « oui » du client sur la vitrine n'est pas un événement : il se lit dans
-  `page_views.partner_id` (visites) et `partner_bookings` (réservations).
+- Les réservations par origine : `partner_bookings.origin` (`link`, `code`, `manual`).
+- Les e-mails aux partenaires passent par l'outbox (`api_effects`, types `partner.*`) : envoyés,
+  annulés (partenaire sans adresse ou qui les a coupés) ou en échec s'y lisent 30 jours.
+- L'espace partenaire (`/partner/<secret>`) ne charge aucun outil d'analyse.
 
 ## Related
 

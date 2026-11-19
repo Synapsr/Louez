@@ -397,5 +397,25 @@
     "savingsLabel": "Risparmio:",
     "cta": "Vedi l'offerta",
     "footer": "Abbonamento mensile, senza vincoli, disdici quando vuoi. Restano dovute le commissioni Stripe e quelle del marketplace reeent."
+  },
+  "partnerNotification": {
+    "greeting": "Buongiorno {partner},",
+    "cta": "Apri la mia area partner",
+    "footer": "Riceve questa email perché è partner di {store}. Scelga quali email ricevere dalla Sua area partner.",
+    "booking": {
+      "subject": "Una nuova prenotazione grazie a Lei da {store}",
+      "title": "Una nuova prenotazione grazie a Lei",
+      "body": "Un cliente ha prenotato da {store} grazie a Lei. La Sua commissione prevista: {amount}, dovuta quando il noleggio termina, il {endDate}."
+    },
+    "payout": {
+      "subject": "{store} Le ha pagato {amount}",
+      "title": "Pagamento ricevuto",
+      "body": "{store} ha registrato di averLe pagato {amount} per i noleggi conclusi a {month}. Grazie per i Suoi consigli!"
+    },
+    "statement": {
+      "subject": "Il Suo estratto di {month} da {store}",
+      "title": "Il Suo estratto di {month}",
+      "body": "{bookings, plural, one {# prenotazione} other {# prenotazioni}} grazie a Lei. Dovuto: {due}. Già pagato: {paid}. Da pagare: {remaining}."
+    }
   }
 }

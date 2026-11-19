@@ -2807,7 +2807,8 @@
           "label": "折扣",
           "add": "添加折扣",
           "remove": "删除折扣"
-        }
+        },
+        "partnerNotCredited": "预订已创建，但未计入合作伙伴。请在预订中添加。"
       },
       "rejectDialog": {
         "title": "拒绝请求",
@@ -7388,7 +7389,8 @@
         "viewProduct": "查看产品",
         "invoicingSettings": "开票设置",
         "notificationSettings": "通知设置",
-        "openTeam": "打开团队"
+        "openTeam": "打开团队",
+        "openPartner": "打开合作伙伴"
       },
       "facts": {
         "stripeCharge": "Stripe 扣款",
@@ -7465,7 +7467,11 @@
       },
       "unknownTitle": "待检查事项",
       "neutral": "Louez 无法自行处理此事项。打开查看发生了什么。",
-      "viewAll": "查看全部"
+      "viewAll": "查看全部",
+      "partnerPayoutDue": {
+        "title": "待付佣金",
+        "summary": "您需为 {month} 结束的租赁向 {partner} 支付 {amount}。付款后，请将该月标记为已付。"
+      }
     },
     "visibility": {
       "title": "让客户找到你",
@@ -7678,11 +7684,14 @@
         "emailInvalid": "邮箱地址无效。",
         "cancel": "取消",
         "create": "添加",
-        "save": "保存"
+        "save": "保存",
+        "perk": "其客户可享优惠",
+        "perkHint": "从您的促销代码中选择一个，客户通过其链接进入或输入其代码时自动使用。",
+        "perkNone": "无"
       },
       "link": {
         "title": "专属链接",
-        "description": "打开链接的客户自行选择是否将预订计入 {partner}。价格不变。",
+        "description": "点击此链接后产生的每笔预订都计入 {partner}。客户支付的价格不变。",
         "copy": "复制",
         "copied": "链接已复制",
         "poster": "二维码海报",
@@ -7692,17 +7701,7 @@
         "posterFileName": "partner-poster",
         "sendEmail": "邮件",
         "emailSubject": "您在 {store} 的合作伙伴链接",
-        "message": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n您的对账单，随时更新：{statement}\n\n感谢您的推荐！"
-      },
-      "menu": {
-        "label": "合作伙伴操作",
-        "edit": "编辑",
-        "copyStatement": "复制其对账单链接",
-        "statementCopied": "对账单链接已复制",
-        "rotateStatement": "更换其对账单链接",
-        "rotated": "已生成新的对账单链接，旧链接已失效。",
-        "archive": "存档",
-        "restore": "恢复"
+        "message": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n您的合作伙伴专区，可查看收益并选择通知：{space}\n\n感谢您的推荐！"
       },
       "statement": {
         "title": "对账单",
@@ -7740,7 +7739,8 @@
           "commission": "佣金",
           "state": "状态",
           "note": "备注"
-        }
+        },
+        "byCode": "通过其代码"
       },
       "adjust": {
         "title": "预订 {number} 的佣金",
@@ -7760,8 +7760,39 @@
         "commission": "{amount}，{state}",
         "origin": {
           "link": "通过其链接",
-          "manual": "手动添加"
+          "manual": "手动添加",
+          "code": "通过其代码"
         }
+      },
+      "menu": {
+        "label": "合作伙伴操作",
+        "edit": "编辑",
+        "copySpace": "复制其专区链接",
+        "spaceCopied": "专区链接已复制",
+        "rotateSpace": "更换其专区链接",
+        "rotated": "已生成新的专区链接，旧链接已失效。",
+        "archive": "存档",
+        "restore": "恢复"
+      },
+      "window": "{count, plural, other {合作伙伴链接从点击到预订的有效期为 # 天。}}",
+      "changeWindow": "修改",
+      "perkLine": "客户优惠：{code}",
+      "notified": {
+        "yes": "每次预订和付款时，对方都会收到邮件。",
+        "no": "对方不会收到邮件：请添加其邮箱地址，或由对方在专区中自行开启。"
+      },
+      "settings": {
+        "title": "合作伙伴链接有效期",
+        "description": "客户在此期限内点击过合作伙伴的链接，预订即计入该合作伙伴。结账时输入的代码始终有效。",
+        "window": "有效期",
+        "days": "{count, plural, other {# 天}}",
+        "cancel": "取消",
+        "save": "保存"
+      },
+      "newReservation": {
+        "title": "合作伙伴",
+        "description": "这位客户是合作伙伴介绍来的吗？预订将计入该合作伙伴。",
+        "none": "无合作伙伴"
       }
     }
   },
@@ -8593,6 +8624,14 @@
       "customFields": {
         "savedSummary": "已填写的信息",
         "detailsIntro": "这些信息有助于 {store} 为您准备设备。"
+      },
+      "partnerCode": {
+        "question": "是合作伙伴推荐您来的吗？",
+        "placeholder": "合作伙伴代码",
+        "apply": "使用",
+        "notFound": "此代码不对应任何合作伙伴。",
+        "credited": "由 {partner} 推荐",
+        "remove": "移除合作伙伴"
       }
     },
     "confirmation": {
@@ -9429,13 +9468,6 @@
       },
       "fullFile": "所有商品及其描述",
       "footer": "数据来自在线店铺，更新于 {date}。"
-    },
-    "partnerLink": {
-      "title": "由 {partner} 推荐",
-      "question": "如果您预订，是否愿意让 {partner} 获得感谢？价格不变。",
-      "accept": "好的，乐意",
-      "decline": "不用了，谢谢",
-      "note": "如果您同意，Cookie 会记住这一选择 30 天，仅限本店铺。"
     }
   },
   "onboarding": {
@@ -10148,6 +10180,7 @@
     "partnerNotFound": "该合作伙伴不存在或已存档。",
     "partnerNothingToPay": "本月已无需再向该合作伙伴付款。",
     "partnerReservationNotAttributed": "该预订未计入任何合作伙伴。",
+    "partnerPerkNotFound": "您的店铺中不存在此促销代码。",
     "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
@@ -10719,23 +10752,89 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "合作伙伴对账单",
-    "title": "{partner} 的对账单",
-    "months": "月份",
-    "due": "应付",
-    "paid": "已付",
-    "remaining": "待支付",
-    "upcoming": "待生效：尚未结束的租赁共 {amount}。",
-    "empty": "本月没有通过您的链接产生的预订。",
-    "rentalEnded": "租赁于 {date} 结束",
+  "partnerSpace": {
+    "metaTitle": "合作伙伴专区",
+    "store": "{store}",
+    "title": "{partner}，您好",
+    "howItWorks": "通过您的链接或代码预订的每笔租赁，您都可获得 {rule}。链接在点击后 {days} 天内有效。佣金在租赁结束后才需支付。",
+    "perk": "您的客户可使用代码 {code}。",
+    "archived": "店铺已暂停此合作：新预订不再计入您名下。",
+    "rule": {
+      "percent": "租金的 {value}%",
+      "fixed": "每个预订 {value}"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "待收",
+        "hint": "已结束、尚未付款的租赁。"
+      },
+      "upcoming": {
+        "label": "待生效",
+        "hint": "已预订、尚未结束的租赁。"
+      },
+      "received": {
+        "label": "已收",
+        "hint": "店铺已向您支付的金额。"
+      }
+    },
+    "activity": {
+      "title": "近期动态",
+      "empty": "还没有通过您产生的预订。分享您的链接或海报吧。",
+      "booking": "新预订",
+      "bookingWhen": "{date} · 租至 {end}",
+      "payout": "{month} 的付款",
+      "payoutWhen": "{date}"
+    },
+    "link": {
+      "title": "您的链接",
+      "description": "分享给您的客人：欢迎邮件、前台海报、消息。",
+      "copy": "复制",
+      "copied": "链接已复制",
+      "poster": "二维码海报",
+      "posterTitle": "您的海报",
+      "posterDescription": "扫描二维码即可通过您的链接打开店铺。",
+      "posterHint": "打印出来放在前台。",
+      "posterFileName": "haibao",
+      "code": "您的代码，可口头告知：{code}"
+    },
+    "months": {
+      "title": "按月明细",
+      "due": "应付",
+      "paid": "已付",
+      "remaining": "待支付",
+      "upcoming": "待生效：尚未结束的租赁共 {amount}。",
+      "empty": "本月没有通过您产生的预订。",
+      "rentalEnds": "租至 {date}"
+    },
     "states": {
       "upcoming": "待生效",
       "due": "应付",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "paid": "已付"
     },
-    "rules": "佣金针对通过您的链接产生的预订。租赁结束后才需支付，预订取消则佣金一并取消。此对账单不显示任何客户信息，也不是发票。",
-    "paidBy": "{store} 直接向您付款。此对账单由 Louez 计算，款项不经过 Louez。"
+    "notifications": {
+      "title": "我的通知",
+      "description": "有收益时通过邮件通知您。",
+      "email": "邮箱地址",
+      "emailPlaceholder": "zhangsan@example.cn",
+      "bookings": {
+        "title": "新预订",
+        "description": "有客户通过您预订时。"
+      },
+      "payouts": {
+        "title": "收到付款",
+        "description": "店铺记录已向您付款时。"
+      },
+      "statements": {
+        "title": "月度对账单",
+        "description": "每月初发送上月汇总。"
+      },
+      "save": "保存",
+      "saved": "通知设置已保存",
+      "failed": "保存失败，请重试。"
+    },
+    "rules": "佣金针对通过您产生的预订。租赁结束后才需支付，预订取消则佣金一并取消。此页面不显示任何客户信息，也不是发票。",
+    "paidBy": "{store} 直接向您付款。这些金额由 Louez 计算，款项不经过 Louez。"
   },
   "demo": {
     "launcher": {

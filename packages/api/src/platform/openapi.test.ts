@@ -195,6 +195,8 @@ describe("OpenAPI document", () => {
         "POST /payments/{paymentId}/refunds": "refund_payment",
         "GET /payments/{paymentId}/refunds/{refundId}": "get_refund",
         "DELETE /payments/{paymentId}": "delete_payment",
+        "GET /partners": "partners_list",
+        "GET /partners/{partnerId}/statement": "partners_get_statement",
         "PATCH /online-store": "online_store_update",
         "GET /online-store/slug-availability": "online_store_check_slug_availability",
         "POST /online-store/slug": "online_store_update_slug",
@@ -641,14 +643,17 @@ describe("the public reference", () => {
       // Asked inside a handler, with a token written to the database.
       CONFIRMATION_REQUIRED: 412,
       CONFIRMATION_INVALID: platformErrors.confirmationInvalid().status,
-      APPROVAL_REQUIRED: approvalErrors.required({ summary: "x" }, {
-        id: "a",
-        url: "u",
-        status: "pending",
-        expiresAt: "t",
-        pollAfterSeconds: 30,
-        decision: null,
-      }).status,
+      APPROVAL_REQUIRED: approvalErrors.required(
+        { summary: "x" },
+        {
+          id: "a",
+          url: "u",
+          status: "pending",
+          expiresAt: "t",
+          pollAfterSeconds: 30,
+          decision: null,
+        },
+      ).status,
       APPROVAL_PENDING: approvalErrors.pending({
         id: "a",
         url: "u",

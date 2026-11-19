@@ -29,6 +29,7 @@ export const partnersMutations = {
   create: () => orpc.dashboard.partners.create.mutationOptions(),
   update: () => orpc.dashboard.partners.update.mutationOptions(),
   setArchived: () => orpc.dashboard.partners.setArchived.mutationOptions(),
+  updateSettings: () => orpc.dashboard.partners.updateSettings.mutationOptions(),
   rotateStatementToken: () => orpc.dashboard.partners.rotateStatementToken.mutationOptions(),
   markMonthPaid: () => orpc.dashboard.partners.markMonthPaid.mutationOptions(),
   cancelPayout: () => orpc.dashboard.partners.cancelPayout.mutationOptions(),

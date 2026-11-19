@@ -34,6 +34,8 @@ interface BuildReservationPayloadInput {
   returnLocationId?: string | null;
   tulipInsuranceMode: TulipInsuranceMode;
   promoCode?: string;
+  /** A partner's code the customer typed and the store recognised. */
+  partnerCode?: string;
   advisorConversationId?: string;
   /** Pending reservation of an earlier attempt, reused or replaced server-side. */
   resumeReservationId?: string;
@@ -97,6 +99,7 @@ export const buildReservationPayload = ({
   returnLocationId,
   tulipInsuranceMode,
   promoCode,
+  partnerCode,
   advisorConversationId,
   resumeReservationId,
   checkoutFields,
@@ -150,6 +153,7 @@ export const buildReservationPayload = ({
   totalAmount,
   locale,
   promoCode,
+  partnerCode,
   advisorConversationId,
   resumeReservationId,
   delivery: {

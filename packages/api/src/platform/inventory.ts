@@ -222,7 +222,7 @@ const UI_ONLY = "Interface preference, no business effect";
 const PASSWORD = "Password and passkeys stay with Better Auth, in the browser";
 const TEST_RESERVATION = "Dashboard onboarding, human session only";
 const VISIBILITY_GUIDE = "Dashboard guide, human session only";
-const PARTNER_LINKS = "Partner links: dashboard session only in phase 1";
+const PARTNER_LINKS = "Partner links: writes stay in a dashboard session";
 
 // ---------------------------------------------------------------------------
 // Inventory
@@ -1652,18 +1652,20 @@ export const capabilities = [
     actors: ["session"],
   },
   {
+    // Read by assistants too: "how much do I owe the campsite?".
     id: "online_store.listPartners",
     sources: [procedure("partners", "list")],
     kind: "read",
-    plan: { exclude: PARTNER_LINKS },
-    actors: ["session"],
+    plan: { lot: "5" },
+    migrated: true,
   },
   {
+    // Read by assistants too: "how much do I owe the campsite?".
     id: "online_store.getPartnerStatement",
     sources: [procedure("partners", "getStatement")],
     kind: "read",
-    plan: { exclude: PARTNER_LINKS },
-    actors: ["session"],
+    plan: { lot: "5" },
+    migrated: true,
   },
   {
     id: "online_store.getReservationPartner",
@@ -1689,6 +1691,13 @@ export const capabilities = [
   {
     id: "online_store.setPartnerArchived",
     sources: [procedure("partners", "setArchived")],
+    kind: "write",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
+    id: "online_store.updatePartnerSettings",
+    sources: [procedure("partners", "updateSettings")],
     kind: "write",
     plan: { exclude: PARTNER_LINKS },
     actors: ["session"],

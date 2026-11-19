@@ -2816,7 +2816,8 @@
           "label": "Remise",
           "add": "Ajouter une remise",
           "remove": "Retirer la remise"
-        }
+        },
+        "partnerNotCredited": "Réservation créée, mais le partenaire n'a pas été crédité. Ajoutez-le depuis la réservation."
       },
       "rejectDialog": {
         "title": "Refuser la demande",
@@ -7388,7 +7389,8 @@
         "viewProduct": "Voir le produit",
         "invoicingSettings": "Réglages de facturation",
         "notificationSettings": "Réglages des notifications",
-        "openTeam": "Ouvrir l'équipe"
+        "openTeam": "Ouvrir l'équipe",
+        "openPartner": "Ouvrir le partenaire"
       },
       "facts": {
         "stripeCharge": "Paiement Stripe",
@@ -7465,7 +7467,11 @@
       },
       "unknownTitle": "Un élément à vérifier",
       "neutral": "Louez n'a pas pu régler cela seul. Ouvrez-le pour voir ce qui s'est passé.",
-      "viewAll": "Tout voir"
+      "viewAll": "Tout voir",
+      "partnerPayoutDue": {
+        "title": "Commission à payer",
+        "summary": "Vous devez {amount} à {partner} pour les locations terminées en {month}. Payez-le, puis marquez le mois comme payé."
+      }
     },
     "visibility": {
       "title": "Se faire connaître",
@@ -7678,11 +7684,14 @@
         "emailInvalid": "Cet e-mail n'est pas valide.",
         "cancel": "Annuler",
         "create": "Ajouter",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "perk": "Avantage pour ses clients",
+        "perkHint": "Un de vos codes promo, appliqué tout seul quand un client arrive par son lien ou tape son code.",
+        "perkNone": "Aucun"
       },
       "link": {
         "title": "Son lien",
-        "description": "Le client qui l'ouvre choisit s'il crédite {partner}. Le prix ne change pas.",
+        "description": "Chaque réservation faite après un clic sur ce lien est créditée à {partner}. Le prix ne change pas pour le client.",
         "copy": "Copier",
         "copied": "Lien copié",
         "poster": "Affiche QR",
@@ -7692,17 +7701,7 @@
         "posterFileName": "affiche-partenaire",
         "sendEmail": "E-mail",
         "emailSubject": "Votre lien partenaire {store}",
-        "message": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nVotre relevé, mis à jour en continu : {statement}\n\nMerci de nous recommander !"
-      },
-      "menu": {
-        "label": "Actions du partenaire",
-        "edit": "Modifier",
-        "copyStatement": "Copier le lien de son relevé",
-        "statementCopied": "Lien du relevé copié",
-        "rotateStatement": "Changer le lien de son relevé",
-        "rotated": "Nouveau lien de relevé : l'ancien ne marche plus.",
-        "archive": "Archiver",
-        "restore": "Réactiver"
+        "message": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nVotre espace partenaire, pour suivre vos gains et choisir vos notifications : {space}\n\nMerci de nous recommander !"
       },
       "statement": {
         "title": "Relevé",
@@ -7740,7 +7739,8 @@
           "commission": "Commission",
           "state": "État",
           "note": "Note"
-        }
+        },
+        "byCode": "par son code"
       },
       "adjust": {
         "title": "Commission de la réservation {number}",
@@ -7760,8 +7760,39 @@
         "commission": "{amount}, {state}",
         "origin": {
           "link": "Par son lien",
-          "manual": "Ajouté à la main"
+          "manual": "Ajouté à la main",
+          "code": "Par son code"
         }
+      },
+      "menu": {
+        "label": "Actions du partenaire",
+        "edit": "Modifier",
+        "copySpace": "Copier le lien de son espace",
+        "spaceCopied": "Lien de son espace copié",
+        "rotateSpace": "Changer le lien de son espace",
+        "rotated": "Nouveau lien d'espace : l'ancien ne marche plus.",
+        "archive": "Archiver",
+        "restore": "Réactiver"
+      },
+      "window": "{count, plural, one {Un lien partenaire compte # jour, du clic à la réservation.} other {Un lien partenaire compte # jours, du clic à la réservation.}}",
+      "changeWindow": "Modifier",
+      "perkLine": "avantage client : {code}",
+      "notified": {
+        "yes": "Il reçoit un e-mail à chaque réservation et chaque paiement.",
+        "no": "Il ne reçoit pas d'e-mail : ajoutez son adresse, ou il les active depuis son espace."
+      },
+      "settings": {
+        "title": "Durée d'un lien partenaire",
+        "description": "Une réservation est créditée au partenaire si le client a cliqué sur son lien dans ce délai. Le code tapé au paiement compte toujours.",
+        "window": "Durée",
+        "days": "{count, plural, one {# jour} other {# jours}}",
+        "cancel": "Annuler",
+        "save": "Enregistrer"
+      },
+      "newReservation": {
+        "title": "Partenaire",
+        "description": "Ce client vient de la part d'un partenaire ? La réservation lui sera créditée.",
+        "none": "Aucun partenaire"
       }
     }
   },
@@ -8593,6 +8624,14 @@
       "customFields": {
         "savedSummary": "Informations déjà renseignées",
         "detailsIntro": "Ces informations aident {store} à préparer votre matériel."
+      },
+      "partnerCode": {
+        "question": "Un partenaire vous a recommandé ?",
+        "placeholder": "Code partenaire",
+        "apply": "Valider",
+        "notFound": "Ce code ne correspond à aucun partenaire.",
+        "credited": "Recommandé par {partner}",
+        "remove": "Retirer le partenaire"
       }
     },
     "confirmation": {
@@ -9429,13 +9468,6 @@
       },
       "fullFile": "Tous les produits, avec leur description",
       "footer": "Données de la boutique en ligne, à jour au {date}."
-    },
-    "partnerLink": {
-      "title": "Recommandé par {partner}",
-      "question": "Voulez-vous que {partner} soit remercié si vous réservez ? Le prix ne change pas.",
-      "accept": "Oui, avec plaisir",
-      "decline": "Non merci",
-      "note": "Si vous acceptez, un cookie le retient 30 jours, sur cette boutique seulement."
     }
   },
   "onboarding": {
@@ -10148,6 +10180,7 @@
     "partnerNotFound": "Ce partenaire n'existe pas ou a été archivé.",
     "partnerNothingToPay": "Il ne reste rien à payer à ce partenaire pour ce mois.",
     "partnerReservationNotAttributed": "Cette réservation n'est attribuée à aucun partenaire.",
+    "partnerPerkNotFound": "Ce code promo n'existe pas dans votre boutique.",
     "demoStoreActionDisabled": "Cette action est désactivée dans la boutique de démonstration."
   },
   "welcome": {
@@ -10719,23 +10752,89 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "Relevé partenaire",
-    "title": "Relevé de {partner}",
-    "months": "Mois",
-    "due": "Dû",
-    "paid": "Payé",
-    "remaining": "Reste à payer",
-    "upcoming": "À venir : {amount} pour des locations pas encore terminées.",
-    "empty": "Aucune réservation par votre lien ce mois-ci.",
-    "rentalEnded": "Location terminée le {date}",
+  "partnerSpace": {
+    "metaTitle": "Espace partenaire",
+    "store": "{store}",
+    "title": "Bonjour {partner}",
+    "howItWorks": "Vous touchez {rule} sur chaque location réservée grâce à vous, par votre lien ou votre code. Un lien compte {days} jours après le clic. La commission est due quand la location est terminée.",
+    "perk": "Vos clients profitent du code {code}.",
+    "archived": "La boutique a mis ce partenariat en pause : les nouvelles réservations ne vous sont plus créditées.",
+    "rule": {
+      "percent": "{value} % de la location",
+      "fixed": "{value} par réservation"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "À recevoir",
+        "hint": "Locations terminées, pas encore payées."
+      },
+      "upcoming": {
+        "label": "À venir",
+        "hint": "Locations réservées, pas encore terminées."
+      },
+      "received": {
+        "label": "Reçu",
+        "hint": "Ce que la boutique vous a payé."
+      }
+    },
+    "activity": {
+      "title": "Activité récente",
+      "empty": "Pas encore de réservation grâce à vous. Partagez votre lien ou votre affiche.",
+      "booking": "Nouvelle réservation",
+      "bookingWhen": "le {date} · location jusqu'au {end}",
+      "payout": "Paiement pour {month}",
+      "payoutWhen": "le {date}"
+    },
+    "link": {
+      "title": "Votre lien",
+      "description": "Donnez-le à vos clients : mail de bienvenue, affiche à l'accueil, message.",
+      "copy": "Copier",
+      "copied": "Lien copié",
+      "poster": "Affiche QR",
+      "posterTitle": "Votre affiche",
+      "posterDescription": "Le QR code ouvre la boutique avec votre lien.",
+      "posterHint": "Imprimez-la pour votre accueil.",
+      "posterFileName": "affiche",
+      "code": "Votre code, à donner de vive voix : {code}"
+    },
+    "months": {
+      "title": "Détail par mois",
+      "due": "Dû",
+      "paid": "Payé",
+      "remaining": "Reste à payer",
+      "upcoming": "À venir : {amount} pour des locations pas encore terminées.",
+      "empty": "Aucune réservation grâce à vous ce mois-ci.",
+      "rentalEnds": "Location jusqu'au {date}"
+    },
     "states": {
       "upcoming": "À venir",
       "due": "Due",
-      "cancelled": "Annulée"
+      "cancelled": "Annulée",
+      "paid": "Payé"
     },
-    "rules": "La commission porte sur les réservations faites par votre lien. Elle est due quand la location est terminée, et annulée si la réservation l'est. Ce relevé ne montre rien sur les clients et n'est pas une facture.",
-    "paidBy": "{store} vous paie directement. Louez calcule ce relevé ; aucun argent ne passe par Louez."
+    "notifications": {
+      "title": "Mes notifications",
+      "description": "Recevez un e-mail quand vous gagnez quelque chose.",
+      "email": "Adresse e-mail",
+      "emailPlaceholder": "vous@exemple.fr",
+      "bookings": {
+        "title": "Nouvelle réservation",
+        "description": "Quand un client réserve grâce à vous."
+      },
+      "payouts": {
+        "title": "Paiement reçu",
+        "description": "Quand la boutique note vous avoir payé."
+      },
+      "statements": {
+        "title": "Relevé mensuel",
+        "description": "Au début de chaque mois, le bilan du mois passé."
+      },
+      "save": "Enregistrer",
+      "saved": "Notifications enregistrées",
+      "failed": "Impossible d'enregistrer. Réessayez."
+    },
+    "rules": "La commission porte sur les réservations faites grâce à vous. Elle est due quand la location est terminée, et annulée si la réservation l'est. Cette page ne montre rien sur les clients et n'est pas une facture.",
+    "paidBy": "{store} vous paie directement. Louez calcule ces montants ; aucun argent ne passe par Louez."
   },
   "demo": {
     "launcher": {

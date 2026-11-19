@@ -2807,7 +2807,8 @@
           "label": "Diskon",
           "add": "Tambahkan diskon",
           "remove": "Hapus diskon"
-        }
+        },
+        "partnerNotCredited": "Pemesanan dibuat, tetapi tidak dicatat untuk mitra. Tambahkan mitra dari pemesanan."
       },
       "rejectDialog": {
         "title": "Tolak permintaan",
@@ -7388,7 +7389,8 @@
         "viewProduct": "Lihat produk",
         "invoicingSettings": "Pengaturan faktur",
         "notificationSettings": "Pengaturan notifikasi",
-        "openTeam": "Buka tim"
+        "openTeam": "Buka tim",
+        "openPartner": "Buka mitra"
       },
       "facts": {
         "stripeCharge": "Tagihan Stripe",
@@ -7465,7 +7467,11 @@
       },
       "unknownTitle": "Sesuatu perlu dicek",
       "neutral": "Louez tidak bisa menyelesaikan ini sendiri. Buka untuk melihat apa yang terjadi.",
-      "viewAll": "Lihat semua"
+      "viewAll": "Lihat semua",
+      "partnerPayoutDue": {
+        "title": "Komisi yang harus dibayar",
+        "summary": "Anda berutang {amount} kepada {partner} untuk sewa yang selesai pada {month}. Bayar mitra, lalu tandai bulan itu sebagai dibayar."
+      }
     },
     "visibility": {
       "title": "Perkenalkan toko Anda",
@@ -7678,11 +7684,14 @@
         "emailInvalid": "Email ini tidak valid.",
         "cancel": "Batal",
         "create": "Tambah",
-        "save": "Simpan"
+        "save": "Simpan",
+        "perk": "Keuntungan untuk pelanggannya",
+        "perkHint": "Salah satu kode promo Anda, diterapkan otomatis saat pelanggan datang lewat tautannya atau mengetik kodenya.",
+        "perkNone": "Tidak ada"
       },
       "link": {
         "title": "Tautan mitra",
-        "description": "Pelanggan yang membukanya memilih apakah pemesanannya dicatat untuk {partner}. Harganya tetap sama.",
+        "description": "Setiap pemesanan yang dibuat setelah klik pada tautan ini dicatat untuk {partner}. Harganya tetap sama bagi pelanggan.",
         "copy": "Salin",
         "copied": "Tautan tersalin",
         "poster": "Poster QR",
@@ -7692,17 +7701,7 @@
         "posterFileName": "poster-mitra",
         "sendEmail": "Email",
         "emailSubject": "Tautan mitra {store} Anda",
-        "message": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nRekap Anda, selalu terbaru: {statement}\n\nTerima kasih telah merekomendasikan kami!"
-      },
-      "menu": {
-        "label": "Tindakan mitra",
-        "edit": "Edit",
-        "copyStatement": "Salin tautan rekapnya",
-        "statementCopied": "Tautan rekap tersalin",
-        "rotateStatement": "Ganti tautan rekapnya",
-        "rotated": "Tautan rekap baru: tautan lama tidak berlaku lagi.",
-        "archive": "Arsipkan",
-        "restore": "Pulihkan"
+        "message": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nHalaman mitra Anda, untuk memantau penghasilan dan memilih notifikasi: {space}\n\nTerima kasih telah merekomendasikan kami!"
       },
       "statement": {
         "title": "Rekap",
@@ -7740,7 +7739,8 @@
           "commission": "Komisi",
           "state": "Status",
           "note": "Catatan"
-        }
+        },
+        "byCode": "lewat kodenya"
       },
       "adjust": {
         "title": "Komisi untuk pemesanan {number}",
@@ -7760,8 +7760,39 @@
         "commission": "{amount}, {state}",
         "origin": {
           "link": "Lewat tautannya",
-          "manual": "Ditambahkan manual"
+          "manual": "Ditambahkan manual",
+          "code": "Lewat kodenya"
         }
+      },
+      "menu": {
+        "label": "Tindakan mitra",
+        "edit": "Edit",
+        "copySpace": "Salin tautan halaman mitranya",
+        "spaceCopied": "Tautan halaman mitra tersalin",
+        "rotateSpace": "Ganti tautan halaman mitranya",
+        "rotated": "Tautan halaman mitra baru: tautan lama tidak berlaku lagi.",
+        "archive": "Arsipkan",
+        "restore": "Pulihkan"
+      },
+      "window": "{count, plural, other {Tautan mitra berlaku # hari, dari klik hingga pemesanan.}}",
+      "changeWindow": "Ubah",
+      "perkLine": "keuntungan pelanggan: {code}",
+      "notified": {
+        "yes": "Mitra menerima email untuk setiap pemesanan dan setiap pembayaran.",
+        "no": "Mitra tidak menerima email: tambahkan alamatnya, atau mitra dapat mengaktifkannya dari halaman mitranya."
+      },
+      "settings": {
+        "title": "Masa berlaku tautan mitra",
+        "description": "Pemesanan dicatat untuk mitra jika pelanggan mengklik tautannya dalam jangka waktu ini. Kode yang diketik saat pembayaran selalu dihitung.",
+        "window": "Durasi",
+        "days": "{count, plural, other {# hari}}",
+        "cancel": "Batal",
+        "save": "Simpan"
+      },
+      "newReservation": {
+        "title": "Mitra",
+        "description": "Apakah pelanggan ini datang dari mitra? Pemesanannya akan dicatat untuk mitra tersebut.",
+        "none": "Tanpa mitra"
       }
     }
   },
@@ -8593,6 +8624,14 @@
       "customFields": {
         "savedSummary": "Informasi sudah tersimpan",
         "detailsIntro": "Informasi ini membantu {store} menyiapkan peralatan Anda."
+      },
+      "partnerCode": {
+        "question": "Datang atas rekomendasi mitra?",
+        "placeholder": "Kode mitra",
+        "apply": "Terapkan",
+        "notFound": "Kode ini tidak cocok dengan mitra mana pun.",
+        "credited": "Direkomendasikan oleh {partner}",
+        "remove": "Hapus mitra"
       }
     },
     "confirmation": {
@@ -9429,13 +9468,6 @@
       },
       "fullFile": "Semua produk beserta deskripsinya",
       "footer": "Data dari toko online, diperbarui pada {date}."
-    },
-    "partnerLink": {
-      "title": "Direkomendasikan oleh {partner}",
-      "question": "Apakah Anda ingin {partner} mendapat ucapan terima kasih jika Anda memesan? Harganya tetap sama.",
-      "accept": "Ya, dengan senang hati",
-      "decline": "Tidak, terima kasih",
-      "note": "Jika Anda setuju, sebuah cookie mengingatnya selama 30 hari, hanya di toko ini."
     }
   },
   "onboarding": {
@@ -10148,6 +10180,7 @@
     "partnerNotFound": "Mitra ini tidak ada atau sudah diarsipkan.",
     "partnerNothingToPay": "Tidak ada lagi yang harus dibayar kepada mitra ini untuk bulan ini.",
     "partnerReservationNotAttributed": "Pemesanan ini tidak dicatat untuk mitra mana pun.",
+    "partnerPerkNotFound": "Kode promo ini tidak ada di toko Anda.",
     "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
@@ -10719,23 +10752,89 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "Rekap mitra",
-    "title": "Rekap {partner}",
-    "months": "Bulan",
-    "due": "Terutang",
-    "paid": "Dibayar",
-    "remaining": "Sisa yang harus dibayar",
-    "upcoming": "Mendatang: {amount} untuk sewa yang belum selesai.",
-    "empty": "Tidak ada pemesanan lewat tautan Anda bulan ini.",
-    "rentalEnded": "Sewa selesai pada {date}",
+  "partnerSpace": {
+    "metaTitle": "Halaman mitra",
+    "store": "{store}",
+    "title": "Halo, {partner}",
+    "howItWorks": "Anda mendapatkan {rule} untuk setiap sewa yang dipesan berkat Anda, lewat tautan atau kode Anda. Tautan berlaku {days} hari setelah diklik. Komisi terutang setelah sewa selesai.",
+    "perk": "Pelanggan Anda mendapat kode {code}.",
+    "archived": "Toko telah menjeda kemitraan ini: pemesanan baru tidak lagi dicatat untuk Anda.",
+    "rule": {
+      "percent": "{value}% dari sewa",
+      "fixed": "{value} per pemesanan"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "Akan diterima",
+        "hint": "Sewa sudah selesai, belum dibayar."
+      },
+      "upcoming": {
+        "label": "Mendatang",
+        "hint": "Sewa sudah dipesan, belum selesai."
+      },
+      "received": {
+        "label": "Diterima",
+        "hint": "Yang sudah dibayar toko kepada Anda."
+      }
+    },
+    "activity": {
+      "title": "Aktivitas terbaru",
+      "empty": "Belum ada pemesanan berkat Anda. Bagikan tautan atau poster Anda.",
+      "booking": "Pemesanan baru",
+      "bookingWhen": "pada {date} · sewa hingga {end}",
+      "payout": "Pembayaran untuk {month}",
+      "payoutWhen": "pada {date}"
+    },
+    "link": {
+      "title": "Tautan Anda",
+      "description": "Berikan kepada tamu Anda: email sambutan, poster di meja resepsionis, pesan.",
+      "copy": "Salin",
+      "copied": "Tautan tersalin",
+      "poster": "Poster QR",
+      "posterTitle": "Poster Anda",
+      "posterDescription": "Kode QR membuka toko dengan tautan Anda.",
+      "posterHint": "Cetak untuk meja resepsionis Anda.",
+      "posterFileName": "poster",
+      "code": "Kode Anda, untuk disampaikan secara lisan: {code}"
+    },
+    "months": {
+      "title": "Per bulan",
+      "due": "Terutang",
+      "paid": "Dibayar",
+      "remaining": "Sisa yang harus dibayar",
+      "upcoming": "Mendatang: {amount} untuk sewa yang belum selesai.",
+      "empty": "Tidak ada pemesanan berkat Anda bulan ini.",
+      "rentalEnds": "Sewa hingga {date}"
+    },
     "states": {
       "upcoming": "Mendatang",
       "due": "Terutang",
-      "cancelled": "Dibatalkan"
+      "cancelled": "Dibatalkan",
+      "paid": "Dibayar"
     },
-    "rules": "Komisi berlaku untuk pemesanan yang dibuat lewat tautan Anda. Komisi terutang setelah sewa selesai, dan batal jika pemesanannya dibatalkan. Rekap ini tidak menampilkan data pelanggan dan bukan faktur.",
-    "paidBy": "{store} membayar Anda secara langsung. Louez menghitung rekap ini; tidak ada uang yang melewati Louez."
+    "notifications": {
+      "title": "Notifikasi saya",
+      "description": "Terima email saat Anda mendapatkan sesuatu.",
+      "email": "Alamat email",
+      "emailPlaceholder": "nama@contoh.co.id",
+      "bookings": {
+        "title": "Pemesanan baru",
+        "description": "Saat pelanggan memesan berkat Anda."
+      },
+      "payouts": {
+        "title": "Pembayaran diterima",
+        "description": "Saat toko mencatat telah membayar Anda."
+      },
+      "statements": {
+        "title": "Rekap bulanan",
+        "description": "Di awal setiap bulan, ringkasan bulan sebelumnya."
+      },
+      "save": "Simpan",
+      "saved": "Notifikasi tersimpan",
+      "failed": "Gagal menyimpan. Coba lagi."
+    },
+    "rules": "Komisi berlaku untuk pemesanan yang dibuat berkat Anda. Komisi terutang setelah sewa selesai, dan batal jika pemesanannya dibatalkan. Halaman ini tidak menampilkan data pelanggan dan bukan faktur.",
+    "paidBy": "{store} membayar Anda secara langsung. Louez menghitung jumlah ini; tidak ada uang yang melewati Louez."
   },
   "demo": {
     "launcher": {

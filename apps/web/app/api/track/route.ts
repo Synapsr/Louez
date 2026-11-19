@@ -7,7 +7,7 @@ import { getClientIp } from '@/lib/request'
 import { visitSourceSchema } from '@louez/api/contracts/visibility'
 import { aiAssistantSchema } from '@louez/api/contracts/ai-visibility'
 import { findActivePartnerByCode } from '@louez/api/services/partners'
-import { PARTNER_COOKIE, partnerCodeFromCookie } from '@/lib/partners/partner-cookie'
+import { PARTNER_COOKIE, readPartnerCookie } from '@/lib/partners/partner-cookie'
 
 // Validation schemas
 const pageViewSchema = z.object({
@@ -156,13 +156,17 @@ function cleanupRateLimits() {
 }
 
 // Partner id cache, per store and code: a partner's visits are counted from
-// the storefront's partner cookie, set when the customer agreed to credit it.
+// the storefront's partner cookie, set by the proxy on the partner's link.
 const partnerIdCache = new Map<string, { id: string | null; expiresAt: number }>()
 const PARTNER_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const MAX_PARTNER_ENTRIES = 10000
 
-async function getPartnerId(request: NextRequest, storeId: string): Promise<string | null> {
-  const code = partnerCodeFromCookie(request.cookies.get(PARTNER_COOKIE)?.value, storeId)
+async function getPartnerId(
+  request: NextRequest,
+  storeId: string,
+  storeSlug: string
+): Promise<string | null> {
+  const code = readPartnerCookie(request.cookies.get(PARTNER_COOKIE)?.value, storeSlug)?.code
   if (!code) return null
   const key = `${storeId}.${code}`
   const cached = partnerIdCache.get(key)
@@ -238,7 +242,7 @@ export async function POST(request: NextRequest) {
 
     // Insert data asynchronously (fire-and-forget for performance)
     if (data.type === 'page_view') {
-      const partnerId = await getPartnerId(request, storeId)
+      const partnerId = await getPartnerId(request, storeId, data.storeSlug)
       // Don't await - fire and forget for performance
       db.insert(pageViews)
         .values({

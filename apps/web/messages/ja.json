@@ -2807,7 +2807,8 @@
           "label": "割引",
           "add": "割引を追加する",
           "remove": "割引を削除する"
-        }
+        },
+        "partnerNotCredited": "予約を作成しましたが、パートナーには計上されませんでした。予約画面から追加してください。"
       },
       "rejectDialog": {
         "title": "リクエストを拒否する",
@@ -7388,7 +7389,8 @@
         "viewProduct": "商品を見る",
         "invoicingSettings": "請求書の設定",
         "notificationSettings": "通知の設定",
-        "openTeam": "チームを開く"
+        "openTeam": "チームを開く",
+        "openPartner": "パートナーを開く"
       },
       "facts": {
         "stripeCharge": "Stripe の請求",
@@ -7465,7 +7467,11 @@
       },
       "unknownTitle": "確認事項",
       "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。",
-      "viewAll": "すべて見る"
+      "viewAll": "すべて見る",
+      "partnerPayoutDue": {
+        "title": "支払う紹介料",
+        "summary": "{month}に終了したレンタル分として、{partner} に {amount} を支払う必要があります。支払い後、その月を支払い済みにしてください。"
+      }
     },
     "visibility": {
       "title": "お店を知ってもらう",
@@ -7678,11 +7684,14 @@
         "emailInvalid": "メールアドレスが正しくありません。",
         "cancel": "キャンセル",
         "create": "追加",
-        "save": "保存"
+        "save": "保存",
+        "perk": "パートナー経由のお客様への特典",
+        "perkHint": "プロモーションコードのいずれか。お客様がパートナーのリンクから来たとき、またはそのコードを入力したときに自動で適用されます。",
+        "perkNone": "なし"
       },
       "link": {
         "title": "パートナーのリンク",
-        "description": "リンクを開いたお客様が、{partner} に予約を計上するかどうかを選びます。料金は変わりません。",
+        "description": "このリンクをクリックした後の予約はすべて {partner} に計上されます。お客様の料金は変わりません。",
         "copy": "コピー",
         "copied": "リンクをコピーしました",
         "poster": "QRポスター",
@@ -7692,17 +7701,7 @@
         "posterFileName": "partner-poster",
         "sendEmail": "メール",
         "emailSubject": "{store} のパートナーリンク",
-        "message": "こんにちは。\n\n{store} のパートナーリンクをお送りします：{link}\nこのリンクから予約されたレンタルごとに、レンタル終了後に {rule} をお支払いします。\n\n明細はいつでも最新の状態で確認できます：{statement}\n\nご紹介いただきありがとうございます！"
-      },
-      "menu": {
-        "label": "パートナーの操作",
-        "edit": "編集",
-        "copyStatement": "明細のリンクをコピー",
-        "statementCopied": "明細のリンクをコピーしました",
-        "rotateStatement": "明細のリンクを変更",
-        "rotated": "明細のリンクを新しくしました。古いリンクは使えません。",
-        "archive": "アーカイブ",
-        "restore": "元に戻す"
+        "message": "こんにちは。\n\n{store} のパートナーリンクをお送りします：{link}\nこのリンクから予約されたレンタルごとに、レンタル終了後に {rule} をお支払いします。\n\nパートナーページで報酬の確認や通知の設定ができます：{space}\n\nご紹介いただきありがとうございます！"
       },
       "statement": {
         "title": "明細",
@@ -7740,7 +7739,8 @@
           "commission": "紹介料",
           "state": "状態",
           "note": "メモ"
-        }
+        },
+        "byCode": "コード経由"
       },
       "adjust": {
         "title": "予約 {number} の紹介料",
@@ -7760,8 +7760,39 @@
         "commission": "{amount}、{state}",
         "origin": {
           "link": "リンク経由",
-          "manual": "手動で追加"
+          "manual": "手動で追加",
+          "code": "コード経由"
         }
+      },
+      "menu": {
+        "label": "パートナーの操作",
+        "edit": "編集",
+        "copySpace": "パートナーページのリンクをコピー",
+        "spaceCopied": "パートナーページのリンクをコピーしました",
+        "rotateSpace": "パートナーページのリンクを変更",
+        "rotated": "パートナーページのリンクを新しくしました。古いリンクは使えません。",
+        "archive": "アーカイブ",
+        "restore": "元に戻す"
+      },
+      "window": "{count, plural, other {パートナーリンクはクリックから予約まで#日間有効です。}}",
+      "changeWindow": "変更",
+      "perkLine": "お客様特典：{code}",
+      "notified": {
+        "yes": "予約や支払いのたびにメールが届きます。",
+        "no": "メールは届きません。メールアドレスを追加するか、パートナー自身がパートナーページで有効にできます。"
+      },
+      "settings": {
+        "title": "パートナーリンクの有効期間",
+        "description": "お客様がこの期間内にパートナーのリンクをクリックしていれば、予約はそのパートナーに計上されます。決済時に入力されたコードは常に有効です。",
+        "window": "期間",
+        "days": "{count, plural, other {#日}}",
+        "cancel": "キャンセル",
+        "save": "保存"
+      },
+      "newReservation": {
+        "title": "パートナー",
+        "description": "このお客様はパートナーの紹介ですか？予約はそのパートナーに計上されます。",
+        "none": "パートナーなし"
       }
     }
   },
@@ -8593,6 +8624,14 @@
       "customFields": {
         "savedSummary": "入力済みの情報",
         "detailsIntro": "この情報は、{store}が機材を準備する際に役立ちます。"
+      },
+      "partnerCode": {
+        "question": "パートナーからのご紹介ですか？",
+        "placeholder": "パートナーコード",
+        "apply": "適用",
+        "notFound": "このコードに該当するパートナーはありません。",
+        "credited": "{partner} のご紹介",
+        "remove": "パートナーを外す"
       }
     },
     "confirmation": {
@@ -9429,13 +9468,6 @@
       },
       "fullFile": "すべての商品とその説明",
       "footer": "オンラインショップのデータ、{date} 時点。"
-    },
-    "partnerLink": {
-      "title": "{partner} のおすすめ",
-      "question": "ご予約の際、{partner} にお礼が届くようにしますか？料金は変わりません。",
-      "accept": "はい、喜んで",
-      "decline": "いいえ、結構です",
-      "note": "同意いただくと、このストアに限り、Cookie が30日間この選択を記憶します。"
     }
   },
   "onboarding": {
@@ -10148,6 +10180,7 @@
     "partnerNotFound": "このパートナーは存在しないか、アーカイブされています。",
     "partnerNothingToPay": "このパートナーへの今月の未払いはありません。",
     "partnerReservationNotAttributed": "この予約はどのパートナーにも計上されていません。",
+    "partnerPerkNotFound": "このプロモーションコードはストアに存在しません。",
     "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
@@ -10719,23 +10752,89 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "パートナー明細",
-    "title": "{partner} 様の明細",
-    "months": "月",
-    "due": "支払額",
-    "paid": "支払い済み",
-    "remaining": "未払い",
-    "upcoming": "今後の予定：まだ終了していないレンタル分 {amount}",
-    "empty": "今月、ご紹介リンク経由の予約はありません。",
-    "rentalEnded": "レンタル終了日：{date}",
+  "partnerSpace": {
+    "metaTitle": "パートナーページ",
+    "store": "{store}",
+    "title": "{partner} 様",
+    "howItWorks": "あなたのリンクまたはコードを通じて予約されたレンタルごとに {rule} を受け取れます。リンクはクリックから{days}日間有効です。紹介料はレンタル終了時に確定します。",
+    "perk": "あなたのお客様はコード {code} をご利用いただけます。",
+    "archived": "ストアがこのパートナーシップを一時停止しました。新しい予約はあなたに計上されません。",
+    "rule": {
+      "percent": "レンタル料金の{value}%",
+      "fixed": "予約1件につき{value}"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "受取予定",
+        "hint": "終了済みで、まだ支払われていないレンタル。"
+      },
+      "upcoming": {
+        "label": "今後の予定",
+        "hint": "予約済みで、まだ終了していないレンタル。"
+      },
+      "received": {
+        "label": "受取済み",
+        "hint": "ストアからあなたへの支払い額。"
+      }
+    },
+    "activity": {
+      "title": "最近のアクティビティ",
+      "empty": "まだご紹介による予約はありません。リンクやポスターを共有しましょう。",
+      "booking": "新しい予約",
+      "bookingWhen": "{date} · レンタル期間：{end}まで",
+      "payout": "{month}分のお支払い",
+      "payoutWhen": "{date}"
+    },
+    "link": {
+      "title": "あなたのリンク",
+      "description": "お客様にお渡しください：ウェルカムメール、受付のポスター、メッセージなど。",
+      "copy": "コピー",
+      "copied": "リンクをコピーしました",
+      "poster": "QRポスター",
+      "posterTitle": "あなたのポスター",
+      "posterDescription": "QRコードを読み取ると、あなたのリンク経由でストアが開きます。",
+      "posterHint": "印刷して受付に置いてください。",
+      "posterFileName": "poster",
+      "code": "口頭で伝えるためのコード：{code}"
+    },
+    "months": {
+      "title": "月ごとの内訳",
+      "due": "支払額",
+      "paid": "支払い済み",
+      "remaining": "未払い",
+      "upcoming": "今後の予定：まだ終了していないレンタル分 {amount}",
+      "empty": "今月、ご紹介による予約はありません。",
+      "rentalEnds": "レンタル期間：{date}まで"
+    },
     "states": {
       "upcoming": "予定",
       "due": "確定",
-      "cancelled": "取り消し"
+      "cancelled": "取り消し",
+      "paid": "支払い済み"
     },
-    "rules": "紹介料は、ご紹介リンクから行われた予約が対象です。レンタル終了時に確定し、予約がキャンセルされた場合は取り消されます。この明細に顧客情報は含まれず、請求書ではありません。",
-    "paidBy": "{store} から直接お支払いします。この明細は Louez が計算していますが、お金が Louez を経由することはありません。"
+    "notifications": {
+      "title": "通知設定",
+      "description": "報酬が発生したときにメールでお知らせします。",
+      "email": "メールアドレス",
+      "emailPlaceholder": "taro@example.jp",
+      "bookings": {
+        "title": "新しい予約",
+        "description": "お客様があなたの紹介で予約したとき。"
+      },
+      "payouts": {
+        "title": "支払いの受領",
+        "description": "ストアがあなたへの支払いを記録したとき。"
+      },
+      "statements": {
+        "title": "月次明細",
+        "description": "毎月初めに、前月のまとめをお送りします。"
+      },
+      "save": "保存",
+      "saved": "通知設定を保存しました",
+      "failed": "保存できませんでした。もう一度お試しください。"
+    },
+    "rules": "紹介料は、あなたの紹介で行われた予約が対象です。レンタル終了時に確定し、予約がキャンセルされた場合は取り消されます。このページに顧客情報は表示されず、請求書ではありません。",
+    "paidBy": "{store} から直接お支払いします。金額は Louez が計算していますが、お金が Louez を経由することはありません。"
   },
   "demo": {
     "launcher": {

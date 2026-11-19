@@ -397,5 +397,25 @@
     "savingsLabel": "Ahorro:",
     "cta": "Ver la oferta",
     "footer": "Suscripción mensual, sin permanencia, cancela cuando quieras. Las comisiones de Stripe y del marketplace reeent siguen aplicándose."
+  },
+  "partnerNotification": {
+    "greeting": "Hola, {partner}:",
+    "cta": "Ver mi espacio de socio",
+    "footer": "Recibe este correo porque {store} le ha añadido como socio. Elija qué correos recibe desde su espacio de socio.",
+    "booking": {
+      "subject": "Nueva reserva gracias a usted en {store}",
+      "title": "Una nueva reserva gracias a usted",
+      "body": "Un cliente ha reservado en {store} gracias a usted. Su comisión prevista: {amount}, que se deberá cuando termine el alquiler, el {endDate}."
+    },
+    "payout": {
+      "subject": "{store} le ha pagado {amount}",
+      "title": "Pago recibido",
+      "body": "{store} ha registrado que le ha pagado {amount} por los alquileres terminados en {month}. ¡Gracias por sus recomendaciones!"
+    },
+    "statement": {
+      "subject": "Su extracto de {month} en {store}",
+      "title": "Su extracto de {month}",
+      "body": "{bookings, plural, one {# reserva} other {# reservas}} gracias a usted. Adeudado: {due}. Ya pagado: {paid}. Pendiente de pago: {remaining}."
+    }
   }
 }

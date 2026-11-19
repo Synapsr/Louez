@@ -535,6 +535,13 @@ describe("every other kind, every clause", () => {
       }),
       item("invitation_not_sent", { email: "a@example.com" }),
       item("operation_unknown", { clientName: "Claude", procedure: "x", targetId: null }),
+      item("partner_payout_due", {
+        partnerId: "partner_1",
+        partnerName: "Camping Les Pins",
+        month: "2026-10",
+        amount: 24,
+        currency: "EUR",
+      }),
     ];
     assert.deepEqual(
       [...new Set(samples.map((sample) => sample.type))].sort(),
@@ -651,6 +658,23 @@ describe("any item gives a row and never throws", () => {
       assert.ok(display.title.key, type);
       assert.ok(display.sentences.length > 0, type);
     }
+  });
+
+  test("a month owed to a partner names the partner, the amount and the month, and opens the partner", () => {
+    const { display, title, sentences } = read(
+      item("partner_payout_due", {
+        partnerId: "partner_1",
+        partnerName: "Camping Les Pins",
+        month: "2026-10",
+        amount: 24,
+        currency: "EUR",
+      }),
+      "fr",
+    );
+    assert.equal(title, "Commission à payer");
+    assert.match(sentences[0], /Camping Les Pins/);
+    assert.match(sentences[0], /10\/2026/);
+    assert.equal(display.action?.href, "/dashboard/visibility/partners/partner_1");
   });
 
   test("a kind the dashboard does not know reads as something to check, with the neutral sentence", () => {

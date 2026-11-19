@@ -46,3 +46,8 @@ export { PaymentRequestEmail } from "./payment-request";
 export { DepositAuthorizationRequestEmail } from "./deposit-authorization-request";
 export { QuoteSentEmail } from "./quote-sent";
 export { SupplierInvoiceReceivedEmail } from "./supplier-invoice-received";
+export {
+  PartnerNotificationEmail,
+  getPartnerNotificationSubject,
+  type PartnerNotification,
+} from "./partner-notification";

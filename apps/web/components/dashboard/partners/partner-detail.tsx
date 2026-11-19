@@ -30,7 +30,7 @@ import {
 } from "@louez/ui";
 
 import { apiErrorKey } from "@/lib/orpc/errors";
-import { partnerStatementUrl } from "@/lib/partners/partner-statement-path";
+import { partnerSpaceUrl } from "@/lib/partners/partner-space-path";
 import { partnerLinkUrl } from "@/lib/partners/util.partner-link";
 import { partnersMutations, partnersQueries } from "@/lib/queries/partners.queries";
 
@@ -50,7 +50,7 @@ interface PartnerDetailProps {
 
 /**
  * A partner's page: its link (copy, QR poster, send), then the month's
- * statement; editing, the statement page's link and archiving in a menu.
+ * statement; editing, the partner space's link and archiving in a menu.
  */
 export const PartnerDetail = ({
   storeId,
@@ -67,6 +67,7 @@ export const PartnerDetail = ({
   const [month, setMonth] = useState(initialStatement.month);
   const [editing, setEditing] = useState(false);
 
+  const { data: list } = useQuery(partnersQueries.list());
   const { data: statement } = useQuery({
     ...partnersQueries.statement(partnerId, month),
     initialData: month === initialStatement.month ? initialStatement : undefined,
@@ -106,16 +107,16 @@ export const PartnerDetail = ({
   });
 
   const link = partnerLinkUrl(storeUrl, partner.code);
-  const statementUrl = partnerStatementUrl(appUrl, view.statementToken);
+  const spaceUrl = partnerSpaceUrl(appUrl, view.statementToken);
   const rule = formatPartnerRule(partner.commission, currency, t);
 
-  const copyStatementLink = async () => {
+  const copySpaceLink = async () => {
     try {
-      await navigator.clipboard.writeText(statementUrl);
-      analytics.linkShared("statement_link");
-      toastManager.add({ title: t("menu.statementCopied"), type: "success" });
+      await navigator.clipboard.writeText(spaceUrl);
+      analytics.linkShared("space_link");
+      toastManager.add({ title: t("menu.spaceCopied"), type: "success" });
     } catch (error) {
-      log.warn({ action: "partner_statement_copy_failed", error: String(error) });
+      log.warn({ action: "partner_space_copy_failed", error: String(error) });
     }
   };
 
@@ -134,7 +135,13 @@ export const PartnerDetail = ({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-bold tracking-tight">{partner.name}</h1>
-            <p className="text-muted-foreground mt-1">{rule}</p>
+            <p className="text-muted-foreground mt-1">
+              {rule}
+              {partner.perk && ` · ${t("perkLine", { code: partner.perk.code })}`}
+            </p>
+            <p className="text-muted-foreground text-sm">
+              {partner.notified ? t("notified.yes") : t("notified.no")}
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -147,13 +154,13 @@ export const PartnerDetail = ({
                 <Pencil className="size-4" />
                 {t("menu.edit")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void copyStatementLink()}>
+              <DropdownMenuItem onClick={() => void copySpaceLink()}>
                 <Link2 className="size-4" />
-                {t("menu.copyStatement")}
+                {t("menu.copySpace")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => rotate.mutate({ partnerId })}>
                 <RefreshCw className="size-4" />
-                {t("menu.rotateStatement")}
+                {t("menu.rotateSpace")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setArchived.mutate({ partnerId, archived: !partner.archived })}
@@ -181,7 +188,7 @@ export const PartnerDetail = ({
           partner={partner}
           storeName={storeName}
           link={link}
-          message={t("link.message", { store: storeName, link, rule, statement: statementUrl })}
+          message={t("link.message", { store: storeName, link, rule, space: spaceUrl })}
           onShared={analytics.linkShared}
         />
       )}
@@ -199,6 +206,7 @@ export const PartnerDetail = ({
         open={editing}
         onOpenChange={setEditing}
         partner={partner}
+        promoCodes={list?.promoCodes ?? []}
       />
     </div>
   );

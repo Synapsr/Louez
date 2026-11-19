@@ -15,6 +15,7 @@ import { createDepositHoldEffectSenders } from "@/lib/reservations/deposit-hold-
 import { withDemoStorePolicy } from "@/lib/demo/outbox-policy";
 import { createReservationMessageEffectSenders } from "@/lib/reservations/reservation-message-effects";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
+import { createPartnerNotificationEffectSenders } from "@/lib/partners/partner-notification-effects";
 import { createStripeRefundEffectSenders } from "@/lib/reservations/stripe-refund";
 import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
@@ -39,6 +40,7 @@ export const apiEffectSenders: ApiEffectSenders = withDemoStorePolicy(
   ...createReservationEffectSenders(),
   ...createStripeRefundEffectSenders(),
   ...createReservationMessageEffectSenders(),
+  ...createPartnerNotificationEffectSenders(),
   ...createSmsEffectSenders(),
   ...createStoreCreationEffectSenders(),
   ...createStoreLaunchEffectSenders(),
@@ -57,10 +59,12 @@ export const apiEffectSenders: ApiEffectSenders = withDemoStorePolicy(
 export function dispatchApiEffects(ids: readonly string[]): void {
   if (ids.length === 0) return;
   const run = () =>
-    dispatchEffects(ids, apiEffectSenders, { report: reportServerError }).catch((error: unknown) => {
-      log.error({ apiEffects: { event: "dispatch_failed", ids, error: String(error) } });
-      reportServerError(error, { source: "effects" });
-    });
+    dispatchEffects(ids, apiEffectSenders, { report: reportServerError }).catch(
+      (error: unknown) => {
+        log.error({ apiEffects: { event: "dispatch_failed", ids, error: String(error) } });
+        reportServerError(error, { source: "effects" });
+      },
+    );
   try {
     after(run);
   } catch {

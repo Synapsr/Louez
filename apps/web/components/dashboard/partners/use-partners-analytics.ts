@@ -12,7 +12,7 @@ import {
 } from "@/lib/product-analytics/analytics-events";
 
 /** How a partner's link or statement left the dashboard (docs/analytics/partners.md). */
-export type PartnerShareChannel = "copy" | "whatsapp" | "email" | "qr" | "statement_link";
+export type PartnerShareChannel = "copy" | "whatsapp" | "email" | "qr" | "space_link";
 
 /**
  * Liens partenaires' PostHog events, on the store's group. Codes and counts

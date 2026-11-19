@@ -2768,7 +2768,8 @@
           "label": "Rabat",
           "add": "Dodaj rabat",
           "remove": "Usuń rabat"
-        }
+        },
+        "partnerNotCredited": "Rezerwacja utworzona, ale nie przypisano jej partnerowi. Dodaj go z poziomu rezerwacji."
       },
       "rejectDialog": {
         "title": "Odrzuć żądanie",
@@ -7388,7 +7389,8 @@
         "viewProduct": "Zobacz produkt",
         "invoicingSettings": "Ustawienia fakturowania",
         "notificationSettings": "Ustawienia powiadomień",
-        "openTeam": "Otwórz zespół"
+        "openTeam": "Otwórz zespół",
+        "openPartner": "Otwórz partnera"
       },
       "facts": {
         "stripeCharge": "Obciążenie Stripe",
@@ -7465,7 +7467,11 @@
       },
       "unknownTitle": "Coś do sprawdzenia",
       "neutral": "Louez nie mógł załatwić tego sam. Otwórz, aby zobaczyć, co się stało.",
-      "viewAll": "Zobacz wszystko"
+      "viewAll": "Zobacz wszystko",
+      "partnerPayoutDue": {
+        "title": "Prowizja do zapłaty",
+        "summary": "Partnerowi {partner} należy się {amount} za {month}, za wynajmy zakończone w tym miesiącu. Zapłać, a potem oznacz miesiąc jako opłacony."
+      }
     },
     "visibility": {
       "title": "Dotrzyj do klientów",
@@ -7678,11 +7684,14 @@
         "emailInvalid": "Ten adres e-mail jest nieprawidłowy.",
         "cancel": "Anuluj",
         "create": "Dodaj",
-        "save": "Zapisz"
+        "save": "Zapisz",
+        "perk": "Korzyść dla jego klientów",
+        "perkHint": "Jeden z twoich kodów promocyjnych, stosowany automatycznie, gdy klient przychodzi przez jego link lub wpisuje jego kod.",
+        "perkNone": "Brak"
       },
       "link": {
         "title": "Jego link",
-        "description": "Klient, który go otworzy, sam wybiera, czy przypisać rezerwację partnerowi {partner}. Cena się nie zmienia.",
+        "description": "Każda rezerwacja dokonana po kliknięciu tego linku zostaje przypisana partnerowi {partner}. Cena dla klienta się nie zmienia.",
         "copy": "Kopiuj",
         "copied": "Skopiowano link",
         "poster": "Plakat QR",
@@ -7692,17 +7701,7 @@
         "posterFileName": "plakat-partnera",
         "sendEmail": "E-mail",
         "emailSubject": "Państwa link partnerski do {store}",
-        "message": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nPaństwa zestawienie, zawsze aktualne: {statement}\n\nDziękujemy za polecanie nas!"
-      },
-      "menu": {
-        "label": "Działania partnera",
-        "edit": "Edytuj",
-        "copyStatement": "Kopiuj link do jego zestawienia",
-        "statementCopied": "Skopiowano link do zestawienia",
-        "rotateStatement": "Zmień link do jego zestawienia",
-        "rotated": "Nowy link do zestawienia: stary już nie działa.",
-        "archive": "Archiwizuj",
-        "restore": "Przywróć"
+        "message": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nPaństwa strefa partnera, w której można śledzić zarobki i wybrać powiadomienia: {space}\n\nDziękujemy za polecanie nas!"
       },
       "statement": {
         "title": "Zestawienie",
@@ -7740,7 +7739,8 @@
           "commission": "Prowizja",
           "state": "Status",
           "note": "Uwaga"
-        }
+        },
+        "byCode": "przez jego kod"
       },
       "adjust": {
         "title": "Prowizja za rezerwację {number}",
@@ -7760,8 +7760,39 @@
         "commission": "{amount}, {state}",
         "origin": {
           "link": "Przez jego link",
-          "manual": "Dodany ręcznie"
+          "manual": "Dodany ręcznie",
+          "code": "Przez jego kod"
         }
+      },
+      "menu": {
+        "label": "Działania partnera",
+        "edit": "Edytuj",
+        "copySpace": "Kopiuj link do jego strefy",
+        "spaceCopied": "Skopiowano link do strefy",
+        "rotateSpace": "Zmień link do jego strefy",
+        "rotated": "Nowy link do strefy: stary już nie działa.",
+        "archive": "Archiwizuj",
+        "restore": "Przywróć"
+      },
+      "window": "{count, plural, one {Link partnerski działa # dzień, od kliknięcia do rezerwacji.} few {Link partnerski działa # dni, od kliknięcia do rezerwacji.} many {Link partnerski działa # dni, od kliknięcia do rezerwacji.} other {Link partnerski działa # dnia, od kliknięcia do rezerwacji.}}",
+      "changeWindow": "Zmień",
+      "perkLine": "korzyść dla klienta: {code}",
+      "notified": {
+        "yes": "Otrzymuje e-mail przy każdej rezerwacji i każdej płatności.",
+        "no": "Nie otrzymuje e-maili: dodaj jego adres albo partner włączy je w swojej strefie."
+      },
+      "settings": {
+        "title": "Ważność linku partnerskiego",
+        "description": "Rezerwacja zostaje przypisana partnerowi, jeśli klient kliknął jego link w tym czasie. Kod wpisany przy płatności liczy się zawsze.",
+        "window": "Czas",
+        "days": "{count, plural, one {# dzień} few {# dni} many {# dni} other {# dnia}}",
+        "cancel": "Anuluj",
+        "save": "Zapisz"
+      },
+      "newReservation": {
+        "title": "Partner",
+        "description": "Czy tego klienta przysłał partner? Rezerwacja zostanie mu przypisana.",
+        "none": "Bez partnera"
       }
     }
   },
@@ -8593,6 +8624,14 @@
       "customFields": {
         "savedSummary": "Dane już zapisane",
         "detailsIntro": "Dzięki temu {store} przygotuje Twój sprzęt."
+      },
+      "partnerCode": {
+        "question": "Polecił nas Państwu partner?",
+        "placeholder": "Kod partnera",
+        "apply": "Zastosuj",
+        "notFound": "Ten kod nie pasuje do żadnego partnera.",
+        "credited": "Polecane przez: {partner}",
+        "remove": "Usuń partnera"
       }
     },
     "confirmation": {
@@ -9429,13 +9468,6 @@
       },
       "fullFile": "Wszystkie produkty z opisami",
       "footer": "Dane ze sklepu internetowego, aktualne na dzień {date}."
-    },
-    "partnerLink": {
-      "title": "Polecane przez: {partner}",
-      "question": "Czy {partner} ma otrzymać podziękowanie za Państwa rezerwację? Cena się nie zmienia.",
-      "accept": "Tak, chętnie",
-      "decline": "Nie, dziękuję",
-      "note": "Po wyrażeniu zgody plik cookie zapamięta ten wybór na 30 dni, tylko w tym sklepie."
     }
   },
   "onboarding": {
@@ -10148,6 +10180,7 @@
     "partnerNotFound": "Ten partner nie istnieje lub został zarchiwizowany.",
     "partnerNothingToPay": "Za ten miesiąc nie ma już nic do zapłaty temu partnerowi.",
     "partnerReservationNotAttributed": "Ta rezerwacja nie jest przypisana do żadnego partnera.",
+    "partnerPerkNotFound": "Ten kod promocyjny nie istnieje w twoim sklepie.",
     "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
@@ -10719,23 +10752,89 @@
       }
     }
   },
-  "partnerStatement": {
-    "metaTitle": "Zestawienie partnera",
-    "title": "Zestawienie: {partner}",
-    "months": "Miesiące",
-    "due": "Należne",
-    "paid": "Zapłacone",
-    "remaining": "Do zapłaty",
-    "upcoming": "Wkrótce: {amount} za wynajmy, które jeszcze się nie zakończyły.",
-    "empty": "Brak rezerwacji przez Państwa link w tym miesiącu.",
-    "rentalEnded": "Wynajem zakończony {date}",
+  "partnerSpace": {
+    "metaTitle": "Strefa partnera",
+    "store": "{store}",
+    "title": "Dzień dobry, {partner}",
+    "howItWorks": "Otrzymują Państwo {rule} za każdy wynajem zarezerwowany dzięki Państwu, przez link lub kod. Link działa przez {days} dni od kliknięcia. Prowizja jest należna po zakończeniu wynajmu.",
+    "perk": "Państwa klienci korzystają z kodu {code}.",
+    "archived": "Sklep wstrzymał tę współpracę: nowe rezerwacje nie są już Państwu przypisywane.",
+    "rule": {
+      "percent": "{value}% wynajmu",
+      "fixed": "{value} za rezerwację"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "Do otrzymania",
+        "hint": "Wynajmy zakończone, jeszcze nieopłacone."
+      },
+      "upcoming": {
+        "label": "Wkrótce",
+        "hint": "Wynajmy zarezerwowane, jeszcze niezakończone."
+      },
+      "received": {
+        "label": "Otrzymane",
+        "hint": "Tyle zapłacił Państwu sklep."
+      }
+    },
+    "activity": {
+      "title": "Ostatnia aktywność",
+      "empty": "Nie ma jeszcze rezerwacji dzięki Państwu. Proszę udostępnić link lub plakat.",
+      "booking": "Nowa rezerwacja",
+      "bookingWhen": "{date} · wynajem do {end}",
+      "payout": "Płatność za {month}",
+      "payoutWhen": "{date}"
+    },
+    "link": {
+      "title": "Państwa link",
+      "description": "Proszę przekazać go gościom: e-mail powitalny, plakat w recepcji, wiadomość.",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano link",
+      "poster": "Plakat QR",
+      "posterTitle": "Państwa plakat",
+      "posterDescription": "Kod QR otwiera sklep z Państwa linkiem.",
+      "posterHint": "Proszę wydrukować go do recepcji.",
+      "posterFileName": "plakat",
+      "code": "Państwa kod do przekazania ustnie: {code}"
+    },
+    "months": {
+      "title": "Miesiąc po miesiącu",
+      "due": "Należne",
+      "paid": "Zapłacone",
+      "remaining": "Do zapłaty",
+      "upcoming": "Wkrótce: {amount} za wynajmy, które jeszcze się nie zakończyły.",
+      "empty": "Brak rezerwacji dzięki Państwu w tym miesiącu.",
+      "rentalEnds": "Wynajem do {date}"
+    },
     "states": {
       "upcoming": "Wkrótce",
       "due": "Należna",
-      "cancelled": "Anulowana"
+      "cancelled": "Anulowana",
+      "paid": "Zapłacona"
     },
-    "rules": "Prowizja dotyczy rezerwacji dokonanych przez Państwa link. Jest należna po zakończeniu wynajmu i anulowana, jeśli rezerwacja zostanie anulowana. To zestawienie nie pokazuje żadnych danych klientów i nie jest fakturą.",
-    "paidBy": "{store} płaci Państwu bezpośrednio. Louez wylicza to zestawienie; żadne pieniądze nie przechodzą przez Louez."
+    "notifications": {
+      "title": "Moje powiadomienia",
+      "description": "E-mail, gdy coś Państwo zarobią.",
+      "email": "Adres e-mail",
+      "emailPlaceholder": "jan.kowalski@przyklad.pl",
+      "bookings": {
+        "title": "Nowa rezerwacja",
+        "description": "Gdy klient zarezerwuje dzięki Państwu."
+      },
+      "payouts": {
+        "title": "Otrzymana płatność",
+        "description": "Gdy sklep odnotuje, że Państwu zapłacił."
+      },
+      "statements": {
+        "title": "Zestawienie miesięczne",
+        "description": "Na początku każdego miesiąca podsumowanie poprzedniego."
+      },
+      "save": "Zapisz",
+      "saved": "Zapisano powiadomienia",
+      "failed": "Nie udało się zapisać. Proszę spróbować ponownie."
+    },
+    "rules": "Prowizja dotyczy rezerwacji dokonanych dzięki Państwu. Jest należna po zakończeniu wynajmu i anulowana, jeśli rezerwacja zostanie anulowana. Ta strona nie pokazuje żadnych danych klientów i nie jest fakturą.",
+    "paidBy": "{store} płaci Państwu bezpośrednio. Louez wylicza te kwoty; żadne pieniądze nie przechodzą przez Louez."
   },
   "demo": {
     "launcher": {

@@ -407,5 +407,25 @@
     "savingsLabel": "절약액:",
     "cta": "제안 보기",
     "footer": "월간 요금제, 약정 없음, 언제든 해지할 수 있습니다. Stripe 수수료와 reeent 마켓플레이스 수수료는 계속 부과됩니다."
+  },
+  "partnerNotification": {
+    "greeting": "안녕하세요, {partner}님.",
+    "cta": "내 파트너 페이지 열기",
+    "footer": "{store}에서 귀하를 파트너로 추가했기 때문에 이 이메일을 받으셨습니다. 받을 이메일은 파트너 페이지에서 선택할 수 있습니다.",
+    "booking": {
+      "subject": "{store}에 귀하를 통한 새 예약이 있습니다",
+      "title": "귀하를 통한 새 예약",
+      "body": "한 고객이 귀하를 통해 {store}에서 예약했습니다. 예상 수수료: {amount}. 대여가 끝나는 {endDate}에 지급 대상이 됩니다."
+    },
+    "payout": {
+      "subject": "{store}에서 지급했습니다: {amount}",
+      "title": "지급 받음",
+      "body": "{store}에서 {month}에 끝난 대여에 대한 지급을 기록했습니다: {amount}. 추천해 주셔서 감사합니다!"
+    },
+    "statement": {
+      "subject": "{store} {month} 정산 내역",
+      "title": "{month} 정산 내역",
+      "body": "귀하를 통한 예약 {bookings, plural, other {#건}}. 지급 대상: {due}. 지급 완료: {paid}. 남은 금액: {remaining}."
+    }
   }
 }

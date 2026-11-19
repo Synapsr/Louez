@@ -83,6 +83,7 @@ import {
 } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
+import { readDuePartnerMonths } from "./partner-space";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
 
 /**
@@ -165,6 +166,7 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   approval_waiting: [],
   invitation_not_sent: ["team"],
   image_job_failed: ["products"],
+  partner_payout_due: ["online_store"],
 };
 
 export type InboxRights = Partial<Record<ApiDomain, boolean>>;
@@ -2266,6 +2268,37 @@ const failedImageJobs: Source = async (window, shaper) => {
   });
 };
 
+/**
+ * A month that ended with commissions due to a partner and not marked paid
+ * (services/partner-space.ts): the store pays its partners itself, Louez
+ * only reminds it. Dated when the month ended, in the store's time zone.
+ */
+const duePartnerPayouts: Source = async (window, shaper) => {
+  const { store, urls } = shaper.reader;
+  const due = await readDuePartnerMonths(window.storeId, window.now);
+  return due.map((month) =>
+    candidate("partner_payout_due", `${month.partnerId}:${month.month}`, {
+      severity: "info",
+      occurredAt: month.endedAt,
+      summary: `${month.partnerName} is owed ${month.remaining.toFixed(2)} ${month.currency} in commissions for ${month.month}. The store pays its partners itself, then marks the month paid.`,
+      reservation: null,
+      details: {
+        partnerId: month.partnerId,
+        partnerName: month.partnerName,
+        month: month.month,
+        amount: month.remaining,
+        currency: month.currency,
+      },
+      tools: ["partners_get_statement"],
+      links: dashboardPageLinks(
+        urls,
+        store,
+        `/dashboard/visibility/partners/${encodeURIComponent(month.partnerId)}`,
+      ),
+    }),
+  );
+};
+
 const SOURCES: Record<InboxItemType, Source> = {
   booking_request: bookingRequests,
   date_change_request: dateChangeRequests,
@@ -2291,10 +2324,15 @@ const SOURCES: Record<InboxItemType, Source> = {
   approval_waiting: waitingApprovals,
   invitation_not_sent: unsentInvitations,
   image_job_failed: failedImageJobs,
+  partner_payout_due: duePartnerPayouts,
 };
 
 /** Sources computed in code, filtered on the window here rather than in SQL. */
-const COMPUTED: ReadonlySet<InboxItemType> = new Set(["billing_gate_closed", "store_not_live"]);
+const COMPUTED: ReadonlySet<InboxItemType> = new Set([
+  "billing_gate_closed",
+  "store_not_live",
+  "partner_payout_due",
+]);
 
 // --- Reading -----------------------------------------------------------------
 

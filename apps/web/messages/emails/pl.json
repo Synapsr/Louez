@@ -397,5 +397,25 @@
     "savingsLabel": "Oszczędność:",
     "cta": "Zobacz ofertę",
     "footer": "Abonament miesięczny, bez zobowiązań, rezygnacja w każdej chwili. Opłaty Stripe i marketplace'u reeent nadal obowiązują."
+  },
+  "partnerNotification": {
+    "greeting": "Dzień dobry {partner},",
+    "cta": "Otwórz moją strefę partnera",
+    "footer": "Otrzymują Państwo tę wiadomość, ponieważ sklep {store} dodał Państwa jako partnera. W strefie partnera można wybrać, które e-maile otrzymywać.",
+    "booking": {
+      "subject": "Nowa rezerwacja dzięki Państwu w {store}",
+      "title": "Nowa rezerwacja dzięki Państwu",
+      "body": "Klient zarezerwował w {store} dzięki Państwu. Przewidywana prowizja: {amount}, należna po zakończeniu wynajmu, {endDate}."
+    },
+    "payout": {
+      "subject": "{store}: otrzymali Państwo {amount}",
+      "title": "Otrzymana płatność",
+      "body": "Sklep {store} odnotował, że zapłacił Państwu {amount} za {month}. Dziękujemy za polecenia!"
+    },
+    "statement": {
+      "subject": "Państwa zestawienie za {month} w {store}",
+      "title": "Państwa zestawienie za {month}",
+      "body": "{bookings, plural, one {# rezerwacja} few {# rezerwacje} many {# rezerwacji} other {# rezerwacji}} dzięki Państwu. Należne: {due}. Już zapłacone: {paid}. Do zapłaty: {remaining}."
+    }
   }
 }

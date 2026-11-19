@@ -18,8 +18,14 @@ import { log } from "@/lib/evlog";
 import { getClientIp } from "@/lib/request";
 import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-mode";
 import { SALES_CHANNEL_COOKIE, salesChannelFromCookie } from "@/lib/util.sales-channel";
-import { PARTNER_COOKIE, partnerCodeFromCookie } from "@/lib/partners/partner-cookie";
-import { attributeReservationFromLink } from "@louez/api/services/partners";
+import { PARTNER_COOKIE, readPartnerCookie } from "@/lib/partners/partner-cookie";
+import { dispatchApiEffects } from "@/lib/api/effects";
+import { parsePartnerCode } from "@louez/api/contracts/partners";
+import {
+  attributeReservation,
+  findCheckoutPartner,
+  type CheckoutPartner,
+} from "@louez/api/services/partners";
 import { getTulipCoverageSummary } from "@/lib/integrations/tulip/contracts";
 import {
   searchFrenchCompanies,
@@ -243,27 +249,62 @@ const isSignedInAs = async (storeId: string, email: string): Promise<boolean> =>
   return session?.customer.email.trim().toLowerCase() === email.trim().toLowerCase();
 };
 
+const checkPartnerCodeSchema = z.object({
+  storeId: z.string().min(1).max(64),
+  code: z.string().min(1).max(60),
+});
+
 /**
- * Credits the partner the customer agreed to on its link (the storefront's
- * partner cookie, docs/product/liens-partenaires.md). Never fails the
- * checkout: a reservation is worth more than its attribution, which the
- * store can still set by hand.
+ * A partner's code typed at checkout (Liens partenaires): the partner it names
+ * in this store, with the customer perk its link gives, or null. Public, like
+ * the promo code check.
  */
-const creditPartner = async (
-  storeId: string,
-  reservationId: string,
-  cookieValue: string | undefined | null,
-): Promise<void> => {
-  const code = partnerCodeFromCookie(cookieValue ?? undefined, storeId);
-  if (!code) return;
+export async function checkPartnerCode(input: unknown): Promise<CheckoutPartner | null> {
+  const parsed = checkPartnerCodeSchema.safeParse(input);
+  const code = parsed.success ? parsePartnerCode(parsed.data.code) : null;
+  if (!parsed.success || !code) return null;
+  return findCheckoutPartner({ storeId: parsed.data.storeId, code });
+}
+
+/**
+ * Credits a partner with the reservation (docs/product/liens-partenaires.md):
+ * the code the customer typed, else the partner link the storefront's cookie
+ * remembers, within the store's window. Never fails the checkout: a
+ * reservation is worth more than its attribution, which the store can still
+ * set by hand.
+ */
+const creditPartner = async (input: {
+  storeId: string;
+  reservationId: string;
+  typedCode: string | undefined;
+  cookieValue: string | undefined;
+}): Promise<void> => {
   try {
-    await attributeReservationFromLink({ storeId, reservationId, code });
+    const typed = parsePartnerCode(input.typedCode);
+    let credit: { code: string; origin: "code" | "link"; clickedAt?: Date } | null = typed
+      ? { code: typed, origin: "code" }
+      : null;
+    if (!credit && input.cookieValue) {
+      const store = await db.query.stores.findFirst({
+        where: eq(stores.id, input.storeId),
+        columns: { slug: true },
+      });
+      const link = store ? readPartnerCookie(input.cookieValue, store.slug) : null;
+      if (link) credit = { code: link.code, origin: "link", clickedAt: link.clickedAt };
+    }
+    if (!credit) return;
+    const { effectIds } = await attributeReservation({
+      storeId: input.storeId,
+      reservationId: input.reservationId,
+      ...credit,
+    });
+    dispatchApiEffects(effectIds);
   } catch (error) {
     log.warn({
       partner: {
         event: "attribution_failed",
-        storeId,
-        reservationId,
+        storeId: input.storeId,
+        reservationId: input.reservationId,
         error: error instanceof Error ? error.message : String(error),
       },
     });
@@ -287,8 +328,9 @@ export async function createReservation(input: unknown): Promise<CreateReservati
   // Test mode is read from its signed cookie only (lib/test-reservations).
   const testMode = await getStorefrontTestMode(parsed.data.storeId);
   const cookieStore = await cookies();
+  const { partnerCode, ...reservationInput } = parsed.data;
   const result = await createReservationInternal({
-    ...parsed.data,
+    ...reservationInput,
     source: "online",
     salesChannel: salesChannelFromCookie(cookieStore.get(SALES_CHANNEL_COOKIE)?.value),
     customerSignedIn: testMode
@@ -306,11 +348,14 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     };
   }
 
-  await creditPartner(
-    parsed.data.storeId,
-    result.reservationId,
-    testMode ? null : cookieStore.get(PARTNER_COOKIE)?.value,
-  );
+  if (!testMode) {
+    await creditPartner({
+      storeId: parsed.data.storeId,
+      reservationId: result.reservationId,
+      typedCode: partnerCode,
+      cookieValue: cookieStore.get(PARTNER_COOKIE)?.value,
+    });
+  }
 
   return {
     success: true,

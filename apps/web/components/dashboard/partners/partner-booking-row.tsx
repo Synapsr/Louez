@@ -57,6 +57,7 @@ export const PartnerBookingRow = ({
           {" · "}
           {formatCurrency(booking.base, currency)}
           {booking.origin === "manual" && ` · ${t("manual")}`}
+          {booking.origin === "code" && ` · ${t("byCode")}`}
         </p>
         {booking.adjustment && (
           <p className="text-muted-foreground text-xs">

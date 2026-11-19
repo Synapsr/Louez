@@ -397,5 +397,25 @@
     "savingsLabel": "Besparing:",
     "cta": "Bekijk het aanbod",
     "footer": "Maandabonnement, geen verplichting, altijd opzegbaar. Stripe-kosten en kosten van de reeent-marktplaats blijven verschuldigd."
+  },
+  "partnerNotification": {
+    "greeting": "Goedendag {partner},",
+    "cta": "Mijn partnerpagina bekijken",
+    "footer": "U ontvangt deze e-mail omdat {store} u als partner heeft toegevoegd. Kies op uw partnerpagina welke e-mails u ontvangt.",
+    "booking": {
+      "subject": "Een nieuwe reservering dankzij u bij {store}",
+      "title": "Een nieuwe reservering dankzij u",
+      "body": "Een klant heeft dankzij u bij {store} geboekt. Uw verwachte commissie: {amount}, verschuldigd zodra de huur afloopt op {endDate}."
+    },
+    "payout": {
+      "subject": "{store} heeft u {amount} betaald",
+      "title": "Betaling ontvangen",
+      "body": "{store} heeft geregistreerd dat u {amount} is betaald voor de huur die in {month} is afgelopen. Bedankt voor uw aanbevelingen!"
+    },
+    "statement": {
+      "subject": "Uw overzicht van {month} bij {store}",
+      "title": "Uw overzicht van {month}",
+      "body": "{bookings, plural, one {# reservering} other {# reserveringen}} dankzij u. Verschuldigd: {due}. Al betaald: {paid}. Nog te betalen: {remaining}."
+    }
   }
 }

@@ -16,6 +16,7 @@ import { DashboardEmptyState } from "@/components/dashboard/shared/dashboard-emp
 import { partnersQueries } from "@/lib/queries/partners.queries";
 
 import { PartnerFormDialog } from "./partner-form-dialog";
+import { PartnerSettingsDialog } from "./partner-settings-dialog";
 import { usePartnersAnalytics } from "./use-partners-analytics";
 import { formatPartnerRule } from "./util.partner-rule";
 
@@ -34,6 +35,7 @@ export const PartnersOverview = ({ storeId, initialList }: PartnersOverviewProps
   const analytics = usePartnersAnalytics(storeId);
   const { data: list } = useQuery({ ...partnersQueries.list(), initialData: initialList });
   const [adding, setAdding] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const tracked = useRef(false);
   useEffect(() => {
@@ -135,12 +137,31 @@ export const PartnersOverview = ({ storeId, initialList }: PartnersOverviewProps
         </Card>
       )}
 
+      {list.partners.length > 0 && (
+        <p className="text-muted-foreground text-sm">
+          {t("window", { count: list.settings.attributionDays })}{" "}
+          <button
+            type="button"
+            className="text-foreground underline underline-offset-4"
+            onClick={() => setSettingsOpen(true)}
+          >
+            {t("changeWindow")}
+          </button>
+        </p>
+      )}
+
       <PartnerFormDialog
         storeId={storeId}
         currency={list.currency}
         open={adding}
         onOpenChange={setAdding}
         partner={null}
+        promoCodes={list.promoCodes}
+      />
+      <PartnerSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        attributionDays={list.settings.attributionDays}
       />
     </div>
   );

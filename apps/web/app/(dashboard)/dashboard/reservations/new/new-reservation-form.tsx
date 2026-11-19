@@ -39,6 +39,7 @@ import {
 import { Label } from "@louez/ui";
 import { cn, formatCurrency } from "@louez/utils";
 
+import { NewReservationPartnerCard } from "@/components/dashboard/partners/new-reservation-partner-card";
 import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
 import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
@@ -47,6 +48,7 @@ import { invalidateManualCreationQuotes, invalidateReservationList } from "@/lib
 import { trackOpenReplayEvent } from "@/lib/openreplay/client";
 import { openReplayEvents } from "@/lib/openreplay/events";
 import { orpc } from "@/lib/orpc/react";
+import { partnersMutations } from "@/lib/queries/partners.queries";
 import {
   dashboardReservationAnalyticsBaseProperties,
   productAnalyticsEvents,
@@ -236,6 +238,10 @@ export function NewReservationForm({
     mode: "unit",
     value: null,
   });
+
+  // Liens partenaires: the partner who sent this customer, credited once it is created.
+  const [partnerId, setPartnerId] = useState<string | null>(null);
+  const creditPartnerMutation = useMutation(partnersMutations.setForReservation());
 
   const createReservationMutation = useMutation({
     ...orpc.dashboard.reservations.createManualReservation.mutationOptions({
@@ -472,6 +478,12 @@ export function NewReservationForm({
         title: sendAsQuoteRef.current ? t("quoteSent") : t("reservationCreated"),
         type: "success",
       });
+      if (partnerId && result.reservationId) {
+        // The reservation exists either way; a failed credit is set again from its page.
+        await creditPartnerMutation
+          .mutateAsync({ reservationId: result.reservationId, partnerId })
+          .catch(() => toastManager.add({ title: t("partnerNotCredited"), type: "warning" }));
+      }
       onReservationCreated();
       router.replace(`/dashboard/reservations/${result.reservationId}`);
     } catch (error) {
@@ -1628,6 +1640,8 @@ export function NewReservationForm({
                   />
                 </div>
               )}
+
+              <NewReservationPartnerCard partnerId={partnerId} onChange={setPartnerId} />
 
               <div id="section-notes" className="scroll-mt-8">
                 <Card>

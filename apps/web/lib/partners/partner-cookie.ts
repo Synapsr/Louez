@@ -1,26 +1,39 @@
-import { PARTNER_ATTRIBUTION_DAYS, parsePartnerCode } from "@louez/api/contracts/partners";
+import {
+  MAX_PARTNER_ATTRIBUTION_DAYS,
+  PARTNER_LINK_PARAM,
+  parsePartnerCode,
+} from "@louez/api/contracts/partner-code";
 
 /**
- * The storefront cookie that remembers which partner a customer agreed to
- * credit (docs/product/liens-partenaires.md). Set only when the customer says
- * yes on the partner link's prompt: an affiliation tracker needs consent.
- * httpOnly, read by the checkout and `/api/track` on the server. Its value
- * names the store too, so a browser that visits two stores on one host (a
- * local preview) never credits one store's partner on the other.
+ * The storefront cookie of Liens partenaires (docs/product/liens-partenaires.md):
+ * the last partner link a visitor followed, set by the proxy on any storefront
+ * page opened with `?partner=<code>`, and read on the server by the checkout and
+ * `/api/track`. httpOnly, on the store's host. It names the store and the time
+ * of the click, so a browser that visits two stores on one host (a local
+ * preview) never credits one store's partner on the other, and each store's
+ * attribution window is checked at the booking. No import beyond the code's
+ * rules: the proxy reads it.
  */
 export const PARTNER_COOKIE = "louez_partner";
 
-export const PARTNER_COOKIE_MAX_AGE = PARTNER_ATTRIBUTION_DAYS * 24 * 60 * 60;
+/** As long as the longest window a store may choose. */
+export const PARTNER_COOKIE_MAX_AGE = MAX_PARTNER_ATTRIBUTION_DAYS * 24 * 60 * 60;
 
-export const encodePartnerCookie = (storeId: string, code: string): string => `${storeId}.${code}`;
+export { PARTNER_LINK_PARAM };
 
-/** The partner code the cookie holds for this store, or null. */
-export const partnerCodeFromCookie = (
-  value: string | undefined,
-  storeId: string,
-): string | null => {
-  if (!value) return null;
-  const separator = value.indexOf(".");
-  if (separator <= 0 || value.slice(0, separator) !== storeId) return null;
-  return parsePartnerCode(value.slice(separator + 1));
+/** `<store slug>.<code>.<click time, in seconds>`. */
+export const encodePartnerCookie = (storeSlug: string, code: string, clickedAt: Date): string =>
+  `${storeSlug}.${code}.${Math.floor(clickedAt.getTime() / 1000)}`;
+
+/** The partner code and click time the cookie holds for this store, or null. */
+export const readPartnerCookie = (
+  value: string | undefined | null,
+  storeSlug: string,
+): { code: string; clickedAt: Date } | null => {
+  const parts = value?.split(".") ?? [];
+  if (parts.length !== 3 || parts[0] !== storeSlug) return null;
+  const code = parsePartnerCode(parts[1]);
+  const seconds = Number(parts[2]);
+  if (!code || !Number.isSafeInteger(seconds) || seconds <= 0) return null;
+  return { code, clickedAt: new Date(seconds * 1000) };
 };

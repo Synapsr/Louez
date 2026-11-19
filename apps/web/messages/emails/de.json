@@ -397,5 +397,25 @@
     "savingsLabel": "Ersparnis:",
     "cta": "Angebot ansehen",
     "footer": "Monatliches Abo, ohne Vertragsbindung, jederzeit kündbar. Stripe-Gebühren und Gebühren des reeent-Marktplatzes bleiben fällig."
+  },
+  "partnerNotification": {
+    "greeting": "Guten Tag {partner},",
+    "cta": "Meinen Partnerbereich öffnen",
+    "footer": "Sie erhalten diese E-Mail, weil {store} Sie als Partner hinzugefügt hat. In Ihrem Partnerbereich wählen Sie, welche E-Mails Sie erhalten.",
+    "booking": {
+      "subject": "Eine neue Buchung dank Ihnen bei {store}",
+      "title": "Eine neue Buchung dank Ihnen",
+      "body": "Ein Kunde hat dank Ihnen bei {store} gebucht. Ihre voraussichtliche Provision: {amount}, fällig, sobald die Miete am {endDate} endet."
+    },
+    "payout": {
+      "subject": "{store} hat Ihnen {amount} gezahlt",
+      "title": "Zahlung erhalten",
+      "body": "{store} hat festgehalten, dass Ihnen {amount} für die Mieten gezahlt wurden, die im {month} endeten. Vielen Dank für Ihre Empfehlungen!"
+    },
+    "statement": {
+      "subject": "Ihre Abrechnung für {month} bei {store}",
+      "title": "Ihre Abrechnung für {month}",
+      "body": "{bookings, plural, one {# Buchung} other {# Buchungen}} dank Ihnen. Fällig: {due}. Bereits bezahlt: {paid}. Noch zu zahlen: {remaining}."
+    }
   }
 }
