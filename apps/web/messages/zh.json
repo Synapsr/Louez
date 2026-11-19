@@ -5224,6 +5224,8 @@
           "signatureConfirmation": "我确认已检查设备状况并接受条款",
           "signatureComplete": "签名已验证",
           "customerSignature": "客户签名",
+          "issuerSignature": "交付方签名",
+          "receiverSignature": "接收方（客户）签名",
           "signatureTitle": "签名",
           "signatureDescription": "客户必须签字以确认检查结果",
           "back": "返回",

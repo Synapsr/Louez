@@ -34,7 +34,8 @@
     "notes": "Примечания"
   },
   "signature": {
-    "customerSignature": "Подпись клиента",
+    "customerSignature": "Подпись принимающей стороны (клиента)",
+    "issuerSignature": "Подпись выдающей стороны",
     "signedAt": "Подписано в",
     "ipAddress": "IP-адрес",
     "notSigned": "Не подписано"

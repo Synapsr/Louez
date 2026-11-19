@@ -43,6 +43,7 @@ export const createDemoInspectionWizard = (
     reservationId: "demo-reservation-0",
     reservationNumber: "1042",
     customerName: `${customer.firstName} ${customer.lastName}`,
+    issuerName: `${customer.firstName} ${customer.lastName}`,
     type: "departure",
     items,
     requireSignature: true,

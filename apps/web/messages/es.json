@@ -5088,6 +5088,8 @@
           "signatureConfirmation": "Confirmo haber verificado el estado del equipo y acepto las condiciones",
           "signatureComplete": "Firma validada",
           "customerSignature": "Firma del cliente",
+          "issuerSignature": "Firma de la persona que entrega",
+          "receiverSignature": "Firma de la persona que recibe (cliente)",
           "signatureTitle": "Firma",
           "signatureDescription": "El cliente debe firmar para validar el acta",
           "back": "Volver",

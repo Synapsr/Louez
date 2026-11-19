@@ -666,6 +666,13 @@
       "when": 1794920000000,
       "tag": "0089_add_reservation_production_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "5",
+      "when": 1794920001000,
+      "tag": "0090_add_inspection_issuer_signature",
+      "breakpoints": true
     }
   ]
 }

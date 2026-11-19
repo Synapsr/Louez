@@ -5224,6 +5224,8 @@
           "signatureConfirmation": "Я подтверждаю, что проверил состояние оборудования и принимаю условия",
           "signatureComplete": "Подпись проверена",
           "customerSignature": "Подпись клиента",
+          "issuerSignature": "Подпись выдающей стороны",
+          "receiverSignature": "Подпись принимающей стороны (клиента)",
           "signatureTitle": "Подпись",
           "signatureDescription": "Клиент должен подписать подтверждение проверки.",
           "back": "Назад",

@@ -5088,6 +5088,8 @@
           "signatureConfirmation": "Ich bestätige, dass ich den Zustand der Ausrüstung überprüft habe und die Bedingungen akzeptiere",
           "signatureComplete": "Unterschrift bestätigt",
           "customerSignature": "Kundenunterschrift",
+          "issuerSignature": "Unterschrift der ausgebenden Person",
+          "receiverSignature": "Unterschrift der empfangenden Person (Kunde)",
           "signatureTitle": "Unterschrift",
           "signatureDescription": "Der Kunde muss unterschreiben, um das Protokoll zu bestätigen",
           "back": "Zurück",

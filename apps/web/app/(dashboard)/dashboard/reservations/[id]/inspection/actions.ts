@@ -367,7 +367,7 @@ export async function signInspection(
     return { error: "errors.invalidData" };
   }
 
-  const { customerSignature } = validated.data;
+  const { customerSignature, issuerSignature } = validated.data;
 
   // Get inspection and verify access
   const [inspection] = await db
@@ -397,6 +397,7 @@ export async function signInspection(
     .set({
       status: "signed",
       customerSignature,
+      issuerSignature,
       signedAt: now,
       updatedAt: now,
     })

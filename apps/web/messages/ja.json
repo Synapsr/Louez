@@ -5224,6 +5224,8 @@
           "signatureConfirmation": "機器の状態を確認したことを確認し、規約に同意します",
           "signatureComplete": "署名が検証されました",
           "customerSignature": "顧客の署名",
+          "issuerSignature": "貸出担当者の署名",
+          "receiverSignature": "受取担当者（顧客）の署名",
           "signatureTitle": "署名",
           "signatureDescription": "顧客は検査を検証するために署名する必要があります",
           "back": "戻る",

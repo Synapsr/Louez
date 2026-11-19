@@ -34,7 +34,8 @@
     "notes": "Notes"
   },
   "signature": {
-    "customerSignature": "Customer Signature",
+    "customerSignature": "Receiving Person (Customer) Signature",
+    "issuerSignature": "Issuing Person Signature",
     "signedAt": "Signed at",
     "ipAddress": "IP Address",
     "notSigned": "Not signed"

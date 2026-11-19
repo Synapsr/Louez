@@ -58,6 +58,7 @@ interface InspectionWizardProps {
   reservationId: string;
   reservationNumber: string;
   customerName: string;
+  issuerName: string;
   type: InspectionType;
   items: ReservationItem[];
   requireSignature: boolean;
@@ -452,11 +453,21 @@ function StepSummary({ items, inspections, globalNotes, onGlobalNotesChange }: S
 
 interface StepSignatureProps {
   customerName: string;
-  signature: string | null;
-  onSignatureChange: (signature: string | null) => void;
+  issuerName: string;
+  customerSignature: string | null;
+  issuerSignature: string | null;
+  onCustomerSignatureChange: (signature: string | null) => void;
+  onIssuerSignatureChange: (signature: string | null) => void;
 }
 
-function StepSignature({ customerName, signature, onSignatureChange }: StepSignatureProps) {
+function StepSignature({
+  customerName,
+  issuerName,
+  customerSignature,
+  issuerSignature,
+  onCustomerSignatureChange,
+  onIssuerSignatureChange,
+}: StepSignatureProps) {
   const t = useTranslations("dashboard.settings.inspection");
 
   return (
@@ -474,8 +485,26 @@ function StepSignature({ customerName, signature, onSignatureChange }: StepSigna
         </div>
       </div>
 
-      {/* Signature pad */}
-      <SignaturePad value={signature} onChange={onSignatureChange} signerName={customerName} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-3">
+          <h4 className="font-medium">{t("wizard.issuerSignature")}</h4>
+          <SignaturePad
+            value={issuerSignature}
+            onChange={onIssuerSignatureChange}
+            signerName={issuerName}
+            confirmationId="issuer-signature-confirmation"
+          />
+        </div>
+        <div className="space-y-3">
+          <h4 className="font-medium">{t("wizard.receiverSignature")}</h4>
+          <SignaturePad
+            value={customerSignature}
+            onChange={onCustomerSignatureChange}
+            signerName={customerName}
+            confirmationId="receiver-signature-confirmation"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -488,6 +517,7 @@ export function InspectionWizard({
   reservationId,
   reservationNumber,
   customerName,
+  issuerName,
   type,
   items,
   requireSignature,
@@ -520,7 +550,8 @@ export function InspectionWizard({
     return map;
   });
   const [globalNotes, setGlobalNotes] = useState("");
-  const [signature, setSignature] = useState<string | null>(null);
+  const [customerSignature, setCustomerSignature] = useState<string | null>(null);
+  const [issuerSignature, setIssuerSignature] = useState<string | null>(null);
   const [completedAt, setCompletedAt] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repairDowntimeSuggestion, setRepairDowntimeSuggestion] =
@@ -571,11 +602,11 @@ export function InspectionWizard({
       case "summary":
         return true;
       case "signature":
-        return !!signature;
+        return !!customerSignature && !!issuerSignature;
       default:
         return false;
     }
-  }, [currentStep, signature]);
+  }, [currentStep, customerSignature, issuerSignature]);
 
   const handleInspectionChange = useCallback(
     (itemId: string, data: Partial<ItemInspection>) => {
@@ -718,9 +749,10 @@ export function InspectionWizard({
       }
 
       // Sign if required
-      if (requireSignature && signature) {
+      if (requireSignature && customerSignature && issuerSignature) {
         const signResult = await signInspection(createResult.inspectionId, {
-          customerSignature: signature,
+          customerSignature,
+          issuerSignature,
         });
 
         if (signResult.error) {
@@ -752,7 +784,8 @@ export function InspectionWizard({
     type,
     globalNotes,
     requireSignature,
-    signature,
+    customerSignature,
+    issuerSignature,
     t,
     queryClient,
     finishInspectionFlow,
@@ -782,13 +815,14 @@ export function InspectionWizard({
         inspection={{
           id: `preview-${reservationId}-${type}`,
           type,
-          status: signature ? "signed" : "completed",
+          status: customerSignature && issuerSignature ? "signed" : "completed",
           hasDamage: Array.from(inspections.values()).some((item) => item.condition === "damage"),
           notes: globalNotes || null,
           performedByName: null,
           createdAt: completedAt,
-          signedAt: signature ? completedAt : null,
-          customerSignature: signature,
+          signedAt: customerSignature && issuerSignature ? completedAt : null,
+          customerSignature,
+          issuerSignature,
           items: items.map((item) => {
             const inspection = inspections.get(item.id);
             return {
@@ -884,8 +918,11 @@ export function InspectionWizard({
           {currentStep === "signature" && (
             <StepSignature
               customerName={customerName}
-              signature={signature}
-              onSignatureChange={setSignature}
+              issuerName={issuerName}
+              customerSignature={customerSignature}
+              issuerSignature={issuerSignature}
+              onCustomerSignatureChange={setCustomerSignature}
+              onIssuerSignatureChange={setIssuerSignature}
             />
           )}
         </div>

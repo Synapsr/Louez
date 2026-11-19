@@ -3320,6 +3320,7 @@ export const inspections = mysqlTable(
     performedAt: timestamp("performed_at", { mode: "date" }),
     // Customer signature
     customerSignature: longtext("customer_signature"), // Base64 signature image
+    issuerSignature: longtext("issuer_signature"), // Base64 signature image
     signedAt: timestamp("signed_at", { mode: "date" }),
     signatureIp: varchar("signature_ip", { length: 50 }),
     // Damage assessment

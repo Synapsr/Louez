@@ -5224,6 +5224,8 @@
           "signatureConfirmation": "Saya mengonfirmasi telah memeriksa kondisi peralatan dan menerima persyaratannya",
           "signatureComplete": "Tanda tangan divalidasi",
           "customerSignature": "Tanda tangan pelanggan",
+          "issuerSignature": "Tanda tangan pihak yang menyerahkan",
+          "receiverSignature": "Tanda tangan pihak penerima (pelanggan)",
           "signatureTitle": "Tanda tangan",
           "signatureDescription": "Pelanggan harus menandatangani untuk memvalidasi pemeriksaan",
           "back": "Kembali",

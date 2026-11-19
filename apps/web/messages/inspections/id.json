@@ -34,7 +34,8 @@
     "notes": "Catatan"
   },
   "signature": {
-    "customerSignature": "Tanda Tangan Pelanggan",
+    "customerSignature": "Tanda Tangan Pihak Penerima (Pelanggan)",
+    "issuerSignature": "Tanda Tangan Pihak yang Menyerahkan",
     "signedAt": "Ditandatangani di",
     "ipAddress": "Alamat IP",
     "notSigned": "Tidak ditandatangani"

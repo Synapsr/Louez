@@ -60,6 +60,7 @@ export interface InspectionTranslations {
   };
   signature: {
     customerSignature: string;
+    issuerSignature: string;
     signedAt: string;
     ipAddress: string;
     notSigned: string;
@@ -113,6 +114,7 @@ interface Inspection {
   signedAt?: Date | null;
   signatureIp?: string | null;
   customerSignature?: string | null;
+  issuerSignature?: string | null;
   items: InspectionItem[];
 }
 
@@ -300,12 +302,20 @@ export function InspectionReportDocument({
         <View style={styles.signatureSection} wrap={false}>
           <Text style={styles.sectionTitle}>{t.sections.signature}</Text>
 
-          {inspection.customerSignature ? (
+          {inspection.issuerSignature || inspection.customerSignature ? (
             <View style={styles.signatureContent}>
-              <View style={styles.signatureBox}>
-                <Text style={styles.signatureLabel}>{t.signature.customerSignature}</Text>
-                <Image src={inspection.customerSignature} style={styles.signatureImage} />
-              </View>
+              {inspection.issuerSignature && (
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>{t.signature.issuerSignature}</Text>
+                  <Image src={inspection.issuerSignature} style={styles.signatureImage} />
+                </View>
+              )}
+              {inspection.customerSignature && (
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>{t.signature.customerSignature}</Text>
+                  <Image src={inspection.customerSignature} style={styles.signatureImage} />
+                </View>
+              )}
               <View style={styles.signatureDetails}>
                 {inspection.signedAt && (
                   <Text style={styles.signatureDetailText}>

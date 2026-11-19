@@ -5224,6 +5224,8 @@
           "signatureConfirmation": "장비 상태를 확인했음을 확인하고 약관에 동의합니다.",
           "signatureComplete": "서명이 확인되었습니다.",
           "customerSignature": "고객 서명",
+          "issuerSignature": "인계자 서명",
+          "receiverSignature": "인수자(고객) 서명",
           "signatureTitle": "서명",
           "signatureDescription": "검사를 확인하려면 고객이 서명해야 합니다.",
           "back": "뒤로",

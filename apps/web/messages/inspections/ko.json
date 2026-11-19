@@ -34,7 +34,8 @@
     "notes": "메모"
   },
   "signature": {
-    "customerSignature": "고객 서명",
+    "customerSignature": "인수자(고객) 서명",
+    "issuerSignature": "인계자 서명",
     "signedAt": "서명 날짜",
     "ipAddress": "IP 주소",
     "notSigned": "서명되지 않음"
