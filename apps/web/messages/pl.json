@@ -7519,7 +7519,6 @@
         "headline": "Rezerwuj online",
         "scanHint": "Zeskanuj aparatem telefonu",
         "save": "Zapisz plakat",
-        "hint": "Wydrukuj go w formacie A4 na ladę lub witrynę albo pokaż z telefonu.",
         "previewAlt": "Podgląd plakatu",
         "fileName": "plakat"
       },
@@ -7697,7 +7696,6 @@
         "poster": "Plakat QR",
         "posterTitle": "Plakat dla: {partner}",
         "posterDescription": "Kod QR otwiera Twój sklep z jego linkiem.",
-        "posterHint": "Wydrukuj go do jego recepcji albo mu go wyślij.",
         "posterFileName": "plakat-partnera",
         "sendEmail": "E-mail",
         "emailSubject": "Państwa link partnerski do {store}",
@@ -10793,7 +10791,6 @@
       "poster": "Plakat QR",
       "posterTitle": "Państwa plakat",
       "posterDescription": "Kod QR otwiera sklep z Państwa linkiem.",
-      "posterHint": "Proszę wydrukować go do recepcji.",
       "posterFileName": "plakat",
       "code": "Państwa kod do przekazania ustnie: {code}",
       "posterRecommended": "Polecane przez {partner}"

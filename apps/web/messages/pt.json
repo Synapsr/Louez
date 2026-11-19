@@ -7519,7 +7519,6 @@
         "headline": "Reserve online",
         "scanHint": "Digitalize com a câmara do telemóvel",
         "save": "Guardar o cartaz",
-        "hint": "Imprima-o em A4 para o balcão ou a montra, ou mostre-o no telemóvel.",
         "previewAlt": "Pré-visualização do cartaz",
         "fileName": "cartaz"
       },
@@ -7697,7 +7696,6 @@
         "poster": "Cartaz QR",
         "posterTitle": "Cartaz para {partner}",
         "posterDescription": "O código QR abre a sua loja com o link do parceiro.",
-        "posterHint": "Imprima-o para a receção do parceiro ou envie-lho.",
         "posterFileName": "cartaz-parceiro",
         "sendEmail": "E-mail",
         "emailSubject": "O seu link de parceiro {store}",
@@ -10793,7 +10791,6 @@
       "poster": "Cartaz QR",
       "posterTitle": "O seu cartaz",
       "posterDescription": "O código QR abre a loja com o seu link.",
-      "posterHint": "Imprima-o para a sua receção.",
       "posterFileName": "cartaz",
       "code": "O seu código, para dar de viva voz: {code}",
       "posterRecommended": "Recomendado por {partner}"

@@ -7519,7 +7519,6 @@
         "headline": "온라인 예약",
         "scanHint": "휴대폰 카메라로 스캔하세요",
         "save": "포스터 저장",
-        "hint": "A4로 인쇄해 계산대나 진열창에 붙이거나, 휴대폰으로 보여 주세요.",
         "previewAlt": "포스터 미리보기",
         "fileName": "poster"
       },
@@ -7697,7 +7696,6 @@
         "poster": "QR 포스터",
         "posterTitle": "{partner} 포스터",
         "posterDescription": "QR 코드를 스캔하면 파트너 링크로 스토어가 열려요.",
-        "posterHint": "인쇄해서 파트너의 프런트에 두거나 파트너에게 보내세요.",
         "posterFileName": "partner-poster",
         "sendEmail": "이메일",
         "emailSubject": "{store} 파트너 링크 안내",
@@ -10793,7 +10791,6 @@
       "poster": "QR 포스터",
       "posterTitle": "내 포스터",
       "posterDescription": "QR 코드를 스캔하면 귀하의 링크로 스토어가 열립니다.",
-      "posterHint": "인쇄해서 프런트에 두세요.",
       "posterFileName": "poster",
       "code": "말로 전할 수 있는 내 코드: {code}",
       "posterRecommended": "{partner} 추천"

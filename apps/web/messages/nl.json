@@ -7519,7 +7519,6 @@
         "headline": "Boek online",
         "scanHint": "Scan met de camera van je telefoon",
         "save": "Poster opslaan",
-        "hint": "Print hem op A4 voor je balie of etalage, of laat hem zien op je telefoon.",
         "previewAlt": "Voorbeeld van de poster",
         "fileName": "poster"
       },
@@ -7697,7 +7696,6 @@
         "poster": "QR-poster",
         "posterTitle": "Poster voor {partner}",
         "posterDescription": "De QR-code opent je winkel met zijn link.",
-        "posterHint": "Print hem voor zijn receptie of stuur hem op.",
         "posterFileName": "partner-poster",
         "sendEmail": "E-mail",
         "emailSubject": "Uw partnerlink voor {store}",
@@ -10793,7 +10791,6 @@
       "poster": "QR-poster",
       "posterTitle": "Uw poster",
       "posterDescription": "De QR-code opent de winkel met uw link.",
-      "posterHint": "Print hem voor uw receptie.",
       "posterFileName": "poster",
       "code": "Uw code, om mondeling door te geven: {code}",
       "posterRecommended": "Aanbevolen door {partner}"

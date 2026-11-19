@@ -7519,7 +7519,6 @@
         "headline": "在线预订",
         "scanHint": "用手机相机扫码",
         "save": "保存海报",
-        "hint": "用 A4 纸打印后放在柜台或橱窗，或直接用手机展示。",
         "previewAlt": "海报预览",
         "fileName": "poster"
       },
@@ -7697,7 +7696,6 @@
         "poster": "二维码海报",
         "posterTitle": "{partner} 的海报",
         "posterDescription": "扫描二维码会通过其专属链接打开你的店铺。",
-        "posterHint": "打印出来放在对方的前台，或直接发给对方。",
         "posterFileName": "partner-poster",
         "sendEmail": "邮件",
         "emailSubject": "您在 {store} 的合作伙伴链接",
@@ -10793,7 +10791,6 @@
       "poster": "二维码海报",
       "posterTitle": "您的海报",
       "posterDescription": "扫描二维码即可通过您的链接打开店铺。",
-      "posterHint": "打印出来放在前台。",
       "posterFileName": "haibao",
       "code": "您的代码，可口头告知：{code}",
       "posterRecommended": "由 {partner} 推荐"

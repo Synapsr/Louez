@@ -198,10 +198,13 @@ prennent aussi la couleur et le logo de la boutique.
 
 **L'affiche QR** (celle de « Premiers clients » comme celle d'un partenaire) porte la boutique :
 un bandeau à sa couleur avec son logo sur une carte blanche (ou son nom), « Réservez en ligne »,
-« Recommandé par … » sur l'affiche d'un partenaire, le QR encadré, son logo au centre (ou son
-initiale si le logo est trop horizontal). Le QR prend la couleur de la boutique seulement si
-elle contraste assez avec le blanc (4,5:1) ; sinon il reste noir, pour que tous les téléphones
-le lisent. Avec un logo au centre, le QR passe en correction maximale (niveau H).
+« Recommandé par … » sur l'affiche d'un partenaire, puis le QR et « Scannez avec l'appareil
+photo de votre téléphone » ; ni adresse imprimée, ni texte d'aide sous l'aperçu (Téo, 19
+novembre : le QR suffit). Le QR est dessiné par `qr-code-styling` : modules noirs arrondis et
+liés, coins arrondis à la couleur de la boutique, son logo au centre (ou son initiale sur une
+tuile à sa couleur si le logo est trop horizontal). Les coins ne prennent la couleur que si elle
+contraste assez avec le blanc (4,5:1) ; sinon ils restent noirs, pour que tous les téléphones le
+lisent. Le centre cache des modules : le QR est toujours en correction maximale (niveau H).
 
 La page dit que ce n'est pas une facture et que la boutique paie directement. La boutique peut
 **changer ce lien** (l'ancien cesse de marcher).

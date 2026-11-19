@@ -7519,7 +7519,6 @@
         "headline": "Prenota online",
         "scanHint": "Inquadra con la fotocamera del telefono",
         "save": "Salva il poster",
-        "hint": "Stampalo in A4 per il banco o la vetrina, oppure mostralo dal telefono.",
         "previewAlt": "Anteprima del poster",
         "fileName": "poster"
       },
@@ -7697,7 +7696,6 @@
         "poster": "Poster QR",
         "posterTitle": "Poster per {partner}",
         "posterDescription": "Il QR code apre il tuo negozio con il suo link.",
-        "posterHint": "Stampalo per la sua reception oppure inviaglielo.",
         "posterFileName": "poster-partner",
         "sendEmail": "Email",
         "emailSubject": "Il Suo link partner di {store}",
@@ -10793,7 +10791,6 @@
       "poster": "Poster QR",
       "posterTitle": "Il Suo poster",
       "posterDescription": "Il codice QR apre il negozio con il Suo link.",
-      "posterHint": "Lo stampi per la Sua reception.",
       "posterFileName": "poster",
       "code": "Il Suo codice, da comunicare a voce: {code}",
       "posterRecommended": "Consigliato da {partner}"

@@ -1,28 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { log } from "evlog/next/client";
 import { Download } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { QRCodeCanvas } from "qrcode.react";
 
 import { Button, Spinner } from "@louez/ui";
 
+import { usePosterCode } from "./use-poster-code";
 import { usePosterLogo } from "./use-poster-logo";
-import { POSTER_QR_SIZE, drawPoster, posterColors, toDisplayUrl } from "./util.poster";
+import { drawPoster } from "./util.poster";
 
 interface QrPosterProps {
   storeName: string;
   /** What the code opens, marked with its source or partner. */
   url: string;
-  /** The address printed under the code; the store's plain address by default. */
-  displayUrl: string;
   /** Without extension. */
   fileName: string;
-  hint: string;
   onSave: () => void;
-  /** The store's colour (`#rrggbb`): the band, and the code when it is dark enough. */
+  /** The store's colour (`#rrggbb`): the band, and the code's eyes when it is dark enough. */
   accentColor?: string | null;
   /** The store's logo: on the band and at the centre of the code. */
   logoUrl?: string | null;
@@ -31,45 +28,41 @@ interface QrPosterProps {
 }
 
 /**
- * An A4 poster in the store's colours: its logo (or name), a QR code and an
- * address, saved as a PNG the loueur (or its partner) prints or keeps on a phone.
+ * An A4 poster in the store's colours: its logo (or name) and a QR code with
+ * its logo at the centre, saved as a PNG the loueur (or its partner) prints or
+ * keeps on a phone.
  */
 export const QrPoster = ({
   storeName,
   url,
-  displayUrl,
   fileName,
-  hint,
   onSave,
   accentColor,
   logoUrl,
   recommendedBy,
 }: QrPosterProps) => {
   const t = useTranslations("dashboard.visibility.poster");
-  const qrRef = useRef<HTMLCanvasElement>(null);
   const [poster, setPoster] = useState<{ canvas: HTMLCanvasElement; preview: string } | null>(null);
   const headline = t("headline");
   const scanHint = t("scanHint");
   const logo = usePosterLogo(logoUrl);
-  const colors = posterColors(accentColor);
+  const qr = usePosterCode({ url, storeName, accentColor, logo });
 
   useEffect(() => {
-    const qr = qrRef.current;
-    // Wait for the logo, so the poster is drawn once with it or without it.
+    // Wait for the logo and the code, so the poster is drawn once.
     if (!qr || logo === undefined) return;
     const canvas = document.createElement("canvas");
     drawPoster(canvas, {
       storeName,
       headline,
       scanHint,
-      displayUrl: toDisplayUrl(displayUrl),
       qr,
       accentColor,
       logo,
       recommendedBy,
     });
     setPoster({ canvas, preview: canvas.toDataURL("image/png") });
-  }, [headline, scanHint, storeName, displayUrl, url, accentColor, logo, recommendedBy]);
+  }, [headline, scanHint, storeName, qr, accentColor, logo, recommendedBy]);
 
   const save = () => {
     if (!poster) return;
@@ -97,18 +90,6 @@ export const QrPoster = ({
 
   return (
     <div className="space-y-4">
-      {/* The code the poster draws; never shown on its own. */}
-      <QRCodeCanvas
-        ref={qrRef}
-        value={url}
-        size={POSTER_QR_SIZE}
-        // A logo covers its centre: the highest correction keeps it readable.
-        level={logo ? "H" : "M"}
-        fgColor={colors.code}
-        marginSize={0}
-        className="hidden"
-        aria-hidden
-      />
       <div className="bg-muted/40 flex justify-center rounded-xl p-4">
         {poster ? (
           // eslint-disable-next-line @next/next/no-img-element -- a data URL drawn in the browser
@@ -123,7 +104,6 @@ export const QrPoster = ({
           </div>
         )}
       </div>
-      <p className="text-muted-foreground text-sm">{hint}</p>
       <Button className="w-full" onClick={save} disabled={!poster}>
         <Download />
         {t("save")}
