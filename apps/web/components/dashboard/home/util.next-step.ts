@@ -30,7 +30,9 @@ export interface HomeNextStepFacts {
   /** The store signed up from reeent, and wants online payments Stripe cannot take yet. */
   reeentAwaitsStripe: boolean;
   hasActiveProduct: boolean;
-  /** A real (not test) reservation exists. */
+  /** The store already rents to real customers (`isEstablishedStore`): no getting-started card. */
+  established: boolean;
+  /** A real (not test) reservation exists, whatever its status. */
   hasRealReservation: boolean;
   /** The store's test reservation: its status, or null when it has none. */
   testReservationStatus: ReservationStatus | null;
@@ -45,6 +47,24 @@ export interface HomeNextStepFacts {
 }
 
 /**
+ * A store is established once a real customer rented from it: a real (not
+ * test) reservation the store accepted (confirmed, ongoing or completed), or a
+ * rental payment received. A request still pending, refused or cancelled is
+ * not one; the home's counters (getStoreMetrics) already leave tests out.
+ */
+export function isEstablishedStore(metrics: {
+  confirmedReservations: number;
+  ongoingReservations: number;
+  completedReservations: number;
+  allTimeRevenue: number;
+}): boolean {
+  return (
+    metrics.confirmedReservations + metrics.ongoingReservations + metrics.completedReservations >
+      0 || metrics.allTimeRevenue > 0
+  );
+}
+
+/**
  * Every card the store could see now, the most useful first. The home shows
  * the first; `planOffer` is read from the billing service after the page, so
  * when it has no offer the one after it takes its place.
@@ -53,7 +73,7 @@ export function homeNextSteps(facts: HomeNextStepFacts): HomeNextStep[] {
   const steps: HomeNextStep[] = [];
   // reeent does not publish the store until Stripe can charge.
   if (facts.reeentAwaitsStripe) steps.push("reeentStripe");
-  if (!facts.hasActiveProduct) steps.push("firstProduct");
+  if (!facts.hasActiveProduct && !facts.established) steps.push("firstProduct");
   if (
     facts.hasActiveProduct &&
     !facts.hasRealReservation &&
@@ -64,7 +84,9 @@ export function homeNextSteps(facts: HomeNextStepFacts): HomeNextStep[] {
   }
   // Only a store that has paid commissions gets an offer: past its first customers.
   if (facts.canOfferPlan && facts.hasRealReservation) steps.push("planOffer");
-  if (facts.visibilityHasNextStep) steps.push("visibility");
+  // "Trouvez vos premiers clients" is behind a store that rents already; the
+  // guide stays in the sidebar.
+  if (facts.visibilityHasNextStep && !facts.established) steps.push("visibility");
   if (facts.agentAssistantOffered) steps.push("agentAssistant");
   if (facts.cohortNotice) steps.push("cohort");
   return steps;
