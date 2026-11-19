@@ -19,7 +19,10 @@ Propriétés de base : `analytics_area: core_product`, `analytics_version: 1`,
 Les événements propres à chaque carte ne changent pas, mais ne partent plus que quand la carte
 est la prochaine étape : `visibility_viewed` (`placement: home_card`), `plan_offer_shown`, et
 les événements de la réservation test. Un `visibility_viewed` d'accueil plus rare qu'avant le
-18 novembre 2026 vient de là, pas d'une baisse d'intérêt.
+18 novembre 2026 vient de là, pas d'une baisse d'intérêt. Depuis le 19 novembre 2026, une
+boutique établie (une vraie réservation acceptée ou un paiement reçu) ne voit plus les cartes
+`firstProduct`, `visibility` et `agentAssistant` : la baisse de ces valeurs de `step` vient de
+là.
 
 Sans `NEXT_PUBLIC_POSTHOG_KEY`, rien ne part.
 

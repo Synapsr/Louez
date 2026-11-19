@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import {
   cohortNoticeOf,
   homeNextSteps,
+  isEstablishedStore,
   pickHomeNextStep,
   type HomeNextStepFacts,
 } from "./util.next-step";
@@ -13,6 +14,7 @@ const fresh: HomeNextStepFacts = {
   dismissedNoticeIds: [],
   reeentAwaitsStripe: false,
   hasActiveProduct: false,
+  established: false,
   hasRealReservation: false,
   testReservationStatus: null,
   canOfferPlan: true,
@@ -28,21 +30,60 @@ const withProduct: HomeNextStepFacts = {
   visibilityHasNextStep: true,
 };
 
+/** A store that rents already: an accepted reservation, guide steps still open. */
+const established: HomeNextStepFacts = {
+  ...withProduct,
+  established: true,
+  hasRealReservation: true,
+};
+
 describe("home next step: one card for the store's stage", () => {
   const stages: Array<[string, HomeNextStepFacts, string | null]> = [
     ["no product", fresh, "firstProduct"],
-    ["reeent store waiting for Stripe, no product", { ...fresh, reeentAwaitsStripe: true }, "reeentStripe"],
-    ["reeent store waiting for Stripe, with a product", { ...withProduct, reeentAwaitsStripe: true }, "reeentStripe"],
+    [
+      "reeent store waiting for Stripe, no product",
+      { ...fresh, reeentAwaitsStripe: true },
+      "reeentStripe",
+    ],
+    [
+      "reeent store waiting for Stripe, with a product",
+      { ...withProduct, reeentAwaitsStripe: true },
+      "reeentStripe",
+    ],
     ["a product, no test yet", withProduct, "testReservation"],
     ["a test running", { ...withProduct, testReservationStatus: "confirmed" }, "testReservation"],
     ["the test completed", { ...withProduct, testReservationStatus: "completed" }, "visibility"],
     ["the test cancelled", { ...withProduct, testReservationStatus: "cancelled" }, "visibility"],
-    ["the test card closed", { ...withProduct, dismissedNoticeIds: ["test-reservation"] }, "visibility"],
-    ["a real reservation, owner on a billing instance", { ...withProduct, hasRealReservation: true }, "planOffer"],
-    ["a real reservation, not the owner", { ...withProduct, hasRealReservation: true, canOfferPlan: false }, "visibility"],
+    [
+      "the test card closed",
+      { ...withProduct, dismissedNoticeIds: ["test-reservation"] },
+      "visibility",
+    ],
+    [
+      "a real request not accepted yet, owner on a billing instance",
+      { ...withProduct, hasRealReservation: true },
+      "planOffer",
+    ],
+    [
+      "a real request not accepted yet, not the owner",
+      { ...withProduct, hasRealReservation: true, canOfferPlan: false },
+      "visibility",
+    ],
+    ["established, owner on a billing instance", established, "planOffer"],
+    ["established, not the owner", { ...established, canOfferPlan: false }, "cohort"],
+    [
+      "established, reeent store waiting for Stripe",
+      { ...established, reeentAwaitsStripe: true },
+      "reeentStripe",
+    ],
     [
       "the guide done, no plan to offer",
-      { ...withProduct, hasRealReservation: true, canOfferPlan: false, visibilityHasNextStep: false },
+      {
+        ...withProduct,
+        hasRealReservation: true,
+        canOfferPlan: false,
+        visibilityHasNextStep: false,
+      },
       "agentAssistant",
     ],
     [
@@ -85,6 +126,39 @@ describe("home next step: one card for the store's stage", () => {
     assert.equal(homeNextSteps(withProduct).includes("planOffer"), false);
   });
 
+  test("an established store sees no getting-started card", () => {
+    const gettingStarted = ["firstProduct", "testReservation", "visibility", "agentAssistant"];
+    for (const facts of [
+      established,
+      { ...established, hasActiveProduct: false },
+      { ...established, dismissedNoticeIds: ["test-reservation" as const] },
+    ]) {
+      const steps = homeNextSteps(facts);
+      assert.deepEqual(
+        steps.filter((step) => gettingStarted.includes(step)),
+        [],
+      );
+    }
+  });
+
+  test("an established store with nothing to offer sees no card", () => {
+    assert.deepEqual(
+      pickHomeNextStep({
+        ...established,
+        canOfferPlan: false,
+        cohortNotice: null,
+      }),
+      { step: null, fallback: null },
+    );
+  });
+
+  test("an empty plan offer leaves an established store the next offer, not the guide", () => {
+    assert.deepEqual(pickHomeNextStep(established), {
+      step: "planOffer",
+      fallback: "cohort",
+    });
+  });
+
   test("an empty plan offer hands its place to the next card", () => {
     assert.deepEqual(pickHomeNextStep({ ...withProduct, hasRealReservation: true }), {
       step: "planOffer",
@@ -94,6 +168,29 @@ describe("home next step: one card for the store's stage", () => {
 
   test("only the plan offer has a fallback", () => {
     assert.deepEqual(pickHomeNextStep(withProduct), { step: "testReservation", fallback: null });
+  });
+});
+
+describe("established store", () => {
+  const none = {
+    confirmedReservations: 0,
+    ongoingReservations: 0,
+    completedReservations: 0,
+    allTimeRevenue: 0,
+  };
+
+  test("a new store is not established", () => {
+    assert.equal(isEstablishedStore(none), false);
+  });
+
+  test("an accepted reservation makes it established", () => {
+    assert.equal(isEstablishedStore({ ...none, confirmedReservations: 1 }), true);
+    assert.equal(isEstablishedStore({ ...none, ongoingReservations: 1 }), true);
+    assert.equal(isEstablishedStore({ ...none, completedReservations: 1 }), true);
+  });
+
+  test("a rental payment received makes it established", () => {
+    assert.equal(isEstablishedStore({ ...none, allTimeRevenue: 40.5 }), true);
   });
 });
 
@@ -117,7 +214,12 @@ describe("reeent launch notice", () => {
 
   test("the earned badge, wherever the store came from", () => {
     assert.equal(
-      cohortNoticeOf({ ...base, isFromReeent: true, hasLifetimeFeeWaiver: true, remainingSeats: 0 }),
+      cohortNoticeOf({
+        ...base,
+        isFromReeent: true,
+        hasLifetimeFeeWaiver: true,
+        remainingSeats: 0,
+      }),
       "member",
     );
   });
