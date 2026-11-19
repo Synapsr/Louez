@@ -21,7 +21,7 @@ import { ReservationGateBanner } from "@/components/dashboard/reservation-gate-b
 import { ReservationPollingProvider } from "@/components/dashboard/reservation-polling-provider";
 import { SettingsSearchFocus } from "@/components/dashboard/settings-search-focus";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
-import { StarPrompt } from "@/components/dashboard/star-prompt";
+import { ReviewPrompt } from "@/components/dashboard/review-prompt";
 import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
 import { DashboardSaveShortcut } from "@/components/shared/dashboard-save-shortcut";
 import { KeyboardShortcutsProvider } from "@/components/shared/keyboard-shortcuts-provider";
@@ -211,7 +211,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                 <PasskeyEnrollment />
                 <SettingsSearchFocus />
                 {/* Self-hosted instances only: the cloud never asks. */}
-                {isSelfHosted() && <StarPrompt />}
+                {isSelfHosted() && <ReviewPrompt />}
               </Suspense>
             </div>
           </ReservationPollingProvider>

@@ -398,8 +398,8 @@ export const env = createEnv({
     // reads process.env at call time like LOUEZ_MODE; validated here at runtime.
     LOUEZ_BILLING: louezBillingSchema,
     // Who hosts this instance, for the storefront legal notice and the dashboard's
-    // GitHub star prompt. Unset (the default): the operator hosts it, so the notice names
-    // no host and the dashboard may ask for a star. `lumycloud`: Louez Cloud, hosted by
+    // review prompt. Unset (the default): the operator hosts it, so the notice names
+    // no host and the dashboard may ask for a G2 review and a GitHub star. `lumycloud`: Louez Cloud, hosted by
     // LumyCloud; with LOUEZ_BILLING=cloud the server refuses to start without it
     // (lib/billing/startup-check.ts). Consumed through lib/hosting.ts at call time, like
     // LOUEZ_MODE.

@@ -7340,12 +7340,12 @@
         "nextPage": "Página seguinte"
       }
     },
-    "starPrompt": {
+    "reviewPrompt": {
       "title": "O Louez é gratuito, para sempre",
       "description": "Sem subscrição e sem comissão sobre as suas reservas. Nunca receberá uma fatura da nossa parte.",
-      "pitch": "O único pagamento que pedimos é uma estrela no GitHub. Dois segundos, e é o que mantém o projeto vivo.",
-      "sourceHint": "Ver o código-fonte",
-      "star": "Deixar uma estrela",
+      "pitch": "Um único pedido, se tiver cinco minutos: uma avaliação honesta no G2, com o bom e o menos bom. Ajuda outras empresas de aluguer a escolher. Uma estrela no GitHub também ajuda.",
+      "review": "Deixar uma avaliação no G2",
+      "star": "Deixar uma estrela no GitHub",
       "later": "Mais tarde"
     },
     "reservationDetails": {

@@ -7340,12 +7340,12 @@
         "nextPage": "Następna strona"
       }
     },
-    "starPrompt": {
+    "reviewPrompt": {
       "title": "Louez jest darmowy — na zawsze",
       "description": "Bez abonamentu i bez prowizji od Twoich rezerwacji. Nigdy nie dostaniesz od nas faktury.",
-      "pitch": "Jedyna zapłata, o jaką prosimy, to gwiazdka na GitHubie. Dwie sekundy — i to właśnie utrzymuje projekt przy życiu.",
-      "sourceHint": "Przejrzyj kod źródłowy",
-      "star": "Zostaw gwiazdkę",
+      "pitch": "Jedna prośba, jeśli masz pięć minut: szczera opinia na G2, z plusami i minusami. Pomaga innym wypożyczalniom w wyborze. Gwiazdka na GitHubie też pomaga.",
+      "review": "Napisz opinię na G2",
+      "star": "Zostaw gwiazdkę na GitHubie",
       "later": "Później"
     },
     "reservationDetails": {

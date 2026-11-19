@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { motion } from "framer-motion";
-import { ExternalLink, Github, Star } from "lucide-react";
+import { ExternalLink, Github, MessageSquareText, SquarePen } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -20,13 +20,15 @@ import {
 
 import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-tile";
 
+/** G2's review form for Louez: asks for an honest review, with nothing in exchange. */
+const G2_REVIEW_URL = "https://www.g2.com/products/louez/take_survey";
 const REPOSITORY_URL = "https://github.com/Synapsr/Louez";
 const REPOSITORY_LABEL = "Synapsr/Louez";
 
-/** Set once the operator stars the repository. Survives sessions: never ask again. */
-const DISMISSED_KEY = "louez-star-prompt-dismissed";
+/** Set once the operator goes to G2 or GitHub. Survives sessions: never ask again. */
+const DISMISSED_KEY = "louez-review-prompt-dismissed";
 /** Set as soon as the dialog is shown, so it asks at most once per session. */
-const SEEN_KEY = "louez-star-prompt-seen";
+const SEEN_KEY = "louez-review-prompt-seen";
 /** Consumed by the welcome overlay on the very first dashboard visit. */
 const WELCOME_KEY = "louez-show-welcome";
 
@@ -51,26 +53,26 @@ const writeStorage = (storage: Storage, key: string, value: string) => {
 };
 
 /**
- * Asks self-hosters to star the repository, once per session, from the
- * dashboard only.
+ * Asks self-hosters for an honest review on G2, and a star on GitHub, once per
+ * session, from the dashboard only.
  *
  * Rendered only on a self-hosted instance, LOUEZ_HOSTED_BY unset (see the
- * dashboard layout): the cloud never ships it. It makes no outbound request — the star count is not
- * fetched, so a self-hosted instance still talks to nobody until the operator
- * clicks through.
+ * dashboard layout): the cloud never ships it. It makes no outbound request —
+ * no rating or star count is fetched, so a self-hosted instance still talks to
+ * nobody until the operator clicks through.
  */
-export function StarPrompt() {
-  const t = useTranslations("dashboard.starPrompt");
+export const ReviewPrompt = () => {
+  const t = useTranslations("dashboard.reviewPrompt");
   const [open, setOpen] = useState(false);
-  // Without this, focus lands on the source-code link and rings the card the
+  // Without this, focus lands on the repository link and rings the card the
   // eye is not meant to start on.
-  const starButtonRef = useRef<HTMLButtonElement>(null);
+  const reviewButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (readStorage(localStorage, DISMISSED_KEY)) return;
     if (readStorage(sessionStorage, SEEN_KEY)) return;
     // The first dashboard visit belongs to the welcome animation, and a store
-    // created two minutes ago has not earned anyone's gratitude yet.
+    // created two minutes ago has nothing to review yet.
     if (readStorage(sessionStorage, WELCOME_KEY)) return;
 
     const timer = setTimeout(() => {
@@ -83,20 +85,24 @@ export function StarPrompt() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Starring is the only permanent dismissal: "Maybe later" simply lets the
-  // next session ask again.
-  const handleStar = useCallback(() => {
-    window.open(REPOSITORY_URL, "_blank", "noopener,noreferrer");
+  // Going to G2 or to GitHub ends the ask for good: "Maybe later" simply lets
+  // the next session ask again.
+  const dismiss = useCallback(() => {
     writeStorage(localStorage, DISMISSED_KEY, "1");
     setOpen(false);
   }, []);
 
+  const handleReview = useCallback(() => {
+    window.open(G2_REVIEW_URL, "_blank", "noopener,noreferrer");
+    dismiss();
+  }, [dismiss]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogPopup className="sm:max-w-md" initialFocus={starButtonRef}>
+      <DialogPopup className="sm:max-w-md" initialFocus={reviewButtonRef}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5 text-balance">
-            <DashboardIconTile icon={Star} accent="pending" />
+            <DashboardIconTile icon={MessageSquareText} accent="pending" />
             {t("title")}
           </DialogTitle>
           <DialogDescription className="text-pretty">{t("description")}</DialogDescription>
@@ -120,12 +126,13 @@ export function StarPrompt() {
               href={REPOSITORY_URL}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={dismiss}
               className="border-border bg-card hover:border-primary/30 group flex items-center gap-2.5 rounded-xl border p-3 transition-[border-color,box-shadow,scale] duration-150 ease-out hover:shadow-sm active:scale-[0.96]"
             >
               <Github className="text-muted-foreground size-4 shrink-0" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">{REPOSITORY_LABEL}</span>
-                <span className="text-muted-foreground block text-xs">{t("sourceHint")}</span>
+                <span className="text-muted-foreground block text-xs">{t("star")}</span>
               </span>
               <Badge variant="tertiary" className="shrink-0 text-[10px]">
                 AGPL-3.0
@@ -139,12 +146,16 @@ export function StarPrompt() {
           <Button variant="ghost" onClick={() => setOpen(false)}>
             {t("later")}
           </Button>
-          <Button ref={starButtonRef} onClick={handleStar} className="gap-2 active:scale-[0.96]">
-            <Star className="size-4" />
-            {t("star")}
+          <Button
+            ref={reviewButtonRef}
+            onClick={handleReview}
+            className="gap-2 active:scale-[0.96]"
+          >
+            <SquarePen className="size-4" />
+            {t("review")}
           </Button>
         </DialogFooter>
       </DialogPopup>
     </Dialog>
   );
-}
+};

@@ -7340,12 +7340,12 @@
         "nextPage": "Page suivante"
       }
     },
-    "starPrompt": {
+    "reviewPrompt": {
       "title": "Louez est gratuit, pour de bon",
       "description": "Pas d'abonnement, pas de commission sur vos réservations. Vous ne recevrez jamais de facture de notre part.",
-      "pitch": "La seule contrepartie qu'on vous demande : une étoile sur GitHub. Deux secondes, et c'est ce qui fait vivre le projet.",
-      "sourceHint": "Parcourir le code source",
-      "star": "Laisser une étoile",
+      "pitch": "Une seule demande, si vous avez cinq minutes : un avis honnête sur G2, le positif comme le négatif. Il aide d'autres loueurs à choisir. Une étoile sur GitHub aide aussi.",
+      "review": "Laisser un avis sur G2",
+      "star": "Laisser une étoile sur GitHub",
       "later": "Plus tard"
     },
     "reservationDetails": {

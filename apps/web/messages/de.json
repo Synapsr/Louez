@@ -7340,12 +7340,12 @@
         "nextPage": "Nächste Seite"
       }
     },
-    "starPrompt": {
+    "reviewPrompt": {
       "title": "Louez ist kostenlos – für immer",
       "description": "Kein Abo, keine Provision auf Ihre Buchungen. Sie werden nie eine Rechnung von uns erhalten.",
-      "pitch": "Die einzige Bezahlung, um die wir bitten: ein Stern auf GitHub. Zwei Sekunden – und genau das hält das Projekt am Leben.",
-      "sourceHint": "Quellcode ansehen",
-      "star": "Stern hinterlassen",
+      "pitch": "Eine Bitte, wenn Sie fünf Minuten haben: eine ehrliche Bewertung auf G2, mit Stärken und Schwächen. Sie hilft anderen Vermietern bei der Wahl. Ein Stern auf GitHub hilft auch.",
+      "review": "Bewertung auf G2 schreiben",
+      "star": "Stern auf GitHub vergeben",
       "later": "Später"
     },
     "reservationDetails": {

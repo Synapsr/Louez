@@ -7340,12 +7340,12 @@
         "nextPage": "Next page"
       }
     },
-    "starPrompt": {
+    "reviewPrompt": {
       "title": "Louez is free — forever",
       "description": "No subscription, no commission on your bookings. You will never get an invoice from us.",
-      "pitch": "The only payment we ask for is a star on GitHub. It takes two seconds, and it is what keeps the project going.",
-      "sourceHint": "Browse the source code",
-      "star": "Leave a star",
+      "pitch": "One request, if you can spare five minutes: an honest review on G2, the good and the bad. It helps other rental businesses choose. A star on GitHub helps too.",
+      "review": "Leave a review on G2",
+      "star": "Leave a star on GitHub",
       "later": "Maybe later"
     },
     "reservationDetails": {
