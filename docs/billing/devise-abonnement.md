@@ -132,47 +132,34 @@ anciens prix que les prix USD (`legacyStripePrices`). Avant un tel changement, i
 apprendre la liste des anciens prix multidevises, sans quoi les webhooks ne retrouveraient plus
 le plan de ces abonnements.
 
-## 5. Décisions pour Téo
+## 5. Grille en vigueur
 
-### 5.1 Devises au lancement
+Validée par Téo et ajoutée aux quatre prix live le 19 novembre 2026. Montants HT, en 9 ;
+l'annuel vaut dix mois (le badge « -17 % » de la page est écrit en dur). Pas de RUB : Stripe ne
+sert pas la Russie. La colonne « Pro en € » convertit au taux BCE du 18 novembre 2026.
 
-| Devise | Proposition                          | À trancher                                          |
-| ------ | ------------------------------------ | --------------------------------------------------- |
-| EUR    | Inchangé                             | —                                                   |
-| USD    | Option USD sur les prix multidevises | $59 / $189 proposés (section 5.2)                   |
-| GBP    | Candidate                            | Oui / non, selon le nombre de boutiques (section 2) |
-| CHF    | Candidate                            | Oui / non, selon le nombre de boutiques             |
-| CAD    | Candidate                            | Oui / non, selon le nombre de boutiques             |
-| Autre  | Une option de plus dans Stripe (4.3) | D'après les comptages                               |
+| Devise | Langue du site         | Pro / mois | Ultra / mois | Pro / an     | Ultra / an    | Pro en € |
+| ------ | ---------------------- | ---------- | ------------ | ------------ | ------------- | -------- |
+| EUR    | fr, de, es, it, nl, pt | 49 €       | 159 €        | 490 €        | 1 590 €       | 49       |
+| USD    | en, ru                 | $59        | $189         | $590         | $1,890        | 53,8     |
+| GBP    | —                      | £39        | £129         | £390         | £1,290        | 46,8     |
+| CHF    | —                      | CHF 49     | CHF 159      | CHF 490      | CHF 1,590     | 53,0     |
+| CAD    | —                      | CA$69      | CA$229       | CA$690       | CA$2,290      | 44,0     |
+| AUD    | —                      | A$79       | A$249        | A$790        | A$2,490       | 48,5     |
+| PLN    | pl                     | 199 zł     | 699 zł       | 1 990 zł     | 6 990 zł      | 45,1     |
+| BRL    | —                      | R$299      | R$999        | R$2.990      | R$9.990       | 46,9     |
+| JPY    | ja                     | ¥7,900     | ¥25,900      | ¥79,000      | ¥259,000      | 45,2     |
+| KRW    | ko                     | ₩69,000    | ₩229,000     | ₩690,000     | ₩2,290,000    | 47,2     |
+| CNY    | zh                     | ¥349       | ¥1,149       | ¥3,490       | ¥11,490       | 47,7     |
+| IDR    | id                     | Rp 990.000 | Rp 3.190.000 | Rp 9.900.000 | Rp 31.900.000 | 49,4     |
 
-### 5.2 Grille de prix, HT
-
-Taux de référence BCE du 18 novembre 2026 : 1 EUR = 1,0968 USD = 0,8329 GBP = 0,9243 CHF =
-1,5690 CAD. Les colonnes « équivalent » sont la conversion brute ; Téo choisit le montant final.
-L'annuel vaut dix mois : le badge « -17 % » de la page est écrit en dur, il faut garder ce
-rapport.
-
-| Plan        | EUR (actuel) | USD (actuel, 1:1) | Équivalent USD | Équivalent GBP | Équivalent CHF | Équivalent CAD |
-| ----------- | ------------ | ----------------- | -------------- | -------------- | -------------- | -------------- |
-| Pro mensuel | 49 €         | $49               | $53.74         | £40.81         | CHF 45.29      | CA$76.88       |
-| Pro annuel  | 490 €        | $490              | $537.43        | £408.12        | CHF 452.91     | CA$768.81      |
-| Ultra mens. | 159 €        | $159              | $174.39        | £132.43        | CHF 146.96     | CA$249.47      |
-| Ultra ann.  | 1 590 €      | $1,590            | $1,743.91      | £1,324.31      | CHF 1,469.64   | CA$2,494.71    |
-
-Proposition du 19 novembre 2026, à valider par Téo (prix « psychologiques », en 9) :
-
-| Devise | Pro mensuel | Ultra mensuel | Pro annuel | Ultra annuel | Pro en € | Ultra en € |
-| ------ | ----------- | ------------- | ---------- | ------------ | -------- | ---------- |
-| EUR    | 49 €        | 159 €         | 490 €      | 1 590 €      | 49       | 159        |
-| USD    | $59         | $189          | $590       | $1,890       | 53,8     | 172,3      |
-| GBP    | £39         | £129          | £390       | £1,290       | 46,8     | 154,9      |
-| CHF    | CHF 49      | CHF 159       | CHF 490    | CHF 1,590    | 53,0     | 172,0      |
-| CAD    | CA$69       | CA$229        | CA$690     | CA$2,290     | 44,0     | 146,0      |
+Vérifié sur le compte de test : chaque devise se crée, ouvre un Checkout, et un paiement réel
+passe en JPY et en IDR au plus gros montant (Ultra annuel).
 
 Autres décisions :
 
-- **Site marketing** : il montre USD = EUR 1:1 hors Europe. Avec GBP, CHF ou CAD, faut-il y
-  afficher les prix locaux ?
+- **Site marketing** : il doit montrer cette grille, dans la devise du pays du visiteur
+  (Louez-Website).
 - **Codes promo** : BF2026-40 et les suivants doivent être des coupons `percent_off` sans
   restriction de devise, sinon ils ne valent qu'en EUR. À vérifier dans Stripe live.
 - **Comptes de règlement** : en ouvrir dans les devises qui comptent, pour éviter la commission
@@ -180,19 +167,17 @@ Autres décisions :
 - **Boutiques déjà abonnées en EUR ou USD hors de leur devise** : elles le restent. Les passer
   dans leur devise demande un nouvel abonnement ; rien n'est fait sans décision.
 
-## 6. À faire dans Stripe live (après accord de Téo)
+## 6. Dans Stripe live
 
-1. Vérifier que les quatre prix live valent 49 €, 490 €, 159 € et 1 590 € : la page affichera
-   leurs montants.
-2. Sur chacun des quatre prix, ajouter une option par devise retenue (USD compris), au montant
-   décidé, avec le même comportement de taxe que le prix (la facturation active
-   `automatic_tax`). Que ce soit dans le Dashboard ou par script, vérifier d'abord les montants : celui d'une devise ajoutée est définitif (4.4).
-3. Vérifier les codes promo actifs (`percent_off`, pas de restriction de devise).
-4. Ouvrir la page Abonnement d'une boutique de test dans chaque devise : les montants doivent
-   être ceux des options. S'ils sont en EUR, les journaux disent quel prix pose problème.
+Fait le 19 novembre 2026, avec une clé restreinte (Prices en écriture) :
 
-Aucune variable à ajouter : les anciennes variables USD restent, pour les abonnements USD en
-cours.
+1. Les quatre prix live valaient 49 €, 490 €, 159 € et 1 590 €, HT (`tax_behavior` exclusive).
+2. Chacun a reçu les onze autres devises de la grille (section 5), HT aussi. Ces montants sont
+   définitifs (4.4).
+
+Reste à faire : vérifier les codes promo actifs (`percent_off`, pas de restriction de devise),
+et ouvrir la page Abonnement d'une boutique dans quelques devises. Aucune variable à ajouter :
+les anciennes variables USD restent, pour les abonnements USD en cours.
 
 ## Related
 
