@@ -190,6 +190,8 @@ export const HeaderSearchCapsuleView = ({
               </div>
               {suggestions.map((item, index) => {
                 const isHighlighted = highlightedIndex === index;
+                const grossPrice = Number(item.price);
+                const netPrice = Math.round(grossPrice / 1.23);
                 return (
                   <button
                     key={item.id}
@@ -221,11 +223,21 @@ export const HeaderSearchCapsuleView = ({
                     )}
                     <div className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{item.name}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {item.priceNegotiable
-                          ? t("product.priceNegotiable")
-                          : formatCurrency(Number(item.price), currency)}
-                      </span>
+                      {item.priceNegotiable ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {t("product.priceNegotiable")}
+                        </span>
+                      ) : (
+                        <div className="mt-0.5 flex flex-col leading-tight tabular-nums">
+                          <span className="text-xs font-semibold text-foreground">
+                            {formatCurrency(netPrice, currency)}{" "}
+                            <span className="font-normal text-muted-foreground">netto</span>
+                          </span>
+                          <span className="text-[11px] text-muted-foreground/80">
+                            {formatCurrency(grossPrice, currency)} brutto
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </button>
                 );

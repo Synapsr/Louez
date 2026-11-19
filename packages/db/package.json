@@ -11,6 +11,7 @@
     "./env": "./src/env.ts"
   },
   "scripts": {
+    "test": "tsx --test src/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:run": "tsx src/migrate.ts",

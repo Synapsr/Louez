@@ -22,15 +22,216 @@ config({ path: ".env.local" });
 config({ path: ".env" });
 
 import mysql from "mysql2/promise";
+import { is } from "drizzle-orm";
+import { MySqlTable, getTableConfig } from "drizzle-orm/mysql-core";
 import { readMigrationFiles, type MigrationConfig } from "drizzle-orm/migrator";
 import path from "path";
 import { fileURLToPath } from "url";
+import * as schema from "./schema";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const MIGRATIONS_TABLE = "__drizzle_migrations";
 const MIGRATIONS_FOLDER = path.join(__dirname, "migrations");
+
+const NON_COLUMN_ADD_KEYWORDS = new Set([
+  "primary",
+  "unique",
+  "key",
+  "index",
+  "constraint",
+  "foreign",
+  "check",
+  "fulltext",
+  "spatial",
+]);
+
+/**
+ * Splits a migration's SQL chunks into individual executable statements,
+ * stripping line comments and empty fragments.
+ */
+export function splitSqlStatements(sql: string | string[]): string[] {
+  const chunks = Array.isArray(sql) ? sql : [sql];
+  const result: string[] = [];
+
+  for (const chunk of chunks) {
+    const withoutComments = chunk.replace(/^\s*--.*$/gm, "").trim();
+    if (!withoutComments) continue;
+
+    // Split on semicolons at end-of-line or end-of-chunk so hand-written
+    // multi-statement chunks are evaluated statement-by-statement.
+    const parts = withoutComments.split(/;\s*(?:\r?\n|$)/);
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (trimmed.length > 0) {
+        result.push(trimmed);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Determines whether a pending migration can be safely pre-skipped as already
+ * applied (e.g. after `db:push`).
+ *
+ * IMPORTANT: A migration may ONLY be pre-skipped when EVERY statement in the
+ * migration is a `CREATE TABLE` or `ALTER TABLE ... ADD [COLUMN]` statement
+ * AND EVERY target table/column already exists in the database.
+ * If even one target table/column is missing (or if the migration contains
+ * other statements like `MODIFY`, `DROP`, `UPDATE`, `ADD CONSTRAINT/INDEX`),
+ * it must NOT be skipped — the statement-by-statement executor will run it and
+ * ignore `ER_DUP_FIELDNAME` / `ER_TABLE_EXISTS_ERROR` on already-existing items.
+ */
+export function shouldPreSkipPendingMigration(
+  sql: string | string[],
+  existingTableSet: ReadonlySet<string>,
+  existingColumnSet: ReadonlySet<string>,
+): { shouldSkip: boolean; reason?: string } {
+  const statements = splitSqlStatements(sql);
+  if (statements.length === 0) {
+    return { shouldSkip: false };
+  }
+
+  const matchedTargets: string[] = [];
+
+  for (const stmt of statements) {
+    const createTableMatch = stmt.match(
+      /^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?(\w+)[`"]?\s*\(/i,
+    );
+    if (createTableMatch) {
+      const tableName = createTableMatch[1].toLowerCase();
+      if (!existingTableSet.has(tableName)) {
+        return { shouldSkip: false };
+      }
+      matchedTargets.push(`table '${createTableMatch[1]}'`);
+      continue;
+    }
+
+    const alterAddColumnMatch = stmt.match(
+      /^ALTER\s+TABLE\s+[`"]?(\w+)[`"]?\s+ADD\s+(?:COLUMN\s+)?[`"]?(\w+)[`"]?\s+/i,
+    );
+    if (alterAddColumnMatch) {
+      // Do not pre-skip if the statement chains multiple clauses (e.g. ADD ..., DROP ...)
+      // or if the token after ADD is a constraint/index keyword.
+      const tableName = alterAddColumnMatch[1].toLowerCase();
+      const columnName = alterAddColumnMatch[2].toLowerCase();
+      if (NON_COLUMN_ADD_KEYWORDS.has(columnName)) {
+        return { shouldSkip: false };
+      }
+      if (/\b(?:DROP|MODIFY|CHANGE|RENAME)\b/i.test(stmt)) {
+        return { shouldSkip: false };
+      }
+      const allAddMatches = [
+        ...stmt.matchAll(/\bADD\s+(?:COLUMN\s+)?[`"]?(\w+)[`"]?/gi),
+      ];
+      if (allAddMatches.length === 0) {
+        return { shouldSkip: false };
+      }
+      for (const addMatch of allAddMatches) {
+        const col = addMatch[1].toLowerCase();
+        if (NON_COLUMN_ADD_KEYWORDS.has(col)) {
+          return { shouldSkip: false };
+        }
+        const key = `${tableName}.${col}`;
+        if (!existingColumnSet.has(key)) {
+          return { shouldSkip: false };
+        }
+        matchedTargets.push(`column '${alterAddColumnMatch[1]}.${addMatch[1]}'`);
+      }
+      continue;
+    }
+
+    // Any other SQL statement cannot be verified from table/column existence alone.
+    return { shouldSkip: false };
+  }
+
+  if (matchedTargets.length === 0) {
+    return { shouldSkip: false };
+  }
+
+  return {
+    shouldSkip: true,
+    reason: matchedTargets.join(", "),
+  };
+}
+
+/**
+ * Extracts all MySQL tables and their column names defined in `packages/db/src/schema.ts`.
+ */
+export function getExpectedSchemaTablesAndColumns(): Map<string, Set<string>> {
+  const expected = new Map<string, Set<string>>();
+
+  for (const value of Object.values(schema)) {
+    if (is(value, MySqlTable)) {
+      const config = getTableConfig(value);
+      expected.set(
+        config.name.toLowerCase(),
+        new Set(config.columns.map((col) => col.name.toLowerCase())),
+      );
+    }
+  }
+
+  return expected;
+}
+
+/**
+ * Scans all migrations for single-column `ALTER TABLE <table> ADD <column>`
+ * statements that add a column required by the current Drizzle schema (`schema.ts`)
+ * but missing from the live database (e.g. if an earlier migration was partially
+ * skipped).
+ */
+export function findMissingSchemaColumnHealStatements(
+  allMigrations: ReadonlyArray<{ sql: string | string[]; hash: string }>,
+  existingTableSet: ReadonlySet<string>,
+  existingColumnSet: ReadonlySet<string>,
+  expectedSchema: ReadonlyMap<string, ReadonlySet<string>> = getExpectedSchemaTablesAndColumns(),
+): Array<{ key: string; sql: string; migrationHash: string }> {
+  const missingKeys = new Set<string>();
+
+  for (const [tableName, columns] of expectedSchema.entries()) {
+    if (!existingTableSet.has(tableName)) continue;
+    for (const columnName of columns) {
+      const key = `${tableName}.${columnName}`;
+      if (!existingColumnSet.has(key)) {
+        missingKeys.add(key);
+      }
+    }
+  }
+
+  if (missingKeys.size === 0) {
+    return [];
+  }
+
+  const healStatements = new Map<string, { key: string; sql: string; migrationHash: string }>();
+
+  for (const migration of allMigrations) {
+    const statements = splitSqlStatements(migration.sql);
+    for (const stmt of statements) {
+      const match = stmt.match(
+        /^ALTER\s+TABLE\s+[`"]?(\w+)[`"]?\s+ADD\s+(?:COLUMN\s+)?[`"]?(\w+)[`"]?\s+/i,
+      );
+      if (!match) continue;
+
+      const tableName = match[1].toLowerCase();
+      const columnName = match[2].toLowerCase();
+      if (NON_COLUMN_ADD_KEYWORDS.has(columnName)) continue;
+
+      const key = `${tableName}.${columnName}`;
+      if (missingKeys.has(key)) {
+        healStatements.set(key, {
+          key,
+          sql: stmt,
+          migrationHash: migration.hash,
+        });
+      }
+    }
+  }
+
+  return [...healStatements.values()];
+}
 
 export interface RunMigrationsOptions {
   /**
@@ -126,18 +327,20 @@ export async function runMigrations(options: RunMigrationsOptions = {}) {
       if (isInitialMigrationPending) {
         // The initial migration is pending, which means all current migrations should be baselined
         await createBaseline(connection, allMigrations);
+        await verifyAndHealSchemaColumns(connection, allMigrations);
         console.log("✅ Baseline created - all current migrations marked as applied");
         console.log("✅ Database is up to date.");
         return;
       }
     }
 
-    // Check if pending migrations would fail due to existing tables/columns (partial baseline case)
-    // This handles cases where db:push was used after some migrations were already recorded
+    // Check if pending migrations are already fully satisfied by existing tables/columns
+    // (partial baseline case where db:push was used after some migrations were recorded).
+    // IMPORTANT: Only pre-skip a migration when EVERY statement in it is an already-existing
+    // CREATE TABLE or ALTER TABLE ... ADD COLUMN.
     if (pendingMigrations.length > 0) {
-      const existingTableNames = userTables.map((t) => t.TABLE_NAME.toLowerCase());
+      const existingTableSet = new Set(userTables.map((t) => t.TABLE_NAME.toLowerCase()));
 
-      // Get all existing columns for conflict detection
       const [existingColumns] = await connection.query<mysql.RowDataPacket[]>(
         `SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`,
       );
@@ -145,57 +348,27 @@ export async function runMigrations(options: RunMigrationsOptions = {}) {
         existingColumns.map((c) => `${c.TABLE_NAME.toLowerCase()}.${c.COLUMN_NAME.toLowerCase()}`),
       );
 
-      // Check if any pending migration tries to CREATE TABLE or ADD COLUMN for existing schema
       const migrationsToSkip: typeof pendingMigrations = [];
       for (const migration of pendingMigrations) {
-        // migration.sql is an array of SQL statements
-        const sqlStatements = Array.isArray(migration.sql)
-          ? migration.sql.join("\n")
-          : migration.sql;
-        let shouldSkip = false;
-
-        // Check for CREATE TABLE statements
-        const createTableMatches = sqlStatements.matchAll(/CREATE TABLE [`"]?(\w+)[`"]?/gi);
-        for (const match of createTableMatches) {
-          const tableName = match[1].toLowerCase();
-          if (existingTableNames.includes(tableName)) {
-            migrationsToSkip.push(migration);
-            console.log(
-              `⚠️  Skipping migration (table '${match[1]}' already exists): ${migration.hash.substring(0, 8)}...`,
-            );
-            shouldSkip = true;
-            break;
-          }
-        }
-
-        // Check for ALTER TABLE ADD COLUMN statements
-        if (!shouldSkip) {
-          const alterTableMatches = sqlStatements.matchAll(
-            /ALTER TABLE [`"]?(\w+)[`"]?\s+ADD\s+(?:COLUMN\s+)?[`"]?(\w+)[`"]?/gi,
+        const decision = shouldPreSkipPendingMigration(
+          migration.sql,
+          existingTableSet,
+          existingColumnSet,
+        );
+        if (decision.shouldSkip) {
+          migrationsToSkip.push(migration);
+          console.log(
+            `⚠️  Skipping migration (${decision.reason} already exists): ${migration.hash.substring(0, 8)}...`,
           );
-          for (const match of alterTableMatches) {
-            const tableName = match[1].toLowerCase();
-            const columnName = match[2].toLowerCase();
-            const key = `${tableName}.${columnName}`;
-            if (existingColumnSet.has(key)) {
-              migrationsToSkip.push(migration);
-              console.log(
-                `⚠️  Skipping migration (column '${match[1]}.${match[2]}' already exists): ${migration.hash.substring(0, 8)}...`,
-              );
-              shouldSkip = true;
-              break;
-            }
-          }
         }
       }
 
-      // Mark skipped migrations as applied without running them
+      // Mark fully-satisfied migrations as applied without re-running them
       if (migrationsToSkip.length > 0) {
         console.log(
-          `📝 Marking ${migrationsToSkip.length} migration(s) as applied (tables already exist)...`,
+          `📝 Marking ${migrationsToSkip.length} migration(s) as applied (all targets already exist)...`,
         );
 
-        // Ensure migrations table exists
         await connection.query(`
           CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (
             \`id\` SERIAL PRIMARY KEY,
@@ -211,20 +384,6 @@ export async function runMigrations(options: RunMigrationsOptions = {}) {
             [migration.hash, now],
           );
         }
-
-        // Recalculate pending migrations
-        const [newApplied] = await connection.query<mysql.RowDataPacket[]>(
-          `SELECT hash FROM \`${MIGRATIONS_TABLE}\``,
-        );
-        const newAppliedHashes = newApplied.map((row) => row.hash);
-        const remainingPending = allMigrations.filter((m) => !newAppliedHashes.includes(m.hash));
-
-        if (remainingPending.length === 0) {
-          console.log("✅ Database is up to date.");
-          return;
-        }
-
-        console.log(`🚀 Running ${remainingPending.length} remaining migration(s)...`);
       }
     }
 
@@ -275,7 +434,8 @@ export async function runMigrations(options: RunMigrationsOptions = {}) {
             if (
               err.code === "ER_DUP_FIELDNAME" ||
               err.code === "ER_DUP_KEYNAME" ||
-              err.code === "ER_TABLE_EXISTS_ERROR"
+              err.code === "ER_TABLE_EXISTS_ERROR" ||
+              err.code === "ER_FK_DUP_NAME"
             ) {
               console.log(`   ⚠️  Skipped (already exists): ${err.sqlMessage}`);
             } else {
@@ -294,6 +454,11 @@ export async function runMigrations(options: RunMigrationsOptions = {}) {
 
       console.log("✅ All migrations completed successfully!");
     }
+
+    // Self-heal & verify: ensure every column defined in packages/db/src/schema.ts
+    // actually exists in the live database, even if an earlier migration hash was
+    // prematurely marked as applied.
+    await verifyAndHealSchemaColumns(connection, allMigrations);
   } catch (error) {
     console.error("❌ Migration failed:", error instanceof Error ? error.message : error);
 
@@ -312,6 +477,74 @@ export async function runMigrations(options: RunMigrationsOptions = {}) {
   } finally {
     await connection.end();
     console.log("🔌 Database connection closed.");
+  }
+}
+
+/**
+ * Verifies that all columns defined in `packages/db/src/schema.ts` exist in the
+ * live database, and automatically applies any missing `ALTER TABLE ... ADD`
+ * statements from migrations if a migration was previously partially skipped.
+ */
+async function verifyAndHealSchemaColumns(
+  connection: mysql.Connection,
+  allMigrations: ReturnType<typeof readMigrationFiles>,
+) {
+  const [tables] = await connection.query<mysql.RowDataPacket[]>(
+    `SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()`,
+  );
+  const existingTableSet = new Set(tables.map((t) => t.TABLE_NAME.toLowerCase()));
+
+  const [columns] = await connection.query<mysql.RowDataPacket[]>(
+    `SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`,
+  );
+  const existingColumnSet = new Set(
+    columns.map((c) => `${c.TABLE_NAME.toLowerCase()}.${c.COLUMN_NAME.toLowerCase()}`),
+  );
+
+  const expectedSchema = getExpectedSchemaTablesAndColumns();
+  const healStatements = findMissingSchemaColumnHealStatements(
+    allMigrations,
+    existingTableSet,
+    existingColumnSet,
+    expectedSchema,
+  );
+
+  if (healStatements.length > 0) {
+    console.log(
+      `🔧 Healing ${healStatements.length} missing schema column(s) from migration history...`,
+    );
+    for (const heal of healStatements) {
+      try {
+        await connection.query(heal.sql);
+        existingColumnSet.add(heal.key);
+        console.log(`   ✅ Healed missing column: ${heal.key}`);
+      } catch (error) {
+        const err = error as { code?: string; sqlMessage?: string };
+        if (err.code === "ER_DUP_FIELDNAME") {
+          existingColumnSet.add(heal.key);
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  // Final verification against Drizzle schema
+  const stillMissingColumns: string[] = [];
+  for (const [tableName, expectedColumns] of expectedSchema.entries()) {
+    if (!existingTableSet.has(tableName)) continue;
+    for (const columnName of expectedColumns) {
+      const key = `${tableName}.${columnName}`;
+      if (!existingColumnSet.has(key)) {
+        stillMissingColumns.push(key);
+      }
+    }
+  }
+
+  if (stillMissingColumns.length > 0) {
+    throw new Error(
+      `Database schema drift detected: missing column(s) [${stillMissingColumns.join(", ")}] required by @louez/db schema.ts`,
+    );
   }
 }
 
