@@ -10,7 +10,7 @@ export { onlinePaymentsStepOf, type OnlinePaymentsStep } from "./util.setup-step
 export { shouldOfferAgentAssistant } from "./util.agent-assistant";
 export {
   TEST_RESERVATION_NOTICE_ID,
-  cohortNoticeOf,
+  canClaimLaunchSeat,
   isEstablishedStore,
   pickHomeNextStep,
 } from "./util.next-step";

@@ -1,8 +1,7 @@
-import type { DismissibleNoticeId } from "@louez/api/contracts/dismissed-notices";
 import type { GetTestReservationOutput } from "@louez/api/contracts/test-reservations";
 import type { VisibilityView } from "@louez/api/contracts/visibility";
 
-import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
+import { LaunchSeatsOffer } from "@/components/dashboard/launch-seats-offer";
 import { TestReservationHomeCard } from "@/components/dashboard/test-reservation/test-reservation-home-card";
 import { VisibilityHomeCard } from "@/components/dashboard/visibility/visibility-home-card";
 import type { McpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
@@ -21,14 +20,8 @@ export interface HomeNextStepCardProps {
   assistant: McpEndpoint | null;
   testReservation: GetTestReservationOutput | null;
   visibility: VisibilityView | null;
-  /** The reeent launch seats the visibility card mentions; null when not offered. */
+  /** The reeent launch seats the store can still claim; null when not offered. */
   launchOfferSeats: number | null;
-  cohort: {
-    lifetimeFeeWaiverAt: string | null;
-    cohortRank: number | null;
-    remaining: number;
-  };
-  dismissedNoticeIds: DismissibleNoticeId[];
 }
 
 /** One of the home's next step cards, counted as shown. */
@@ -40,8 +33,6 @@ export const HomeNextStepCard = ({
   testReservation,
   visibility,
   launchOfferSeats,
-  cohort,
-  dismissedNoticeIds,
 }: HomeNextStepCardProps) => (
   <>
     <HomeNextStepViewed step={step} />
@@ -54,8 +45,8 @@ export const HomeNextStepCard = ({
       <VisibilityHomeCard storeId={storeId} view={visibility} launchOfferSeats={launchOfferSeats} />
     )}
     {step === "agentAssistant" && assistant && <AgentAssistantNotice {...assistant} />}
-    {step === "cohort" && (
-      <MarketplaceCohortNotice {...cohort} dismissedNoticeIds={dismissedNoticeIds} />
+    {step === "cohort" && launchOfferSeats !== null && (
+      <LaunchSeatsOffer remaining={launchOfferSeats} asHomeInvitation />
     )}
   </>
 );

@@ -6,14 +6,14 @@ import { z } from "zod";
  * A notice that asks for an action (pending requests, Stripe setup) is not
  * listed here: it goes away when the action is done.
  *
- * The two cohort states have their own id: closing the seats pitch must not
- * hide the badge the store earns later. `agent-assistant` is the offer to
+ * `reeent-cohort-seats` is the home's invitation to claim a reeent launch
+ * seat (the member badge it once had, `reeent-cohort-member`, is retired: the
+ * home no longer shows it). `agent-assistant` is the offer to
  * connect an AI assistant; `visibility-guide` the home's card of the "Se faire
  * connaître" guide; `test-reservation` the home's test reservation card, also
  * closed when the user deletes the test's data.
  */
 export const DISMISSIBLE_NOTICE_IDS = [
-  "reeent-cohort-member",
   "reeent-cohort-seats",
   "agent-assistant",
   "visibility-guide",

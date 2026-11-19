@@ -42,8 +42,8 @@ export interface HomeNextStepFacts {
   visibilityHasNextStep: boolean;
   /** The AI assistant offer is not closed, and no agent acts on the store yet. */
   agentAssistantOffered: boolean;
-  /** The reeent launch offer has something to say: the badge earned, or seats left. */
-  cohortNotice: "member" | "seats" | null;
+  /** The store can still claim a reeent launch seat, and the invitation is not closed (`canClaimLaunchSeat`). */
+  launchSeatOpen: boolean;
 }
 
 /**
@@ -89,7 +89,7 @@ export function homeNextSteps(facts: HomeNextStepFacts): HomeNextStep[] {
   // assistant in Settings -> Integrations.
   if (facts.visibilityHasNextStep && !facts.established) steps.push("visibility");
   if (facts.agentAssistantOffered && !facts.established) steps.push("agentAssistant");
-  if (facts.cohortNotice) steps.push("cohort");
+  if (facts.launchSeatOpen) steps.push("cohort");
   return steps;
 }
 
@@ -103,22 +103,27 @@ export function pickHomeNextStep(facts: HomeNextStepFacts): {
 }
 
 /**
- * Which reeent launch notice the store may see: the badge it earned, or the
- * seats still open to a store that did not come from reeent (one that did has
- * signed up already, its Stripe card carries the offer). Null when there is
- * nothing to say or the user closed it.
+ * Whether the home may invite the store to claim a reeent launch seat: the
+ * waiver is granted on a store's first reeent publication while seats remain,
+ * so only a store that has never published there can still earn it. A store
+ * from reeent has signed up there already (its Stripe card carries the offer),
+ * and a member has nothing left to do: its badge stays in Settings → Sales
+ * channels, never on the home.
  */
-export function cohortNoticeOf(input: {
+export function canClaimLaunchSeat(input: {
   billingEnabled: boolean;
   isFromReeent: boolean;
   hasLifetimeFeeWaiver: boolean;
+  publishedOnReeent: boolean;
   remainingSeats: number;
   dismissedNoticeIds: readonly DismissibleNoticeId[];
-}): "member" | "seats" | null {
-  if (!input.billingEnabled) return null;
-  if (input.hasLifetimeFeeWaiver) {
-    return input.dismissedNoticeIds.includes("reeent-cohort-member") ? null : "member";
-  }
-  if (input.isFromReeent || input.remainingSeats <= 0) return null;
-  return input.dismissedNoticeIds.includes("reeent-cohort-seats") ? null : "seats";
+}): boolean {
+  return (
+    input.billingEnabled &&
+    !input.isFromReeent &&
+    !input.hasLifetimeFeeWaiver &&
+    !input.publishedOnReeent &&
+    input.remainingSeats > 0 &&
+    !input.dismissedNoticeIds.includes("reeent-cohort-seats")
+  );
 }

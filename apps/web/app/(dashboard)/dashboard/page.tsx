@@ -30,7 +30,7 @@ import {
   HomeNextStep,
   SetupChecklist,
   TEST_RESERVATION_NOTICE_ID,
-  cohortNoticeOf,
+  canClaimLaunchSeat,
   isEstablishedStore,
   onlinePaymentsStepOf,
   pickHomeNextStep,
@@ -186,15 +186,15 @@ async function DashboardContent({
 
   const storeState = determineStoreState(metrics);
   const timeOfDay = getTimeOfDay();
-  const lifetimeFeeWaiverAt = channelState.channel?.lifetimeFeeWaiverAt ?? null;
   const billingEnabled = isBillingEnabled();
   const assistant = shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection })
     ? getMcpEndpoint()
     : null;
-  const cohortNotice = cohortNoticeOf({
+  const launchSeatOpen = canClaimLaunchSeat({
     billingEnabled,
     isFromReeent,
-    hasLifetimeFeeWaiver: lifetimeFeeWaiverAt !== null,
+    hasLifetimeFeeWaiver: Boolean(channelState.channel?.lifetimeFeeWaiverAt),
+    publishedOnReeent: Boolean(channelState.channel?.publishedAt),
     remainingSeats: cohort.remaining,
     dismissedNoticeIds,
   });
@@ -209,7 +209,7 @@ async function DashboardContent({
     canOfferPlan: isStoreOwner && billingEnabled,
     visibilityHasNextStep: visibility !== null && nextVisibilityStep(visibility.steps) !== null,
     agentAssistantOffered: assistant !== null,
-    cohortNotice,
+    launchSeatOpen,
   });
 
   return (
@@ -234,13 +234,7 @@ async function DashboardContent({
         assistant={assistant}
         testReservation={testReservation}
         visibility={visibility}
-        launchOfferSeats={cohortNotice === "seats" ? cohort.remaining : null}
-        cohort={{
-          lifetimeFeeWaiverAt,
-          cohortRank: channelState.channel?.cohortRank ?? null,
-          remaining: cohort.remaining,
-        }}
-        dismissedNoticeIds={dismissedNoticeIds}
+        launchOfferSeats={launchSeatOpen ? cohort.remaining : null}
       />
 
       {/* Setup Checklist for new stores (floating widget) */}
