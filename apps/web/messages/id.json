@@ -7340,12 +7340,12 @@
         "nextPage": "Halaman berikutnya"
       }
     },
-    "starPrompt": {
+    "reviewPrompt": {
       "title": "Louez gratis — selamanya",
       "description": "Tanpa berlangganan, tanpa komisi untuk pemesanan Anda. Anda tidak akan pernah mendapatkan invoice dari kami.",
-      "pitch": "Pembayaran yang kami minta hanyalah bintang di GitHub. Dibutuhkan dua detik, dan itulah yang membuat proyek terus berjalan.",
-      "sourceHint": "Jelajahi kode sumber",
-      "star": "Tinggalkan bintang",
+      "pitch": "Satu permintaan, jika Anda punya lima menit: ulasan jujur di G2, baik kelebihan maupun kekurangannya. Ulasan itu membantu bisnis penyewaan lain memilih. Bintang di GitHub juga membantu.",
+      "review": "Tulis ulasan di G2",
+      "star": "Beri bintang di GitHub",
       "later": "Mungkin nanti"
     },
     "reservationDetails": {

@@ -7340,12 +7340,12 @@
         "nextPage": "下一页"
       }
     },
-    "starPrompt": {
+    "reviewPrompt": {
       "title": "Louez 永久免费",
       "description": "无需订阅，预订无需佣金。您永远不会从我们这里收到发票。",
-      "pitch": "我们要求的唯一付款是 GitHub 上的星星。只需两秒钟，这就是项目继续进行的动力。",
-      "sourceHint": "浏览源代码",
-      "star": "留下一颗星",
+      "pitch": "如果您有五分钟，我们只有一个请求：在 G2 上写一篇真实的评价，优点和缺点都可以。它能帮助其他租赁商家做出选择。在 GitHub 上点个星也很有帮助。",
+      "review": "在 G2 上写评价",
+      "star": "在 GitHub 上点星",
       "later": "也许稍后"
     },
     "reservationDetails": {

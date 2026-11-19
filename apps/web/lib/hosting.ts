@@ -2,10 +2,10 @@ import { z } from "zod";
 
 /**
  * Who hosts this instance, `LOUEZ_HOSTED_BY`. It decides the storefront legal notice's
- * hosting line and whether the dashboard asks for a GitHub star. Neither billing
- * (LOUEZ_BILLING) nor routing (LOUEZ_MODE) decides it.
+ * hosting line and whether the dashboard asks for a G2 review and a GitHub star.
+ * Neither billing (LOUEZ_BILLING) nor routing (LOUEZ_MODE) decides it.
  * - unset (the default): the operator hosts the instance. The notice names no host,
- *   since only the operator knows who it is, and the dashboard may ask for a star.
+ *   since only the operator knows who it is, and the dashboard may ask for a review.
  * - `lumycloud`: Louez Cloud. The notice names LumyCloud and the dashboard never asks.
  */
 export const louezHostedBySchema = z.enum(["lumycloud"]).optional();
@@ -32,7 +32,7 @@ export function isSelfHosted(): boolean {
  * - With LOUEZ_BILLING=cloud and no known host, the instance is most likely Louez Cloud
  *   deployed without LOUEZ_HOSTED_BY: every storefront legal notice would lose its
  *   hosting section, which French law requires (LCEN art. 6), and every dashboard would
- *   ask owners for a GitHub star. `stop` is true: the server refuses to start.
+ *   ask owners for a G2 review. `stop` is true: the server refuses to start.
  * - On any other instance an unknown value only gets a log: it counts as self-hosted.
  */
 export function describeHostingMisconfiguration(input: {
@@ -49,7 +49,7 @@ export function describeHostingMisconfiguration(input: {
     return {
       message:
         `LOUEZ_BILLING=cloud is set but ${problem}: storefront legal notices would name no ` +
-        "host and the dashboard would ask for a GitHub star. Set LOUEZ_HOSTED_BY=lumycloud on " +
+        "host and the dashboard would ask for a G2 review. Set LOUEZ_HOSTED_BY=lumycloud on " +
         "Louez Cloud. Stopping.",
       stop: true,
     };

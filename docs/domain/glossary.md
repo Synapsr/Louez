@@ -57,7 +57,7 @@ The refusal of a step that would make a new Reservation billable while the Store
 _Avoid_: block, paywall
 
 **Hosting identity**:
-Who hosts an instance (`LOUEZ_HOSTED_BY`): unset when the operator hosts it, `lumycloud` for Louez Cloud. It decides the storefront legal notice's hosting line and whether the dashboard asks for a GitHub star. Neither Platform billing nor the deployment mode (`LOUEZ_MODE`) decides it.
+Who hosts an instance (`LOUEZ_HOSTED_BY`): unset when the operator hosts it, `lumycloud` for Louez Cloud. It decides the storefront legal notice's hosting line and whether the dashboard asks for a G2 review and a GitHub star. Neither Platform billing nor the deployment mode (`LOUEZ_MODE`) decides it.
 _Avoid_: cloud mode, platform mode
 
 **Offer for new Stores**:
