@@ -1239,6 +1239,34 @@ export async function updateGoogleCalendarSettingsAction(
     });
     if ("error" in result) return result;
 
+    const integration = await db.query.storeIntegrations.findFirst({
+      where: and(
+        eq(storeIntegrations.storeId, storeResult.store.id),
+        eq(storeIntegrations.providerKey, GOOGLE_CALENDAR_PROVIDER_KEY),
+      ),
+      with: {
+        calendarSettings: true,
+      },
+    });
+
+    if (!integration?.calendarSettings) {
+      return { error: "errors.integrationNotConnected" };
+    }
+
+    const backfill = await enqueueCalendarBackfill({
+      storeId: storeResult.store.id,
+      integrationId: integration.id,
+      futureMonths: integration.calendarSettings.backfillMonths,
+      pastDays: integration.calendarSettings.backfillPastDays,
+    });
+
+    if (backfill.enqueued > 0) {
+      await db
+        .update(storeIntegrations)
+        .set({ status: "syncing", updatedAt: new Date() })
+        .where(eq(storeIntegrations.id, integration.id));
+    }
+
     revalidatePath("/dashboard/settings/integrations/google-calendar");
     return { success: true };
   } catch (error) {
@@ -1280,10 +1308,12 @@ export async function resyncGoogleCalendarAction(): Promise<
       pastDays: integration.calendarSettings.backfillPastDays,
     });
 
-    await db
-      .update(storeIntegrations)
-      .set({ status: "syncing", updatedAt: new Date() })
-      .where(eq(storeIntegrations.id, integration.id));
+    if (result.enqueued > 0) {
+      await db
+        .update(storeIntegrations)
+        .set({ status: "syncing", updatedAt: new Date() })
+        .where(eq(storeIntegrations.id, integration.id));
+    }
 
     revalidatePath("/dashboard/settings/integrations/google-calendar");
     return { success: true, enqueued: result.enqueued };

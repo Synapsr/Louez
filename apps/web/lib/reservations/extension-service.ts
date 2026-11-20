@@ -18,7 +18,7 @@ import { getStorefrontUrl } from "@/lib/storefront-url";
 import { buildFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
 import { generateContract } from "@/lib/pdf/generate";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
-import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
+import { markReservationForCalendarSync } from "@louez/api/services";
 import { sendReservationModifiedEmail } from "@/lib/email/send";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { retryOnceOnDeadlock } from "@/lib/db/retry-once-on-deadlock";
@@ -429,14 +429,16 @@ export const finishExtensionEffects = async (
   };
   const deliveries = await Promise.allSettled([
     ...(reservation.customer.email
-      ? [sendReservationModifiedEmail({
-          ...email,
-          to: reservation.customer.email,
-          reservationUrl: getStorefrontUrl(
-            reservation.store.slug,
-            `/account/reservations/${reservationId}`,
-          ),
-        })]
+      ? [
+          sendReservationModifiedEmail({
+            ...email,
+            to: reservation.customer.email,
+            reservationUrl: getStorefrontUrl(
+              reservation.store.slug,
+              `/account/reservations/${reservationId}`,
+            ),
+          }),
+        ]
       : []),
     ...(reservation.store.email
       ? [

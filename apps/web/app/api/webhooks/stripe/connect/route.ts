@@ -6,7 +6,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
-import { failMarketplaceBookingAttempt } from "@louez/api/services";
+import { failMarketplaceBookingAttempt, markReservationForCalendarSync } from "@louez/api/services";
 import { db } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
@@ -612,7 +612,7 @@ async function cancelAbandonedCheckout(
   checkoutSessionId: string,
 ): Promise<boolean> {
   const reservation = await db.query.reservations.findFirst({
-    columns: { id: true, status: true, source: true },
+    columns: { id: true, status: true, source: true, storeId: true },
     where: eq(reservations.id, reservationId),
     with: { payments: { columns: { type: true, status: true } } },
   });
@@ -626,7 +626,7 @@ async function cancelAbandonedCheckout(
   if (hasRentalPayment) return false;
 
   const now = new Date();
-  return db.transaction(async (tx) => {
+  const cancelled = await db.transaction(async (tx) => {
     const [locked] = await tx
       .select({ status: reservations.status })
       .from(reservations)
@@ -653,6 +653,10 @@ async function cancelAbandonedCheckout(
     });
     return true;
   });
+  if (cancelled) {
+    await markReservationForCalendarSync(reservation.storeId, reservationId);
+  }
+  return cancelled;
 }
 
 // ============================================================================

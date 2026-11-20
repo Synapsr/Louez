@@ -20,6 +20,7 @@ import type { BookingCheckoutInput, BookingHoldInput, BookingQuoteInput } from "
 import { getStorefrontAvailability } from "./availability";
 import { resolveStorefrontCart } from "./cart";
 import { ApiServiceError } from "./errors";
+import { markReservationForCalendarSync } from "./reservation-calendar-sync";
 import { loadMarketplaceBookingStore } from "./marketplace-availability";
 
 const QUOTE_TTL_MS = 10 * 60 * 1000;
@@ -1085,6 +1086,7 @@ export async function cancelMarketplaceBooking(params: {
     columns: {
       id: true,
       status: true,
+      storeId: true,
     },
     with: {
       store: { columns: { stripeAccountId: true } },
@@ -1119,6 +1121,8 @@ export async function cancelMarketplaceBooking(params: {
     });
   });
 
+  await markReservationForCalendarSync(reservation.storeId, reservation.id);
+
   await params.adapter.releasePendingPayments({
     reservationId: reservation.id,
     stripeAccountId: reservation.store.stripeAccountId,
@@ -1137,13 +1141,13 @@ type MarketplaceAttemptTransaction = Parameters<Parameters<typeof db.transaction
 async function expireAttempt(
   tx: MarketplaceAttemptTransaction,
   reservationId: string,
-): Promise<void> {
+): Promise<boolean> {
   const now = new Date();
   await tx
     .update(marketplaceBookingAttempts)
     .set({ status: "expired", expiresAt: now, updatedAt: now })
     .where(eq(marketplaceBookingAttempts.reservationId, reservationId));
-  await tx
+  const result = await tx
     .update(reservations)
     .set({ status: "cancelled", updatedAt: now })
     .where(
@@ -1153,6 +1157,7 @@ async function expireAttempt(
         eq(reservations.status, "pending"),
       ),
     );
+  return (result[0]?.affectedRows ?? 0) > 0;
 }
 
 export async function expireMarketplaceBookingAttempts(params: {
@@ -1170,14 +1175,20 @@ export async function expireMarketplaceBookingAttempts(params: {
     conditions.push(eq(marketplaceBookingAttempts.storeId, params.storeId));
   }
   const expired = await db
-    .select({ reservationId: marketplaceBookingAttempts.reservationId })
+    .select({
+      reservationId: marketplaceBookingAttempts.reservationId,
+      storeId: marketplaceBookingAttempts.storeId,
+    })
     .from(marketplaceBookingAttempts)
     .where(and(...conditions));
 
   for (const attempt of expired) {
-    if (!attempt.reservationId) continue;
     const reservationId = attempt.reservationId;
-    await db.transaction((tx) => expireAttempt(tx, reservationId));
+    if (!reservationId) continue;
+    const changed = await db.transaction((tx) => expireAttempt(tx, reservationId));
+    if (changed) {
+      await markReservationForCalendarSync(attempt.storeId, reservationId);
+    }
   }
 }
 
@@ -1189,7 +1200,7 @@ export async function confirmMarketplaceBookingAttempt(reservationId: string): P
 }
 
 export async function failMarketplaceBookingAttempt(reservationId: string): Promise<void> {
-  await db.transaction(async (tx) => {
+  const expired = await db.transaction(async (tx) => {
     const attempt = await tx.query.marketplaceBookingAttempts.findFirst({
       where: eq(marketplaceBookingAttempts.reservationId, reservationId),
       columns: { reservationId: true, status: true },
@@ -1200,12 +1211,17 @@ export async function failMarketplaceBookingAttempt(reservationId: string): Prom
         eq(reservations.source, "marketplace"),
         eq(reservations.status, "pending"),
       ),
-      columns: { id: true },
+      columns: { id: true, storeId: true },
     });
     if (attempt?.reservationId && attempt.status === "checkout_pending" && reservation) {
-      await expireAttempt(tx, attempt.reservationId);
+      const changed = await expireAttempt(tx, attempt.reservationId);
+      return changed ? { storeId: reservation.storeId } : null;
     }
+    return null;
   });
+  if (expired) {
+    await markReservationForCalendarSync(expired.storeId, reservationId);
+  }
 }
 
 /**

@@ -20,6 +20,7 @@ export * from "./product-unit-history";
 export * from "./products-dashboard";
 export * from "./push-notifications";
 export * from "./reservation-poll";
+export * from "./reservation-calendar-sync";
 export * from "./reservation-sign";
 export * from "./reservation-contract-validation";
 export * from "./reservation-timeline";

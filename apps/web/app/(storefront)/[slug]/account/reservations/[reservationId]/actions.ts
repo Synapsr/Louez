@@ -5,7 +5,7 @@ import {
   ReservationInventoryError,
 } from "@/lib/reservations/reserve-inventory";
 
-import { validateReservationContract } from "@louez/api/services";
+import { markReservationForCalendarSync, validateReservationContract } from "@louez/api/services";
 
 import { revalidatePath } from "next/cache";
 
@@ -168,6 +168,8 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   if (!accepted) {
     return { error: "invalidStatus" };
   }
+
+  await markReservationForCalendarSync(store.id, reservationId);
 
   await captureProductServerEvent({
     distinctId: session.customerId,
@@ -364,6 +366,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
     .update(reservations)
     .set({ status: "declined", updatedAt: new Date() })
     .where(eq(reservations.id, reservationId));
+  await markReservationForCalendarSync(store.id, reservationId);
 
   // Pay-as-you-go: void the pending reservation fee — the customer declined the quote,
   // so it must not be invoiced at month-end. (No-op if no fee / already collected.)
@@ -509,6 +512,8 @@ export async function cancelReservationRequest(
   if ("error" in result) return { error: result.error };
 
   if (result.changed) {
+    await markReservationForCalendarSync(store.id, reservation.id);
+
     if (reservation.tulipContractId) {
       try {
         await cancelTulipContractForReservation({

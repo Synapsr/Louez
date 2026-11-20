@@ -30,7 +30,11 @@ import {
   nextCategorySlug,
 } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
-import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
+import {
+  computeReservedNetOfExcludedUnits,
+  loadExcludedUnitInfo,
+  markReservationForCalendarSync,
+} from "@louez/api/services";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -462,6 +466,7 @@ export function createAITools(ctx: AIChatContext) {
           }
           throw error;
         }
+        await markReservationForCalendarSync(ctx.storeId, reservationId);
         return {
           success: true,
           number: existing.number,
