@@ -214,7 +214,7 @@ export function SignaturePad({
       <div
         ref={containerRef}
         className={cn(
-          "relative h-40 w-full overflow-hidden rounded-xl border-2 bg-white",
+          "relative aspect-[2/1] min-h-56 w-full overflow-hidden rounded-xl border-2 bg-white",
           disabled ? "cursor-not-allowed opacity-50" : "cursor-crosshair",
           hasSignature ? "border-primary" : "border-dashed border-muted-foreground/30",
         )}
