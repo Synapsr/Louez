@@ -200,6 +200,7 @@ export type CompleteInspectionInput = z.infer<typeof completeInspectionSchema>;
  */
 export const signInspectionSchema = z.object({
   customerSignature: z.string().min(100).max(500000), // Base64 signature image
+  issuerSignature: z.string().min(100).max(500000), // Base64 signature image
 });
 
 export type SignInspectionInput = z.infer<typeof signInspectionSchema>;

@@ -139,6 +139,7 @@ export async function generateInspectionReport({
         signedAt: inspection.signedAt,
         signatureIp: inspection.signatureIp,
         customerSignature: inspection.customerSignature,
+        issuerSignature: inspection.issuerSignature,
         items: itemsWithPhotos,
       },
       store: {

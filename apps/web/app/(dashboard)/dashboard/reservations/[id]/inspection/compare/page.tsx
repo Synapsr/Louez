@@ -67,6 +67,7 @@ export default async function InspectionComparePage({ params }: PageProps) {
       createdAt: inspections.createdAt,
       signedAt: inspections.signedAt,
       customerSignature: inspections.customerSignature,
+      issuerSignature: inspections.issuerSignature,
     })
     .from(inspections)
     .where(eq(inspections.reservationId, reservationId));
@@ -148,7 +149,8 @@ export default async function InspectionComparePage({ params }: PageProps) {
           notes: departureInspection.notes,
           createdAt: departureInspection.createdAt,
           signedAt: departureInspection.signedAt,
-          hasSignature: !!departureInspection.customerSignature,
+          hasSignature:
+            !!departureInspection.customerSignature && !!departureInspection.issuerSignature,
           items: departureItems,
         }
       : null;
@@ -163,7 +165,7 @@ export default async function InspectionComparePage({ params }: PageProps) {
           notes: returnInspection.notes,
           createdAt: returnInspection.createdAt,
           signedAt: returnInspection.signedAt,
-          hasSignature: !!returnInspection.customerSignature,
+          hasSignature: !!returnInspection.customerSignature && !!returnInspection.issuerSignature,
           items: returnItems,
         }
       : null;

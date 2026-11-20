@@ -5088,6 +5088,8 @@
           "signatureConfirmation": "Ik bevestig de staat van de apparatuur te hebben gecontroleerd en accepteer de voorwaarden",
           "signatureComplete": "Handtekening gevalideerd",
           "customerSignature": "Klanthandtekening",
+          "issuerSignature": "Handtekening uitgevende persoon",
+          "receiverSignature": "Handtekening ontvangende persoon (klant)",
           "signatureTitle": "Handtekening",
           "signatureDescription": "De klant moet ondertekenen om het verslag te valideren",
           "back": "Terug",

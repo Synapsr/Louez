@@ -34,7 +34,8 @@
     "notes": "注释"
   },
   "signature": {
-    "customerSignature": "客户签名",
+    "customerSignature": "接收方（客户）签名",
+    "issuerSignature": "交付方签名",
     "signedAt": "签署于",
     "ipAddress": "IP地址",
     "notSigned": "未签名"

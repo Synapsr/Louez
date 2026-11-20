@@ -188,6 +188,7 @@ export interface Inspection {
   performedById?: string | null;
   performedAt?: Date | null;
   customerSignature?: string | null;
+  issuerSignature?: string | null;
   signedAt?: Date | null;
   signatureIp?: string | null;
   hasDamage: boolean;
@@ -283,6 +284,7 @@ export interface CompleteInspectionInput {
  */
 export interface SignInspectionInput {
   customerSignature: string; // Base64 signature image
+  issuerSignature: string; // Base64 signature image
 }
 
 // ============================================================================

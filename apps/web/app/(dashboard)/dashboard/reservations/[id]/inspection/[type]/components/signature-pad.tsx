@@ -16,6 +16,7 @@ interface SignaturePadProps {
   disabled?: boolean;
   showConfirmation?: boolean;
   confirmationText?: string;
+  confirmationId?: string;
   className?: string;
 }
 
@@ -31,6 +32,7 @@ export function SignaturePad({
   disabled = false,
   showConfirmation = true,
   confirmationText,
+  confirmationId = "signature-confirmation",
   className,
 }: SignaturePadProps) {
   const t = useTranslations("dashboard.settings.inspection");
@@ -238,31 +240,30 @@ export function SignaturePad({
         )}
 
         {/* Clear button */}
-        {hasSignature && !disabled && (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={clearSignature}
-            className="absolute right-2 top-2 h-8 gap-1 px-2 text-xs"
-          >
-            <Eraser className="h-4 w-4" />
-            <span>{t("wizard.clearSignature")}</span>
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={clearSignature}
+          disabled={disabled || !hasSignature}
+          className="absolute right-2 top-2 h-8 gap-1 border border-border/60 bg-background/70 px-2 text-xs text-foreground/70 opacity-70 shadow-sm backdrop-blur-sm hover:bg-background/90 hover:opacity-100"
+        >
+          <Eraser className="h-4 w-4" />
+          <span>{t("wizard.clearSignature")}</span>
+        </Button>
       </div>
 
       {/* Confirmation checkbox */}
       {showConfirmation && (
         <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
           <Checkbox
-            id="signature-confirmation"
+            id={confirmationId}
             data-demo-target="inspection-signature-confirmation"
             checked={isConfirmed}
             onCheckedChange={handleConfirmChange}
             disabled={disabled || !hasSignature}
           />
           <Label
-            htmlFor="signature-confirmation"
+            htmlFor={confirmationId}
             className={cn("text-sm leading-relaxed", !hasSignature && "text-muted-foreground")}
           >
             {confirmationText || t("wizard.signatureConfirmation")}
@@ -305,7 +306,7 @@ export function SignatureDisplay({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={signature}
-          alt={t("wizard.customerSignature")}
+          alt={t("wizard.receiverSignature")}
           className="h-32 w-full object-contain"
         />
       </div>

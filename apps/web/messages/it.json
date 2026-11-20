@@ -5088,6 +5088,8 @@
           "signatureConfirmation": "Confermo di aver verificato lo stato dell'attrezzatura e accetto le condizioni",
           "signatureComplete": "Firma convalidata",
           "customerSignature": "Firma del cliente",
+          "issuerSignature": "Firma della persona che consegna",
+          "receiverSignature": "Firma della persona che ritira (cliente)",
           "signatureTitle": "Firma",
           "signatureDescription": "Il cliente deve firmare per convalidare il verbale",
           "back": "Indietro",

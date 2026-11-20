@@ -34,7 +34,8 @@
     "notes": "Remarques"
   },
   "signature": {
-    "customerSignature": "Signature du client",
+    "customerSignature": "Signature de la personne qui récupère (client)",
+    "issuerSignature": "Signature de la personne qui remet",
     "signedAt": "Signé le",
     "ipAddress": "Adresse IP",
     "notSigned": "Non signé"

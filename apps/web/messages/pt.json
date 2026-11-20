@@ -5088,6 +5088,8 @@
           "signatureConfirmation": "Confirmo ter verificado o estado do equipamento e aceito as condições",
           "signatureComplete": "Assinatura validada",
           "customerSignature": "Assinatura do cliente",
+          "issuerSignature": "Assinatura da pessoa que entrega",
+          "receiverSignature": "Assinatura da pessoa que recebe (cliente)",
           "signatureTitle": "Assinatura",
           "signatureDescription": "O cliente deve assinar para validar a vistoria",
           "back": "Voltar",

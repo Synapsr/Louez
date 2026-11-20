@@ -34,7 +34,8 @@
     "notes": "注意事項"
   },
   "signature": {
-    "customerSignature": "顧客の署名",
+    "customerSignature": "受取担当者（顧客）の署名",
+    "issuerSignature": "貸出担当者の署名",
     "signedAt": "署名場所",
     "ipAddress": "IPアドレス",
     "notSigned": "署名されていません"

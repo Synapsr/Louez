@@ -23,7 +23,6 @@ import type { ConditionRating, InspectionType } from "@louez/types";
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 
 import { getCurrentStore } from "@/lib/store-context";
-import { getReservationApplicantName } from "@/lib/reservations/util.reservation-applicant";
 
 import { InspectionView } from "./components/inspection-view";
 import { InspectionWizard } from "./components/inspection-wizard";
@@ -128,7 +127,11 @@ export default async function InspectionPage({ params }: PageProps) {
     .where(eq(customers.id, reservation.customerId))
     .limit(1);
 
-  const customerName = getReservationApplicantName(reservation.bookedByName, customer);
+  const customerName =
+    [customer?.firstName?.trim(), customer?.lastName?.trim()].filter(Boolean).join(" ") ||
+    customer?.companyName?.trim() ||
+    "Client";
+  const issuerName = reservation.bookedByName?.trim() || customerName;
 
   // Check if inspection already exists
   const [existingInspection] = await db
@@ -142,6 +145,7 @@ export default async function InspectionPage({ params }: PageProps) {
       createdAt: inspections.createdAt,
       signedAt: inspections.signedAt,
       customerSignature: inspections.customerSignature,
+      issuerSignature: inspections.issuerSignature,
     })
     .from(inspections)
     .where(and(eq(inspections.reservationId, reservationId), eq(inspections.type, inspectionType)))
@@ -220,6 +224,7 @@ export default async function InspectionPage({ params }: PageProps) {
             createdAt: existingInspection.createdAt,
             signedAt: existingInspection.signedAt,
             customerSignature: existingInspection.customerSignature,
+            issuerSignature: existingInspection.issuerSignature,
             items: itemsWithPhotos,
           }}
           reservationId={reservationId}
@@ -337,6 +342,7 @@ export default async function InspectionPage({ params }: PageProps) {
         reservationId={reservationId}
         reservationNumber={reservation.number}
         customerName={customerName}
+        issuerName={issuerName}
         type={inspectionType}
         items={formattedItems}
         requireSignature={inspectionSettings.requireCustomerSignature}

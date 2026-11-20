@@ -49,6 +49,7 @@ interface InspectionViewProps {
     createdAt: Date;
     signedAt: Date | null;
     customerSignature: string | null;
+    issuerSignature?: string | null;
     items: InspectionItem[];
   };
   reservationId: string;
@@ -290,22 +291,42 @@ export function InspectionView({
             </Card>
           )}
 
-          {/* Signature */}
-          {inspection.customerSignature && (
+          {/* Signatures */}
+          {(inspection.issuerSignature || inspection.customerSignature) && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">{t("sections.signature")}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="rounded-lg border bg-white p-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={inspection.customerSignature}
-                    alt="Signature"
-                    className="max-h-24 mx-auto"
-                  />
-                </div>
-                {inspection.signedAt && (
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                {inspection.issuerSignature && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">{t("wizard.issuerSignature")}</p>
+                    <div className="rounded-lg border bg-white p-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={inspection.issuerSignature}
+                        alt={t("wizard.issuerSignature")}
+                        className="mx-auto max-h-24"
+                      />
+                    </div>
+                  </div>
+                )}
+                {inspection.customerSignature && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">{t("wizard.receiverSignature")}</p>
+                    <div className="rounded-lg border bg-white p-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={inspection.customerSignature}
+                        alt={t("wizard.receiverSignature")}
+                        className="mx-auto max-h-24"
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+              {inspection.signedAt && (
+                <CardContent className="pt-0">
                   <p className="text-xs text-muted-foreground text-center">
                     {t("signature.signedAt")}:{" "}
                     {formatStoreDate(
@@ -315,8 +336,8 @@ export function InspectionView({
                       formatLocale,
                     )}
                   </p>
-                )}
-              </CardContent>
+                </CardContent>
+              )}
             </Card>
           )}
         </div>
