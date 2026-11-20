@@ -905,7 +905,8 @@
       "settings": "Paramètres",
       "store": "Ma boutique",
       "multiStore": "Multi-boutiques",
-      "aiCredits": "Crédits IA"
+      "aiCredits": "Crédits IA",
+      "mondayIntegration": "monday.com"
     },
     "multiStore": {
       "title": "Multi-boutiques",
@@ -3501,6 +3502,10 @@
       "legal": "Pages légales",
       "account": "Compte",
       "integrations": "Intégrations",
+      "mondayIntegration": {
+        "navTitle": "monday.com",
+        "navDescription": "Synchronisation bidirectionnelle des réservations, équipements et salles avec monday.com (GraphQL + Webhooks)."
+      },
       "integrationsTabs": {
         "assurance": "Assurance"
       },

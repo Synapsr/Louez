@@ -905,7 +905,8 @@
       "analyticsSales": "Sprzedaż",
       "analyticsTraffic": "Ruch",
       "multiStore": "Multi-sklep",
-      "aiCredits": "Kredyty AI"
+      "aiCredits": "Kredyty AI",
+      "mondayIntegration": "monday.com"
     },
     "home": {
       "viewAll": "Zobacz wszystko",
@@ -5591,6 +5592,10 @@
         }
       },
       "integrations": "Integracje",
+      "mondayIntegration": {
+        "navTitle": "monday.com",
+        "navDescription": "Dwukierunkowa synchronizacja rezerwacji, produktów i pomieszczeń z tablicami monday.com (GraphQL + Webhooks)."
+      },
       "integrationsTabs": {
         "assurance": "Ubezpieczenie"
       },

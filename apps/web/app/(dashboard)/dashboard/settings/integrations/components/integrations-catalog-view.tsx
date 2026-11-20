@@ -56,6 +56,17 @@ const LOUEZ_ITEMS: BuiltInItem[] = [
       variant: "expired",
     },
   },
+  {
+    id: "monday",
+    href: "/dashboard/settings/monday",
+    icon: CodeIcon,
+    nameKey: "dashboard.settings.mondayIntegration.navTitle",
+    descriptionKey: "dashboard.settings.mondayIntegration.navDescription",
+    badge: {
+      labelKey: "dashboard.settings.integrationsHub.recommended",
+      variant: "progress",
+    },
+  },
 ];
 
 const TULIP_INTEGRATION_ID = "tulip";

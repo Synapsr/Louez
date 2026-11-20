@@ -237,6 +237,16 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     navigation: true,
   },
   {
+    id: "monday",
+    href: "/dashboard/settings/monday",
+    icon: LinkIcon,
+    labelPath: "dashboard.settings.mondayIntegration.navTitle",
+    descriptionPath: "dashboard.settings.mondayIntegration.navDescription",
+    searchPaths: ["dashboard.settings.mondayIntegration"],
+    group: "communication",
+    navigation: true,
+  },
+  {
     id: "referrals",
     href: "/dashboard/settings/referrals",
     icon: RewardIcon,

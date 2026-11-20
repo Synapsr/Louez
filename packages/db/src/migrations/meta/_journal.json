@@ -673,6 +673,13 @@
       "when": 1794920001000,
       "tag": "0090_add_inspection_issuer_signature",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "5",
+      "when": 1795175200000,
+      "tag": "0091_add_monday_integration_tables",
+      "breakpoints": true
     }
   ]
 }

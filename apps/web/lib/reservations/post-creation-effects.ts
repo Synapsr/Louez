@@ -10,6 +10,7 @@ import { notifyNewReservation } from "@/lib/discord/platform-notifications";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { sendNewRequestLandlordEmail } from "@/lib/email/send";
 import { log } from "@/lib/evlog";
+import { processMondaySyncQueue } from "@/lib/integrations/monday/sync";
 import { markReservationForCalendarSync } from "@louez/api/services";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
@@ -129,6 +130,9 @@ export const runPostCreationEffects = async ({
 
   try {
     await markReservationForCalendarSync(store.id, reservation.id);
+    runAfterResponse(async () => {
+      await processMondaySyncQueue({ reservationId: reservation.id });
+    });
   } catch (error) {
     log.error({
       calendar: {

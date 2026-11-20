@@ -73,6 +73,10 @@ const staticBreadcrumbRoutes = [
     translationKey: "settingsIntegrations",
   },
   {
+    href: "/dashboard/settings/monday",
+    label: "monday.com",
+  },
+  {
     href: "/dashboard/settings/invoicing",
     translationKey: "settingsInvoicing",
   },
@@ -108,7 +112,7 @@ const staticBreadcrumbRoutes = [
     href: "/dashboard/settings/taxes",
     translationKey: "settingsTaxes",
   },
-] satisfies StaticBreadcrumbRoute[];
+] satisfies DashboardBreadcrumbItem[];
 
 const staticBreadcrumbRoutesByHref = new Map(
   staticBreadcrumbRoutes.map((route) => [route.href, route]),

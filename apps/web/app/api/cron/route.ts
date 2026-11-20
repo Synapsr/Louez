@@ -9,6 +9,7 @@ import { createError, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
 import { processVoiceNumberRenewals } from "@/lib/ai/phone/number-renewals";
 import { processCalendarSyncQueue } from "@/lib/integrations/calendar/sync";
+import { processMondaySyncQueue } from "@/lib/integrations/monday/sync";
 import { pollSuperPdpInvoiceEvents } from "@/lib/invoicing/superpdp-events";
 import { processInvoiceTransmissionQueue } from "@/lib/invoicing/superpdp-transmission";
 import { runMonthlyPayAsYouGoBilling } from "@/lib/pay-as-you-go";
@@ -84,6 +85,10 @@ async function handleCron(request: Request) {
     // Calendar sync: every minute
     tasks.push("calendar-sync");
     results.calendarSync = await processCalendarSyncQueue();
+
+    // monday.com sync: every minute
+    tasks.push("monday-sync");
+    results.mondaySync = await processMondaySyncQueue();
 
     // Default publication is legally gated by the updated-CGV notice period and
     // remains entirely inert until production explicitly opts in.

@@ -10,6 +10,8 @@ import {
 import { markReservationForCalendarSync, validateReservationContract } from "@louez/api/services";
 
 import { resolveDateChangeRequests } from "@/lib/reservations/date-change-request.server";
+import { runAfterResponse } from "@/lib/reservations/post-creation-effects";
+import { processMondaySyncQueue } from "@/lib/integrations/monday/sync";
 import { revalidatePath } from "next/cache";
 
 import { and, eq, gt, inArray, isNull, lt, not, or, sql } from "drizzle-orm";
@@ -677,6 +679,9 @@ export async function updateReservationStatus(
   }
 
   await markReservationForCalendarSync(store.id, reservationId);
+  runAfterResponse(async () => {
+    await processMondaySyncQueue({ reservationId });
+  });
 
   // Log activity based on status transition
   const activityMap: Record<string, ActivityType> = {
@@ -1001,6 +1006,9 @@ export async function cancelReservation(reservationId: string) {
   }
 
   await markReservationForCalendarSync(store.id, reservationId);
+  runAfterResponse(async () => {
+    await processMondaySyncQueue({ reservationId });
+  });
 
   // Log activity
   await logReservationActivity(reservationId, "cancelled", {
@@ -3959,6 +3967,9 @@ export async function updateReservation(
   }
 
   await markReservationForCalendarSync(store.id, reservationId);
+  runAfterResponse(async () => {
+    await processMondaySyncQueue({ reservationId });
+  });
 
   const currentReservationStatus = transactionResult.reservationStatus;
 
@@ -6264,6 +6275,11 @@ export async function assignUnitsToReservationItem(
       action: selectedUnitIds.length > 0 ? "units_assigned" : "units_unassigned",
       reservationItemId,
       ...(selectedUnitIds.length > 0 ? { unitIdentifiers: assignmentResult.unitIdentifiers } : {}),
+    });
+
+    await markReservationForCalendarSync(store.id, item.reservationId);
+    runAfterResponse(async () => {
+      await processMondaySyncQueue({ reservationId: item.reservationId });
     });
 
     revalidatePath(`/dashboard/reservations/${item.reservationId}`);

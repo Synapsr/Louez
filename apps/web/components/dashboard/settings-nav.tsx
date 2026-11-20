@@ -222,7 +222,8 @@ export const SettingsNav = ({
                   <optgroup key={group} label={t(`groups.${group}`)}>
                     {items.map((item) => (
                       <option key={item.id} value={item.href}>
-                        {getMessageText(messages, item.labelPath)}
+                        {getMessageText(messages, item.labelPath) ||
+                          (item.id === "monday" ? "monday.com" : item.id)}
                       </option>
                     ))}
                   </optgroup>
@@ -267,7 +268,8 @@ export const SettingsNav = ({
                           >
                             <item.icon className="size-4 shrink-0" />
                             <span className="truncate">
-                              {getMessageText(messages, item.labelPath)}
+                              {getMessageText(messages, item.labelPath) ||
+                                (item.id === "monday" ? "monday.com" : item.id)}
                             </span>
                           </Link>
                         );

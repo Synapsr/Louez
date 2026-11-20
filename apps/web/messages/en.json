@@ -905,7 +905,8 @@
       "settings": "Settings",
       "store": "My store",
       "multiStore": "Multi-store",
-      "aiCredits": "AI credits"
+      "aiCredits": "AI credits",
+      "mondayIntegration": "monday.com"
     },
     "multiStore": {
       "title": "Multi-store",
@@ -3514,6 +3515,10 @@
       "legal": "Legal pages",
       "account": "Account",
       "integrations": "Integrations",
+      "mondayIntegration": {
+        "navTitle": "monday.com",
+        "navDescription": "Bi-directional synchronization of reservations, equipment, and rooms with monday.com boards (GraphQL + Webhooks)."
+      },
       "integrationsTabs": {
         "assurance": "Assurance"
       },

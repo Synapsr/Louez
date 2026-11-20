@@ -871,6 +871,122 @@ export const reservationCalendarEvents = mysqlTable(
   }),
 );
 
+export type MondayColumnIdsConfig = {
+  statusColumnId?: string | null;
+  timelineColumnId?: string | null;
+  startDateColumnId?: string | null;
+  endDateColumnId?: string | null;
+  customerColumnId?: string | null;
+  emailColumnId?: string | null;
+  phoneColumnId?: string | null;
+  linkColumnId?: string | null;
+  numberColumnId?: string | null;
+  totalColumnId?: string | null;
+  notesColumnId?: string | null;
+  subitemQuantityColumnId?: string | null;
+  subitemTypeColumnId?: string | null;
+  subitemUnitsColumnId?: string | null;
+  subitemStatusColumnId?: string | null;
+};
+
+export type MondayStatusLabelsConfig = {
+  quote?: string | null;
+  pending?: string | null;
+  confirmed?: string | null;
+  ongoing?: string | null;
+  completed?: string | null;
+  cancelled?: string | null;
+  rejected?: string | null;
+  declined?: string | null;
+};
+
+export const storeMondayIntegrations = mysqlTable(
+  "store_monday_integrations",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    apiTokenEncrypted: text("api_token_encrypted"),
+    apiVersion: varchar("api_version", { length: 20 }).default("2024-10").notNull(),
+    boardId: varchar("board_id", { length: 64 }),
+    groupId: varchar("group_id", { length: 64 }),
+    subitemBoardId: varchar("subitem_board_id", { length: 64 }),
+    botUserId: varchar("bot_user_id", { length: 64 }),
+    webhookSecret: varchar("webhook_secret", { length: 128 }),
+    columnConfig: json("column_config").$type<MondayColumnIdsConfig>(),
+    statusLabels: json("status_labels").$type<MondayStatusLabelsConfig>(),
+    webhookStatusMap: json("webhook_status_map").$type<Record<string, string>>(),
+    lastSyncAt: timestamp("last_sync_at", { mode: "date" }),
+    lastWebhookAt: timestamp("last_webhook_at", { mode: "date" }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeUnique: unique("store_monday_integrations_store_unique").on(table.storeId),
+    storeIdx: index("store_monday_integrations_store_idx").on(table.storeId),
+    boardIdx: index("store_monday_integrations_board_idx").on(table.boardId),
+  }),
+);
+
+export const reservationMondayItems = mysqlTable(
+  "reservation_monday_items",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    mondayBoardId: varchar("monday_board_id", { length: 64 }),
+    mondayItemId: varchar("monday_item_id", { length: 64 }),
+    payloadHash: varchar("payload_hash", { length: 64 }),
+    lastPushedStatus: varchar("last_pushed_status", { length: 32 }),
+    syncStatus: mysqlEnum("sync_status", ["pending", "processing", "synced", "failed"])
+      .default("pending")
+      .notNull(),
+    attemptCount: int("attempt_count").default(0).notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date" }).defaultNow().notNull(),
+    lastSyncedAt: timestamp("last_synced_at", { mode: "date" }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reservationUnique: unique("reservation_monday_items_reservation_unique").on(
+      table.reservationId,
+    ),
+    mondayItemUnique: unique("reservation_monday_items_monday_item_unique").on(table.mondayItemId),
+    storeIdx: index("reservation_monday_items_store_idx").on(table.storeId),
+    syncIdx: index("reservation_monday_items_sync_idx").on(table.syncStatus, table.nextAttemptAt),
+  }),
+);
+
+export const reservationMondaySubitems = mysqlTable(
+  "reservation_monday_subitems",
+  {
+    id: id(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    reservationItemId: varchar("reservation_item_id", { length: 21 }).notNull(),
+    mondayParentItemId: varchar("monday_parent_item_id", { length: 64 }).notNull(),
+    mondaySubitemBoardId: varchar("monday_subitem_board_id", { length: 64 }),
+    mondaySubitemId: varchar("monday_subitem_id", { length: 64 }).notNull(),
+    itemKind: mysqlEnum("item_kind", ["product", "room"]).default("product").notNull(),
+    payloadHash: varchar("payload_hash", { length: 64 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reservationItemUnique: unique("reservation_monday_subitems_reservation_item_unique").on(
+      table.reservationItemId,
+    ),
+    mondaySubitemUnique: unique("reservation_monday_subitems_monday_subitem_unique").on(
+      table.mondaySubitemId,
+    ),
+    reservationIdx: index("reservation_monday_subitems_reservation_idx").on(table.reservationId),
+    parentItemIdx: index("reservation_monday_subitems_parent_item_idx").on(
+      table.mondayParentItemId,
+    ),
+  }),
+);
+
 export const storeLocations = mysqlTable(
   "store_locations",
   {
@@ -2772,6 +2888,11 @@ export const reservationsRelations = relations(reservations, ({ one, many }) => 
   documents: many(documents),
   activity: many(reservationActivity),
   calendarEvents: many(reservationCalendarEvents),
+  mondayItem: one(reservationMondayItems, {
+    fields: [reservations.id],
+    references: [reservationMondayItems.reservationId],
+  }),
+  mondaySubitems: many(reservationMondaySubitems),
   invoices: many(invoices),
 }));
 
@@ -2803,6 +2924,38 @@ export const reservationCalendarEventsRelations = relations(
   }),
 );
 
+export const reservationMondayItemsRelations = relations(reservationMondayItems, ({ one }) => ({
+  store: one(stores, {
+    fields: [reservationMondayItems.storeId],
+    references: [stores.id],
+  }),
+  reservation: one(reservations, {
+    fields: [reservationMondayItems.reservationId],
+    references: [reservations.id],
+  }),
+}));
+
+export const storeMondayIntegrationsRelations = relations(storeMondayIntegrations, ({ one }) => ({
+  store: one(stores, {
+    fields: [storeMondayIntegrations.storeId],
+    references: [stores.id],
+  }),
+}));
+
+export const reservationMondaySubitemsRelations = relations(
+  reservationMondaySubitems,
+  ({ one }) => ({
+    reservation: one(reservations, {
+      fields: [reservationMondaySubitems.reservationId],
+      references: [reservations.id],
+    }),
+    reservationItem: one(reservationItems, {
+      fields: [reservationMondaySubitems.reservationItemId],
+      references: [reservationItems.id],
+    }),
+  }),
+);
+
 export const reservationItemsRelations = relations(reservationItems, ({ one, many }) => ({
   reservation: one(reservations, {
     fields: [reservationItems.reservationId],
@@ -2813,6 +2966,10 @@ export const reservationItemsRelations = relations(reservationItems, ({ one, man
     references: [products.id],
   }),
   assignedUnits: many(reservationItemUnits),
+  mondaySubitem: one(reservationMondaySubitems, {
+    fields: [reservationItems.id],
+    references: [reservationMondaySubitems.reservationItemId],
+  }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one, many }) => ({
