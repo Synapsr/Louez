@@ -50,6 +50,7 @@ services:
       # Leave empty to let the container generate and persist a secret in the
       # louez_data volume (sessions then survive container recreation).
       AUTH_SECRET: ${AUTH_SECRET:-}
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:-}
       # Bundled MinIO object storage — private to this compose network, with
       # images served same-origin by the app under /files.
       S3_ENDPOINT: http://minio:9000
