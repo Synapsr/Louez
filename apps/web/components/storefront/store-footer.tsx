@@ -1,15 +1,16 @@
 "use client";
 
 import { MailIcon, MapPinIcon, PhoneIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
-import type { StoreSocialLinks } from "@louez/types";
+import { isSupportedLocale, type StoreSocialLinks } from "@louez/types";
 import { cn } from "@louez/utils";
 
 import { SOCIAL_NETWORK_LABELS, SocialNetworkIcon } from "@/components/shared/social-network-icon";
 import { useChromeVariant } from "@/components/storefront/shell/use-chrome-variant";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { resolveLouezCreditHref, type LouezCreditTarget } from "@/lib/storefront/util.louez-credit";
 import { resolveStoreSocialLinks } from "@/lib/utils/util.store-social-links";
 
 interface StoreFooterProps {
@@ -25,6 +26,11 @@ interface StoreFooterProps {
   /** Preview controls; production keeps its navigation and language selector. */
   linkPrefetch?: boolean;
   showLanguageSwitcher?: boolean;
+  /**
+   * Louez Cloud: the "Powered by" credit names the store's trade and links its
+   * louez.io page. Null or absent (self-hosted, landing demos): the plain louez.io link.
+   */
+  louezCredit?: LouezCreditTarget | null;
 }
 
 const LINK_CLASS_NAME =
@@ -50,8 +56,10 @@ export const StoreFooter = ({
   showAccount = true,
   linkPrefetch,
   showLanguageSwitcher = true,
+  louezCredit,
 }: StoreFooterProps) => {
   const t = useTranslations("storefront.footer");
+  const locale = useLocale();
   const variant = useChromeVariant();
   const currentYear = new Date().getFullYear();
   const socialLinks = resolveStoreSocialLinks(social);
@@ -93,14 +101,30 @@ export const StoreFooter = ({
         ) : null}
         <p>
           {t("poweredBy")}{" "}
-          <a
-            href="https://louez.io"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-foreground hover:underline"
-          >
-            Louez.io
-          </a>
+          {louezCredit ? (
+            // Followed, with the referrer (the storefront's origin, by the referrer policy) so
+            // louez.io's analytics count the visits each storefront sends.
+            <a
+              href={resolveLouezCreditHref(
+                louezCredit,
+                isSupportedLocale(locale) ? locale : louezCredit.fallbackLocale,
+              )}
+              target="_blank"
+              rel="noopener"
+              className="font-medium text-foreground hover:underline"
+            >
+              {t(`louezCredit.${louezCredit.trade ?? "home"}`)}
+            </a>
+          ) : (
+            <a
+              href="https://louez.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-foreground hover:underline"
+            >
+              Louez.io
+            </a>
+          )}
         </p>
       </div>
     </div>

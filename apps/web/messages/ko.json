@@ -9042,6 +9042,14 @@
       "signIn": "로그인",
       "allRightsReserved": "모든 권리 보유.",
       "poweredBy": "제공:",
+      "louezCredit": {
+        "home": "Louez",
+        "bike": "Louez, 자전거 대여 소프트웨어",
+        "ski": "Louez, 스키 대여 소프트웨어",
+        "tools": "Louez, 공구 대여 소프트웨어",
+        "watersport": "Louez, 수상 스포츠 장비 대여 소프트웨어",
+        "sound": "Louez, 음향·조명 장비 대여 소프트웨어"
+      },
       "navigation": "네비게이션",
       "catalog": "카탈로그",
       "reviews": "리뷰",

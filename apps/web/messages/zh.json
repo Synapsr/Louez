@@ -9042,6 +9042,14 @@
       "signIn": "登录",
       "allRightsReserved": "保留所有权利。",
       "poweredBy": "技术支持：",
+      "louezCredit": {
+        "home": "Louez",
+        "bike": "Louez，自行车租赁软件",
+        "ski": "Louez，滑雪装备租赁软件",
+        "tools": "Louez，工具租赁软件",
+        "watersport": "Louez，水上运动装备租赁软件",
+        "sound": "Louez，音响灯光租赁软件"
+      },
       "navigation": "导航",
       "catalog": "目录",
       "reviews": "评论",

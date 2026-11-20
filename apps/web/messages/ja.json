@@ -9042,6 +9042,14 @@
       "signIn": "サインイン",
       "allRightsReserved": "すべての著作権は留保されています。",
       "poweredBy": "提供元",
+      "louezCredit": {
+        "home": "Louez",
+        "bike": "Louez、自転車レンタル管理ソフト",
+        "ski": "Louez、スキーレンタル管理ソフト",
+        "tools": "Louez、工具レンタル管理ソフト",
+        "watersport": "Louez、ウォータースポーツレンタル管理ソフト",
+        "sound": "Louez、音響・照明レンタル管理ソフト"
+      },
       "navigation": "ナビゲーション",
       "catalog": "カタログ",
       "reviews": "レビュー",

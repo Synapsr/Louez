@@ -9,6 +9,7 @@ import type { StorefrontShellVariant } from "@/components/storefront/shell/store
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 import type { StorefrontStore } from "@/lib/storefront/get-store-by-slug";
+import type { LouezCreditTarget } from "@/lib/storefront/util.louez-credit";
 import {
   buildStoreThemeStyle,
   getStoreThemeClassName,
@@ -22,6 +23,8 @@ interface StorefrontShellProps {
   theme: StoreThemeInput;
   variant: StorefrontShellVariant;
   advisorEnabled: boolean;
+  /** The footer credit's trade page; null on a self-hosted instance. */
+  louezCredit: LouezCreditTarget | null;
   customerInitials?: string | null;
   customerIdentity?: { firstName: string; lastName: string; email: string } | null;
   /** Sales-channel badge for the marketplace header. */
@@ -43,6 +46,7 @@ export const StorefrontShell = ({
   theme,
   variant,
   advisorEnabled,
+  louezCredit,
   customerInitials,
   customerIdentity,
   channelBadge,
@@ -107,6 +111,7 @@ export const StorefrontShell = ({
         social={store.settings?.social}
         footerNote={store.settings?.footerNote}
         showAccount={!isMarketplace}
+        louezCredit={louezCredit}
       />
       <CartDrawer />
       {advisorEnabled ? <AdvisorWidget /> : null}
