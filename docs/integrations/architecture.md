@@ -111,7 +111,9 @@ Default calendar sync behavior:
 
 The default is `show`. Do not rely only on provider cancellation semantics when the product intent is visibility, because some calendar clients hide cancelled events.
 
-Calendar event content should match the current ICS export in the first version. Google Calendar sync should include the same operational reservation details currently published through ICS: customer identity, contact details, product list, total, customer notes, status marker, and reservation link. Any data minimization or field-level privacy setting should be a later explicit product change, not an accidental difference between providers.
+Google Calendar event summaries use the trimmed internal reservation title, then the business client's company name, then the reservation number. Event start and end use the reservation's scheduled times. The description includes client identity and contact details, product list, total, customer notes, status marker, reservation link, and names of reserved room/space products. Display the business name for business clients and the person's name for individual clients. Do not add the client as an attendee or send invitations.
+
+The self-hosted Docker Compose deployment runs the existing `/api/cron` endpoint through a scheduler service. `CRON_SECRET` must be set in the deployment environment for the scheduler to authenticate; when it is unset, the scheduler stays idle. Deployments using an external scheduler should stop the Compose `cron` service so only one caller processes the unified cron route.
 
 Initial connection and manual resync should enqueue existing reservations in a bounded window:
 

@@ -7,7 +7,7 @@ import {
   reserveInventory,
 } from "@/lib/reservations/reserve-inventory";
 
-import { validateReservationContract } from "@louez/api/services";
+import { markReservationForCalendarSync, validateReservationContract } from "@louez/api/services";
 
 import { resolveDateChangeRequests } from "@/lib/reservations/date-change-request.server";
 import { revalidatePath } from "next/cache";
@@ -676,6 +676,8 @@ export async function updateReservationStatus(
     throw error;
   }
 
+  await markReservationForCalendarSync(store.id, reservationId);
+
   // Log activity based on status transition
   const activityMap: Record<string, ActivityType> = {
     confirmed: "confirmed",
@@ -997,6 +999,8 @@ export async function cancelReservation(reservationId: string) {
     }
     throw error;
   }
+
+  await markReservationForCalendarSync(store.id, reservationId);
 
   // Log activity
   await logReservationActivity(reservationId, "cancelled", {
@@ -3953,6 +3957,8 @@ export async function updateReservation(
   if ("error" in transactionResult) {
     return transactionResult;
   }
+
+  await markReservationForCalendarSync(store.id, reservationId);
 
   const currentReservationStatus = transactionResult.reservationStatus;
 

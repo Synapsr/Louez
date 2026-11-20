@@ -182,7 +182,7 @@ const intercepted = new Set([
   "@/lib/pay-as-you-go",
   "@/lib/pdf/generate",
   "@/lib/invoicing/service",
-  "@/lib/integrations/calendar/sync",
+  "@louez/api/services",
   "@/lib/email/send",
   "@/lib/email/i18n",
   "@/lib/evlog",

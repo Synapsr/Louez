@@ -10,7 +10,7 @@ import { notifyNewReservation } from "@/lib/discord/platform-notifications";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { sendNewRequestLandlordEmail } from "@/lib/email/send";
 import { log } from "@/lib/evlog";
-import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
+import { markReservationForCalendarSync } from "@louez/api/services";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import {

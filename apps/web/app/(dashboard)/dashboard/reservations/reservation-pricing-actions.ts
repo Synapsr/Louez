@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, reservationItems, reservations } from "@louez/db";
+import { markReservationForCalendarSync } from "@louez/api/services";
 import { extractExclusiveFromInclusive } from "@louez/utils";
 import { getCurrentStore, hasPermission } from "@/lib/store-context";
 
@@ -124,6 +125,7 @@ export async function settleNegotiableReservationItemPrice(input: {
   });
 
   if ("error" in result) return result;
+  await markReservationForCalendarSync(store.id, parsed.data.reservationId);
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${parsed.data.reservationId}`);
   return result;

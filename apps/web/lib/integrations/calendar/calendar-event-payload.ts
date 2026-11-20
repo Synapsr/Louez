@@ -7,7 +7,10 @@ import type { GoogleCalendarEventInput } from "@/lib/integrations/providers/goog
 
 import { env } from "@/env";
 
-import { buildReservationCalendarDescription } from "./reservation-event-details";
+import {
+  buildReservationCalendarEventDetails,
+  getCalendarRoomNames,
+} from "./reservation-event-details";
 
 const STATUS_PREFIX: Record<string, string> = {
   pending: "[?]",
@@ -33,7 +36,7 @@ const GOOGLE_CALENDAR_COLOR_BY_STATUS: Record<string, string> = {
 };
 
 function isCancelledStatus(status: string): boolean {
-  return status === "cancelled" || status === "rejected";
+  return status === "cancelled" || status === "rejected" || status === "declined";
 }
 
 export async function buildReservationCalendarEventPayload(params: {
@@ -52,7 +55,16 @@ export async function buildReservationCalendarEventPayload(params: {
       customer: true,
       items: {
         with: {
-          product: true,
+          product: {
+            with: {
+              category: true,
+              categoryLinks: {
+                with: {
+                  category: true,
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -67,32 +79,34 @@ export async function buildReservationCalendarEventPayload(params: {
     (cancelled && params.cancelledReservationBehavior === "hide") ||
     (reservation.status === "pending" && !params.syncPendingReservations);
 
+  const getItemName = (item: (typeof reservation.items)[number]) =>
+    item.productSnapshot?.name || item.product?.name || "Unknown";
+  const formatItemName = (name: string, quantity: number) =>
+    quantity > 1 ? `${name} (x${quantity})` : name;
   const productNames = reservation.items
-    .map((item) => {
-      const name = item.productSnapshot?.name || item.product?.name || "Unknown";
-      return item.quantity > 1 ? `${name} (x${item.quantity})` : name;
-    })
+    .map((item) => formatItemName(getItemName(item), item.quantity))
     .join(", ");
+  const roomNames = getCalendarRoomNames(
+    reservation.items.map((item) => ({
+      name: getItemName(item),
+      quantity: item.quantity,
+      category: item.product?.category,
+      categories: item.product?.categoryLinks.map((link) => link.category),
+    })),
+  );
 
   const reservationUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservation.id}`;
-  const description = buildReservationCalendarDescription({
+  const eventDetails = buildReservationCalendarEventDetails({
     reservation,
     store: reservation.store,
     productNames,
+    roomNames,
+    statusLabel: STATUS_PREFIX[reservation.status] || "[?]",
     reservationUrl,
   });
 
-  const customerName =
-    reservation.customer.companyName ||
-    [reservation.customer.firstName, reservation.customer.lastName].filter(Boolean).join(" ") ||
-    reservation.customer.email ||
-    "Customer";
-  const summary = `${STATUS_PREFIX[reservation.status] || "[?]"} ${customerName} - ${productNames}`;
   const event: GoogleCalendarEventInput = {
-    summary,
-    description,
-    startDate: new Date(reservation.startDate),
-    endDate: new Date(reservation.endDate),
+    ...eventDetails,
     status:
       reservation.status === "pending" || reservation.status === "quote"
         ? "tentative"

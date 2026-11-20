@@ -11,7 +11,7 @@ import {
   notifyReservationConfirmed,
 } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
-import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
+import { markReservationForCalendarSync } from "@louez/api/services";
 import { tryPrepareInitialInvoiceEmailDelivery } from "@/lib/invoicing/delivery";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";

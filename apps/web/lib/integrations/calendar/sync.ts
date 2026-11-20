@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lte, or } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, lte, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -23,78 +23,14 @@ import {
 import { buildReservationCalendarEventPayload } from "./calendar-event-payload";
 
 const MAX_ATTEMPTS = 8;
-const IMMEDIATE_BACKFILL_SYNC_LIMIT = 10;
 
 function isMissingProviderEvent(error: unknown): boolean {
   return error instanceof GoogleCalendarApiError && (error.status === 404 || error.status === 410);
 }
 
-async function processCalendarSyncQueueImmediately(limit: number, context: string): Promise<void> {
-  const result = await processCalendarSyncQueue(limit);
-
-  if (result.failed > 0) {
-    console.warn("[calendar] Immediate sync left failed events for retry", {
-      context,
-      ...result,
-    });
-  }
-}
-
 function getRetryDate(attemptCount: number): Date {
   const delayMinutes = Math.min(24 * 60, 2 ** Math.max(0, attemptCount));
   return new Date(Date.now() + delayMinutes * 60 * 1000);
-}
-
-export async function markReservationForCalendarSync(
-  storeId: string,
-  reservationId: string,
-): Promise<void> {
-  const integrations = await db
-    .select({ integrationId: storeIntegrations.id })
-    .from(storeIntegrations)
-    .innerJoin(
-      storeCalendarIntegrations,
-      eq(storeCalendarIntegrations.integrationId, storeIntegrations.id),
-    )
-    .where(
-      and(
-        eq(storeIntegrations.storeId, storeId),
-        eq(storeIntegrations.category, "calendar"),
-        eq(storeIntegrations.enabled, true),
-        inArray(storeIntegrations.status, ["active", "error", "syncing"]),
-        eq(storeIntegrations.providerKey, GOOGLE_CALENDAR_PROVIDER_KEY),
-      ),
-    );
-
-  let enqueued = 0;
-
-  for (const integration of integrations) {
-    await db
-      .insert(reservationCalendarEvents)
-      .values({
-        id: nanoid(),
-        reservationId,
-        integrationId: integration.integrationId,
-        syncStatus: "pending",
-        attemptCount: 0,
-        nextAttemptAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .onDuplicateKeyUpdate({
-        set: {
-          syncStatus: "pending",
-          attemptCount: 0,
-          nextAttemptAt: new Date(),
-          lastError: null,
-          updatedAt: new Date(),
-        },
-      });
-    enqueued++;
-  }
-
-  if (enqueued > 0) {
-    await processCalendarSyncQueueImmediately(enqueued, "reservation_enqueued");
-  }
 }
 
 export async function enqueueCalendarBackfill(params: {
@@ -144,13 +80,6 @@ export async function enqueueCalendarBackfill(params: {
           updatedAt: new Date(),
         },
       });
-  }
-
-  if (rows.length > 0) {
-    await processCalendarSyncQueueImmediately(
-      Math.min(rows.length, IMMEDIATE_BACKFILL_SYNC_LIMIT),
-      "calendar_backfill_enqueued",
-    );
   }
 
   return { enqueued: rows.length };
@@ -337,6 +266,7 @@ export async function processCalendarSyncQueue(limit = 25): Promise<{
     .where(
       and(
         inArray(reservationCalendarEvents.syncStatus, ["pending", "failed"]),
+        lt(reservationCalendarEvents.attemptCount, MAX_ATTEMPTS),
         lte(reservationCalendarEvents.nextAttemptAt, new Date()),
         eq(storeIntegrations.enabled, true),
         eq(storeIntegrations.providerKey, GOOGLE_CALENDAR_PROVIDER_KEY),
@@ -359,7 +289,7 @@ export async function processCalendarSyncQueue(limit = 25): Promise<{
       await db
         .update(reservationCalendarEvents)
         .set({
-          syncStatus: nextAttemptCount >= MAX_ATTEMPTS ? "failed" : "failed",
+          syncStatus: "failed",
           attemptCount: nextAttemptCount,
           nextAttemptAt: getRetryDate(nextAttemptCount),
           lastError: message,

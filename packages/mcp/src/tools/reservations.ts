@@ -9,6 +9,7 @@ import {
   reservations,
   restoreReservationStock,
 } from "@louez/db";
+import { markReservationForCalendarSync } from "@louez/api/services";
 import { and, eq, desc, sql, gte } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -287,6 +288,8 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
         }
         throw error;
       }
+
+      await markReservationForCalendarSync(ctx.storeId, reservationId);
 
       return toolResult(
         `Reservation #${existing.number} updated: ${formatStatus(transitionFrom)} → ${formatStatus(newStatus)}`,

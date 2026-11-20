@@ -78,6 +78,9 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
       AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
+      # Separate OAuth client for Google Calendar integration.
+      GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CALENDAR_CLIENT_ID:-}
+      GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CALENDAR_CLIENT_SECRET:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
@@ -112,6 +115,31 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    restart: unless-stopped
+
+  cron:
+    image: curlimages/curl:8.12.1
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-}
+    depends_on:
+      - louez
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        while true; do
+          if [ -z "$$CRON_SECRET" ]; then
+            echo "CRON_SECRET is unset; cron requests are skipped."
+            sleep 300
+            continue
+          fi
+          curl --silent --show-error --fail --connect-timeout 10 --max-time 300 --output /dev/null \
+            --write-out 'Cron request returned HTTP %{http_code}\n' \
+            --header "Authorization: Bearer $$CRON_SECRET" \
+            http://louez:3000/api/cron
+          sleep 60
+        done
     restart: unless-stopped
 
   background-removal:
