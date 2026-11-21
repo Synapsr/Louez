@@ -407,5 +407,25 @@
     "savingsLabel": "Penghematan:",
     "cta": "Lihat penawaran",
     "footer": "Paket bulanan, tanpa ikatan, bisa dibatalkan kapan saja. Biaya Stripe dan biaya marketplace reeent tetap berlaku."
+  },
+  "partnerNotification": {
+    "greeting": "Halo {partner},",
+    "cta": "Buka halaman mitra saya",
+    "footer": "Anda menerima email ini karena {store} menambahkan Anda sebagai mitra. Pilih email yang ingin Anda terima dari halaman mitra Anda.",
+    "booking": {
+      "subject": "Pemesanan baru berkat Anda di {store}",
+      "title": "Pemesanan baru berkat Anda",
+      "body": "Seorang pelanggan memesan di {store} berkat Anda. Perkiraan komisi Anda: {amount}, terutang setelah sewa selesai pada {endDate}."
+    },
+    "payout": {
+      "subject": "{store} telah membayar Anda {amount}",
+      "title": "Pembayaran diterima",
+      "body": "{store} mencatat telah membayar Anda {amount} untuk sewa yang selesai pada {month}. Terima kasih atas rekomendasi Anda!"
+    },
+    "statement": {
+      "subject": "Rekap {month} Anda di {store}",
+      "title": "Rekap {month} Anda",
+      "body": "{bookings, plural, other {# pemesanan}} berkat Anda. Terutang: {due}. Sudah dibayar: {paid}. Sisa yang harus dibayar: {remaining}."
+    }
   }
 }

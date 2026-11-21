@@ -82,8 +82,7 @@ export const useVisibilityAnalytics = (storeId: string) => {
       (
         placement: AiVisibilityPlacement,
         item: AiReadinessItemKey | "llms_txt" | "ai_page" | "analytics",
-      ) =>
-        capture(productAnalyticsEvents.visibilityAiFixOpened, { placement, item }),
+      ) => capture(productAnalyticsEvents.visibilityAiFixOpened, { placement, item }),
       [capture],
     ),
   };

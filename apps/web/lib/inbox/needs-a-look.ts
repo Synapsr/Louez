@@ -21,6 +21,7 @@ export const NEEDS_A_LOOK_TYPES = [
   "message_not_sent",
   "invitation_not_sent",
   "operation_unknown",
+  "partner_payout_due",
 ] as const satisfies readonly InboxItemType[];
 
 export type NeedsALookType = (typeof NEEDS_A_LOOK_TYPES)[number];

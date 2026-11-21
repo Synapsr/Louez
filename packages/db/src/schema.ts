@@ -1224,6 +1224,117 @@ export const storeAiCrawls = mysqlTable(
   }),
 );
 
+/**
+ * A store's local partners (docs/product/liens-partenaires.md): a campsite, a
+ * hotel, a tourist office that sends customers through its own link
+ * (`?partner=<code>`). The store sets their commission and pays them itself;
+ * no money goes through Louez. `statementToken` opens the partner's read-only
+ * statement, without an account. Archived partners attribute nothing new.
+ */
+export const storePartners = mysqlTable(
+  "store_partners",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    contactName: varchar("contact_name", { length: 120 }),
+    contactEmail: varchar("contact_email", { length: 255 }),
+    contactPhone: varchar("contact_phone", { length: 40 }),
+    // What the link carries, unique in the store (PARTNER_CODE_PATTERN).
+    code: varchar("code", { length: 40 }).notNull(),
+    commissionType: mysqlEnum("commission_type", ["percent", "fixed"]).notNull(),
+    // A percentage (10.00 is 10 %) or an amount in the store's currency.
+    commissionValue: decimal("commission_value", { precision: 10, scale: 2 }).notNull(),
+    statementToken: varchar("statement_token", { length: 43 }).notNull(),
+    // The customer perk of the partner's link: one of the store's promo codes,
+    // applied at checkout when the visitor came through the link. Null: none.
+    promoCodeId: varchar("promo_code_id", { length: 21 }),
+    // The partner's e-mail notifications, set from its own space: where they
+    // go (null: the contact e-mail) and which ones it wants.
+    notifyEmail: varchar("notify_email", { length: 255 }),
+    notifyBookings: boolean("notify_bookings").default(true).notNull(),
+    notifyPayouts: boolean("notify_payouts").default(true).notNull(),
+    notifyStatements: boolean("notify_statements").default(true).notNull(),
+    // The last month (`YYYY-MM`) whose statement e-mail was queued: one per month.
+    statementSentMonth: varchar("statement_sent_month", { length: 7 }),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeCodeUnique: unique("store_partners_store_code_unique").on(table.storeId, table.code),
+    statementTokenUnique: unique("store_partners_statement_token_unique").on(table.statementToken),
+  }),
+);
+
+/** A store's settings for Liens partenaires, one row once it changed one. */
+export const storePartnerSettings = mysqlTable("store_partner_settings", {
+  storeId: varchar("store_id", { length: 21 }).primaryKey(),
+  // How long a partner link holds, from the click to the booking
+  // (PARTNER_ATTRIBUTION_DAY_OPTIONS in @louez/api/contracts/partner-code).
+  attributionDays: int("attribution_days").default(30).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+/**
+ * A reservation attributed to a partner, one at most. The commission rule is
+ * copied from the partner when it is attributed: a later change of rate leaves
+ * it as it was. Its amount follows the reservation unless the store adjusted
+ * it; its state is read from the reservation's status.
+ */
+export const partnerBookings = mysqlTable(
+  "partner_bookings",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    partnerId: varchar("partner_id", { length: 21 }).notNull(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    commissionType: mysqlEnum("commission_type", ["percent", "fixed"]).notNull(),
+    commissionValue: decimal("commission_value", { precision: 10, scale: 2 }).notNull(),
+    // `link`: the storefront's partner cookie at checkout; `code`: the partner's
+    // code typed by the customer at checkout; `manual`: the store chose.
+    origin: mysqlEnum("origin", ["link", "code", "manual"]).notNull(),
+    // What the store decided to owe instead of the rule's amount (a partial
+    // refund, a goodwill gesture), and why. Null: the rule applies.
+    adjustedAmount: decimal("adjusted_amount", { precision: 10, scale: 2 }),
+    adjustmentNote: varchar("adjustment_note", { length: 200 }),
+    // Who attributed it by hand; null for a link, or once their account is deleted.
+    attributedBy: varchar("attributed_by", { length: 21 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reservationUnique: unique("partner_bookings_reservation_unique").on(table.reservationId),
+    storePartnerIdx: index("partner_bookings_store_partner_idx").on(table.storeId, table.partnerId),
+  }),
+);
+
+/**
+ * What the store says it paid a partner for a month (`YYYY-MM`, the month the
+ * rentals ended, in the store's timezone). Louez moves no money: this is the
+ * store's own record, so its statement shows what is left to pay.
+ */
+export const partnerPayouts = mysqlTable(
+  "partner_payouts",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    partnerId: varchar("partner_id", { length: 21 }).notNull(),
+    month: varchar("month", { length: 7 }).notNull(),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull(),
+    // Who marked it paid; null once their account is deleted.
+    userId: varchar("user_id", { length: 21 }),
+    paidAt: timestamp("paid_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storePartnerMonthIdx: index("partner_payouts_store_partner_month_idx").on(
+      table.storeId,
+      table.partnerId,
+      table.month,
+    ),
+  }),
+);
+
 export const marketplaceCatalogTombstones = mysqlTable(
   "marketplace_catalog_tombstones",
   {
@@ -4005,6 +4116,9 @@ export const pageViews = mysqlTable(
     // The AI assistant whose answer the visit came from (AI_ASSISTANTS in packages/api
     // contracts/ai-visibility.ts), read from the referrer or the link's utm_source.
     aiAssistant: varchar("ai_assistant", { length: 20 }),
+    // The store partner whose link the visitor followed (store_partners, `?partner=`),
+    // read from the storefront's partner cookie: kept for the whole attribution window.
+    partnerId: varchar("partner_id", { length: 21 }),
     device: deviceType.default("desktop"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },

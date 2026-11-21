@@ -771,6 +771,14 @@ const purgeOwnedData = async (
       .set({ userId: null })
       .where(eq(schema.storeVisibilitySteps.userId, context.user.id));
     await transaction
+      .update(schema.partnerBookings)
+      .set({ attributedBy: null })
+      .where(eq(schema.partnerBookings.attributedBy, context.user.id));
+    await transaction
+      .update(schema.partnerPayouts)
+      .set({ userId: null })
+      .where(eq(schema.partnerPayouts.userId, context.user.id));
+    await transaction
       .delete(schema.storeInvitations)
       .where(eq(schema.storeInvitations.invitedBy, context.user.id));
 
@@ -988,6 +996,19 @@ const purgeOwnedData = async (
       await transaction
         .delete(schema.storeAiCrawls)
         .where(inArray(schema.storeAiCrawls.storeId, storeIds));
+      // Liens partenaires: the partners' contacts are the store's data, gone with it.
+      await transaction
+        .delete(schema.partnerPayouts)
+        .where(inArray(schema.partnerPayouts.storeId, storeIds));
+      await transaction
+        .delete(schema.partnerBookings)
+        .where(inArray(schema.partnerBookings.storeId, storeIds));
+      await transaction
+        .delete(schema.storePartners)
+        .where(inArray(schema.storePartners.storeId, storeIds));
+      await transaction
+        .delete(schema.storePartnerSettings)
+        .where(inArray(schema.storePartnerSettings.storeId, storeIds));
       await transaction.delete(schema.products).where(inArray(schema.products.storeId, storeIds));
       await transaction
         .delete(schema.variantDefinitions)

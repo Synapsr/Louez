@@ -306,6 +306,9 @@ describe("MCP directory conformance", () => {
       get_dashboard_stats: "read",
       get_product_performance: "read",
       get_revenue_report: "read",
+      // Liens partenaires: the partners and their statements, read only.
+      partners_list: "read",
+      partners_get_statement: "read",
       // The payment procedures, under the names they had as hand-written
       // tools. A payment row added; nothing recorded before changes.
       delete_payment: "delete",
@@ -439,13 +442,22 @@ describe("MCP directory conformance", () => {
     }
     assert.match(instructions, /need the user's approval, whatever the connection's setting/);
     assert.match(instructions, /handoffs_get with the approval's id then says where it stands/);
-    assert.match(instructions, /the approval's id as confirmationToken carries the action out, once/);
+    assert.match(
+      instructions,
+      /the approval's id as confirmationToken carries the action out, once/,
+    );
     // After a refusal: tell the user, stop, and ask again only if they ask.
     assert.match(instructions, /if refused, tell the user nothing was done and stop/);
-    assert.match(instructions, /Request another approval only if the user asks, and respect retryAt/);
+    assert.match(
+      instructions,
+      /Request another approval only if the user asks, and respect retryAt/,
+    );
     assert.match(instructions, /if completed, do not execute it again\./);
     // The team's removals no longer answer a confirmation.
-    assert.doesNotMatch(instructions, /team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED/);
+    assert.doesNotMatch(
+      instructions,
+      /team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED/,
+    );
   });
 
   test("a tool a person approves says, in its description and its argument, how its approval goes", async () => {
@@ -470,10 +482,26 @@ describe("MCP directory conformance", () => {
         assert.match(tool.description ?? "", /answers APPROVAL_REQUIRED with/, tool.name);
         assert.match(tool.description ?? "", /handoffs_get with the approval's id/, tool.name);
         // Each reason its own instruction: a used approval is never a reason to ask again.
-        assert.match(tool.description ?? "", /used means the action already ran, so read the record before acting again/, tool.name);
-        assert.match(tool.description ?? "", /The action's own refusals .* answer first/, tool.name);
-        assert.doesNotMatch(tool.description ?? "", /the same call without it asks the user again/, tool.name);
-        assert.doesNotMatch(tool.description ?? "", /token proves|always asks for a confirmation/, tool.name);
+        assert.match(
+          tool.description ?? "",
+          /used means the action already ran, so read the record before acting again/,
+          tool.name,
+        );
+        assert.match(
+          tool.description ?? "",
+          /The action's own refusals .* answer first/,
+          tool.name,
+        );
+        assert.doesNotMatch(
+          tool.description ?? "",
+          /the same call without it asks the user again/,
+          tool.name,
+        );
+        assert.doesNotMatch(
+          tool.description ?? "",
+          /token proves|always asks for a confirmation/,
+          tool.name,
+        );
       } else if (argument !== undefined) {
         assert.deepEqual(argument, CONFIRMATION_ARGUMENT, tool.name);
         assert.doesNotMatch(tool.description ?? "", /APPROVAL_REQUIRED/, tool.name);

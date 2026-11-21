@@ -442,6 +442,17 @@ export interface ApiEffectPayloads {
   };
   /** Stored files of a deleted test reservation (its inspection photos), removed from storage. */
   "testReservation.deleteFiles": { keys: string[] };
+  /**
+   * Liens partenaires (services/partners.ts): the partner's e-mail when a
+   * reservation is credited to it. The sender reads the partner and the
+   * reservation when it goes out: nothing if the partner turned these
+   * e-mails off, has no address, or the reservation is no longer its own.
+   */
+  "partner.bookingEmail": { partnerId: string; reservationId: string };
+  /** The partner's e-mail when the store marks a month paid. Read when it goes out. */
+  "partner.payoutEmail": { partnerId: string; payoutId: string };
+  /** The partner's statement of a month that ended, once, at the start of the next. */
+  "partner.statementEmail": { partnerId: string; month: string };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;

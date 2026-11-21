@@ -56,6 +56,11 @@ export const manifest: Manifest = {
       "description": "The store's figures: its dashboard's, its revenue over a period, and how each product performs."
     },
     {
+      "name": "partners",
+      "title": "Partners",
+      "description": "The store's local partners, such as campsites and hotels that send customers through their own link, and their monthly statements: what each booking earns them and what the store owes."
+    },
+    {
       "name": "online-store",
       "title": "Online store",
       "description": "The store's public site: its address, its appearance and its images."
@@ -3124,6 +3129,56 @@ export const manifest: Manifest = {
       "confirmation": false
     },
     {
+      "id": "partners_list",
+      "group": "partners",
+      "action": "list",
+      "method": "GET",
+      "path": "/partners",
+      "summary": "List Partners",
+      "description": "Returns the store's partners with their commission rule and their figures for a month (`month`, YYYY-MM, the current one by default): bookings, `due`, `paid`, `remaining`, `upcoming` and visits through their link. Amounts are in `currency`, rounded to its minor unit. A commission is computed on the rental after discount, without deposit, delivery or insurance; it is `upcoming` until the rental ends, `due` once completed or past its end, `cancelled` with the reservation. The store pays its partners itself: `paid` is what it recorded.",
+      "pathParams": [],
+      "query": [
+        {
+          "name": "month",
+          "flag": "month",
+          "kind": "string",
+          "description": "The month to sum up, YYYY-MM, in the store's time zone. Defaults to the current one."
+        }
+      ],
+      "body": null,
+      "idempotent": false,
+      "confirmation": false
+    },
+    {
+      "id": "partners_get_statement",
+      "group": "partners",
+      "action": "get-statement",
+      "method": "GET",
+      "path": "/partners/{partnerId}/statement",
+      "summary": "Get Partner Statement",
+      "description": "Returns a partner's statement for a month (`month`, YYYY-MM, the current one by default): its reservations with dates, rental base, commission, adjustment and state, the month's totals and the recorded payments. Amounts are in `currency`, rounded to its minor unit. A commission is computed on the rental after discount, without deposit, delivery or insurance; it is `upcoming` until the rental ends, `due` once completed or past its end, `cancelled` with the reservation. The store pays its partners itself: `paid` is what it recorded.",
+      "pathParams": [
+        {
+          "name": "partnerId",
+          "flag": "partner-id",
+          "kind": "string",
+          "required": true,
+          "description": "The partner's id, from partners_list."
+        }
+      ],
+      "query": [
+        {
+          "name": "month",
+          "flag": "month",
+          "kind": "string",
+          "description": "The month, YYYY-MM: the month the rentals end in. Defaults to the current one."
+        }
+      ],
+      "body": null,
+      "idempotent": false,
+      "confirmation": false
+    },
+    {
       "id": "settings_get",
       "group": "settings",
       "action": "get",
@@ -4333,7 +4388,8 @@ export const manifest: Manifest = {
             "handoff_waiting",
             "approval_waiting",
             "invitation_not_sent",
-            "image_job_failed"
+            "image_job_failed",
+            "partner_payout_due"
           ],
           "list": true,
           "description": "Only items of these types, among those the caller may read: a type it may not read stays out. Leave it out for every type. A cursor follows the types of the call that returned it: pass the same types with it."

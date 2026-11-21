@@ -59,6 +59,8 @@ export const INBOX_ITEM_TYPES = [
   "invitation_not_sent",
   /** An AI photo enhancement or background removal that failed (nothing was charged). */
   "image_job_failed",
+  /** A month that ended with commissions due to a partner (Liens partenaires) the store has not marked paid. */
+  "partner_payout_due",
 ] as const;
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number];
 

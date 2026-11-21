@@ -27,6 +27,7 @@ import { dashboardSettingsRouter } from "./settings";
 import { dashboardStoresRouter } from "./stores";
 import { dashboardTeamRouter } from "./team";
 import { dashboardTestReservationsRouter } from "./test-reservations";
+import { dashboardPartnersRouter } from "./partners";
 import { dashboardVisibilityRouter } from "./visibility";
 
 /**
@@ -72,6 +73,7 @@ export const dashboardRouter = {
   team: dashboardTeamRouter,
   testReservations: dashboardTestReservationsRouter,
   visibility: dashboardVisibilityRouter,
+  partners: dashboardPartnersRouter,
   onboarding: dashboardOnboardingRouter,
   onlineStore: dashboardOnlineStoreRouter,
   payments: dashboardPaymentsRouter,

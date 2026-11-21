@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { toDisplayUrl, wrapLines } from "./util.poster";
+import { isSquarish, monogram, posterColors, toDisplayUrl, wrapLines } from "./util.poster";
 
 // One unit per character keeps the arithmetic readable.
 const measure = (value: string) => value.length;
@@ -30,7 +30,42 @@ test("keeps a word wider than a line whole", () => {
   ]);
 });
 
-test("prints the address without protocol or trailing slash", () => {
+test("shows the address without protocol or trailing slash", () => {
   assert.equal(toDisplayUrl("https://velos.louez.io/"), "velos.louez.io");
   assert.equal(toDisplayUrl("http://localhost:3000/velos"), "localhost:3000/velos");
+});
+
+test("a dark store colour paints the band and the code's eyes", () => {
+  assert.deepEqual(posterColors("#0F3D2E"), {
+    accent: "#0F3D2E",
+    onAccent: posterColors("#0F3D2E").onAccent,
+    code: "#0F3D2E",
+  });
+  assert.notEqual(posterColors("#0F3D2E").onAccent, posterColors("#0F3D2E").accent);
+});
+
+test("a light store colour paints the band, but the code stays dark enough to scan", () => {
+  const yellow = posterColors("#FFD400");
+  assert.equal(yellow.accent, "#FFD400");
+  assert.equal(yellow.code, "#0a0a0a");
+  // The platform blue passes 4.5:1 on white: the code takes it.
+  assert.equal(posterColors("#0066FF").code, "#0066FF");
+});
+
+test("no colour, or one that is not a colour, prints in ink", () => {
+  for (const value of [null, undefined, "", "blue", "#12"]) {
+    assert.deepEqual(posterColors(value), {
+      accent: "#0a0a0a",
+      onAccent: "#ffffff",
+      code: "#0a0a0a",
+    });
+  }
+});
+
+test("the code's centre shows a squarish logo, else the store's initial", () => {
+  assert.equal(isSquarish({ naturalWidth: 200, naturalHeight: 200 }), true);
+  assert.equal(isSquarish({ naturalWidth: 480, naturalHeight: 140 }), false);
+  assert.equal(monogram("  Vélo Évasion"), "V");
+  assert.equal(monogram("« élan » location"), "É");
+  assert.equal(monogram("…"), "");
 });

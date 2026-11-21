@@ -72,6 +72,13 @@ export interface CheckoutFormProps {
   locations?: CheckoutLocationOption[];
   tulipInsurance?: CheckoutTulipInsurance;
   hasActivePromoCodes?: boolean;
+  /**
+   * Liens partenaires: the partner whose link brought the visitor (within the
+   * store's window), for the perk its link gives; null without one.
+   */
+  linkPartner?: CheckoutLinkPartner | null;
+  /** The store has partners: the customer may type a partner's code. */
+  acceptsPartnerCode?: boolean;
   /** AI advisor checkout participation; null when the advisor is inactive. */
   advisorMode?: AiAdvisorMode | null;
   businessHours?: BusinessHours;
@@ -213,4 +220,11 @@ export interface CheckoutSubmitError {
   params?: Record<string, string | number>;
   /** Step that holds the field to fix, when known. */
   step: StepId;
+}
+
+/** A partner the checkout knows (Liens partenaires): its name and its link's perk. */
+export interface CheckoutLinkPartner {
+  name: string;
+  /** A promo code the store gives the partner's customers, applied for them; null for none. */
+  perkCode: string | null;
 }

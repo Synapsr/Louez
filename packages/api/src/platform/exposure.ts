@@ -92,6 +92,8 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.analytics.getDashboardStats",
   "dashboard.analytics.getRevenueReport",
   "dashboard.analytics.getProductPerformance",
+  "dashboard.partners.list",
+  "dashboard.partners.getStatement",
   "dashboard.settings.get",
   "dashboard.settings.updateStoreInfo",
   "dashboard.settings.updateCompany",

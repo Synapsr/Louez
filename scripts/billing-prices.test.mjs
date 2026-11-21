@@ -78,6 +78,8 @@ const KNOWN_FIGURES = new Map([
   ["apps/web/messages:upgradeModal.earlyBird", PLANS],
   // The statutory late-payment compensation in a store's rental contract.
   ["apps/web/messages:contract.legal.text2", NOT_A_FEE],
+  // An example of the commission a store sets for its own partners (Liens partenaires).
+  ["apps/web/messages:dashboard.partners.empty.steps.add", NOT_A_FEE],
   // A product's price tiers, as an example.
   [
     "apps/web/messages:dashboard.products.form.pricingTiers.progressive.modal.withExample",
@@ -174,7 +176,8 @@ function feeNumbersIn(code, file) {
     if (node.type === "AssignmentExpression") check(targetName(node.left), node.right, node);
     if (node.type === "ClassProperty") check(propertyKey(node), node.value, node);
     // fees.md §2: rhu(x, bps).
-    if (isCall(node) && calleeName(node.callee) === "rhu") record("rhu bps", node.arguments[1], node);
+    if (isCall(node) && calleeName(node.callee) === "rhu")
+      record("rhu bps", node.arguments[1], node);
   });
   return found;
 }
