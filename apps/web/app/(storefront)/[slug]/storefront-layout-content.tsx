@@ -14,6 +14,7 @@ import { TestModeBanner } from "@/components/storefront/shell/test-mode-banner";
 import { env } from "@/env";
 import { isAdvisorActiveForStore } from "@/lib/ai/advisor/eligibility";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { loadLouezCreditTarget } from "@/lib/storefront/louez-credit.queries";
 import { DEFAULT_STORE_THEME, type StoreThemeInput } from "@/lib/theme/util.store-theme";
 import { getStorefrontPathPrefix } from "@/lib/util.storefront-host";
 import { getCustomerInitials } from "@/lib/utils/util.storefront-chrome";
@@ -53,12 +54,14 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
   const variant = resolveShellVariant(requestHeaders);
 
   // The advisor is opt-in per store and needs the platform AI config; the
-  // customer session only matters where the account button is shown.
-  const [messages, basePath, advisorEnabled, customerSession] = await Promise.all([
+  // customer session only matters where the account button is shown; the footer
+  // credit, wherever there is a footer.
+  const [messages, basePath, advisorEnabled, customerSession, louezCredit] = await Promise.all([
     getMessages(),
     getStorefrontPathPrefix(store.slug),
     variant === "bare" ? Promise.resolve(false) : isAdvisorActiveForStore(store),
     variant === "store" ? getCustomerSession(store.slug) : Promise.resolve(null),
+    variant === "bare" ? Promise.resolve(null) : loadLouezCreditTarget(store),
   ]);
 
   const theme: StoreThemeInput = store.theme ?? DEFAULT_STORE_THEME;
@@ -77,6 +80,7 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
         theme={theme}
         variant={variant}
         advisorEnabled={advisorEnabled}
+        louezCredit={louezCredit}
         customerInitials={customerInitials}
         customerIdentity={
           customerSession

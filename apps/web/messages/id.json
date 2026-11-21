@@ -9042,6 +9042,14 @@
       "signIn": "Masuk",
       "allRightsReserved": "Semua hak dilindungi undang-undang.",
       "poweredBy": "Didukung oleh",
+      "louezCredit": {
+        "home": "Louez",
+        "bike": "Louez, software penyewaan sepeda",
+        "ski": "Louez, software penyewaan ski",
+        "tools": "Louez, software penyewaan perkakas",
+        "watersport": "Louez, software penyewaan perlengkapan olahraga air",
+        "sound": "Louez, software penyewaan sound system dan lighting"
+      },
       "navigation": "Navigasi",
       "catalog": "Katalog",
       "reviews": "Ulasan",

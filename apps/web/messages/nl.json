@@ -9042,6 +9042,14 @@
       "signIn": "Inloggen",
       "allRightsReserved": "Alle rechten voorbehouden.",
       "poweredBy": "Mogelijk gemaakt door",
+      "louezCredit": {
+        "home": "Louez",
+        "bike": "Louez, software voor fietsverhuur",
+        "ski": "Louez, software voor skiverhuur",
+        "tools": "Louez, software voor gereedschapsverhuur",
+        "watersport": "Louez, software voor watersportverhuur",
+        "sound": "Louez, software voor geluid- en lichtverhuur"
+      },
       "navigation": "Navigatie",
       "catalog": "Catalogus",
       "reviews": "Reviews",

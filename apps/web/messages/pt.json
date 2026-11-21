@@ -9042,6 +9042,14 @@
       "signIn": "Entrar",
       "allRightsReserved": "Todos os direitos reservados.",
       "poweredBy": "Desenvolvido por",
+      "louezCredit": {
+        "home": "Louez",
+        "bike": "Louez, software de aluguer de bicicletas",
+        "ski": "Louez, software de aluguer de esqui",
+        "tools": "Louez, software de aluguer de ferramentas",
+        "watersport": "Louez, software de aluguer náutico",
+        "sound": "Louez, software de aluguer de som e iluminação"
+      },
       "navigation": "Navegação",
       "catalog": "Catálogo",
       "reviews": "Avaliações",
