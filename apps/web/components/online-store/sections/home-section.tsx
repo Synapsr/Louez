@@ -209,6 +209,17 @@ export const HomeSection = withForm({
                 />
               )}
             </form.Field>
+            <form.Field name="home.showStatus">
+              {(field) => (
+                <PanelSwitchRow
+                  id={field.name}
+                  label={t("sections.status")}
+                  helper={t("sections.statusDescription")}
+                  checked={field.state.value}
+                  onCheckedChange={field.handleChange}
+                />
+              )}
+            </form.Field>
           </div>
         </PanelGroup>
       </>
