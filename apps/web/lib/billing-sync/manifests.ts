@@ -8,6 +8,7 @@ import {
   billingSyncQueue,
   db,
   excludeTestReservations,
+  notDemoStoreId,
   markBillingDirty,
   newStoresCutoff,
   paymentDisputes,
@@ -83,7 +84,13 @@ async function resyncMark(executor: SyncExecutor, entry: ResyncEntry): Promise<B
       .select({ storeId: reservations.storeId })
       .from(reservations)
       // A test reservation is never billed (packages/db test-reservations.ts): missing here.
-      .where(and(eq(reservations.id, entry.aggregateId), excludeTestReservations()))
+      .where(
+        and(
+          eq(reservations.id, entry.aggregateId),
+          excludeTestReservations(),
+          notDemoStoreId(reservations.storeId),
+        ),
+      )
       .limit(1);
     return row
       ? { type: "reservation", aggregateId: entry.aggregateId, storeId: row.storeId }
@@ -204,6 +211,8 @@ async function reservationsInPeriod(storeId: string, start: Date, end: Date): Pr
         eq(reservations.storeId, storeId),
         // A test reservation is never billed (packages/db test-reservations.ts).
         excludeTestReservations(),
+        // Nor a demo store's (packages/db demo-stores.ts).
+        notDemoStoreId(reservations.storeId),
         or(
           inPeriod(reservations.billableAt),
           inPeriod(reservations.withdrawnAt),

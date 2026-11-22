@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { supplementalMessages } from "@/lib/i18n/supplemental-messages";
 import { revalidatePath } from "next/cache";
 
@@ -78,6 +80,9 @@ export async function createAiCreditTopupCheckout(
   locale: string,
   returnPath?: string,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { success: false, ...demoRefusal };
   const store = await getCurrentStore();
   if (!store) {
     return { success: false, error: "errors.unauthorized" };
@@ -131,6 +136,9 @@ export async function updateAiCreditsAutoTopup(config: {
   thresholdCredits: number;
   packIndex: number;
 }): Promise<{ success?: boolean; error?: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore();
   if (!store) {
     return { error: "errors.unauthorized" };

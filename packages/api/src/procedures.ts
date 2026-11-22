@@ -5,6 +5,7 @@ import type { Permission } from "@louez/utils";
 import { and, eq } from "drizzle-orm";
 import { os, ORPCError } from "@orpc/server";
 import type { BaseContext, DashboardContext, StorefrontContext, StoreData } from "./context";
+import { demoStoreRefusal, isRefusedOnDemoStore } from "./platform/demo-store-policy";
 import { createAvailabilityMemo } from "./services/availability";
 
 /**
@@ -16,7 +17,7 @@ export const publicProcedure = os.$context<BaseContext>();
  * Dashboard procedure - requires authenticated user with store access.
  * `getCurrentStore` is injected via context by the route handler.
  */
-export const dashboardProcedure = publicProcedure.use(async ({ context, next }) => {
+export const dashboardProcedure = publicProcedure.use(async ({ context, next, path }) => {
   const session = await auth();
   if (!session?.user) {
     throw new ORPCError("UNAUTHORIZED", {
@@ -35,6 +36,10 @@ export const dashboardProcedure = publicProcedure.use(async ({ context, next }) 
     throw new ORPCError("FORBIDDEN", {
       message: "errors.unauthorized",
     });
+  }
+  // A demo store (packages/db demo-stores.ts) refuses what reaches outside its sandbox.
+  if (store.demoVertical && isRefusedOnDemoStore(path)) {
+    throw demoStoreRefusal();
   }
   if (context.errorScope) {
     context.errorScope.client = "session";

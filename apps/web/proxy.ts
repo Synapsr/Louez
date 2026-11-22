@@ -113,6 +113,7 @@ const DASHBOARD_ROUTES = [
   "/invitation",
   "/multi-store",
   "/admin", // platform-admin area (gated in its layout)
+  "/demo/", // the one-click demo stores (lib/demo), never a storefront slug
 ];
 
 /**

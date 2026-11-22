@@ -295,6 +295,7 @@ export const loadHomePage = async (
       settings,
       stripeAccountId: store.stripeAccountId,
       stripeChargesEnabled: store.stripeChargesEnabled,
+      demoVertical: store.demoVertical,
     }),
     place,
     sections: resolveStoreHomeSections(theme),

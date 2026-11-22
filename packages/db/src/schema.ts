@@ -970,6 +970,13 @@ export const stores = mysqlTable(
     // counts from then in the inbox. Null until the first change.
     availabilityRulesChangedAt: timestamp("availability_rules_changed_at", { mode: "date" }),
 
+    // Demo store (apps/web lib/demo): a sandbox a visitor opened from /demo/<trade>.
+    // Set: nothing leaves the store (no e-mail, SMS, push, Stripe, paid AI), and it
+    // stays out of search engines, the marketplace, KPIs and billing
+    // (packages/db demo-stores.ts). Deleted with its owner once it expires.
+    demoVertical: varchar("demo_vertical", { length: 32 }),
+    demoExpiresAt: timestamp("demo_expires_at", { mode: "date" }),
+
     // Metadata
     onboardingCompleted: boolean("onboarding_completed").default(false),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -979,6 +986,7 @@ export const stores = mysqlTable(
     slugIdx: index("stores_slug_idx").on(table.slug),
     userIdx: index("stores_user_idx").on(table.userId),
     referralCodeIdx: index("stores_referral_code_idx").on(table.referralCode),
+    demoExpiresIdx: index("stores_demo_expires_idx").on(table.demoExpiresAt),
   }),
 );
 

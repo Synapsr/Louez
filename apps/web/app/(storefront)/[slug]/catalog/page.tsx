@@ -85,6 +85,7 @@ export async function generateMetadata({
   return generateStoreMetadata(
     {
       id: store.id,
+      demoVertical: store.demoVertical,
       name: store.name,
       slug: store.slug,
       description: store.description,

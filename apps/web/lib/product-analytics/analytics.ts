@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { AnalyticsEventIdentity } from '@louez/api/platform/effects';
-import { db, isTestReservation } from '@louez/db';
+import { db, isDemoStore, isTestReservation } from '@louez/db';
 
 import { env } from '@/env';
 import { providerSignal } from '@/lib/api/effect-signal';
@@ -22,6 +22,16 @@ export function withStoreGroup(properties: Record<string, unknown>): Record<stri
   const storeId = properties.store_id;
   if (typeof storeId !== 'string' || storeId.length === 0) return properties;
   return { ...properties, $groups: { store: storeId } };
+}
+
+/**
+ * Whether the event is about a demo store (lib/demo): a visitor's sandbox is no
+ * business metric, so its events never reach PostHog. The demo's own funnel
+ * (lib/demo/demo-analytics.ts) is sent apart.
+ */
+async function isAboutDemoStore(properties: Record<string, unknown> | undefined): Promise<boolean> {
+  const storeId = properties?.store_id;
+  return typeof storeId === 'string' && storeId.length > 0 && (await isDemoStore(db, storeId));
 }
 
 type ProductServerEvent = {
@@ -53,6 +63,7 @@ export async function captureServerEventOrThrow({
 }): Promise<{ skipped: string } | undefined> {
   if (!distinctId) return { skipped: 'no one to count the event on' };
   if (!env.NEXT_PUBLIC_POSTHOG_KEY) return { skipped: 'analytics is not set up' };
+  if (await isAboutDemoStore(properties)) return { skipped: 'demo store' };
   const host = (env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com').replace(/\/$/, '');
   const response = await fetch(`${host}/i/v0/e/`, {
     method: 'POST',
@@ -102,6 +113,7 @@ export async function captureProductServerEvent({
   if (!distinctId) return;
 
   try {
+    if (await isAboutDemoStore(properties)) return;
     const posthog = getPostHogServer();
     posthog.capture({
       distinctId,

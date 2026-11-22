@@ -10,7 +10,7 @@ import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
  * Supports: fr, en, de, es, it, nl, pl, pt, zh, ja, ru, id, ko
  */
 
-import { db } from "@louez/db";
+import { db, isDemoStore } from "@louez/db";
 import { stores, pushSubscriptions, storeMembers } from "@louez/db";
 import { eq } from "drizzle-orm";
 import { env } from "@/env";
@@ -113,6 +113,8 @@ export interface DispatchNotificationDeps {
   logError?: (tag: string, message: string) => void;
   /** The test-reservation message plan; read from the database when absent. */
   planDispatch?: typeof planReservationDispatch;
+  /** Whether the store is a demo store (lib/demo); read from the database when absent. */
+  isDemoStore?: (storeId: string) => Promise<boolean>;
 }
 
 const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail, sendAdminSms };
@@ -887,6 +889,8 @@ export async function sendStoreNotificationChannel(
 ): Promise<{ skipped: string } | undefined> {
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
   const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
+  // A demo store (lib/demo) sends nothing to anyone.
+  if (await isDemoStore(db, ctx.store.id)) return { skipped: "demo store" };
   if (!prefs[channel]) return { skipped: `the store turned ${channel} off` };
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
@@ -939,6 +943,10 @@ export async function dispatchNotification(
     discord: { sent: false },
     push: { sent: false },
   };
+  // A demo store (lib/demo) sends nothing to anyone.
+  if (await (deps.isDemoStore ?? ((storeId) => isDemoStore(db, storeId)))(ctx.store.id)) {
+    return result;
+  }
 
   // Get notification preferences (use defaults if not set). Merge per-channel
   // over the defaults so stores saved before a channel existed (e.g. `push`)
@@ -1043,6 +1051,8 @@ export interface SupplierInvoiceNotificationContext {
 export async function dispatchSupplierInvoiceReceived(
   ctx: SupplierInvoiceNotificationContext,
 ): Promise<void> {
+  // A demo store (lib/demo) sends nothing to anyone.
+  if (await isDemoStore(db, ctx.storeId)) return;
   const [store] = await db
     .select({
       id: stores.id,
@@ -1128,6 +1138,8 @@ export async function dispatchAdminReminder(
     discord: { sent: false },
     push: { sent: false },
   };
+  // A demo store (lib/demo) sends nothing to anyone.
+  if (await isDemoStore(db, ctx.store.id)) return result;
 
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
   const prefs = settings[eventType] || DEFAULT_SETTINGS[eventType];
@@ -1332,6 +1344,8 @@ export async function dispatchAdminDigest(ctx: AdminDigestContext): Promise<Noti
     discord: { sent: false },
     push: { sent: false },
   };
+  // A demo store (lib/demo) sends nothing to anyone.
+  if (await isDemoStore(db, ctx.store.id)) return result;
 
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
 

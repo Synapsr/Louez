@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { ACTIVE_STORE_COOKIE, activeStoreCookieOptions } from '@/lib/active-store-cookie'
 import { auth } from '@/lib/auth'
-import { db } from '@louez/db'
+import { db, excludeDemoStores } from '@louez/db'
 import { stores, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { isStandaloneMode } from '@/lib/deployment'
@@ -60,6 +60,9 @@ export type StoreWithFullData = {
   discountDurationMonths: number
   stripeCouponId: string | null
   onboardingCompleted: boolean | null
+  /** A demo store's trade (lib/demo), null for every other store. */
+  demoVertical: string | null
+  demoExpiresAt: Date | null
   createdAt: Date
   updatedAt: Date
   role: MemberRole
@@ -103,6 +106,8 @@ export async function getUserStores(): Promise<StoreWithRole[]> {
         onboardingCompleted: stores.onboardingCompleted,
       })
       .from(stores)
+      // Visitors' demo stores (lib/demo) are not stores platform staff look after.
+      .where(excludeDemoStores())
       .orderBy(stores.name)
 
     // Combine: natural membership stores + admin-only stores

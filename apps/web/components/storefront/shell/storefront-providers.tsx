@@ -63,6 +63,30 @@ export const StorefrontProviders = ({
   }
 
   const channel = variant === "marketplace" ? "marketplace" : undefined;
+  const shop = (
+    <StorefrontSearchProvider>
+      <CartProvider>
+        <AnalyticsProvider storeSlug={store.slug} channel={channel}>
+          <AdvisorProvider
+            storeSlug={store.slug}
+            enabled={advisorEnabled}
+            displayName={store.aiAdvisorSettings?.displayName}
+            welcomeMessage={store.aiAdvisorSettings?.welcomeMessage}
+          >
+            <QuickAddProvider>{children}</QuickAddProvider>
+          </AdvisorProvider>
+        </AnalyticsProvider>
+      </CartProvider>
+    </StorefrontSearchProvider>
+  );
+
+  // A demo store (lib/demo): its visitors are no store's customers, so no
+  // product analytics or session replay. Its own store statistics stay.
+  if (store.demoVertical) {
+    return (
+      <NextIntlClientProvider messages={messages}>{storeProvider(shop)}</NextIntlClientProvider>
+    );
+  }
 
   return (
     <NextIntlClientProvider messages={messages}>
@@ -71,22 +95,7 @@ export const StorefrontProviders = ({
           surface="storefront"
           store={{ id: store.id, name: store.name, slug: store.slug }}
         >
-          {storeProvider(
-            <StorefrontSearchProvider>
-              <CartProvider>
-                <AnalyticsProvider storeSlug={store.slug} channel={channel}>
-                  <AdvisorProvider
-                    storeSlug={store.slug}
-                    enabled={advisorEnabled}
-                    displayName={store.aiAdvisorSettings?.displayName}
-                    welcomeMessage={store.aiAdvisorSettings?.welcomeMessage}
-                  >
-                    <QuickAddProvider>{children}</QuickAddProvider>
-                  </AdvisorProvider>
-                </AnalyticsProvider>
-              </CartProvider>
-            </StorefrontSearchProvider>,
-          )}
+          {storeProvider(shop)}
         </OpenReplayProvider>
       </PostHogProvider>
     </NextIntlClientProvider>

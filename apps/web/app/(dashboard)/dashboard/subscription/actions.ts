@@ -1,5 +1,7 @@
 'use server'
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { z } from 'zod'
 
 import { parseAffiliateReferral } from '@/lib/acquisition/klibon'
@@ -76,6 +78,9 @@ export async function createCheckoutSession({
   interval,
   affiliateReferral = null,
 }: PlanChoice & { affiliateReferral?: string | null }) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, url: null };
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'not_authenticated', url: null }
@@ -108,6 +113,9 @@ export async function createCheckoutSession({
 export async function previewPlanChange(
   input: z.infer<typeof planChangeSchema>,
 ): Promise<PlanChangePreviewAnswer> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'not_authenticated' }
@@ -153,6 +161,9 @@ export async function changeSubscriptionPlan(
   input: z.infer<typeof planChangeSchema>,
   affiliateReferral: string | null = null,
 ): Promise<{ success: true } | { url: string | null } | { error: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'not_authenticated' }
@@ -193,6 +204,9 @@ export async function changeSubscriptionPlan(
  * loaded before the new plan started.
  */
 export async function keepCurrentPlan(): Promise<{ success: true } | { error: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'not_authenticated' }
@@ -219,6 +233,9 @@ export async function keepCurrentPlan(): Promise<{ success: true } | { error: st
 }
 
 export async function openCustomerPortal() {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, url: null };
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
 
@@ -237,6 +254,9 @@ export async function openCustomerPortal() {
  * bills adds its card on the billing pages instead (louez-billing docs/api, Q39).
  */
 export async function openBillingPortal() {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, url: null };
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
 
@@ -254,6 +274,9 @@ export async function openBillingPortal() {
 }
 
 export async function cancelSubscription() {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, url: null };
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
 
@@ -272,6 +295,9 @@ export async function cancelSubscription() {
  * can confirm or show the effective date.
  */
 export async function switchToPayAsYouGo() {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, url: null };
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' as const }
 
@@ -290,6 +316,9 @@ export async function switchToPayAsYouGo() {
 }
 
 export async function reactivateSubscription() {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, url: null };
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
 

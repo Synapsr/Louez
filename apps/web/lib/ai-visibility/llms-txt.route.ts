@@ -74,8 +74,8 @@ const plain = (html: string | null | undefined): string | null => {
 /**
  * `/llms.txt` and `/llms-full.txt` of the storefront the host serves, in the
  * store's language. 404 on a host that serves no store, while search
- * indexing is off (`LOUEZ_SEARCH_INDEXING=off`), and for a store without
- * the feature (`canUseAiVisibility`).
+ * indexing is off (`LOUEZ_SEARCH_INDEXING=off`), for a demo store, and for a
+ * store without the feature (`canUseAiVisibility`).
  */
 export async function respondWithLlmsTxt(full: boolean): Promise<Response> {
   await connection();
@@ -83,7 +83,8 @@ export async function respondWithLlmsTxt(full: boolean): Promise<Response> {
 
   const hostStore = await resolveStoreFromHost();
   const store = hostStore ? await getStoreBySlug(hostStore.slug) : null;
-  if (!store || !(await canUseAiVisibility(store))) return notFound();
+  // A demo store (lib/demo) is a visitor's sandbox: nothing for assistants to read.
+  if (!store || store.demoVertical || !(await canUseAiVisibility(store))) return notFound();
 
   countAiCrawl({
     storeId: store.id,

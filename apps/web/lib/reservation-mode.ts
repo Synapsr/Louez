@@ -23,6 +23,8 @@ interface ReservationModeStore {
   settings?: { reservationMode?: ReservationMode | null } | null;
   stripeAccountId?: string | null;
   stripeChargesEnabled?: boolean | null;
+  /** A demo store (lib/demo) takes "payments" with no Stripe: they are simulated. */
+  demoVertical?: string | null;
 }
 
 /** True when the Store can actually take an online payment through Stripe. */
@@ -37,10 +39,11 @@ export function getIntendedReservationMode(store: ReservationModeStore): Reserva
 
 /**
  * What the storefront should actually do right now. Payment degrades to Request
- * until Stripe is chargeable.
+ * until Stripe is chargeable; a demo store's payment is simulated, without Stripe.
  */
 export function getEffectiveReservationMode(store: ReservationModeStore): ReservationMode {
-  return getIntendedReservationMode(store) === "payment" && isStripeChargeable(store)
+  return getIntendedReservationMode(store) === "payment" &&
+    (isStripeChargeable(store) || Boolean(store.demoVertical))
     ? "payment"
     : "request";
 }
@@ -66,5 +69,5 @@ export function getReservationConfirmationVariant(
  * dashboard surfaces as a prominent alert.
  */
 export function isPaymentModeDegraded(store: ReservationModeStore): boolean {
-  return getIntendedReservationMode(store) === "payment" && !isStripeChargeable(store);
+  return getEffectiveReservationMode(store) !== getIntendedReservationMode(store);
 }

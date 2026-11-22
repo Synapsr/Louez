@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./account-deletion": "./src/account-deletion.ts",
     "./client": "./src/client.ts",
+    "./demo-session": "./src/demo-session.ts",
     "./env": "./src/env.ts",
     "./guarded-fetch": "./src/guarded-fetch.ts",
     "./oauth": "./src/oauth.ts",

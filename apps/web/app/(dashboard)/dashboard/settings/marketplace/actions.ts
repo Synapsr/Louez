@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import {
   ApiServiceError,
   confirmDirectoryClaim as confirmDirectoryClaimService,
@@ -42,6 +44,9 @@ function serviceError(error: unknown) {
 }
 
 export async function enableMarketplaceChannel(input: unknown) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const context = await getOwnerContext();
   if (!context) return { error: "errors.unauthorized" };
 
@@ -79,6 +84,9 @@ export async function disableMarketplaceChannel() {
 }
 
 export async function confirmDirectoryClaim(input: unknown) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const context = await getOwnerContext();
   if (!context) return { error: "errors.unauthorized" };
 

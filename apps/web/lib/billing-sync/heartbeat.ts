@@ -9,6 +9,7 @@ import {
   countBillableReservationsWithoutBillableAt,
   db,
   excludeTestReservations,
+  notDemoStoreId,
   isPaymentReceiptSql,
   markBillingDirty,
   markReservationIds,
@@ -158,6 +159,8 @@ async function invariantsReport(state: SyncState): Promise<{
         isNull(reservations.billableAt),
         // A test reservation is never billed: it has no `billable_at` on purpose.
         excludeTestReservations(),
+        // Nor a demo store's (packages/db demo-stores.ts).
+        notDemoStoreId(reservations.storeId),
       ),
     )
     .groupBy(reservations.storeId);

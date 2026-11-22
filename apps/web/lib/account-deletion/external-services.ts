@@ -31,7 +31,7 @@ import type {
 
 const DELETE_OBJECT_BATCH_SIZE = 1_000;
 
-const deleteStoragePrefix = async (prefix: string): Promise<void> => {
+export const deleteStoragePrefix = async (prefix: string): Promise<void> => {
   const storage = getStorageClient();
   let continuationToken: string | undefined;
 

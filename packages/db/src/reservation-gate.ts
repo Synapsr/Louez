@@ -7,6 +7,7 @@ import {
   readStoresPolicyRecords,
 } from "./billing-policy";
 import { isBillingSyncEnabled } from "./billing-queue";
+import { isDemoStore } from "./demo-stores";
 
 // The card gate (louez-billing docs/api, README §8.4 and §8.5; design §4.7). When the
 // store's effective policy says `reservations.allowed: false`, Louez refuses every step
@@ -66,6 +67,8 @@ export async function readReservationGate(
   at: Date = new Date(),
 ): Promise<ReservationGate> {
   if (!isBillingSyncEnabled()) return OPEN;
+  // A demo store (demo-stores.ts) is never billed: its gate never closes.
+  if (await isDemoStore(executor, storeId)) return OPEN;
   return gateOf(effectiveStorePolicy(await readStorePolicyRecords(executor, storeId), at));
 }
 

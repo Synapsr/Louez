@@ -7645,7 +7645,8 @@
         "depositNote": "La caution n'est pas prise pendant un test.",
         "submit": "Simuler le paiement",
         "notPending": "Cette réservation n'attend plus de paiement.",
-        "viewReservation": "Voir la réservation"
+        "viewReservation": "Voir la réservation",
+        "depositNoteDemo": "La caution se règle au retrait du matériel."
       }
     },
     "notFound": {
@@ -10000,7 +10001,8 @@
       "none": "Cette réservation n'a plus d'empreinte non confirmée."
     },
     "planOfferUnavailable": "Cette offre ne s'applique plus à votre boutique. Retrouvez les abonnements sur la page Abonnement.",
-    "aiVisibilityNotIncluded": "Votre offre n'inclut pas la visibilité auprès des assistants IA."
+    "aiVisibilityNotIncluded": "Votre offre n'inclut pas la visibilité auprès des assistants IA.",
+    "demoStoreActionDisabled": "Cette action est désactivée dans la boutique de démonstration."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",
@@ -10569,6 +10571,36 @@
           }
         }
       }
+    }
+  },
+  "demo": {
+    "launcher": {
+      "subtitle": "Une boutique d'exemple, à vous seul, avec son catalogue, ses clients et ses réservations. Réservez sur la boutique, gérez depuis le tableau de bord : rien n'est envoyé ni encaissé.",
+      "preparing": "Nous préparons votre boutique de démonstration…",
+      "start": "Ouvrir la démo",
+      "retry": "Réessayer",
+      "signedInNotice": "Vous êtes connecté à votre compte Louez. La démonstration s'ouvre dans une session à part : vous serez déconnecté de votre compte.",
+      "errors": {
+        "rate_limited": "Plusieurs démos ont déjà été ouvertes depuis votre connexion. Réessayez dans une heure.",
+        "capacity": "Toutes nos boutiques de démonstration sont occupées. Réessayez dans quelques minutes.",
+        "failed": "La démo n'a pas pu s'ouvrir. Réessayez dans un instant."
+      }
+    },
+    "banner": {
+      "title": "Ceci est une boutique de démonstration",
+      "detail": "Données fictives, rien n'est envoyé ni encaissé. Elle s'efface au bout de 24 heures.",
+      "openStorefront": "Voir la boutique",
+      "signup": "Créer ma boutique gratuite"
+    },
+    "storefrontBanner": {
+      "title": "Ceci est une boutique de démonstration.",
+      "detail": "Réservez comme un client : le paiement est simulé.",
+      "dashboard": "Tableau de bord",
+      "signup": "Créer ma boutique gratuite"
+    },
+    "guide": {
+      "title": "À essayer",
+      "progress": "{done} sur {total}"
     }
   }
 }

@@ -3,6 +3,7 @@ import { and, count, inArray, isNull } from "drizzle-orm";
 import type { Database, Transaction } from "./index";
 import { BILLABLE_RESERVATION_STATUSES } from "./reservation-status";
 import { reservations } from "./schema";
+import { notDemoStoreId } from "./demo-stores";
 import { excludeTestReservations } from "./test-reservations";
 
 /**
@@ -23,6 +24,8 @@ export async function countBillableReservationsWithoutBillableAt(
         isNull(reservations.billableAt),
         // A test reservation is never billed: it has no `billable_at` on purpose.
         excludeTestReservations(),
+        // Nor a demo store's (packages/db demo-stores.ts).
+        notDemoStoreId(reservations.storeId),
       ),
     );
   return row?.missing ?? 0;

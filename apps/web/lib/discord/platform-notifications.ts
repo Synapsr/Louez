@@ -12,7 +12,8 @@
  * All functions are fire-and-forget: they never throw and never block the caller.
  */
 
-import { db } from '@louez/db'
+import { db, isDemoStore } from '@louez/db'
+import { isDemoOwnerEmail } from '@/lib/demo/constants'
 import { subscriptions, storeMembers, stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { getStorefrontUrl } from '@/lib/storefront-url'
@@ -214,6 +215,8 @@ export async function sendPlatformStoreLaunched(
   store: StoreInfo,
   beforeSend: () => Promise<void>,
 ): Promise<{ skipped: string } | undefined> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return { skipped: "demo store" }
   if (channel === 'fromhello') {
     if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return { skipped: 'fromHello is not set up' }
     await beforeSend()
@@ -232,6 +235,8 @@ export async function notifyUserSignedIn(
   email: string,
   method: SignInMethod
 ): Promise<void> {
+  // A demo store's visitor (lib/demo) is no user to announce.
+  if (isDemoOwnerEmail(email)) return
   trackFromHello('user_signed_in', { email, method }, { externalId: userId }).catch(() => {})
   if (!isEnabled()) return
 
@@ -264,6 +269,8 @@ export async function notifySubscriptionActivated(
   planSlug: string,
   interval: 'monthly' | 'yearly'
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('subscription_activated', { storeName: store.name, plan: planSlug, interval }, { storeId: store.id }).catch(() => {})
   resolveStoreOwner(store.id).then((userId) => {
     if (userId) setFromHelloProfile(userId, { plan: planSlug, planInterval: interval })
@@ -274,6 +281,8 @@ export async function notifySubscriptionActivated(
 }
 
 export async function notifySubscriptionCancelled(store: StoreInfo): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('subscription_cancelled', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   resolveStoreOwner(store.id).then((userId) => {
     if (userId) setFromHelloProfile(userId, { plan: 'cancelled', planInterval: null })
@@ -292,6 +301,8 @@ export async function notifyExtraPlanSubscription(
   keptSubscriptionId: string,
   extraSubscriptionId: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   if (!isEnabled()) return
   const link = storeLink(store.name, store.slug)
   await send(
@@ -309,6 +320,8 @@ export async function syncStorePaymentMethodStatus(
   storeId: string,
   hasPaymentMethod: boolean,
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, storeId)) return
   const userId = await resolveStoreOwner(storeId)
   if (!userId) return
   await setFromHelloProfile(userId, { hasPaymentMethod })
@@ -342,6 +355,8 @@ export async function notifyNewReservation(
   store: StoreInfo,
   reservation: NewReservation
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('reservation_created', newReservationEvent.properties(store, reservation), {
     storeId: store.id,
   }).catch(() => {})
@@ -361,6 +376,8 @@ export async function sendPlatformReservationCreated(
   reservation: NewReservation,
   beforeSend: () => Promise<void>,
 ): Promise<{ skipped: string } | undefined> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return { skipped: "demo store" }
   if (channel === 'fromhello') {
     if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return { skipped: 'fromHello is not set up' }
     await beforeSend()
@@ -446,6 +463,8 @@ export async function sendPlatformReservationStatus(
   input: ReservationStatusEvent,
   beforeSend: () => Promise<void>,
 ): Promise<{ skipped: string } | undefined> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, input.store.id)) return { skipped: "demo store" }
   const event = reservationStatusEvents[kind]
   if (channel === 'fromhello') {
     if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return { skipped: 'fromHello is not set up' }
@@ -464,6 +483,8 @@ export async function notifyReservationConfirmed(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   await notifyReservationStatus('confirmed', { store, number: reservationNumber })
 }
 
@@ -471,6 +492,8 @@ export async function notifyReservationRejected(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   await notifyReservationStatus('rejected', { store, number: reservationNumber })
 }
 
@@ -478,6 +501,8 @@ export async function notifyReservationCancelled(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   await notifyReservationStatus('cancelled', { store, number: reservationNumber })
 }
 
@@ -485,6 +510,8 @@ export async function notifyEquipmentPickedUp(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   await notifyReservationStatus('picked_up', { store, number: reservationNumber })
 }
 
@@ -494,6 +521,8 @@ export async function notifyReservationCompleted(
   totalAmount: number,
   currency?: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   await notifyReservationStatus('completed', { store, number: reservationNumber, totalAmount, currency })
 }
 
@@ -507,6 +536,8 @@ export async function notifyPaymentReceived(
   amount: number,
   currency?: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('payment_received', {
     storeName: store.name,
     reservationNumber,
@@ -524,6 +555,8 @@ export async function notifyPaymentFailed(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('payment_failed', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -538,6 +571,8 @@ export async function notifyProductCreated(
   store: StoreInfo,
   productName: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('product_created', { storeName: store.name, productName }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -548,6 +583,8 @@ export async function notifyProductUpdated(
   store: StoreInfo,
   productName: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('product_updated', { storeName: store.name, productName }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -558,6 +595,8 @@ export async function notifyCustomerCreated(
   store: StoreInfo,
   customer: { firstName: string; lastName: string; email: string }
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('customer_created', {
     storeName: store.name,
     customerName: `${customer.firstName} ${customer.lastName}`,
@@ -572,6 +611,8 @@ export async function notifyTeamMemberInvited(
   store: StoreInfo,
   invitedEmail: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('team_member_invited', { storeName: store.name, invitedEmail }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -579,6 +620,8 @@ export async function notifyTeamMemberInvited(
 }
 
 export async function notifyStripeConnected(store: StoreInfo): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('stripe_connected', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -586,6 +629,8 @@ export async function notifyStripeConnected(store: StoreInfo): Promise<void> {
 }
 
 export async function notifyStoreSettingsUpdated(store: StoreInfo): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('settings_updated', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -593,6 +638,8 @@ export async function notifyStoreSettingsUpdated(store: StoreInfo): Promise<void
 }
 
 export async function notifyNotificationSettingsUpdated(store: StoreInfo): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('notification_settings_updated', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -603,6 +650,8 @@ export async function notifySmsCreditsTopup(
   store: StoreInfo,
   quantity: number
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('sms_credits_purchased', { storeName: store.name, quantity }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -617,6 +666,8 @@ export async function notifyAiChatStarted(
   store: StoreInfo,
   prompt: string
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, store.id)) return
   trackFromHello('ai_chat_started', { storeName: store.name }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
@@ -631,6 +682,8 @@ export async function notifyAiRateLimitHit(
   count: number,
   limit: number
 ): Promise<void> {
+  // A demo store (lib/demo) is no business to report.
+  if (await isDemoStore(db, storeId)) return
   trackFromHello('ai_rate_limit_hit', { window, count, limit }, { externalId: userId, storeId }).catch(() => {})
   if (!isEnabled()) return
 

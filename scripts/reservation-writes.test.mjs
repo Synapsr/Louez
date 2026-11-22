@@ -133,6 +133,15 @@ const ALLOWLIST = [
   },
   {
     rule: "R3",
+    file: "apps/web/lib/demo/seed-demo-store.ts",
+    expression: "table",
+    count: 1,
+    reason:
+      "insertAll of a visitor's demo store (lib/demo): backdated rows of a store that is " +
+      "never billed (packages/db demo-stores.ts), so no billableAt and no fee effect",
+  },
+  {
+    rule: "R3",
     file: "apps/web/scripts/seed/demo/index.ts",
     expression: "table",
     count: 1,

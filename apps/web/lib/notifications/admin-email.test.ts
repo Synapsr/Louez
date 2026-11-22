@@ -323,11 +323,47 @@ describe("dispatchNotification email channel", () => {
           return { sent: true };
         },
         sendAdminSms: async () => ({ success: false, error: "not used" }),
+        isDemoStore: async () => false,
       },
     );
 
     assert.deepEqual(sent, ["payment_received"]);
     assert.deepEqual(result.email, { sent: true });
+  });
+
+  test("a demo store sends nothing, whatever its settings (lib/demo)", async () => {
+    const sent: NotificationEventType[] = [];
+    const sms: string[] = [];
+    const result = await dispatchNotification(
+      "payment_received",
+      ctx({
+        store: {
+          id: STORE.id,
+          name: STORE.name,
+          notificationSettings: settingsWith("payment_received", true),
+        },
+      }),
+      {
+        sendAdminEventEmail: async (event) => {
+          sent.push(event);
+          return { sent: true };
+        },
+        sendAdminSms: async () => {
+          sms.push("sms");
+          return { success: true };
+        },
+        isDemoStore: async (storeId) => storeId === STORE.id,
+      },
+    );
+
+    assert.deepEqual(sent, []);
+    assert.deepEqual(sms, []);
+    assert.deepEqual(result, {
+      email: { sent: false },
+      sms: { sent: false },
+      discord: { sent: false },
+      push: { sent: false },
+    });
   });
 
   test("sends nothing when the store turned the event's email off", async () => {
@@ -348,6 +384,7 @@ describe("dispatchNotification email channel", () => {
           return { sent: true };
         },
         sendAdminSms: async () => ({ success: false, error: "not used" }),
+        isDemoStore: async () => false,
       },
     );
 

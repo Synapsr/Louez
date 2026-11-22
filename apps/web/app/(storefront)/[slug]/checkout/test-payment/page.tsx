@@ -16,6 +16,7 @@ import { StorefrontSection } from "@/components/storefront/ui/storefront-section
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { formatCurrency } from "@/lib/utils";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { DEMO_VISITOR_EMAIL } from "@/lib/demo/demo-checkout";
 import { simulatedPaymentAmount } from "@/lib/test-reservations/simulate-payment";
 import {
   getStorefrontTestMode,
@@ -41,13 +42,15 @@ const TestPaymentPage = async ({ params, searchParams }: TestPaymentPageProps) =
   const store = await getStoreBySlug(slug);
   if (!store) notFound();
 
+  // A demo store's bookings (lib/demo) are all paid here: no test mode to hold.
+  const demo = Boolean(store.demoVertical);
   const [t, tErrors, testMode] = await Promise.all([
     getTranslations("storefront.testMode.payment"),
     getTranslations("errors"),
-    getStorefrontTestMode(store.id),
+    demo ? Promise.resolve(null) : getStorefrontTestMode(store.id),
   ]);
 
-  if (!testMode) {
+  if (!testMode && !demo) {
     return (
       <StorefrontSection width="narrow">
         <OutcomeHeader tone="info" icon={<InfoIcon />} title={tErrors("testModeRequired")}>
@@ -69,7 +72,7 @@ const TestPaymentPage = async ({ params, searchParams }: TestPaymentPageProps) =
         where: and(
           eq(reservations.id, reservationId),
           eq(reservations.storeId, store.id),
-          eq(reservations.isTest, true),
+          ...(demo ? [] : [eq(reservations.isTest, true)]),
         ),
         columns: {
           id: true,
@@ -83,7 +86,14 @@ const TestPaymentPage = async ({ params, searchParams }: TestPaymentPageProps) =
       })
     : undefined;
   // Only the member who started it sees it: another member's test is not found.
-  if (!reservation || !isOwnTestReservation(testMode, reservation.customer.email)) notFound();
+  if (
+    !reservation ||
+    !(demo
+      ? reservation.customer.email === DEMO_VISITOR_EMAIL
+      : testMode && isOwnTestReservation(testMode, reservation.customer.email))
+  ) {
+    notFound();
+  }
 
   if (reservation.status !== "pending") {
     return (
@@ -125,7 +135,10 @@ const TestPaymentPage = async ({ params, searchParams }: TestPaymentPageProps) =
         {deposit > 0 ? (
           <p className="flex justify-between gap-3 text-sm">
             <span>
-              {t("deposit")} <span className="text-muted-foreground">· {t("depositNote")}</span>
+              {t("deposit")}{" "}
+              <span className="text-muted-foreground">
+                · {demo ? t("depositNoteDemo") : t("depositNote")}
+              </span>
             </span>
             <span className="tabular-nums">{formatMoney(deposit)}</span>
           </p>

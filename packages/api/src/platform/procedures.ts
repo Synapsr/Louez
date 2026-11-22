@@ -18,6 +18,7 @@ import { IDEMPOTENCY_HEADER, runOperation } from "./operations";
 import { accountRefusal, allows, type ProcedureScope } from "./permissions";
 import { consumeRateLimit, rateLimitKey } from "./rate-limit";
 import { recordedSetupAction, setupProcedureName } from "./setup-analytics";
+import { demoStoreRefusal, isRefusedOnDemoStore } from "./demo-store-policy";
 
 /** Store row handed to agent-ready procedures. */
 export type ActorStore = typeof stores.$inferSelect;
@@ -315,6 +316,14 @@ export const storeProcedure = authenticated.use(
 
     const store = await db.query.stores.findFirst({ where: eq(stores.id, storeActor.storeId) });
     if (!store) throw platformErrors.noStore();
+    // A demo store (packages/db demo-stores.ts): its visitor's session only, and
+    // nothing that reaches outside the sandbox (platform/demo-store-policy.ts).
+    if (
+      store.demoVertical &&
+      (credential.kind !== "session" || isRefusedOnDemoStore(path, meta.capability))
+    ) {
+      throw demoStoreRefusal();
+    }
 
     const nextContext = { actor: storeActor, store: store as ActorStore, ports };
     if (meta.scope.level !== "write") return next({ context: nextContext });

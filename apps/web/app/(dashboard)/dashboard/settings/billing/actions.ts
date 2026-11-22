@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { getLocale } from "next-intl/server";
 import { z } from "zod";
 
@@ -73,6 +75,9 @@ export async function saveBillingDetailsAction(
 export async function startBillingCardSetup(): Promise<
   { readonly url: string } | BillingActionError
 > {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { error: "forbidden" };
   const owner = await ownerOfActiveStore();
   if (!owner) return { error: "forbidden" };
   const started = await startCardSetup(owner.storeId, {

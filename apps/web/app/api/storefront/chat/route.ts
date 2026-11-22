@@ -152,13 +152,16 @@ export async function POST(req: Request) {
       settings: true,
       aiAdvisorSettings: true,
       onboardingCompleted: true,
+      demoVertical: true,
     },
   })
 
-  // The advisor is invisible unless the store opted in.
+  // The advisor is invisible unless the store opted in; a demo store (lib/demo)
+  // calls no paid model.
   if (
     !store ||
     !store.onboardingCompleted ||
+    store.demoVertical ||
     !store.aiAdvisorSettings?.enabled
   ) {
     return new Response('Not found', { status: 404 })

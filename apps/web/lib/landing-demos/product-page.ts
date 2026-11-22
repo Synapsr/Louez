@@ -115,6 +115,7 @@ export const getDemoProductPage = (
       advanceNoticeMinutes: 0,
     },
     theme: { mode: "light", primaryColor: "#10b981" },
+    demoVertical: null,
   };
   const catalogProduct: StorefrontCatalogProduct = {
     ...product,

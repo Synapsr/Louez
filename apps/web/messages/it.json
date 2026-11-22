@@ -7645,7 +7645,8 @@
         "depositNote": "La cauzione non viene trattenuta durante un test.",
         "submit": "Simula il pagamento",
         "notPending": "Questa prenotazione non è più in attesa di pagamento.",
-        "viewReservation": "Vedi la prenotazione"
+        "viewReservation": "Vedi la prenotazione",
+        "depositNoteDemo": "The deposit is settled when the equipment is picked up."
       }
     },
     "notFound": {
@@ -10000,7 +10001,8 @@
       "none": "Questa prenotazione non ha più autorizzazioni non confermate."
     },
     "planOfferUnavailable": "Questa offerta non vale più per il tuo negozio. Trovi gli abbonamenti nella pagina Abbonamento.",
-    "aiVisibilityNotIncluded": "Il tuo piano non include la visibilità presso gli assistenti IA."
+    "aiVisibilityNotIncluded": "Il tuo piano non include la visibilità presso gli assistenti IA.",
+    "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",
@@ -10569,6 +10571,36 @@
           }
         }
       }
+    }
+  },
+  "demo": {
+    "launcher": {
+      "subtitle": "A sample store of your own, with its catalog, customers and bookings. Book on the storefront, manage from the dashboard: nothing is sent or charged.",
+      "preparing": "Preparing your demo store…",
+      "start": "Open the demo",
+      "retry": "Try again",
+      "signedInNotice": "You are signed in to your Louez account. The demo opens in a separate session: you will be signed out of your account.",
+      "errors": {
+        "rate_limited": "Several demos were already opened from your connection. Try again in an hour.",
+        "capacity": "All our demo stores are busy. Try again in a few minutes.",
+        "failed": "The demo could not open. Try again in a moment."
+      }
+    },
+    "banner": {
+      "title": "This is a demo store",
+      "detail": "Made-up data, nothing is sent or charged. It is erased after 24 hours.",
+      "openStorefront": "View the storefront",
+      "signup": "Create my free store"
+    },
+    "storefrontBanner": {
+      "title": "This is a demo store.",
+      "detail": "Book as a customer would: the payment is simulated.",
+      "dashboard": "Dashboard",
+      "signup": "Create my free store"
+    },
+    "guide": {
+      "title": "Things to try",
+      "progress": "{done} of {total}"
     }
   }
 }

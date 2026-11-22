@@ -14,7 +14,23 @@ import { markTestReservationEmail } from '@/lib/test-reservations/email-mark';
  * delivery that never happened. Auth flows use @louez/email directly and
  * keep its graceful console skip.
  */
+/**
+ * Whether the request is a demo store's (lib/demo/demo-request.ts). Loaded on
+ * call: that module reads the request and the database, which this one does
+ * not need outside a request.
+ */
+const isInDemoStoreRequest = (): Promise<boolean> =>
+  import('@/lib/demo/demo-request')
+    .then((module) => module.isInDemoRequest())
+    .catch(() => false);
+
 export const sendEmail = async (options: SendEmailOptions) => {
+  // A demo store's dashboard or storefront (lib/demo) sends no e-mail: it says
+  // it did, so the visitor's flow carries on, and nothing leaves.
+  if (await isInDemoStoreRequest()) {
+    console.log('[email] demo store: an e-mail was not sent');
+    return { messageId: `email-demo-${Date.now()}`, success: true };
+  }
   if (!isEmailConfigured()) {
     // Neither the recipient nor the subject: both can name a customer.
     console.log('[email] SMTP not configured: an e-mail was not sent');

@@ -29,7 +29,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const store = await resolveStoreFromHost();
 
-  if (!store) {
+  // A demo store (lib/demo) has nothing to offer search engines.
+  if (!store || store.demoVertical) {
     return [];
   }
 

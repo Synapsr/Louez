@@ -27,6 +27,7 @@ import { isBillingSyncEnabled } from "@/lib/billing-sync/config";
 import { processReminders } from "@/lib/reminders/automation";
 import { processReviewRequests } from "@/lib/review-booster/automation";
 import { runTestReservationsPurge } from "@/lib/test-reservations/lifecycle";
+import { purgeExpiredDemoStores } from "@/lib/demo/cleanup";
 
 import { env } from "@/env";
 
@@ -70,6 +71,8 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Google Places cache refresh: daily at 3:00 AM
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
  * - Cache cleanup: daily at 4:00 AM UTC
+ * - Demo stores (lib/demo) past their 24 hours, with their owner accounts: every ten
+ *   minutes, through the account deletion
  * - Test reservations past their 7 days: daily at 4:15 AM UTC, through the same
  *   deletion as the dashboard's (packages/api services/test-reservations.ts)
  * - Expired legal archive cleanup: daily at 4:30 AM UTC
@@ -280,6 +283,12 @@ async function handleCron(request: Request) {
       tasks.push("cache-cleanup");
       const cleaned = await cleanExpiredCache();
       results.cacheCleanup = { cleaned };
+    }
+
+    // Demo stores past their lifetime, with their owners: every ten minutes (lib/demo).
+    if (minute % 10 === 5) {
+      tasks.push("demo-stores-purge");
+      results.demoStoresPurge = await purgeExpiredDemoStores(now);
     }
 
     // Test reservations past their lifetime: daily at 4:15 AM UTC (lib/test-reservations).

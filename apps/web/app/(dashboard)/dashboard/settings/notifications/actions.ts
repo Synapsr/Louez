@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { localeNames } from "@/i18n/config";
 
 import { revalidatePath } from "next/cache";
@@ -50,6 +52,9 @@ export async function getNotificationSettings() {
 }
 
 export async function updateDiscordWebhook(webhookUrl: string | null) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore();
   if (!store) return { error: "errors.unauthorized" };
 
@@ -104,6 +109,9 @@ export async function updateDiscordWebhook(webhookUrl: string | null) {
 }
 
 export async function testDiscordWebhook() {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore();
   if (!store) return { error: "errors.unauthorized" };
 
@@ -122,6 +130,9 @@ export async function testDiscordWebhook() {
 }
 
 export async function updateOwnerPhone(phone: string | null) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore();
   if (!store) return { error: "errors.unauthorized" };
 

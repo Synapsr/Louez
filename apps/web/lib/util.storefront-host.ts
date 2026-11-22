@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 
 import { and, asc, eq } from "drizzle-orm";
 
-import { db, stores } from "@louez/db";
+import { db, excludeDemoStores, stores } from "@louez/db";
 
 import { isStandaloneMode } from "@/lib/deployment";
 import { getStorefrontSlugFromHost, getSubdomain, isLoopbackHost } from "@/lib/util.host";
@@ -97,13 +97,15 @@ export const resolveStoreFromHost = async () => {
     name: true,
     cgv: true,
     updatedAt: true,
+    demoVertical: true,
   } as const;
 
   if (isStandaloneMode()) {
     return (
       (await db.query.stores.findFirst({
         columns,
-        where: eq(stores.onboardingCompleted, true),
+        // A demo store never takes the single storefront of a self-hosted instance.
+        where: and(eq(stores.onboardingCompleted, true), excludeDemoStores()),
         orderBy: [asc(stores.createdAt)],
       })) ?? null
     );

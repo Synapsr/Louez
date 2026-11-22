@@ -9,6 +9,7 @@ import {
   createReservationInstantAccessUrl,
   INSTANT_ACCESS_SHORT_TTL_MS,
 } from "@/lib/customer-auth/instant-access";
+import { DEMO_VISITOR_EMAIL } from "@/lib/demo/demo-checkout";
 import { log } from "@/lib/evlog";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { simulateTestReservationPayment } from "@/lib/test-reservations/simulate-payment";
@@ -39,19 +40,27 @@ export async function simulateTestPayment(input: unknown): Promise<SimulateTestP
   try {
     const store = await getStoreBySlug(slug);
     if (!store) return { ok: false, error: "errors.storeNotFound" };
-    const testMode = await getStorefrontTestMode(store.id);
-    if (!testMode) return { ok: false, error: "errors.testModeRequired" };
+    // A demo store's bookings (lib/demo) are paid here without any test mode.
+    const demo = Boolean(store.demoVertical);
+    const testMode = demo ? null : await getStorefrontTestMode(store.id);
+    if (!testMode && !demo) return { ok: false, error: "errors.testModeRequired" };
     const reservation = await db.query.reservations.findFirst({
       where: and(
         eq(reservations.id, reservationId),
         eq(reservations.storeId, store.id),
-        eq(reservations.isTest, true),
+        ...(demo ? [] : [eq(reservations.isTest, true)]),
       ),
       columns: { id: true, status: true },
       with: { customer: { columns: { email: true } } },
     });
-    // Only the member who started it: nothing paid, no link, before any write.
-    if (!reservation || !isOwnTestReservation(testMode, reservation.customer.email)) {
+    // Only the member who started it (the demo visitor in a demo store): nothing
+    // paid, no link, before any write.
+    const owned =
+      reservation &&
+      (demo
+        ? reservation.customer.email === DEMO_VISITOR_EMAIL
+        : testMode && isOwnTestReservation(testMode, reservation.customer.email));
+    if (!reservation || !owned) {
       return { ok: false, error: "errors.reservationNotFound" };
     }
 

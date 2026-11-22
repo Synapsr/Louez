@@ -7,6 +7,7 @@ import {
   restoreReservationStock,
 } from "./consumable-stock";
 import { markReservation } from "./billing-queue";
+import { isDemoStore } from "./demo-stores";
 import type { Transaction } from "./index";
 import { assertStoreCanTakeReservations } from "./reservation-gate";
 import { assertReservationLock, type ReservationStatusLock } from "./reservation-lock";
@@ -116,6 +117,8 @@ export interface LockedReservation {
   billableAt: Date | null;
   /** A test reservation is never billed: no fee effect, no billing dates (test-reservations.ts). */
   isTest?: boolean;
+  /** Nor is any reservation of a demo store (demo-stores.ts). */
+  demoStore?: boolean;
 }
 
 export type PlanReservationStatusChangeInput = Omit<
@@ -234,7 +237,7 @@ export function planReservationStatusChange(
   if (!activityType) throw new Error(`No activity type for a change to ${to}`);
 
   const now = toWholeSeconds(input.now);
-  const billed = !locked.isTest;
+  const billed = !locked.isTest && !locked.demoStore;
   const entersBillable =
     billed && !isBillableReservationStatus(from) && isBillableReservationStatus(to);
   const leavesBillable =
@@ -318,15 +321,20 @@ export async function changeReservationStatus(
     .where(scope)
     .for("update");
   if (!locked) return { changed: false, from: null, reason: "not_found" };
+  const demoStore = await isDemoStore(tx, input.storeId);
 
   const now = input.now ?? new Date();
-  const plan = planReservationStatusChange(locked, { ...input, now });
+  const plan = planReservationStatusChange({ ...locked, demoStore }, { ...input, now });
   if (!plan.changed) return { changed: false, from: locked.status, reason: plan.reason };
   if (plan.stock !== null || input.beforeWrite) {
     assertReservationLock(tx, input.lock, ["products"], input);
   }
-  // A test reservation is never billed, so the card gate never stops it.
-  if (!locked.isTest && requiresReservationGate(locked.status, input.to, input.actor)) {
+  // A test reservation or a demo store's is never billed, so the card gate never stops it.
+  if (
+    !locked.isTest &&
+    !demoStore &&
+    requiresReservationGate(locked.status, input.to, input.actor)
+  ) {
     await assertStoreCanTakeReservations(tx, input.storeId, now);
   }
 

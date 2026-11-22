@@ -428,6 +428,11 @@ export const env = createEnv({
       .default("false")
       .transform((val) => val === "true"),
     PREVIEW_STORE_SLUG: z.string().default(""),
+    // Where storefronts open in server-built URLs (redirects, e-mails, links),
+    // `{slug}` standing for the store's slug (lib/storefront-url.ts). Empty: the
+    // usual `{slug}.{NEXT_PUBLIC_APP_DOMAIN}`. For a preview whose storefronts sit
+    // behind another host scheme, such as a tunnel.
+    STOREFRONT_URL_TEMPLATE: z.string().default(""),
   },
 
   client: publicEnvSchema.shape,
@@ -552,6 +557,7 @@ export const env = createEnv({
     BILLING_NEW_STORES_FROM: process.env.BILLING_NEW_STORES_FROM,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
+    STOREFRONT_URL_TEMPLATE: process.env.STOREFRONT_URL_TEMPLATE,
     PAYG_FREE_RESERVATIONS: process.env.PAYG_FREE_RESERVATIONS,
     REEENT_LAUNCH_COHORT_SIZE: process.env.REEENT_LAUNCH_COHORT_SIZE,
     MARKETPLACE_DEFAULT_PUBLICATION_ENABLED: process.env.MARKETPLACE_DEFAULT_PUBLICATION_ENABLED,

@@ -7,6 +7,10 @@
 export const TRANSLATION_KEY_MESSAGES: Readonly<
   Record<string, { message: string; retryable?: true }>
 > = {
+  "errors.demoStoreActionDisabled": {
+    message:
+      "This store is a demo store: it never reaches outside its sandbox (team, Stripe, billing, integrations, paid AI). Do not retry.",
+  },
   "errors.invalidData": {
     message: "Some arguments are not valid: check them against the tool's input schema.",
   },

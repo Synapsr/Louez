@@ -76,6 +76,30 @@ function dedupe(marks: readonly BillingMark[]): BillingMark[] {
 }
 
 /**
+ * The marks of stores that are not demo stores (demo-stores.ts): a demo store is
+ * never billed, so nothing of it reaches the billing service. A plain SELECT,
+ * which takes no lock.
+ */
+async function withoutDemoStores(
+  executor: MarkExecutor,
+  marks: readonly BillingMark[],
+): Promise<BillingMark[]> {
+  const storeIds = [...new Set(marks.map((mark) => mark.storeId))];
+  if (storeIds.length === 0) return [];
+  const [rows] = (await executor.execute(
+    sql`SELECT id FROM stores
+        WHERE id IN (${sql.join(
+          storeIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})
+          AND demo_vertical IS NOT NULL`,
+  )) as [ReadonlyArray<{ id: string }>];
+  if (rows.length === 0) return [...marks];
+  const demo = new Set(rows.map((row) => row.id));
+  return marks.filter((mark) => !demo.has(mark.storeId));
+}
+
+/**
  * Marks aggregates dirty. Call it inside the transaction that changed them; where a
  * write has no transaction, call it right after the write with the same executor
  * (the nightly sweep heals a crash between the two).
@@ -86,7 +110,7 @@ export async function markBillingDirty(
   options: MarkOptions = {},
 ): Promise<void> {
   if (!isBillingSyncEnabled()) return;
-  const unique = dedupe(marks);
+  const unique = await withoutDemoStores(executor, dedupe(marks));
   if (unique.length === 0) return;
   const values = sql.join(
     unique.map((mark) => sql`(${mark.type}, ${mark.aggregateId}, ${mark.storeId})`),

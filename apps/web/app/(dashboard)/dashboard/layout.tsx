@@ -12,6 +12,8 @@ import { SidebarProvider } from "@louez/ui";
 
 import { env } from "@/env";
 
+import { DemoBanner } from "@/components/demo/demo-banner";
+import { DemoGuide } from "@/components/demo/demo-guide";
 import { DashboardBreadcrumbs } from "@/components/dashboard/dashboard-breadcrumbs";
 import { DashboardBreadcrumbsProvider } from "@/components/dashboard/dashboard-breadcrumbs-context";
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
@@ -38,6 +40,7 @@ import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { areAiCreditsEnabled } from "@/lib/plans";
 import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
+import { getDemoDashboardContext } from "@/lib/demo/demo-dashboard";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
 import { getCurrentPlanSlug } from "@/lib/stripe/subscriptions";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
@@ -118,7 +121,9 @@ export default async function DashboardMainLayout({ children }: { children: Reac
   }
 
   const settings = (store.settings as StoreSettings) || {};
-  const showAIChat = isAIChatConfigured();
+  // A demo store (lib/demo) calls no paid model: its dashboard has no assistant.
+  const demo = await getDemoDashboardContext(store);
+  const showAIChat = isAIChatConfigured() && !demo;
 
   // Get current plan for the store
   const [
@@ -198,6 +203,9 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                       />
                     }
                   >
+                    {demo ? (
+                      <DemoBanner storefrontUrl={demo.storefrontUrl} signupUrl={demo.signupUrl} />
+                    ) : null}
                     {/* The card gate's banner; nothing outside service mode. */}
                     <Suspense fallback={null}>
                       <ReservationGateBanner storeId={store.id} role={store.role} />
@@ -206,9 +214,11 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                   </DashboardContentFrame>
                 </DashboardBreadcrumbsProvider>
               </SidebarProvider>
+              {demo ? <DemoGuide storeId={store.id} steps={demo.steps} /> : null}
               <Suspense fallback={null}>
-                <WelcomeOverlay />
-                <PasskeyEnrollment />
+                {/* A demo visitor is not welcomed as a new owner, nor asked for a passkey. */}
+                {demo ? null : <WelcomeOverlay />}
+                {demo ? null : <PasskeyEnrollment />}
                 <SettingsSearchFocus />
                 {/* Self-hosted instances only: the cloud never asks. */}
                 {isSelfHosted() && <ReviewPrompt />}

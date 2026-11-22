@@ -1,4 +1,5 @@
 import { markReservation } from "./billing-queue";
+import { isDemoStore } from "./demo-stores";
 import type { Transaction } from "./index";
 import { assertStoreCanTakeReservations } from "./reservation-gate";
 import { insertedReservationLock, type InsertedReservationLock } from "./reservation-lock";
@@ -29,10 +30,12 @@ export function initialBillableAt(status: ReservationStatus, at: Date): Date | n
 export function planReservationInsert(
   values: ReservationInsertValues,
   now: Date,
+  options: { demoStore?: boolean } = {},
 ): { row: typeof reservations.$inferInsert; effects: ReservationBillingEffect[] } {
   const at = toWholeSeconds(now);
-  // A test reservation is never billed (test-reservations.ts).
-  const billableAt = values.isTest ? null : initialBillableAt(values.status, at);
+  // A test reservation is never billed (test-reservations.ts), nor a demo store's (demo-stores.ts).
+  const billableAt =
+    values.isTest || options.demoStore ? null : initialBillableAt(values.status, at);
   const row = { ...values, billableAt };
   if (!billableAt) return { row, effects: [] };
 
@@ -68,10 +71,11 @@ export async function insertReservation(
   options: { now?: Date } = {},
 ): Promise<{ effects: ReservationBillingEffect[]; lock: InsertedReservationLock }> {
   const now = options.now ?? new Date();
-  if (isBillableReservationStatus(values.status) && !values.isTest) {
+  const demoStore = await isDemoStore(tx, values.storeId);
+  if (isBillableReservationStatus(values.status) && !values.isTest && !demoStore) {
     await assertStoreCanTakeReservations(tx, values.storeId, now);
   }
-  const plan = planReservationInsert(values, now);
+  const plan = planReservationInsert(values, now, { demoStore });
   await tx.insert(reservations).values(plan.row);
   if (!values.isTest) {
     await markReservation(tx, { id: values.id, storeId: values.storeId });

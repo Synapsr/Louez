@@ -16,6 +16,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { createLoginUrl, LOGIN_CALLBACK_PATH_HEADER } from "@/lib/utils/util.url";
 
 import { auth } from "@/lib/auth";
+import { isDemoStoreRow } from "@louez/db/demo-stores";
 import { getCurrentStore } from "@/lib/store-context";
 import { getCurrentPlanSlug } from "@/lib/stripe/subscriptions";
 
@@ -31,6 +32,23 @@ export const DashboardLayoutContent = async ({ children }: { children: React.Rea
   const store = await getCurrentStore();
   const planSlug = store ? await getCurrentPlanSlug(store.id) : null;
   const messages = await getMessages();
+
+  // A demo store's visitor (lib/demo) is nobody to identify: no analytics,
+  // replay, CRM, support widget or push service worker, only the theme.
+  if (isDemoStoreRow(store)) {
+    return (
+      <NextIntlClientProvider messages={messages}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <div className="bg-background min-h-screen">{children}</div>
+        </ThemeProvider>
+      </NextIntlClientProvider>
+    );
+  }
 
   return (
     <NextIntlClientProvider messages={messages}>

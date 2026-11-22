@@ -1,5 +1,7 @@
 'use server'
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { revalidatePath } from 'next/cache'
 
 import { isApiError } from '@louez/api/platform/errors'
@@ -36,6 +38,9 @@ export async function startStripeOnboarding(options?: {
   url?: string
   error?: string
 }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore()
 
   if (!store) {
@@ -69,6 +74,9 @@ export async function getStripeDashboardUrl(): Promise<{
   url?: string
   error?: string
 }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore()
 
   if (!store || !store.stripeAccountId) {
@@ -95,6 +103,9 @@ export async function disconnectStripe(): Promise<{
   success?: boolean
   error?: string
 }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore()
 
   if (!store) {

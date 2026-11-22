@@ -35,6 +35,7 @@ import { getCustomerSession } from "../account/actions";
 import { CheckoutForm } from "./checkout-form";
 import type { CheckoutLocationOption } from "./checkout.types";
 import { toCheckoutInitialCustomer } from "./util.checkout-customer";
+import { demoCheckoutCustomer } from "@/lib/demo/demo-checkout";
 
 interface CheckoutPageProps {
   params: Promise<{ slug: string }>;
@@ -224,7 +225,14 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
           advanceNoticeMinutes={store.settings?.advanceNoticeMinutes ?? 0}
           minRentalMinutes={getMinRentalMinutes(store.settings)}
           timezone={store.settings?.timezone}
-          initialCustomer={session ? toCheckoutInitialCustomer(session.customer) : null}
+          initialCustomer={
+            session
+              ? toCheckoutInitialCustomer(session.customer)
+              : // A demo store (lib/demo): the visitor books as its invented customer.
+                store.demoVertical
+                ? { ...demoCheckoutCustomer }
+                : null
+          }
           initialCustomerFieldValues={savedCustomerFieldValues}
           initialCustomerProfileValues={savedCustomerProfileValues}
           testMode={

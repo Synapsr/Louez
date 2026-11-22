@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { supplementalMessages } from "@/lib/i18n/supplemental-messages";
 import { db } from "@louez/db";
 import { smsLogs, customers, smsTopupTransactions } from "@louez/db";
@@ -350,6 +352,9 @@ export async function createTopupCheckout(
   url?: string;
   error?: string;
 }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { success: false, ...demoRefusal };
   const store = await getCurrentStore();
   if (!store) {
     return { success: false, error: "errors.unauthorized" };

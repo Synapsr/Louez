@@ -149,6 +149,13 @@ const ALLOWLIST = [
       "insertReservation (the new items), which mark those reservations",
   },
   {
+    file: "apps/web/lib/demo/seed-demo-store.ts",
+    writes: { storeMembers: 1, subscriptions: 1 },
+    reason:
+      "a visitor's demo store (packages/db demo-stores.ts), never billed: markBillingDirty " +
+      "drops a demo store's marks, so it has no snapshot to keep",
+  },
+  {
     file: "apps/web/scripts/seed/index.ts",
     writes: { subscriptions: 1, storeMembers: 1, reservationItems: 1, payments: 1 },
     reason: "development seed; `pnpm billing:mark --all` queues what it writes",

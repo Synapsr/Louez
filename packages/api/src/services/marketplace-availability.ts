@@ -48,6 +48,7 @@ export interface MarketplaceBookingStore {
   id: string;
   slug: string;
   settings: StoreSettings | null;
+  demoVertical: string | null;
   channelStatus: "setup_required" | "pending" | "published" | "paused" | "disabled" | null;
 }
 
@@ -119,6 +120,7 @@ export async function loadMarketplaceBookingStore(
       id: stores.id,
       slug: stores.slug,
       settings: stores.settings,
+      demoVertical: stores.demoVertical,
       channelStatus: storeMarketplaceChannels.status,
     })
     .from(stores)
@@ -127,7 +129,8 @@ export async function loadMarketplaceBookingStore(
     .limit(1)
     .then((rows) => rows[0]);
 
-  if (!store) throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
+  // A demo store (packages/db demo-stores.ts) takes no marketplace booking.
+  if (!store || store.demoVertical) throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
   return store;
 }
 

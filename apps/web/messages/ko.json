@@ -7645,7 +7645,8 @@
         "depositNote": "테스트 중에는 보증금을 받지 않습니다.",
         "submit": "결제 시뮬레이션",
         "notPending": "이 예약은 더 이상 결제를 기다리지 않습니다.",
-        "viewReservation": "예약 보기"
+        "viewReservation": "예약 보기",
+        "depositNoteDemo": "The deposit is settled when the equipment is picked up."
       }
     },
     "notFound": {
@@ -10000,7 +10001,8 @@
       "none": "이 예약에는 더 이상 확인되지 않은 승인이 없습니다."
     },
     "planOfferUnavailable": "이 제안은 더 이상 스토어에 적용되지 않습니다. 요금제는 구독 페이지에서 확인하세요.",
-    "aiVisibilityNotIncluded": "현재 요금제에는 AI 어시스턴트 노출이 포함되어 있지 않습니다."
+    "aiVisibilityNotIncluded": "현재 요금제에는 AI 어시스턴트 노출이 포함되어 있지 않습니다.",
+    "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",
@@ -10569,6 +10571,36 @@
           }
         }
       }
+    }
+  },
+  "demo": {
+    "launcher": {
+      "subtitle": "A sample store of your own, with its catalog, customers and bookings. Book on the storefront, manage from the dashboard: nothing is sent or charged.",
+      "preparing": "Preparing your demo store…",
+      "start": "Open the demo",
+      "retry": "Try again",
+      "signedInNotice": "You are signed in to your Louez account. The demo opens in a separate session: you will be signed out of your account.",
+      "errors": {
+        "rate_limited": "Several demos were already opened from your connection. Try again in an hour.",
+        "capacity": "All our demo stores are busy. Try again in a few minutes.",
+        "failed": "The demo could not open. Try again in a moment."
+      }
+    },
+    "banner": {
+      "title": "This is a demo store",
+      "detail": "Made-up data, nothing is sent or charged. It is erased after 24 hours.",
+      "openStorefront": "View the storefront",
+      "signup": "Create my free store"
+    },
+    "storefrontBanner": {
+      "title": "This is a demo store.",
+      "detail": "Book as a customer would: the payment is simulated.",
+      "dashboard": "Dashboard",
+      "signup": "Create my free store"
+    },
+    "guide": {
+      "title": "Things to try",
+      "progress": "{done} of {total}"
     }
   }
 }

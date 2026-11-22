@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
@@ -103,6 +105,9 @@ export async function searchVoiceNumbers(input: {
   /** Digit filter: area code for US/CA, "contains" pattern everywhere else. */
   numberFilter?: string;
 }): Promise<{ numbers: AvailableNumber[] } | { error: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const auth = await authorizeProvisioning();
   if (!auth.ok) return { error: auth.error };
 
@@ -134,6 +139,9 @@ export async function searchVoiceNumbers(input: {
 export async function provisionVoiceNumber(input: {
   phoneNumber: string;
 }): Promise<{ e164: string } | { error: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const auth = await authorizeProvisioning();
   if (!auth.ok) return { error: auth.error };
   const { store, plan } = auth;
@@ -264,6 +272,9 @@ export async function provisionVoiceNumber(input: {
 export async function linkVoiceNumber(input: {
   phoneNumber: string;
 }): Promise<{ e164: string } | { error: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const auth = await authorizeProvisioning();
   if (!auth.ok) return { error: auth.error };
   const { store } = auth;
@@ -309,6 +320,9 @@ export async function linkVoiceNumber(input: {
 
 /** Release the store's active number and remove the binding entirely. */
 export async function releaseVoiceNumber(): Promise<{ success: true } | { error: string }> {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const auth = await authorizeProvisioning();
   if (!auth.ok) return { error: auth.error };
   const { store } = auth;

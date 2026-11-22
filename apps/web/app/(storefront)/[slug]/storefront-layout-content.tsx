@@ -10,6 +10,7 @@ import {
   type StorefrontShellVariant,
 } from "@/components/storefront/shell/storefront-providers";
 import { StorefrontShell } from "@/components/storefront/shell/storefront-shell";
+import { DemoStoreBanner } from "@/components/storefront/shell/demo-store-banner";
 import { TestModeBanner } from "@/components/storefront/shell/test-mode-banner";
 import { env } from "@/env";
 import { isAdvisorActiveForStore } from "@/lib/ai/advisor/eligibility";
@@ -100,6 +101,7 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
           // The card gate's owner-only line, and the test mode's; nothing outside service mode.
           variant === "store" ? (
             <Suspense fallback={null}>
+              {store.demoVertical ? <DemoStoreBanner /> : null}
               <TestModeBanner storeId={store.id} basePath={basePath} />
               <ReservationGateOwnerBanner storeId={store.id} />
             </Suspense>

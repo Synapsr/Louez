@@ -123,6 +123,13 @@ export {
   reservationStatusStockAction,
   toWholeSeconds,
 } from "./reservation-status";
+export {
+  excludeDemoStores,
+  isDemoStore,
+  isDemoStoreRow,
+  notDemoStoreId,
+  resetDemoStoreCache,
+} from "./demo-stores";
 export { lockCustomerRow } from "./customer-lock";
 export { lockProductRows, lockStoreProductRows } from "./product-lock";
 export {

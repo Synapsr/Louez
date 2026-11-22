@@ -67,6 +67,8 @@ export interface ProductPageStore {
   currency: string;
   settings: StoreSettings;
   theme: StoreTheme;
+  /** A demo store (lib/demo): its pages stay out of search engines. */
+  demoVertical: string | null;
 }
 
 export interface ProductPageProduct {
@@ -172,6 +174,7 @@ const toPageStore = (store: StorefrontStore): ProductPageStore => {
     reservationMode: getEffectiveReservationMode(store),
     settings,
     theme: toStoreTheme(store),
+    demoVertical: store.demoVertical,
   };
 };
 

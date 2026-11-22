@@ -12,6 +12,7 @@ import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
 import { createRefundCreditNoteEffectSenders } from "@/lib/invoicing/refund-credit-note-effects";
 import { createDepositHoldEffectSenders } from "@/lib/reservations/deposit-hold-effects";
+import { withDemoStorePolicy } from "@/lib/demo/outbox-policy";
 import { createReservationMessageEffectSenders } from "@/lib/reservations/reservation-message-effects";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
 import { createStripeRefundEffectSenders } from "@/lib/reservations/stripe-refund";
@@ -27,9 +28,11 @@ import { withTestReservationMessagePolicy } from "@/lib/test-reservations/messag
 /**
  * The app's senders of the outbox rows (packages/api platform/effects.ts), by
  * effect type. A domain that adds an effect type adds its sender here. A test
- * reservation's rows follow its message policy (lib/test-reservations).
+ * reservation's rows follow its message policy (lib/test-reservations); a demo
+ * store's rows are never sent (lib/demo).
  */
-export const apiEffectSenders: ApiEffectSenders = withTestReservationMessagePolicy({
+export const apiEffectSenders: ApiEffectSenders = withDemoStorePolicy(
+  withTestReservationMessagePolicy({
   ...createPlanOfferEffectSenders(),
   ...createDepositHoldEffectSenders(),
   ...createRefundCreditNoteEffectSenders(),
@@ -43,7 +46,8 @@ export const apiEffectSenders: ApiEffectSenders = withTestReservationMessagePoli
   ...createStoreSetupEffectSenders(),
   ...createTeamInvitationEffectSenders(),
   ...createTestReservationEffectSenders(),
-});
+  }),
+);
 
 /**
  * `ApiPorts.dispatchEffects`: sends a committed write's rows once the answer
