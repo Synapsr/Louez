@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@louez/ui";
 import { cn } from "@louez/utils";
 
+import { StorefrontBundlesSection } from "@/components/storefront/bundle/storefront-bundles-section";
 import { PageTracker } from "@/components/storefront/page-tracker";
 import { ProductGrid } from "@/components/storefront/product/product-grid";
 import { ProductGridSkeleton } from "@/components/storefront/product/product-grid-skeleton";
@@ -16,6 +17,7 @@ import { useStore } from "@/contexts/store-context";
 import { catalogQueries } from "@/lib/queries/catalog.queries";
 import { useStorefrontSearch } from "@/contexts/storefront-search-context";
 import { storefrontQueries } from "@/lib/queries/storefront.queries";
+import type { StorefrontProductBundle } from "@/lib/storefront/bundles.queries";
 import { isReservedCategoryValue } from "@/lib/storefront/catalog.constants";
 import type {
   CatalogAttributeAxis,
@@ -57,6 +59,7 @@ interface CatalogBrowserProps {
   /** The filters the server page answers. */
   filters: CatalogFilters;
   initialPage: CatalogProductsPage;
+  bundles?: StorefrontProductBundle[];
   initialDataUpdatedAt: number;
 }
 
@@ -76,6 +79,7 @@ export const CatalogBrowser = ({
   priceBounds: initialPriceBounds,
   filters: serverFilters,
   initialPage,
+  bundles = [],
   initialDataUpdatedAt,
 }: CatalogBrowserProps) => {
   const t = useTranslations("storefront");
@@ -215,6 +219,10 @@ export const CatalogBrowser = ({
           )}
           aria-busy={isPending || undefined}
         >
+          {bundles.length > 0 && !filters.category && !filters.search ? (
+            <StorefrontBundlesSection bundles={bundles} period={period} />
+          ) : null}
+
           {query.isError ? (
             <div role="alert" className="flex items-center gap-3 rounded-xl border p-4">
               <p className="text-sm text-muted-foreground">{t("error.title")}</p>

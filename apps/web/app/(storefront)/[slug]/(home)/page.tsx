@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { StorefrontBundlesSection } from "@/components/storefront/bundle/storefront-bundles-section";
 import { GoogleReviewsSection } from "@/components/storefront/google-reviews-section";
 import { GoogleRatingPill } from "@/components/storefront/home/google-rating-pill";
 import { HomeInventory } from "@/components/storefront/home/home-inventory";
@@ -19,6 +20,7 @@ import {
   generateWebSiteSchema,
   stripHtml,
 } from "@/lib/seo";
+import { loadStorefrontBundles } from "@/lib/storefront/bundles.queries";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { loadHomePage } from "@/lib/storefront/home.queries";
 import { resolveStoreContactChannels } from "@/lib/storefront/util.store-contact";
@@ -81,6 +83,7 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
     place,
     sections,
   } = data;
+  const bundles = await loadStorefrontBundles(store.id);
   const ratingHref = place.showReviews ? "#reviews" : (place.details?.mapsUrl ?? null);
   const hero = resolveStoreHeroPresentation({
     theme,
@@ -143,6 +146,13 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
           tone={hero.shape === "split" ? "flat" : "floating"}
         />
       </StoreHero>
+
+      {bundles.length > 0 ? (
+        <StorefrontBundlesSection
+          bundles={bundles}
+          className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8"
+        />
+      ) : null}
 
       <HomeInventory inventory={inventory} />
 

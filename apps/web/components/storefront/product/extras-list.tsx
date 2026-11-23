@@ -1,11 +1,10 @@
 "use client";
 
-import { CircleHelp } from "lucide-react";
+import { CheckCircle2, CircleHelp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge, Checkbox, Tooltip, TooltipPopup, TooltipTrigger } from "@louez/ui";
-import { cn } from "@louez/utils";
-import { isFixedPriceProduct, pricingModeToMinutes } from "@louez/utils";
+import { cn, isFixedPriceProduct, pricingModeToMinutes } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
 import { Price } from "@/components/storefront/ui/price";
@@ -29,6 +28,8 @@ interface ExtrasListProps {
   onToggle: (id: string) => void;
   /** Products already in the cart; an optional accessory in it is not offered again. */
   cartProductIds: ReadonlySet<string>;
+  /** Whether to show a section header above required items (useful on product page inline booking panel). */
+  showRequiredHeader?: boolean;
 }
 
 /**
@@ -43,8 +44,10 @@ export const ExtrasList = ({
   selectedIds,
   onToggle,
   cartProductIds,
+  showRequiredHeader = false,
 }: ExtrasListProps) => {
   const t = useTranslations("storefront.product");
+  const tAccessories = useTranslations("storefront.accessories");
   const formatPeriodLabel = usePeriodLabel();
   const required = selectRequiredAccessories(accessories);
   const optional = selectOptionalAccessories(accessories).filter(
@@ -70,45 +73,68 @@ export const ExtrasList = ({
   return (
     <div className="flex flex-col gap-3">
       {required.length > 0 ? (
-        <ul className="flex flex-col gap-1.5" aria-label={t("booking.included")}>
-          {required.map((accessory) => {
-            const units = getRequiredAccessoryUnitQuantity(accessory) * quantity;
-            const isShort = accessory.quantity !== null && accessory.quantity < units;
-            const unitPrice = parseStorefrontDecimal(accessory.price) ?? 0;
-            return (
-              <li key={accessory.id} className="flex min-h-9 items-center gap-3 text-sm">
-                <ProductImage
-                  src={accessory.images?.[0] ?? null}
-                  alt=""
-                  sizes="40px"
-                  containerClassName="size-10 shrink-0 rounded-lg"
-                />
-                <span className="flex min-w-0 flex-1 items-center gap-1">
-                  <span className="min-w-0 truncate">
-                    {accessory.name}
-                    {units > 1 ? <span className="text-muted-foreground"> ×{units}</span> : null}
-                  </span>
-                  <Tooltip>
-                    <TooltipTrigger
-                      aria-label={t("booking.requiredHelp")}
-                      className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <CircleHelp aria-hidden="true" className="size-3.5" />
-                    </TooltipTrigger>
-                    <TooltipPopup className="max-w-64">{t("booking.requiredHelp")}</TooltipPopup>
-                  </Tooltip>
-                </span>
-                {isShort ? (
-                  <Badge variant="failed">{t("booking.shortage")}</Badge>
-                ) : unitPrice > 0 ? (
-                  <Price amount={unitPrice} size="sm" {...priceSuffix(accessory)} />
-                ) : (
-                  <Badge variant="tertiary">{t("booking.included")}</Badge>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex flex-col gap-2">
+          {showRequiredHeader ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {tAccessories("requiredSectionTitle")}
+              </span>
+              <Badge variant="progress">{tAccessories("autoAddedBadge")}</Badge>
+            </div>
+          ) : null}
+          <ul className="flex flex-col gap-2" aria-label={t("booking.included")}>
+            {required.map((accessory) => {
+              const units = getRequiredAccessoryUnitQuantity(accessory) * quantity;
+              const isShort = accessory.quantity !== null && accessory.quantity < units;
+              const unitPrice = parseStorefrontDecimal(accessory.price) ?? 0;
+              return (
+                <li
+                  key={accessory.id}
+                  className="flex min-h-12 items-center gap-3 rounded-xl border border-primary/20 bg-background/90 px-3 py-2 text-sm shadow-2xs"
+                >
+                  <ProductImage
+                    src={accessory.images?.[0] ?? null}
+                    alt=""
+                    sizes="40px"
+                    containerClassName="size-10 shrink-0 rounded-lg"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="font-medium leading-snug">{accessory.name}</span>
+                      {units > 1 ? (
+                        <Badge variant="tertiary" className="shrink-0">
+                          ×{units}
+                        </Badge>
+                      ) : null}
+                      <Tooltip>
+                        <TooltipTrigger
+                          aria-label={t("booking.requiredHelp")}
+                          className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <CircleHelp aria-hidden="true" className="size-3.5" />
+                        </TooltipTrigger>
+                        <TooltipPopup className="max-w-64">{t("booking.requiredHelp")}</TooltipPopup>
+                      </Tooltip>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs text-primary">
+                      <CheckCircle2 className="size-3 shrink-0" />
+                      {tAccessories("autoAddedBadge")}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {isShort ? (
+                      <Badge variant="failed">{t("booking.shortage")}</Badge>
+                    ) : unitPrice > 0 ? (
+                      <Price amount={unitPrice} size="sm" {...priceSuffix(accessory)} />
+                    ) : (
+                      <Badge variant="tertiary">{t("booking.included")}</Badge>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : null}
 
       {optional.length > 0 ? (

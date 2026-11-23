@@ -80,6 +80,7 @@ import type {
   NewReservationFormComponentApi,
   NewReservationFormProps,
   NewReservationFormValues,
+  ReservationProductBundle,
   SelectedProduct,
   StepFieldName,
 } from "./types";
@@ -133,6 +134,7 @@ export function NewReservationForm({
   openReplaySource,
   customers,
   products,
+  bundles = [],
   tulipInsuranceMode,
   businessHours,
   advanceNoticeMinutes = 0,
@@ -996,6 +998,18 @@ export function NewReservationForm({
     });
   };
 
+  const addBundle = (bundle: ReservationProductBundle) => {
+    for (const item of bundle.items) {
+      for (let i = 0; i < item.quantity; i += 1) {
+        addProduct(item.productId, { allowUnavailable: true });
+      }
+    }
+    toastManager.add({
+      title: `Dodano zestaw „${bundle.name}”`,
+      type: "success",
+    });
+  };
+
   // Prefill from query params (e.g. drag-to-create on the product timeline):
   // ?startDate=<ISO>&endDate=<ISO>&productId=<id>
   const didPrefillRef = useRef(false);
@@ -1752,6 +1766,7 @@ export function NewReservationForm({
               <div id="section-products" className="scroll-mt-8">
                 <NewReservationStepProducts
                   products={products}
+                  bundles={bundles}
                   selectedProducts={selectedProducts}
                   customItems={customItems}
                   tulipInsuranceMode={tulipInsuranceMode}
@@ -1771,6 +1786,7 @@ export function NewReservationForm({
                   totalSavings={totalSavings}
                   deposit={deposit}
                   addProduct={addProduct}
+                  addBundle={addBundle}
                   updateQuantity={updateQuantity}
                   updateSelectedAttributes={updateSelectedAttributes}
                   removeSelectedProductLine={removeSelectedProductLine}

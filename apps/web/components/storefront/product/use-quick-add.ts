@@ -7,6 +7,7 @@ import type { StockQuantityLimit } from "@louez/utils";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 
 import type { StorefrontCatalogProduct } from "@/lib/storefront/storefront.types";
+import { selectRequiredAccessories } from "@/lib/utils/cart-required-accessories";
 import { type CartLineInput, toCartLineInput } from "@/lib/utils/util.cart-line-input";
 
 import { useAnalytics } from "@/contexts/analytics-context";
@@ -107,7 +108,8 @@ export const useQuickAddFlow = (): QuickAddFlow => {
     (product: StorefrontCatalogProduct, period: ProductCardPeriod | null): QuickAddStep[] => [
       ...(period ? [] : (["period"] as const)),
       ...(hasVariants(product) ? (["variant"] as const) : []),
-      ...(selectOfferableExtras(product.accessories, cartProductIds).length > 0
+      ...(selectOfferableExtras(product.accessories, cartProductIds).length > 0 ||
+      selectRequiredAccessories(product.accessories ?? []).length > 0
         ? (["extras"] as const)
         : []),
     ],

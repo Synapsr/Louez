@@ -680,6 +680,13 @@
       "when": 1795175200000,
       "tag": "0091_add_monday_integration_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "5",
+      "when": 1795261600000,
+      "tag": "0092_add_product_bundles",
+      "breakpoints": true
     }
   ]
 }

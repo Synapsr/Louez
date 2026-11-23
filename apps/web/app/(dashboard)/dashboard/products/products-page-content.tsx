@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { ArrowUpDown, SearchX } from "lucide-react";
 
 import { Button } from "@louez/ui";
+import { ProductBundleManagerDrawer } from "@/components/bundles/product-bundle-manager-drawer";
 import { CategoryManagerDrawer } from "@/components/categories/category-manager-drawer";
 import { ProductsPageHeading } from "./products-page-heading";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -47,6 +48,7 @@ export function ProductsPageContent({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [bundleManagerOpen, setBundleManagerOpen] = useState(false);
   const { status, categoryIds, search, setCategoryIds, setSearch } = useProductsFilters();
   // Fetch once typing pauses, but drop the search right away when it is cleared
   const debouncedSearch = useDebounce(search.trim(), 300);
@@ -110,6 +112,7 @@ export function ProductsPageContent({
       <ProductsPageHeading
         isAtLimit={isAtLimit}
         onManageCategories={() => setCategoryManagerOpen(true)}
+        onManageBundles={() => setBundleManagerOpen(true)}
         onUpgrade={() => setShowUpgradeModal(true)}
         onAddProduct={handleAddProductClick}
       />
@@ -213,6 +216,12 @@ export function ProductsPageContent({
         open={categoryManagerOpen}
         onOpenChange={setCategoryManagerOpen}
         onCategoryDeleted={handleCategoryDeleted}
+      />
+
+      {/* Product bundles management drawer */}
+      <ProductBundleManagerDrawer
+        open={bundleManagerOpen}
+        onOpenChange={setBundleManagerOpen}
       />
 
       {/* Products Order Dialog */}

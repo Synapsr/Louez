@@ -46,6 +46,7 @@ import {
 import type { StockQuantityLimit } from "@louez/utils";
 import { cn, formatCurrency, minutesToPriceDuration } from "@louez/utils";
 
+import { BundleAddCombobox } from "@/components/dashboard/bundle-add-combobox";
 import { ProductAddCombobox } from "@/components/dashboard/product-add-combobox";
 import { ProductImage } from "@/components/product/product-image";
 
@@ -55,6 +56,7 @@ import type {
   CustomItem,
   Product,
   ProductPricingDetails,
+  ReservationProductBundle,
   SelectedProduct,
   ManualReservationUnitAvailability,
 } from "../types";
@@ -63,6 +65,7 @@ import { buildProductCombinations, getLineQuantityConstraints } from "../utils/v
 
 interface NewReservationStepProductsProps {
   products: Product[];
+  bundles?: ReservationProductBundle[];
   selectedProducts: SelectedProduct[];
   customItems: CustomItem[];
   tulipInsuranceMode: "required" | "optional" | "no_public";
@@ -85,6 +88,7 @@ interface NewReservationStepProductsProps {
     productId: string,
     options?: { allowUnavailable?: boolean; selectedUnitId?: string },
   ) => void;
+  addBundle?: (bundle: ReservationProductBundle) => void;
   updateQuantity: (lineId: string, delta: number) => void;
   updateSelectedAttributes: (lineId: string, axisKey: string, value: string | undefined) => void;
   removeSelectedProductLine: (lineId: string) => void;
@@ -109,6 +113,7 @@ interface NewReservationStepProductsProps {
 
 export function NewReservationStepProducts({
   products,
+  bundles = [],
   selectedProducts,
   customItems,
   tulipInsuranceMode,
@@ -128,6 +133,7 @@ export function NewReservationStepProducts({
   totalSavings,
   deposit,
   addProduct,
+  addBundle,
   updateQuantity,
   updateSelectedAttributes,
   removeSelectedProductLine,
@@ -327,7 +333,7 @@ export function NewReservationStepProducts({
             {/* One row at every width. The custom item is the side door, so it
                 takes what its label needs and never more than half; the product
                 picker gets the rest. */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -341,6 +347,14 @@ export function NewReservationStepProducts({
                 <PenLine data-slot="icon" className="size-4" />
                 <span className="truncate">{t("customItem.button")}</span>
               </Button>
+              {bundles.length > 0 && addBundle ? (
+                <BundleAddCombobox
+                  bundles={bundles}
+                  onAddBundle={addBundle}
+                  onBeforeOpen={guardPeriodSelected}
+                  className="min-w-0 shrink"
+                />
+              ) : null}
               {products.length > 0 && (
                 <ProductAddCombobox
                   products={products}

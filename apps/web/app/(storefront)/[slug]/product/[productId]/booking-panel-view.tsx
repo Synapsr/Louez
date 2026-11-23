@@ -187,6 +187,7 @@ export const BookingPanelView = ({
             selectedIds={extraIds}
             onToggle={() => {}}
             cartProductIds={cartProductIds}
+            showRequiredHeader
           />
 
           <PriceSummary

@@ -6721,8 +6721,18 @@
     },
     "accessories": {
       "productAdded": "Added to cart",
-      "youMightAlsoLike": "You might also like",
+      "youMightAlsoLike": "This product has accessories that might be useful for you",
       "requiredIncluded": "The accessories this product requires were added to your cart automatically.",
+      "requiredSectionTitle": "Required accessories — added automatically",
+      "requiredSectionBadge": "Required • In cart",
+      "requiredSectionDescription": "These items are required when renting this product and have already been automatically included in your order.",
+      "autoAddedBadge": "Added automatically",
+      "optionalSectionTitle": "Optional accessories — choose what you need",
+      "optionalSectionBadge": "Optional • Your choice",
+      "optionalSectionDescription": "These accessories are completely optional. Select any items you would like to add to your reservation.",
+      "selectedBadge": "Selected",
+      "clickToSelect": "Add to order",
+      "closePopup": "Go to cart",
       "selectAccessories": "Select accessories to add",
       "available": "{count, plural, one {# available} other {# available}}",
       "pricingUnit": {
@@ -6730,8 +6740,8 @@
         "hour": "hour",
         "week": "week"
       },
-      "continueWithout": "Continue without accessories",
-      "addToCart": "{count, plural, one {Add # accessory} other {Add # accessories}}",
+      "continueWithout": "Continue without extra accessories",
+      "addToCart": "{count, plural, one {Add # selected accessory} other {Add # selected accessories}}",
       "accessoriesAdded": "{count, plural, one {# accessory added to cart} other {# accessories added to cart}}"
     },
     "dateSelection": {

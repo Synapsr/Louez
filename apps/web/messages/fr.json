@@ -6704,8 +6704,18 @@
     },
     "accessories": {
       "productAdded": "Ajouté au panier",
-      "youMightAlsoLike": "Vous pourriez aussi aimer",
+      "youMightAlsoLike": "Ce produit dispose d'accessoires qui pourraient vous être utiles",
       "requiredIncluded": "Les accessoires obligatoires de ce produit ont été ajoutés automatiquement à votre panier.",
+      "requiredSectionTitle": "Accessoires obligatoires — ajoutés automatiquement",
+      "requiredSectionBadge": "Obligatoire • Dans le panier",
+      "requiredSectionDescription": "Ces éléments sont requis pour la location de ce produit et ont déjà été automatiquement inclus dans votre commande.",
+      "autoAddedBadge": "Ajouté automatiquement",
+      "optionalSectionTitle": "Accessoires optionnels — au choix",
+      "optionalSectionBadge": "Optionnel • Au choix",
+      "optionalSectionDescription": "Ces accessoires sont entièrement facultatifs. Cochez les articles que vous souhaitez ajouter à votre réservation.",
+      "selectedBadge": "Sélectionné",
+      "clickToSelect": "Ajouter",
+      "closePopup": "Aller au panier",
       "selectAccessories": "Sélectionnez les accessoires à ajouter",
       "available": "{count, plural, one {# disponible} other {# disponibles}}",
       "pricingUnit": {
@@ -6713,8 +6723,8 @@
         "hour": "heure",
         "week": "semaine"
       },
-      "continueWithout": "Continuer sans accessoire",
-      "addToCart": "{count, plural, one {Ajouter # accessoire} other {Ajouter # accessoires}}",
+      "continueWithout": "Continuer sans accessoire supplémentaire",
+      "addToCart": "{count, plural, one {Ajouter # accessoire sélectionné} other {Ajouter # accessoires sélectionnés}}",
       "accessoriesAdded": "{count, plural, one {# accessoire ajouté au panier} other {# accessoires ajoutés au panier}}"
     },
     "dateSelection": {

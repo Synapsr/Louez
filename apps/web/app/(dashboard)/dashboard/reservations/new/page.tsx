@@ -5,7 +5,14 @@ import { and, eq, exists, gte, inArray, or } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db, getBlockingReservationStatuses, getEffectiveProductQuantities } from "@louez/db";
-import { customers, products, reservationItems, reservations, storeLocations } from "@louez/db";
+import {
+  customers,
+  productBundles,
+  products,
+  reservationItems,
+  reservations,
+  storeLocations,
+} from "@louez/db";
 
 import { getDashboardTulipInsuranceModeFromSettings } from "@/lib/integrations/tulip/settings";
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
@@ -24,6 +31,42 @@ async function getCustomers(storeId: string) {
     where: eq(customers.storeId, storeId),
     orderBy: (customers, { desc }) => [desc(customers.createdAt)],
   });
+}
+
+async function getActiveProductBundles(storeId: string) {
+  const rows = await db.query.productBundles.findMany({
+    where: and(eq(productBundles.storeId, storeId), eq(productBundles.isActive, true)),
+    orderBy: (bundles, { asc }) => [asc(bundles.displayOrder), asc(bundles.createdAt)],
+    with: {
+      items: {
+        orderBy: (items, { asc }) => [asc(items.displayOrder)],
+        with: {
+          product: {
+            columns: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return rows
+    .map((bundle) => ({
+      id: bundle.id,
+      name: bundle.name,
+      description: bundle.description ?? null,
+      items: bundle.items
+        .filter((item) => item.product && item.product.status === "active")
+        .map((item) => ({
+          productId: item.productId,
+          productName: item.product.name,
+          quantity: item.quantity,
+        })),
+    }))
+    .filter((bundle) => bundle.items.length > 0);
 }
 
 async function getProductsWithTiers(storeId: string) {
@@ -190,10 +233,11 @@ export default async function NewReservationPage({ searchParams }: NewReservatio
   }
 
   const deliverySettings = store.settings?.delivery;
-  const [customersList, productsList, activeReservations, activeStoreLocations] = await Promise.all(
-    [
+  const [customersList, productsList, bundlesList, activeReservations, activeStoreLocations] =
+    await Promise.all([
       getCustomers(store.id),
       getProductsWithTiers(store.id),
+      getActiveProductBundles(store.id),
       getActiveReservations(store.id, store.settings?.pendingBlocksAvailability ?? true),
       deliverySettings?.multiLocationEnabled
         ? db.query.storeLocations.findMany({
@@ -201,8 +245,7 @@ export default async function NewReservationPage({ searchParams }: NewReservatio
             orderBy: (storeLocations, { asc }) => [asc(storeLocations.createdAt)],
           })
         : Promise.resolve([]),
-    ],
-  );
+    ]);
   const tulipSettings = (await resolveTulipIntegrationForStore(store.id)).settings;
   const tulipInsuranceMode = getDashboardTulipInsuranceModeFromSettings(tulipSettings);
 
@@ -217,6 +260,7 @@ export default async function NewReservationPage({ searchParams }: NewReservatio
         openReplaySource={openReplaySource}
         customers={customersList}
         products={productsList}
+        bundles={bundlesList}
         tulipInsuranceMode={tulipInsuranceMode}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}

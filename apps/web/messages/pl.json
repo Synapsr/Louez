@@ -6721,8 +6721,18 @@
     },
     "accessories": {
       "productAdded": "Dodano do koszyka",
-      "youMightAlsoLike": "Może Ci się również spodobać",
+      "youMightAlsoLike": "Do tego produktu są przypisane akcesoria, które mogą Ci się przydać",
       "requiredIncluded": "Akcesoria wymagane do tego produktu zostały automatycznie dodane do koszyka.",
+      "requiredSectionTitle": "Akcesoria wymagane — dodawane automatycznie",
+      "requiredSectionBadge": "Wymagane • W koszyku",
+      "requiredSectionDescription": "Te elementy są wymagane do wypożyczenia wybranego produktu i zostały już automatycznie dołączone do Twojego zamówienia.",
+      "autoAddedBadge": "Dodano automatycznie",
+      "optionalSectionTitle": "Akcesoria opcjonalne — możesz dobrać dodatkowo",
+      "optionalSectionBadge": "Opcjonalne • Do wyboru",
+      "optionalSectionDescription": "Te akcesoria są całkowicie dobrowolne. Zaznacz pozycje, które chcesz dołączyć do swojej rezerwacji.",
+      "selectedBadge": "Wybrano",
+      "clickToSelect": "Dodaj do zestawu",
+      "closePopup": "Przejdź do koszyka",
       "selectAccessories": "Wybierz akcesoria do dodania",
       "available": "{count, plural, one {# dostępny} few {# dostępne} many {# dostępnych} other {# dostępnych}}",
       "pricingUnit": {
@@ -6730,8 +6740,8 @@
         "hour": "godzina",
         "week": "tydzień"
       },
-      "continueWithout": "Kontynuuj bez akcesoriów",
-      "addToCart": "{count, plural, one {Dodaj # akcesorium} few {Dodaj # akcesoria} many {Dodaj # akcesoriów} other {Dodaj # akcesoriów}}",
+      "continueWithout": "Kontynuuj bez dodatkowych akcesoriów",
+      "addToCart": "{count, plural, one {Dodaj # wybrane akcesorium} few {Dodaj # wybrane akcesoria} many {Dodaj # wybranych akcesoriów} other {Dodaj # wybranych akcesoriów}}",
       "accessoriesAdded": "{count, plural, one {# akcesorium dodane do koszyka} few {# akcesoria dodane do koszyka} many {# akcesoriów dodanych do koszyka} other {# akcesoriów dodanych do koszyka}}"
     },
     "dateSelection": {

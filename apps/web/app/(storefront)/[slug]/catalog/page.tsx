@@ -14,6 +14,7 @@ import {
   loadCatalogProducts,
   parseCatalogSearchParams,
 } from "@/lib/storefront/catalog.queries";
+import { loadStorefrontBundles } from "@/lib/storefront/bundles.queries";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { buildCategorySlugPath, toSearchParams } from "@/lib/storefront/util.legacy-storefront-url";
 import {
@@ -142,7 +143,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   // Downstream the category is always an id; only the URL speaks in slugs.
   const filters = category ? { ...urlFilters, category: category.id } : urlFilters;
 
-  const [t, tBrowse, page, priceIndex, attributeAxes] = await Promise.all([
+  const [t, tBrowse, page, priceIndex, attributeAxes, bundles] = await Promise.all([
     getTranslations("storefront.catalog"),
     getTranslations("storefront.availability.categoryBrowse"),
     loadCatalogProducts({
@@ -161,6 +162,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
     }),
     loadCatalogPriceIndex(store.id, filters.startDate, filters.endDate, store.settings?.timezone),
     loadCatalogAttributeAxes(store.id),
+    loadStorefrontBundles(store.id),
   ]);
 
   const rules: RentalPeriodRules = {
@@ -233,6 +235,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
         priceBounds={priceIndex.bounds}
         filters={filters}
         initialPage={page}
+        bundles={bundles}
         initialDataUpdatedAt={Date.now()}
       />
     </>

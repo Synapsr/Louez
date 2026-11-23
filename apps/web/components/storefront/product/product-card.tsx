@@ -70,6 +70,7 @@ export const ProductCard = ({
   className,
 }: ProductCardProps) => {
   const t = useTranslations("storefront.product");
+  const tAccessories = useTranslations("storefront.accessories");
   const pricing = useProductCardPricing(product, period);
   const currentAvailability = availability ?? getStockAvailability(product);
   const isUnavailable =
@@ -146,33 +147,61 @@ export const ProductCard = ({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 px-2 pb-2">
-        <h3 className="line-clamp-1 text-sm font-medium sm:text-base">
-          {href === undefined ? (
-            product.name
+      <div className="flex flex-1 flex-col justify-between gap-1.5 px-2.5 pb-2.5">
+        <div className="flex flex-col gap-1">
+          <h3
+            className={cn(
+              "text-sm font-medium sm:text-base",
+              selection ? "line-clamp-2 leading-snug" : "line-clamp-1",
+            )}
+          >
+            {href === undefined ? (
+              product.name
+            ) : (
+              // Stretched link: the pseudo-element covers the card, so the whole
+              // surface navigates without a button ever nesting inside a link.
+              <StorefrontLink
+                className="outline-none after:absolute after:inset-0 after:rounded-2xl"
+                href={href}
+                data-demo-target="product-link"
+              >
+                {product.name}
+              </StorefrontLink>
+            )}
+          </h3>
+          {product.priceNegotiable ? (
+            <span className="text-sm font-medium text-muted-foreground">{t("priceNegotiable")}</span>
           ) : (
-            // Stretched link: the pseudo-element covers the card, so the whole
-            // surface navigates without a button ever nesting inside a link.
-            <StorefrontLink
-              className="outline-none after:absolute after:inset-0 after:rounded-2xl"
-              href={href}
-              data-demo-target="product-link"
-            >
-              {product.name}
-            </StorefrontLink>
+            <Price
+              amount={pricing.amount}
+              compareAt={pricing.compareAt}
+              per={pricing.per}
+              label={pricing.label}
+              size="md"
+            />
           )}
-        </h3>
-        {product.priceNegotiable ? (
-          <span className="text-sm font-medium text-muted-foreground">{t("priceNegotiable")}</span>
-        ) : (
-          <Price
-            amount={pricing.amount}
-            compareAt={pricing.compareAt}
-            per={pricing.per}
-            label={pricing.label}
-            size="md"
-          />
-        )}
+        </div>
+        {selection ? (
+          <div className="pt-1">
+            <span
+              className={cn(
+                "inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
+                selection.selected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-muted/60 text-foreground group-hover:bg-muted",
+              )}
+            >
+              {selection.selected ? (
+                <>
+                  <CheckIcon className="size-3.5" />
+                  {tAccessories("selectedBadge")}
+                </>
+              ) : (
+                tAccessories("clickToSelect")
+              )}
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {/* Last child: an inset ring is painted under the children, and the

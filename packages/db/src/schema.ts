@@ -2383,6 +2383,7 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   promoCodes: many(promoCodes),
   emailLogs: many(emailLogs),
   smsLogs: many(smsLogs),
+  productBundles: many(productBundles),
 }));
 
 export const storeIntegrationsRelations = relations(storeIntegrations, ({ one, many }) => ({
@@ -2523,6 +2524,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   units: many(productUnits),
   accessories: many(productAccessories, { relationName: "productAccessories" }),
   accessoryOf: many(productAccessories, { relationName: "accessoryOf" }),
+  bundleItems: many(productBundleItems),
   tulipMapping: one(productsTulip, {
     fields: [products.id],
     references: [productsTulip.productId],
@@ -2846,6 +2848,69 @@ export const productAccessoriesRelations = relations(productAccessories, ({ one 
     fields: [productAccessories.accessoryId],
     references: [products.id],
     relationName: "accessoryOf",
+  }),
+}));
+
+// ============================================================================
+// Product Bundles (Ready-made sets of products)
+// ============================================================================
+
+export const productBundles = mysqlTable(
+  "product_bundles",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    isActive: boolean("is_active").default(true).notNull(),
+    displayOrder: int("display_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index("product_bundles_store_idx").on(table.storeId),
+    storeActiveIdx: index("product_bundles_store_active_idx").on(table.storeId, table.isActive),
+  }),
+);
+
+export const productBundleItems = mysqlTable(
+  "product_bundle_items",
+  {
+    id: id(),
+    bundleId: varchar("bundle_id", { length: 21 })
+      .notNull()
+      .references(() => productBundles.id, { onDelete: "cascade" }),
+    productId: varchar("product_id", { length: 21 })
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    quantity: int("quantity").notNull().default(1),
+    displayOrder: int("display_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    bundleIdx: index("product_bundle_items_bundle_idx").on(table.bundleId),
+    productIdx: index("product_bundle_items_product_idx").on(table.productId),
+    uniqueBundleProduct: unique("product_bundle_items_unique").on(table.bundleId, table.productId),
+  }),
+);
+
+export const productBundlesRelations = relations(productBundles, ({ one, many }) => ({
+  store: one(stores, {
+    fields: [productBundles.storeId],
+    references: [stores.id],
+  }),
+  items: many(productBundleItems),
+}));
+
+export const productBundleItemsRelations = relations(productBundleItems, ({ one }) => ({
+  bundle: one(productBundles, {
+    fields: [productBundleItems.bundleId],
+    references: [productBundles.id],
+  }),
+  product: one(products, {
+    fields: [productBundleItems.productId],
+    references: [products.id],
   }),
 }));
 

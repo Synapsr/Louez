@@ -133,6 +133,17 @@ export interface ReservationLocationOption {
   country: string | null;
 }
 
+export interface ReservationProductBundle {
+  id: string;
+  name: string;
+  description: string | null;
+  items: Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+  }>;
+}
+
 export interface DeliveryLegState {
   method: import("@louez/types").LegMethod;
   locationId: string | null;
@@ -146,6 +157,7 @@ export interface NewReservationFormProps {
   openReplaySource: DashboardCreationSource;
   customers: Customer[];
   products: Product[];
+  bundles?: ReservationProductBundle[];
   tulipInsuranceMode: TulipPublicMode;
   businessHours?: BusinessHours;
   advanceNoticeMinutes?: number;
