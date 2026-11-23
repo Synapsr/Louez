@@ -9,6 +9,7 @@ export const GOOGLE_CALENDAR_SCOPES = [
   "email",
   "https://www.googleapis.com/auth/calendar.app.created",
 ] as const;
+const GOOGLE_CALENDAR_TIME_ZONE = "Europe/Warsaw";
 
 const googleTokenResponseSchema = z.object({
   access_token: z.string(),
@@ -51,6 +52,7 @@ export class GoogleCalendarApiError extends Error {
 export type GoogleCalendarEventInput = {
   summary: string;
   description: string;
+  location?: string;
   startDate: Date;
   endDate: Date;
   status: "confirmed" | "tentative";
@@ -191,7 +193,7 @@ export async function createGoogleCalendar(params: {
     },
     body: JSON.stringify({
       summary: params.summary,
-      timeZone: "Europe/Paris",
+      timeZone: GOOGLE_CALENDAR_TIME_ZONE,
     }),
   });
 
@@ -210,13 +212,14 @@ function toGoogleEvent(input: GoogleCalendarEventInput) {
   return {
     summary: input.summary,
     description: input.description,
+    location: input.location,
     start: {
       dateTime: input.startDate.toISOString(),
-      timeZone: "Europe/Paris",
+      timeZone: GOOGLE_CALENDAR_TIME_ZONE,
     },
     end: {
       dateTime: input.endDate.toISOString(),
-      timeZone: "Europe/Paris",
+      timeZone: GOOGLE_CALENDAR_TIME_ZONE,
     },
     status: input.status,
     transparency: input.transparency,

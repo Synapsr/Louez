@@ -53,10 +53,9 @@ export async function GET(request: Request) {
 
   const token = await exchangeGoogleCalendarCode(code);
   const accountEmail = await getGoogleAccountEmail(token.accessToken);
-  const calendarName = `Louez - ${store.name}`;
   const calendar = await createGoogleCalendar({
     accessToken: token.accessToken,
-    summary: calendarName,
+    summary: store.name,
   });
   const encryptedAccessToken = encryptIntegrationSecret(token.accessToken);
   const encryptedRefreshToken = encryptIntegrationSecret(token.refreshToken);

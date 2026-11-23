@@ -9,19 +9,9 @@ import { env } from "@/env";
 
 import {
   buildReservationCalendarEventDetails,
+  getCalendarReservationStatusLabel,
   getCalendarRoomNames,
 } from "./reservation-event-details";
-
-const STATUS_PREFIX: Record<string, string> = {
-  pending: "[?]",
-  confirmed: "[OK]",
-  ongoing: "[>>]",
-  completed: "[V]",
-  cancelled: "[X]",
-  rejected: "[X]",
-  quote: "[QUOTE]",
-  declined: "[X]",
-};
 
 // Google Calendar only accepts palette IDs, so these approximate Louez status colors.
 const GOOGLE_CALENDAR_COLOR_BY_STATUS: Record<string, string> = {
@@ -51,7 +41,6 @@ export async function buildReservationCalendarEventPayload(params: {
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, params.reservationId),
     with: {
-      store: true,
       customer: true,
       items: {
         with: {
@@ -83,9 +72,9 @@ export async function buildReservationCalendarEventPayload(params: {
     item.productSnapshot?.name || item.product?.name || "Unknown";
   const formatItemName = (name: string, quantity: number) =>
     quantity > 1 ? `${name} (x${quantity})` : name;
-  const productNames = reservation.items
-    .map((item) => formatItemName(getItemName(item), item.quantity))
-    .join(", ");
+  const productNames = reservation.items.map((item) =>
+    formatItemName(getItemName(item), item.quantity),
+  );
   const roomNames = getCalendarRoomNames(
     reservation.items.map((item) => ({
       name: getItemName(item),
@@ -98,10 +87,9 @@ export async function buildReservationCalendarEventPayload(params: {
   const reservationUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservation.id}`;
   const eventDetails = buildReservationCalendarEventDetails({
     reservation,
-    store: reservation.store,
     productNames,
     roomNames,
-    statusLabel: STATUS_PREFIX[reservation.status] || "[?]",
+    statusLabel: getCalendarReservationStatusLabel(reservation.status),
     reservationUrl,
   });
 
