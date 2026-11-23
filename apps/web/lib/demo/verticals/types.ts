@@ -206,7 +206,7 @@ export interface DemoVertical {
    * near the store; none when the store does not deliver.
    */
   deliveryAddresses: AddressDetails[];
-  /** The storefront guide: a simple booking, then one only this trade has. */
+  /** The storefront guide: the booking only this trade has, first, then a simple one. */
   scenarios: [DemoScenario, DemoScenario];
   guide: DemoGuideStep[];
   cgv: string;

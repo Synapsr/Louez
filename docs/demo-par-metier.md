@@ -24,10 +24,10 @@ catalogue « Ar Mor Location » du seed de démo) et **événementiel**
    de la boutique (`visiteur-…@demo.example`) : le tableau de bord est prêt, un lien plus
    loin.
 3. Sur la boutique, une barre d'une ligne (boutique de démonstration, paiement simulé,
-   « Voir côté loueur », « Créer ma boutique gratuite ») et la carte « Réservez comme un
-   client » : deux scénarios du métier (ci-dessous). « Essayer » met les dates du
-   scénario dans le panier et ouvre son produit ; la carte liste alors les deux ou trois
-   gestes qui restent.
+   « Voir côté loueur », « Créer ma boutique gratuite ») et la carte « Choisissez votre
+   cas » : deux scénarios du métier (ci-dessous), chacun avec la photo de son produit.
+   En choisir un met ses dates dans le panier et ouvre son produit ; la carte liste alors
+   les deux ou trois gestes qui restent.
 4. Le visiteur réserve sous une identité inventée, déjà remplie, et le paiement est
    simulé (la page de paiement simulé des réservations test). Sa page de réservation
    porte « Voir côté loueur », qui ouvre cette réservation dans le tableau de bord.
@@ -39,15 +39,17 @@ catalogue « Ar Mor Location » du seed de démo) et **événementiel**
 
 ## Les scénarios
 
-Deux par métier, au plus : un cas simple, en trois clics, et un cas que seul ce métier a.
+Deux par métier, au plus : d'abord le cas que seul ce métier a, puis un cas simple, en
+trois clics. Le cas du métier passe devant : c'est lui qui montre ce que d'autres outils
+ne font pas (au ski, ce que le client renseigne pour chaque skieur).
 Les données sont dans `lib/demo/verticals/<métier>.ts` (`scenarios`), le guide dans
 `components/storefront/shell/demo-storefront-guide.tsx`.
 
-| Métier       | Cas simple                                  | Cas du métier                                                                                                                   |
-| ------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Ski          | un Pack Découverte adulte, six jours        | deux Packs Sensation : pour chaque skieur, prénom, taille, poids, pointure et niveau, demandés au paiement                      |
-| Vélo         | un vélo de ville, une journée               | un VAE trekking : la taille de cadre choisie d'après le guide des tailles de la fiche, un casque proposé, la taille du cycliste |
-| Événementiel | un barnum 3 × 3, le week-end, retrait dépôt | un mariage : tente de réception, tables rondes et chaises dans un panier, livré à l'adresse du lieu                             |
+| Métier       | Cas du métier                                                                                                                   | Cas simple                                  |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Ski          | deux Packs Sensation : pour chaque skieur, prénom, taille, poids, pointure et niveau, demandés au paiement                      | un Pack Découverte adulte, six jours        |
+| Vélo         | un VAE trekking : la taille de cadre choisie d'après le guide des tailles de la fiche, un casque proposé, la taille du cycliste | un vélo de ville, une journée               |
+| Événementiel | un mariage : tente de réception, tables rondes et chaises dans un panier, livré à l'adresse du lieu                             | un barnum 3 × 3, le week-end, retrait dépôt |
 
 Tout est du produit réel, rien n'est simulé hors paiement :
 

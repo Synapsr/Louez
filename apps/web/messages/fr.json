@@ -10607,10 +10607,8 @@
       "progress": "{done} sur {total}"
     },
     "storefrontGuide": {
-      "title": "Réservez comme un client",
-      "intro": "Deux réservations à essayer, une minute chacune. Le paiement est simulé.",
-      "simple": "Le cas simple",
-      "trade": "Le cas du métier",
+      "title": "Choisissez votre cas",
+      "simulated": "Paiement simulé, rien n’est facturé.",
       "otherScenario": "L’autre scénario",
       "ownerSide": "Voir côté loueur"
     },

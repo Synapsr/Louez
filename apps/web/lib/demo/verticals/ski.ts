@@ -732,24 +732,9 @@ export const SKI_VERTICAL: DemoVertical = {
   ],
   scenarios: [
     {
-      key: "simple",
-      title: "Un pack adulte pour la semaine",
-      pitch: "Le client réserve seul, en trois clics, et paie en ligne.",
-      productKey: "pack-decouverte",
-      quantity: 1,
-      startWeekday: 6,
-      days: 6,
-      steps: [
-        "Les dates sont déjà choisies : ajoutez le pack au panier.",
-        "Validez le panier : vos coordonnées sont déjà remplies.",
-        "Payez en ligne (paiement simulé).",
-      ],
-    },
-    {
       key: "trade",
       title: "Deux skieurs, chacun équipé à sa mesure",
-      pitch:
-        "Pour chaque skieur, le client donne taille, poids, pointure et niveau : le matériel est prêt et les fixations réglées à son arrivée.",
+      pitch: "Taille, poids, pointure et niveau de chaque skieur, dès la réservation.",
       productKey: "pack-sensation",
       quantity: 2,
       startWeekday: 6,
@@ -758,6 +743,20 @@ export const SKI_VERTICAL: DemoVertical = {
         "Ajoutez les deux packs au panier.",
         "Au paiement, renseignez chaque skieur : prénom, taille, poids, pointure, niveau.",
         "Payez (paiement simulé), puis voyez la réservation côté loueur.",
+      ],
+    },
+    {
+      key: "simple",
+      title: "Un pack adulte pour la semaine",
+      pitch: "Réservé et payé en ligne, en trois clics.",
+      productKey: "pack-decouverte",
+      quantity: 1,
+      startWeekday: 6,
+      days: 6,
+      steps: [
+        "Les dates sont déjà choisies : ajoutez le pack au panier.",
+        "Validez le panier : vos coordonnées sont déjà remplies.",
+        "Payez en ligne (paiement simulé).",
       ],
     },
   ],

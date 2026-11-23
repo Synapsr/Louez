@@ -508,24 +508,9 @@ export const EVENEMENTIEL_VERTICAL: DemoVertical = {
   itemFields: [],
   scenarios: [
     {
-      key: "simple",
-      title: "Un barnum pour le week-end",
-      pitch: "Le client réserve seul, en trois clics, et paie l'acompte en ligne.",
-      productKey: "barnum-3x3",
-      quantity: 1,
-      startWeekday: 6,
-      days: 2,
-      steps: [
-        "Les dates sont déjà choisies : ajoutez le barnum au panier.",
-        "Validez le panier : vos coordonnées sont déjà remplies.",
-        "Retrait au dépôt, puis payez l'acompte (simulé).",
-      ],
-    },
-    {
       key: "trade",
       title: "Un mariage de 50 personnes, livré",
-      pitch:
-        "Tente, tables et chaises dans un seul panier, livrés à l'adresse du lieu le jour de l'installation : la boutique voit la tournée et ses frais.",
+      pitch: "Tente, tables et chaises, livrées sur le lieu de la fête.",
       productKey: "tente-reception",
       quantity: 1,
       startWeekday: 6,
@@ -534,6 +519,20 @@ export const EVENEMENTIEL_VERTICAL: DemoVertical = {
         "Ajoutez la tente, puis cochez les tables rondes et les chaises proposées avec.",
         "Dans le panier, passez à 6 tables et 50 chaises.",
         "Au paiement, choisissez la livraison et une adresse proposée, puis payez l'acompte (simulé).",
+      ],
+    },
+    {
+      key: "simple",
+      title: "Un barnum pour le week-end",
+      pitch: "Réservé en trois clics, retrait au dépôt.",
+      productKey: "barnum-3x3",
+      quantity: 1,
+      startWeekday: 6,
+      days: 2,
+      steps: [
+        "Les dates sont déjà choisies : ajoutez le barnum au panier.",
+        "Validez le panier : vos coordonnées sont déjà remplies.",
+        "Retrait au dépôt, puis payez l'acompte (simulé).",
       ],
     },
   ],

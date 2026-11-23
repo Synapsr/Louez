@@ -44,10 +44,10 @@ function writeMemory(storeId: string, memory: GuideMemory): void {
 }
 
 /**
- * « Réservez comme un client »: the trade's two bookings to try on the demo
- * storefront, a simple one and one only this trade has. « Essayer » puts the
- * scenario's dates in the cart and opens its product; the card then lists the
- * few actions left. It folds to its header on the checkout (and steps aside
+ * « Choisissez votre cas »: the trade's two bookings to try on the demo
+ * storefront, the one only this trade has first, then a simple one, each with
+ * its product's photo. Picking one puts its dates in the cart and opens its
+ * product; the card then lists the few actions left. It folds to its header on the checkout (and steps aside
  * there on a small screen), and on a phone until opened; on a product page it
  * sits above the page's own bottom bar.
  */
@@ -124,7 +124,7 @@ export const DemoStorefrontGuide = ({
         />
       </button>
       {memory.open ? (
-        <div className="border-t px-4 pt-3 pb-4">
+        <div className="border-t px-4 pt-2 pb-3">
           {active ? (
             <>
               <p className="text-xs text-muted-foreground">{active.pitch}</p>
@@ -161,32 +161,38 @@ export const DemoStorefrontGuide = ({
             </>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">{t("intro")}</p>
-              <ul className="mt-3 space-y-2">
+              <ul className="-mx-2 space-y-1">
                 {guide.scenarios.map((scenario) => (
                   <li key={scenario.key}>
                     <button
                       type="button"
                       onClick={() => start(scenario)}
-                      className="group flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors hover:border-primary/40 hover:bg-muted"
+                      className="group flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-muted"
                     >
+                      {scenario.image ? (
+                        <img
+                          src={scenario.image}
+                          alt=""
+                          className="size-14 shrink-0 rounded-lg bg-muted object-cover"
+                        />
+                      ) : null}
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[11px] font-semibold tracking-wide text-primary uppercase">
-                          {t(scenario.key === "simple" ? "simple" : "trade")}
+                        <span className="block text-sm font-medium leading-snug">
+                          {scenario.title}
                         </span>
-                        <span className="mt-0.5 block text-sm font-medium">{scenario.title}</span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">
                           {scenario.pitch}
                         </span>
                       </span>
                       <ArrowRight
-                        className="mt-5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                        className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
                         aria-hidden
                       />
                     </button>
                   </li>
                 ))}
               </ul>
+              <p className="mt-2 text-[11px] text-muted-foreground">{t("simulated")}</p>
             </>
           )}
         </div>

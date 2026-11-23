@@ -273,24 +273,9 @@ export const VELO_VERTICAL: DemoVertical = {
   ],
   scenarios: [
     {
-      key: "simple",
-      title: "Un vélo de ville pour la journée",
-      pitch: "Le client réserve seul, en trois clics, et paie l'acompte en ligne.",
-      productKey: "ville",
-      quantity: 1,
-      startWeekday: 6,
-      days: 1,
-      steps: [
-        "La date est déjà choisie : ajoutez le vélo au panier.",
-        "Validez le panier : vos coordonnées sont déjà remplies.",
-        "Payez l'acompte (simulé).",
-      ],
-    },
-    {
       key: "trade",
       title: "Le bon cadre, et un casque avec",
-      pitch:
-        "Le client choisit sa taille de cadre d'après sa taille, ajoute un casque, et la boutique reçoit la taille du cycliste pour régler le vélo.",
+      pitch: "La bonne taille de cadre, un casque, et la taille du cycliste.",
       productKey: "vae-trekking",
       quantity: 1,
       startWeekday: 6,
@@ -299,6 +284,20 @@ export const VELO_VERTICAL: DemoVertical = {
         "Choisissez la taille de cadre : le guide des tailles est sur la fiche.",
         "Ajoutez le casque proposé avec le vélo.",
         "Au paiement, indiquez la taille du cycliste, puis payez l'acompte (simulé).",
+      ],
+    },
+    {
+      key: "simple",
+      title: "Un vélo de ville pour la journée",
+      pitch: "Réservé en trois clics, acompte en ligne.",
+      productKey: "ville",
+      quantity: 1,
+      startWeekday: 6,
+      days: 1,
+      steps: [
+        "La date est déjà choisie : ajoutez le vélo au panier.",
+        "Validez le panier : vos coordonnées sont déjà remplies.",
+        "Payez l'acompte (simulé).",
       ],
     },
   ],

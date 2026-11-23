@@ -17,6 +17,8 @@ export interface DemoStorefrontScenario {
   quantity: number;
   /** The product page, store-relative (`/product/<slug>`). */
   productPath: string;
+  /** The product's first photo. */
+  image: string | null;
   /** The rental period the guide puts in the cart, ISO. */
   startDate: string;
   endDate: string;
@@ -44,16 +46,16 @@ export async function getDemoStorefrontGuide(store: {
   const names = vertical.scenarios.map((scenario) => nameByKey.get(scenario.productKey) ?? "");
 
   const rows = await db
-    .select({ name: products.name, slug: products.slug, id: products.id })
+    .select({ name: products.name, slug: products.slug, id: products.id, images: products.images })
     .from(products)
     .where(and(eq(products.storeId, store.id), inArray(products.name, names)));
-  const pathByName = new Map(rows.map((row) => [row.name, `/product/${row.slug ?? row.id}`]));
+  const byName = new Map(rows.map((row) => [row.name, row]));
 
   const now = new Date();
   const scenarios: DemoStorefrontScenario[] = [];
   for (const scenario of vertical.scenarios) {
-    const productPath = pathByName.get(nameByKey.get(scenario.productKey) ?? "");
-    if (!productPath) return null;
+    const product = byName.get(nameByKey.get(scenario.productKey) ?? "");
+    if (!product) return null;
     const { start, end } = scenarioPeriod(vertical, scenario, now);
     scenarios.push({
       key: scenario.key,
@@ -61,7 +63,8 @@ export async function getDemoStorefrontGuide(store: {
       pitch: scenario.pitch,
       steps: scenario.steps,
       quantity: scenario.quantity,
-      productPath,
+      productPath: `/product/${product.slug ?? product.id}`,
+      image: product.images?.[0] ?? null,
       startDate: start.toISOString(),
       endDate: end.toISOString(),
     });

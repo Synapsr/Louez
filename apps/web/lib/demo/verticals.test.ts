@@ -48,7 +48,7 @@ for (const key of DEMO_VERTICAL_KEYS) {
     const keys = new Set(vertical.products.map((product) => product.key));
     assert.deepEqual(
       vertical.scenarios.map((scenario) => scenario.key),
-      ["simple", "trade"],
+      ["trade", "simple"],
     );
     for (const scenario of vertical.scenarios) {
       assert.ok(keys.has(scenario.productKey), scenario.productKey);
@@ -66,7 +66,7 @@ for (const key of DEMO_VERTICAL_KEYS) {
     }
     // The trade case of a trade that asks per unit asks it for the scenario's product.
     if (vertical.itemFields.length > 0) {
-      const trade = vertical.scenarios[1];
+      const trade = vertical.scenarios[0];
       assert.ok(vertical.itemFields.some((field) => field.productKeys.includes(trade.productKey)));
     }
     for (const address of vertical.deliveryAddresses) {

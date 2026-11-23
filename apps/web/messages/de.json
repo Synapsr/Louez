@@ -10607,10 +10607,8 @@
       "progress": "{done} of {total}"
     },
     "storefrontGuide": {
-      "title": "Book as a customer",
-      "intro": "Two bookings to try, a minute each. The payment is simulated.",
-      "simple": "The simple case",
-      "trade": "The trade case",
+      "title": "Choose your case",
+      "simulated": "The payment is simulated, nothing is charged.",
       "otherScenario": "The other scenario",
       "ownerSide": "See the rental side"
     },
