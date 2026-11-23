@@ -21,14 +21,18 @@ describe("reservation-event-details", () => {
   const startDate = new Date("2026-11-20T09:00:00.000Z");
   const endDate = new Date("2026-11-20T12:00:00.000Z");
 
-  test("uses internal title first, then the correct customer name, then reservation number", () => {
+  test("formats the customer, readable reservation number, and optional internal title", () => {
     assert.equal(
       getReservationCalendarTitle({
-        internalTitle: "  Private event  ",
-        number: "R-100",
-        customer,
+        internalTitle: " test reservation ",
+        number: "2026-0000",
+        customer: {
+          ...customer,
+          customerType: "business",
+          companyName: "Business",
+        },
       }),
-      "Private event",
+      "Business, #2026-0000, (test reservation)",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -36,7 +40,7 @@ describe("reservation-event-details", () => {
         number: "R-101",
         customer: { ...customer, customerType: "business", companyName: "  Example Ltd " },
       }),
-      "Example Ltd",
+      "Example Ltd, #R-101",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -44,7 +48,7 @@ describe("reservation-event-details", () => {
         number: "R-102",
         customer,
       }),
-      "Ada Lovelace",
+      "Ada Lovelace, #R-102",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -52,7 +56,7 @@ describe("reservation-event-details", () => {
         number: "R-103",
         customer,
       }),
-      "Ada Lovelace",
+      "Ada Lovelace, #R-103",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -60,7 +64,7 @@ describe("reservation-event-details", () => {
         number: "R-104",
         customer: { ...customer, firstName: null, lastName: null },
       }),
-      "R-104",
+      "#R-104",
     );
   });
 
@@ -137,7 +141,7 @@ describe("reservation-event-details", () => {
       reservationUrl: "https://example.com/dashboard/reservations/R-103",
     });
 
-    assert.equal(details.summary, "Ada Lovelace");
+    assert.equal(details.summary, "Ada Lovelace, #R-103");
     assert.equal(details.location, "Studio (x2), Meeting room");
     assert.equal(details.startDate, startDate);
     assert.equal(details.endDate, endDate);
@@ -145,13 +149,13 @@ describe("reservation-event-details", () => {
       details.description,
       [
         "KLIENT",
-        "Klient: Ada Lovelace",
+        "Nazwa: Ada Lovelace",
         "E-mail: ada@example.com",
         "Telefon: +48 123 456 789",
         "",
         "REZERWACJA",
         "Status: Potwierdzona",
-        "Numer: R-103",
+        "Numer rezerwacji: #R-103",
         "Produkty:",
         "Camera,",
         "Studio (x2)",
