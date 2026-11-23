@@ -27,11 +27,18 @@ const imagesOf = (spec: DemoProduct): string[] => {
 const BIKE_ACCESSORIES = ["casque-adulte", "antivol", "sacoches", "kit-repa"];
 const FAMILY_ACCESSORIES = ["siege-bebe", "remorque-enfant", "casque-enfant"];
 
+/** The bikes rented by frame size: their sheet says which size fits which height. */
+const SIZED_BIKES = ["vae-trekking", "vae-confort", "vttae", "gravel", "voyage"];
+const SIZE_GUIDE =
+  "<p><strong>Quelle taille de cadre ?</strong> S : 1,55 à 1,68 m · M : 1,68 à 1,80 m · L : 1,80 à 1,92 m · XL : au-delà de 1,92 m.</p>";
+
 const toSpec = (spec: DemoProduct): DemoProductSpec => ({
   key: spec.key,
   name: spec.name,
   category: spec.category,
-  description: spec.description,
+  description: SIZED_BIKES.includes(spec.key)
+    ? `${spec.description}${SIZE_GUIDE}`
+    : spec.description,
   ...(spec.aiContext ? { aiContext: spec.aiContext } : {}),
   images: imagesOf(spec),
   price: spec.price,
@@ -212,7 +219,89 @@ export const VELO_VERTICAL: DemoVertical = {
     },
     { name: "Remarques", fieldType: "text", isRequired: false, sectionName: "Général" },
   ],
+  deliveryAddresses: [
+    {
+      placeId: "demo-concarneau-gite",
+      formattedAddress: "3 rue des Écoles, 29900 Concarneau",
+      latitude: 47.8741,
+      longitude: -3.9127,
+      streetNumber: "3",
+      street: "rue des Écoles",
+      city: "Concarneau",
+      postalCode: "29900",
+      country: "France",
+      countryCode: "FR",
+    },
+    {
+      placeId: "demo-cabellou",
+      formattedAddress: "Pointe du Cabellou, résidence Les Embruns, 29900 Concarneau",
+      latitude: 47.8551,
+      longitude: -3.9033,
+      street: "Pointe du Cabellou, résidence Les Embruns",
+      city: "Concarneau",
+      postalCode: "29900",
+      country: "France",
+      countryCode: "FR",
+    },
+    {
+      placeId: "demo-foret-port",
+      formattedAddress: "12 quai de Port-la-Forêt, 29940 La Forêt-Fouesnant",
+      latitude: 47.8975,
+      longitude: -3.9781,
+      streetNumber: "12",
+      street: "quai de Port-la-Forêt",
+      city: "La Forêt-Fouesnant",
+      postalCode: "29940",
+      country: "France",
+      countryCode: "FR",
+    },
+  ],
   featuredProductKey: "vae-trekking",
+  itemFields: [
+    {
+      key: "height_cm",
+      templateKey: "bikes",
+      label: "Taille du cycliste",
+      type: "number",
+      unit: "cm",
+      helpText: "Pour vérifier la taille de cadre et régler la selle avant le départ.",
+      width: "half",
+      required: true,
+      showOnContract: true,
+      productKeys: SIZED_BIKES.filter(has),
+    },
+  ],
+  scenarios: [
+    {
+      key: "simple",
+      title: "Un vélo de ville pour la journée",
+      pitch: "Le client réserve seul, en trois clics, et paie l'acompte en ligne.",
+      productKey: "ville",
+      quantity: 1,
+      startWeekday: 6,
+      days: 1,
+      steps: [
+        "La date est déjà choisie : ajoutez le vélo au panier.",
+        "Validez le panier : vos coordonnées sont déjà remplies.",
+        "Payez l'acompte (simulé).",
+      ],
+    },
+    {
+      key: "trade",
+      title: "Le bon cadre, et un casque avec",
+      pitch:
+        "Le client choisit sa taille de cadre d'après sa taille, ajoute un casque, et la boutique reçoit la taille du cycliste pour régler le vélo.",
+      productKey: "vae-trekking",
+      quantity: 1,
+      startWeekday: 6,
+      days: 2,
+      steps: [
+        "Choisissez la taille de cadre : le guide des tailles est sur la fiche.",
+        "Ajoutez le casque proposé avec le vélo.",
+        "Au paiement, indiquez la taille du cycliste, puis payez l'acompte (simulé).",
+      ],
+    },
+  ],
   guide: [
     {
       key: "book",

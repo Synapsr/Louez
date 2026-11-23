@@ -8,6 +8,8 @@
  * are in the ranges ARCEP keeps for fiction.
  */
 
+import type { AddressDetails } from "@louez/types";
+
 export const DEMO_VERTICAL_KEYS = ["ski", "velo", "evenementiel"] as const;
 export type DemoVerticalKey = (typeof DEMO_VERTICAL_KEYS)[number];
 
@@ -103,6 +105,45 @@ export interface DemoInspectionField {
   sectionName?: string;
 }
 
+/**
+ * What the trade asks for each rented unit at checkout (a skier's height and
+ * level, a rider's height): a store custom field of item scope, asked by the
+ * storefront for the listed products.
+ */
+export interface DemoItemField {
+  /** The field's key in the Louez template it comes from (lib/customers/customer-field-templates.ts). */
+  key: string;
+  templateKey: string;
+  label: string;
+  type: "number" | "select" | "text";
+  unit?: string;
+  options?: string[];
+  helpText?: string;
+  width: "full" | "half";
+  required: boolean;
+  /** Shown on the rental contract. */
+  showOnContract: boolean;
+  productKeys: string[];
+}
+
+/**
+ * A booking the storefront guide walks the visitor through, as a customer:
+ * the guide puts its dates in the cart and opens its product.
+ */
+export interface DemoScenario {
+  key: "simple" | "trade";
+  title: string;
+  /** What it shows, in one line. */
+  pitch: string;
+  productKey: string;
+  quantity: number;
+  /** The rental starts on the next such weekday (0 Sunday … 6 Saturday), two days out at least. */
+  startWeekday: number;
+  days: number;
+  /** The few actions to do, in order. */
+  steps: string[];
+}
+
 /** A guided step on the dashboard: what to try, and where it leads. */
 export interface DemoGuideStep {
   key: "book" | "see_booking" | "check_in" | "deposit" | "catalog";
@@ -158,6 +199,15 @@ export interface DemoVertical {
   inspectionFields: DemoInspectionField[];
   /** The product the guide asks the visitor to book on the storefront. */
   featuredProductKey: string;
+  /** Asked per rented unit at checkout. */
+  itemFields: DemoItemField[];
+  /**
+   * The invented addresses the checkout suggests (lib/demo/demo-addresses.ts),
+   * near the store; none when the store does not deliver.
+   */
+  deliveryAddresses: AddressDetails[];
+  /** The storefront guide: a simple booking, then one only this trade has. */
+  scenarios: [DemoScenario, DemoScenario];
   guide: DemoGuideStep[];
   cgv: string;
 }

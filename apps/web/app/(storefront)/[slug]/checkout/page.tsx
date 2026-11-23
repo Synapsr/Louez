@@ -24,6 +24,8 @@ import { PageTracker } from "@/components/storefront/page-tracker";
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
+import { demoCheckoutCustomer } from "@/lib/demo/demo-checkout";
+import { DEMO_VERTICALS, isDemoVerticalKey } from "@/lib/demo/verticals";
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { generateStoreMetadata } from "@/lib/seo";
@@ -35,7 +37,6 @@ import { getCustomerSession } from "../account/actions";
 import { CheckoutForm } from "./checkout-form";
 import type { CheckoutLocationOption } from "./checkout.types";
 import { toCheckoutInitialCustomer } from "./util.checkout-customer";
-import { demoCheckoutCustomer } from "@/lib/demo/demo-checkout";
 
 interface CheckoutPageProps {
   params: Promise<{ slug: string }>;
@@ -235,6 +236,11 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
           }
           initialCustomerFieldValues={savedCustomerFieldValues}
           initialCustomerProfileValues={savedCustomerProfileValues}
+          demoAddresses={
+            isDemoVerticalKey(store.demoVertical)
+              ? DEMO_VERTICALS[store.demoVertical].deliveryAddresses
+              : null
+          }
           testMode={
             testMode
               ? {

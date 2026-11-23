@@ -14,6 +14,7 @@ import { fillDemoPool } from "@/lib/demo/demo-pool";
 import { startDemo } from "@/lib/demo/start-demo";
 import { DEMO_VERTICAL_KEYS } from "@/lib/demo/verticals";
 import { isStandaloneMode } from "@/lib/deployment";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 
 const bodySchema = z.object({ vertical: z.enum(DEMO_VERTICAL_KEYS) });
 
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
 
   const result = await startDemo({ vertical, headers: request.headers });
   // The next visitor's store, written a few seconds after this answer has left:
-  // the visitor's first dashboard render does not share the process with it.
+  // the visitor's first pages do not share the process with it.
   after(async () => {
     await new Promise((resolve) => setTimeout(resolve, POOL_REFILL_DELAY_MS));
     await fillDemoPool(vertical);
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
     properties: { source: result.source },
   });
 
-  const response = NextResponse.json({ redirectTo: "/dashboard" });
+  // The visitor starts as a customer of the store; the dashboard is one link away.
+  const response = NextResponse.json({ redirectTo: getStorefrontUrl(result.slug) });
   response.cookies.set(ACTIVE_STORE_COOKIE, result.storeId, activeStoreCookieOptions);
   response.cookies.set(
     DEMO_COOKIE,

@@ -10587,7 +10587,6 @@
       "ready": "C'est prêt"
     },
     "banner": {
-      "badge": "Démo",
       "short": "Boutique de démonstration",
       "line": "Boutique de démonstration · données fictives, rien n'est envoyé ni facturé",
       "lineHours": "Boutique de démonstration · données fictives, rien n'est envoyé ni facturé · supprimée dans {hours} h",
@@ -10597,16 +10596,28 @@
       "signupShort": "Créer ma boutique"
     },
     "storefrontBanner": {
-      "badge": "Démo",
       "short": "Boutique de démonstration",
       "line": "Boutique de démonstration · réservez comme un client, le paiement est simulé",
-      "dashboard": "Tableau de bord",
+      "dashboard": "Voir côté loueur",
       "signup": "Créer ma boutique gratuite",
       "signupShort": "Créer ma boutique"
     },
     "guide": {
       "title": "À essayer",
       "progress": "{done} sur {total}"
+    },
+    "storefrontGuide": {
+      "title": "Réservez comme un client",
+      "intro": "Deux réservations à essayer, une minute chacune. Le paiement est simulé.",
+      "simple": "Le cas simple",
+      "trade": "Le cas du métier",
+      "otherScenario": "L’autre scénario",
+      "ownerSide": "Voir côté loueur"
+    },
+    "ownerSide": {
+      "title": "Cette réservation est arrivée chez le loueur",
+      "description": "Ouvrez-la côté loueur : matériel à préparer, paiement, caution et contrat, avec ce que le client a renseigné.",
+      "cta": "Voir côté loueur"
     }
   }
 }

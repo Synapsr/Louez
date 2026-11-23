@@ -12,6 +12,7 @@ import { DEMO_COOKIE, parseDemoSessionCookie } from "@/lib/demo/demo-session-coo
 import { findLiveDemoStore } from "@/lib/demo/start-demo";
 import { DEMO_VERTICALS, isDemoVerticalKey } from "@/lib/demo/verticals";
 import { isStandaloneMode } from "@/lib/deployment";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 
 // Reads the session and the demo cookie: the page is rendered per request.
 export const instant = false;
@@ -35,7 +36,7 @@ export default async function DemoEntryPage({ params }: { params: Promise<{ vert
     const demo = parseDemoSessionCookie((await cookies()).get(DEMO_COOKIE)?.value);
     if (demo?.vertical === vertical) {
       const live = await findLiveDemoStore({ userId: session.user.id, storeId: demo.storeId });
-      if (live) redirect("/dashboard");
+      if (live) redirect(getStorefrontUrl(live.slug));
     }
   }
 
@@ -73,7 +74,7 @@ export default async function DemoEntryPage({ params }: { params: Promise<{ vert
 
 /**
  * The request DemoLauncher would send, sent by the HTML itself, which also
- * goes to the dashboard as soon as the store is ready: neither waits for the
+ * goes to the storefront as soon as the store is ready: neither waits for the
  * page's scripts. An answer that is not a success is left to DemoLauncher.
  */
 const earlyStartScript = (vertical: string): string =>

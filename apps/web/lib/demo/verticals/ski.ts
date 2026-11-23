@@ -48,6 +48,19 @@ const LENGTH: DemoAxis[] = [{ key: "longueur", label: "Longueur", position: 0 }]
 const SHOE_SIZE: DemoAxis[] = [{ key: "pointure", label: "Pointure", position: 0 }];
 const SIZE: DemoAxis[] = [{ key: "taille", label: "Taille", position: 0 }];
 
+/**
+ * What the shop prepares to the skier's measure, so the checkout asks for them
+ * per skier. The Pack Découverte is fitted at the counter.
+ */
+const SKIER_FITTED = [
+  "pack-sensation",
+  "pack-expert",
+  "pack-junior",
+  "ski-piste",
+  "ski-freeride",
+  "ski-junior",
+];
+
 export const SKI_VERTICAL: DemoVertical = {
   key: "ski",
   label: "Location de ski",
@@ -667,7 +680,87 @@ export const SKI_VERTICAL: DemoVertical = {
     },
     { name: "Remarques", fieldType: "text", isRequired: false, sectionName: "Général" },
   ],
+  // The shop does not deliver.
+  deliveryAddresses: [],
   featuredProductKey: "pack-decouverte",
+  // What a ski shop needs per skier to have the gear ready and the bindings set.
+  itemFields: [
+    {
+      key: "height_cm",
+      templateKey: "ski",
+      label: "Taille",
+      type: "number",
+      unit: "cm",
+      width: "half",
+      required: true,
+      showOnContract: true,
+      productKeys: SKIER_FITTED,
+    },
+    {
+      key: "weight_kg",
+      templateKey: "ski",
+      label: "Poids",
+      type: "number",
+      unit: "kg",
+      width: "half",
+      required: true,
+      showOnContract: true,
+      productKeys: SKIER_FITTED,
+    },
+    {
+      key: "shoe_size",
+      templateKey: "ski",
+      label: "Pointure",
+      type: "number",
+      width: "half",
+      required: true,
+      showOnContract: true,
+      productKeys: SKIER_FITTED,
+    },
+    {
+      key: "ski_level",
+      templateKey: "ski",
+      label: "Niveau",
+      type: "select",
+      options: ["Débutant", "Intermédiaire", "Confirmé", "Expert"],
+      helpText: "Avec la taille et le poids, il sert au réglage des fixations.",
+      width: "half",
+      required: true,
+      showOnContract: true,
+      productKeys: SKIER_FITTED,
+    },
+  ],
+  scenarios: [
+    {
+      key: "simple",
+      title: "Un pack adulte pour la semaine",
+      pitch: "Le client réserve seul, en trois clics, et paie en ligne.",
+      productKey: "pack-decouverte",
+      quantity: 1,
+      startWeekday: 6,
+      days: 6,
+      steps: [
+        "Les dates sont déjà choisies : ajoutez le pack au panier.",
+        "Validez le panier : vos coordonnées sont déjà remplies.",
+        "Payez en ligne (paiement simulé).",
+      ],
+    },
+    {
+      key: "trade",
+      title: "Deux skieurs, chacun équipé à sa mesure",
+      pitch:
+        "Pour chaque skieur, le client donne taille, poids, pointure et niveau : le matériel est prêt et les fixations réglées à son arrivée.",
+      productKey: "pack-sensation",
+      quantity: 2,
+      startWeekday: 6,
+      days: 6,
+      steps: [
+        "Ajoutez les deux packs au panier.",
+        "Au paiement, renseignez chaque skieur : prénom, taille, poids, pointure, niveau.",
+        "Payez (paiement simulé), puis voyez la réservation côté loueur.",
+      ],
+    },
+  ],
   guide: [
     {
       key: "book",

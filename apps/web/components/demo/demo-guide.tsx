@@ -28,8 +28,9 @@ function readMemory(storeId: string): GuideMemory {
   } catch {
     // No storage (private window): the guide starts as it would the first time.
   }
-  // Folded on a phone, where it would cover the page; open elsewhere.
-  return { open: window.matchMedia("(min-width: 768px)").matches, done: [] };
+  // Folded: the visitor comes from the storefront to see their booking, the
+  // guide waits for them in its corner.
+  return { open: false, done: [] };
 }
 
 function writeMemory(storeId: string, memory: GuideMemory): void {
@@ -50,12 +51,13 @@ const STEP_EVENTS = {
 
 /**
  * « À essayer »: the few things that show the trade's day in Louez, each a
- * link into the demo store. A small card in a corner, which folds away when a
- * step is opened; the steps opened are ticked, in this browser only.
+ * link into the demo store. A small card in a corner, folded until opened,
+ * which folds away again when a step is opened; the steps opened are ticked,
+ * in this browser only.
  */
 export function DemoGuide({ storeId, steps }: { storeId: string; steps: DemoGuideLink[] }) {
   const t = useTranslations("demo.guide");
-  const [memory, setMemory] = useState<GuideMemory>({ open: true, done: [] });
+  const [memory, setMemory] = useState<GuideMemory>({ open: false, done: [] });
 
   useEffect(() => {
     setMemory(readMemory(storeId));

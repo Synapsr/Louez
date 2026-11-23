@@ -10587,7 +10587,6 @@
       "ready": "Ready"
     },
     "banner": {
-      "badge": "Demo",
       "short": "Demo store",
       "line": "Demo store · made-up data, nothing is sent or charged",
       "lineHours": "Demo store · made-up data, nothing is sent or charged · erased in {hours} h",
@@ -10597,16 +10596,28 @@
       "signupShort": "Create my store"
     },
     "storefrontBanner": {
-      "badge": "Demo",
       "short": "Demo store",
       "line": "Demo store · book as a customer would, the payment is simulated",
-      "dashboard": "Dashboard",
+      "dashboard": "See the rental side",
       "signup": "Create my free store",
       "signupShort": "Create my store"
     },
     "guide": {
       "title": "Things to try",
       "progress": "{done} of {total}"
+    },
+    "storefrontGuide": {
+      "title": "Book as a customer",
+      "intro": "Two bookings to try, a minute each. The payment is simulated.",
+      "simple": "The simple case",
+      "trade": "The trade case",
+      "otherScenario": "The other scenario",
+      "ownerSide": "See the rental side"
+    },
+    "ownerSide": {
+      "title": "This booking has reached the rental shop",
+      "description": "Open it on the rental side: gear to prepare, payment, deposit and contract, with what the customer entered.",
+      "cta": "See the rental side"
     }
   }
 }

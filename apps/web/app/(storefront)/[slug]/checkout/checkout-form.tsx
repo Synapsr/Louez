@@ -21,6 +21,7 @@ import { useAnalytics } from "@/contexts/analytics-context";
 import { useCart } from "@/contexts/cart-context";
 import { useAppForm } from "@/hooks/form/form";
 import { defaultLocale } from "@/i18n/config";
+import { createDemoAddressSource, straightLineDistanceKm } from "@/lib/demo/demo-addresses";
 import { isLocale } from "@/lib/i18n/format-locale";
 import {
   checkoutAnalyticsBaseProperties,
@@ -122,6 +123,7 @@ export const CheckoutForm = ({
   initialCustomerFieldValues,
   initialCustomerProfileValues,
   testMode = null,
+  demoAddresses = null,
 }: CheckoutFormProps) => {
   const t = useTranslations("storefront.checkout");
   const tErrors = useTranslations("errors");
@@ -165,7 +167,12 @@ export const CheckoutForm = ({
 
   const advisorGate = useCheckoutAdvisorGate(advisorMode ?? null);
   const promo = useCheckoutPromo({ items, subtotal });
+  const demoAddressSource = useMemo(
+    () => (demoAddresses ? createDemoAddressSource(demoAddresses) : undefined),
+    [demoAddresses],
+  );
   const delivery = useCheckoutDelivery({
+    resolveDistance: demoAddresses ? straightLineDistanceKm : undefined,
     deliverySettings,
     storeLatitude,
     storeLongitude,
@@ -523,6 +530,7 @@ export const CheckoutForm = ({
               testModeEmail={testMode?.email ?? null}
               addressPick={customerAddressPick}
               onAddressPickChange={setCustomerAddressPick}
+              addressSource={demoAddressSource}
               profileFields={checkoutFields.profileFields}
               customerFields={checkoutFields.customerFields}
               customerLayout={checkoutFields.customerLayout}
@@ -555,6 +563,7 @@ export const CheckoutForm = ({
               storeName={storeName}
               storeLatitude={storeLatitude}
               storeLongitude={storeLongitude}
+              addressSource={demoAddressSource}
               onUseCustomerAddress={handleUseCustomerAddress}
               onBack={stepFlow.goToPreviousStep}
               onContinue={stepFlow.goToNextStep}

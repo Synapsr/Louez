@@ -681,6 +681,57 @@ export async function seedDemoStore(input: SeedDemoStoreInput): Promise<SeededDe
     }
     await insertAll(tx, schema.productAccessories, accessoryRows);
 
+    // ------------------------------------------------------------ per-unit fields
+    // As the store would have them after adopting the Louez template of its
+    // trade and asking it at checkout for the products listed.
+    const fieldRows: Array<typeof schema.customerFieldDefinitions.$inferInsert> = [];
+    const fieldTargetRows: Array<typeof schema.customerFieldTargets.$inferInsert> = [];
+    vertical.itemFields.forEach((field, index) => {
+      const definitionId = id();
+      fieldRows.push({
+        id: definitionId,
+        storeId,
+        key: field.key,
+        label: field.label,
+        type: field.type,
+        format: null,
+        options: field.type === "select" ? (field.options ?? null) : null,
+        unit: field.type === "number" ? (field.unit ?? null) : null,
+        helpText: field.helpText ?? null,
+        section: "",
+        position: index + 1,
+        width: field.width,
+        appliesTo: "all",
+        isRequired: field.required,
+        isSensitive: false,
+        showOnContract: field.showOnContract,
+        isSearchable: false,
+        showInList: false,
+        templateKey: field.templateKey,
+        isActive: true,
+        scope: "item",
+        collectMode: field.required ? "required" : "optional",
+        targetMode: "products",
+        customerEditable: false,
+        createdAt: storeCreatedAt,
+        updatedAt: storeCreatedAt,
+      });
+      for (const key of field.productKeys) {
+        const product = resolved.get(key);
+        if (!product) continue;
+        fieldTargetRows.push({
+          id: id(),
+          storeId,
+          definitionId,
+          targetType: "product",
+          targetId: product.id,
+          createdAt: storeCreatedAt,
+        });
+      }
+    });
+    await insertAll(tx, schema.customerFieldDefinitions, fieldRows);
+    await insertAll(tx, schema.customerFieldTargets, fieldTargetRows);
+
     await insertAll(
       tx,
       schema.promoCodes,

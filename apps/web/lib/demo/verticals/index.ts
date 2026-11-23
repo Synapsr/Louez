@@ -10,4 +10,4 @@ export const DEMO_VERTICALS: Record<DemoVerticalKey, DemoVertical> = {
 };
 
 export { DEMO_VERTICAL_KEYS, isDemoVerticalKey } from "./types";
-export type { DemoGuideStep, DemoVertical, DemoVerticalKey } from "./types";
+export type { DemoGuideStep, DemoScenario, DemoVertical, DemoVerticalKey } from "./types";

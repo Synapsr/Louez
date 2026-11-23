@@ -13,6 +13,7 @@ import type {
 
 import type { CustomerProfileFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
+import type { AddressInputSource } from "@/components/ui/address-input";
 import { buildLoginPath } from "@/lib/customer-auth/util.account-redirect";
 
 import { withForm } from "@/hooks/form/form";
@@ -20,6 +21,7 @@ import { withForm } from "@/hooks/form/form";
 import type { CheckoutInitialCustomer } from "../checkout.types";
 import type { CustomerAddressPick } from "../util.customer-address";
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
+
 import { CheckoutAddressFields } from "./checkout-address-fields";
 import { CheckoutBusinessFields } from "./checkout-business-fields";
 import { CheckoutCustomerFields } from "./checkout-customer-fields";
@@ -38,6 +40,8 @@ interface CheckoutContactStepProps {
   testModeEmail: string | null;
   addressPick: CustomerAddressPick | null;
   onAddressPickChange: (pick: CustomerAddressPick | null) => void;
+  /** Where the address field looks addresses up; the platform's lookup by default. */
+  addressSource?: AddressInputSource;
   /** Native profile fields this cart asks (birth date, source, links). */
   profileFields: CheckoutProfileField[];
   /** Customer-scope custom fields this cart asks the buyer's type. */
@@ -68,6 +72,7 @@ export const CheckoutContactStep = withForm({
     testModeEmail,
     addressPick,
     onAddressPickChange,
+    addressSource,
     profileFields,
     customerFields,
     customerLayout,
@@ -202,6 +207,7 @@ export const CheckoutContactStep = withForm({
               form={form}
               pick={addressPick}
               onPickChange={onAddressPickChange}
+              source={addressSource}
             />
           )}
 

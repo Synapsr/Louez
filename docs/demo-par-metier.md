@@ -1,10 +1,11 @@
 # Démo par métier
 
 Un loueur qui découvre Louez sur la page « location de ski » du site clique sur un
-bouton et se retrouve, sans compte, dans une boutique d'exemple de son métier : un
-catalogue crédible, des clients et des réservations inventés, un tableau de bord vivant
-et une boutique en ligne où il réserve comme un client. Il voit en deux minutes si
-Louez colle à sa journée.
+bouton et se retrouve, sans compte, sur la boutique en ligne d'un loueur de son métier.
+Il y réserve comme le ferait son client, puis voit la même réservation arriver côté
+loueur : matériel, acompte, caution, contrat. Derrière, un catalogue crédible, des
+clients et des réservations inventés, un tableau de bord vivant. Le but : la démo la
+plus parlante en 60 à 90 secondes.
 
 Trois métiers pour commencer : **ski** (`/demo/ski`), **vélo** (`/demo/velo`, le
 catalogue « Ar Mor Location » du seed de démo) et **événementiel**
@@ -14,23 +15,60 @@ catalogue « Ar Mor Location » du seed de démo) et **événementiel**
 
 1. `/demo/<métier>` affiche le nom de la boutique et une fine barre de progression.
    Un petit script dans le HTML appelle aussitôt `POST /api/demo/start`, sans attendre
-   les scripts de la page, et part vers `/dashboard` dès la réponse (fondu entre les
-   deux pages). Un robot qui suit le lien n'ouvre rien : `robots.txt` de l'app lui
-   interdit `/demo`, et rien ne s'ouvre sans script.
+   les scripts de la page, et part vers la **boutique en ligne** dès la réponse. Un
+   robot qui suit le lien n'ouvre rien : `robots.txt` de l'app lui interdit `/demo`, et
+   rien ne s'ouvre sans script.
 2. Le serveur prend une boutique du **pool** du métier (une mise à jour d'une ligne),
    ou, si le pool est vide, en écrit une pour ce visiteur (`lib/demo/seed-demo-store.ts`,
    quelques dixièmes de seconde). Il connecte le visiteur au compte propriétaire jetable
-   de la boutique (`visiteur-…@demo.example`).
-3. Le tableau de bord porte, au-dessus de tout, une barre « Démo » d'une ligne (boutique
-   de démonstration, données fictives, heures restantes, « Voir la boutique », « Créer
-   ma boutique gratuite ») et le guide « À essayer » : réserver sur la
-   boutique, voir la réservation arriver, faire l'état des lieux d'un départ, gérer la
-   caution d'une location en cours.
-4. Sur la boutique, le paiement est simulé (la page de paiement simulé des
-   réservations test) et le visiteur réserve sous une identité inventée, déjà remplie.
-5. « Créer ma boutique gratuite » (`/demo/signup`) compte le clic, déconnecte le
-   compte de démo et mène à l'inscription. La boutique de démo est supprimée, avec son
-   compte, 24 heures après sa création.
+   de la boutique (`visiteur-…@demo.example`) : le tableau de bord est prêt, un lien plus
+   loin.
+3. Sur la boutique, une barre d'une ligne (boutique de démonstration, paiement simulé,
+   « Voir côté loueur », « Créer ma boutique gratuite ») et la carte « Réservez comme un
+   client » : deux scénarios du métier (ci-dessous). « Essayer » met les dates du
+   scénario dans le panier et ouvre son produit ; la carte liste alors les deux ou trois
+   gestes qui restent.
+4. Le visiteur réserve sous une identité inventée, déjà remplie, et le paiement est
+   simulé (la page de paiement simulé des réservations test). Sa page de réservation
+   porte « Voir côté loueur », qui ouvre cette réservation dans le tableau de bord.
+5. Le tableau de bord garde, au-dessus de tout, sa barre d'une ligne et le guide « À
+   essayer » (état des lieux d'un départ, caution d'une location en cours).
+   « Créer ma boutique gratuite » (`/demo/signup`) compte le clic, déconnecte le compte
+   de démo et mène à l'inscription. La boutique de démo est supprimée, avec son compte,
+   24 heures après sa création.
+
+## Les scénarios
+
+Deux par métier, au plus : un cas simple, en trois clics, et un cas que seul ce métier a.
+Les données sont dans `lib/demo/verticals/<métier>.ts` (`scenarios`), le guide dans
+`components/storefront/shell/demo-storefront-guide.tsx`.
+
+| Métier       | Cas simple                                  | Cas du métier                                                                                                                   |
+| ------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Ski          | un Pack Découverte adulte, six jours        | deux Packs Sensation : pour chaque skieur, prénom, taille, poids, pointure et niveau, demandés au paiement                      |
+| Vélo         | un vélo de ville, une journée               | un VAE trekking : la taille de cadre choisie d'après le guide des tailles de la fiche, un casque proposé, la taille du cycliste |
+| Événementiel | un barnum 3 × 3, le week-end, retrait dépôt | un mariage : tente de réception, tables rondes et chaises dans un panier, livré à l'adresse du lieu                             |
+
+Tout est du produit réel, rien n'est simulé hors paiement :
+
+- **Mesures par skieur, taille du cycliste** : les champs personnalisés « par article »
+  (`customer_field_definitions`, portée `item`), exactement ceux des modèles « Ski et
+  montagne » et « Vélos » de Louez, demandés à l'étape « Détails » du paiement pour les
+  produits ciblés. Ils arrivent sur la réservation côté loueur et sur le contrat.
+- **Taille de cadre** : l'axe de variante « Taille » du produit, choisi sur la fiche.
+- **Casque** : l'accessoire proposé après « Ajouter au panier ».
+- **Livraison** : la livraison à l'adresse de Louez, avec ses frais au kilomètre. Sur
+  une boutique de démo, les adresses proposées sont une courte liste inventée près de la
+  boutique et la distance se mesure à vol d'oiseau (`lib/demo/demo-addresses.ts`,
+  `lib/reservations/resolve-delivery.ts`) : aucun appel Google Places ni Routes.
+
+**Le plus parlant : le cas du métier au ski.** Un loueur de ski reconnaît tout de suite
+sa vraie difficulté du samedi matin : la file au comptoir, où l'on mesure, pèse et règle
+chaque skieur. Voir son client donner taille, poids, pointure et niveau pour chacun au
+moment de réserver, puis retrouver ces mesures sur la réservation et le contrat, c'est
+le « ça correspond vraiment à mon flow » en moins d'une minute. Le cas simple, lui,
+montre que la boutique se réserve seule ; il est utile, mais n'importe quel outil le
+fait.
 
 ## Décisions
 
@@ -147,6 +185,7 @@ trouve tout.
 | Push, Discord         | les dispatchers ; les notifications fondateurs (`lib/discord/platform-notifications.ts`)                                                                                                                                                      |
 | Stripe                | aucune ligne Stripe dans le seed ; paiement simulé ; onboarding, tableau Stripe, remboursement en ligne, abonnement, carte, recharges SMS et crédits IA refusés                                                                               |
 | IA payante, téléphone | assistant du tableau de bord masqué et route refusée ; conseiller de la boutique, retouche et détourage d'image refusés ; numéro de téléphone et réglages voix refusés ; autocomplétion d'adresse (Google Places) coupée côté tableau de bord |
+| Adresses, itinéraires | sur la boutique, adresses inventées et distance à vol d'oiseau, au paiement comme sur le serveur (`lib/demo/demo-addresses.ts`, `resolve-delivery`)                                                                                           |
 | Intégrations          | Tulip, Google Agenda, avis Google refusés                                                                                                                                                                                                     |
 
 | Exclu de             | Où                                                                                                                                                                                              |
@@ -206,8 +245,14 @@ dans son cookie, sinon sur `demo:<id de la boutique>`. Aucun profil de personne 
 - **Liens côté navigateur en preview** : avec `STOREFRONT_URL_TEMPLATE`, les liens
   construits par le serveur suivent le gabarit, pas ceux que le navigateur construit
   (le lien de la boutique dans la barre latérale).
-- **Autocomplétion d'adresse sur la boutique** : non coupée (le checkout de démo est
-  déjà rempli, l'appel reste rare).
+- **Réglage des fixations (DIN)** : Louez ne le calcule pas. Le loueur lit taille, poids
+  et niveau sur la réservation et le contrat, et note le réglage à l'état des lieux de
+  départ (le champ « Réglage des fixations (DIN) »).
+- **Quantité du scénario** : le guide met les dates dans le panier, pas la quantité ; le
+  visiteur passe à deux packs lui-même.
+- **Deux cyclistes de tailles différentes** : une ligne de panier par taille de cadre.
+- **Unité attribuée** : la boutique réserve un pack ou une taille, pas une paire précise ;
+  le loueur attribue les unités dans le tableau de bord.
 - **Connexion à l'espace client de la boutique** : le code de connexion part par
   e-mail, donc n'arrive pas. Après une réservation, le visiteur arrive déjà connecté à
   sa réservation ; ensuite, « Mes locations » lui demande un code qu'il ne recevra pas.

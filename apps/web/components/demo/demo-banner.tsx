@@ -34,10 +34,6 @@ export function DemoBanner({
       aria-label={t("short")}
       className="relative z-30 flex h-10 shrink-0 items-center gap-3 border-b border-white/10 bg-neutral-950 px-3 text-white sm:px-4"
     >
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase">
-        <span className="size-1.5 rounded-full bg-emerald-400" aria-hidden />
-        {t("badge")}
-      </span>
       <p className="min-w-0 flex-1 truncate text-[13px] text-white/75">
         <span className="sm:hidden">{t("short")}</span>
         <span className="hidden sm:inline">{line}</span>

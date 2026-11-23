@@ -24,7 +24,7 @@ declare global {
   interface Window {
     /** The request the page's HTML sent before hydration (app/demo/[vertical]/page.tsx). */
     __louezDemoStart?: Promise<StartAnswer>;
-    /** Set by that request when it already sent the browser to the dashboard. */
+    /** Set by that request when it already sent the browser to the storefront. */
     __louezDemoNavigating?: boolean;
   }
 }
@@ -43,7 +43,7 @@ const requestStart = (vertical: DemoVerticalKey): Promise<StartAnswer> =>
 
 /**
  * Opens the visitor's demo store (POST /api/demo/start) and goes to its
- * dashboard. The page's HTML already sent the request; this takes its answer
+ * storefront. The page's HTML already sent the request; this takes its answer
  * over. A visitor signed in to their own account confirms first, as the demo
  * signs them out of it.
  */
@@ -75,7 +75,7 @@ export function DemoLauncher({
       }
       if (answer.ok && answer.body.redirectTo) {
         setState({ kind: "ready" });
-        // The bar completes and the page fades, then the dashboard comes in. The
+        // The bar completes and the page fades, then the storefront comes in. The
         // page's own request may already be on its way there.
         if (window.__louezDemoNavigating) return;
         document.documentElement.dataset.demoReady = "";

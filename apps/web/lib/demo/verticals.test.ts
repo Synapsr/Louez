@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { CUSTOMER_FIELD_TEMPLATES } from "@/lib/customers/customer-field-templates";
+
+import { straightLineDistanceKm } from "./demo-addresses";
 import { DEMO_EMAIL_DOMAIN, DEMO_VISITOR_CUSTOMER } from "./people";
 import { DEMO_VERTICAL_KEYS, DEMO_VERTICALS } from "./verticals";
 
@@ -39,6 +42,42 @@ for (const key of DEMO_VERTICAL_KEYS) {
     }
     assert.equal(vertical.monthWeights.length, 12);
     assert.ok(vertical.guide.some((step) => step.key === "book"));
+  });
+
+  test(`${key}: two scenarios, per-unit fields and addresses that hold together`, () => {
+    const keys = new Set(vertical.products.map((product) => product.key));
+    assert.deepEqual(
+      vertical.scenarios.map((scenario) => scenario.key),
+      ["simple", "trade"],
+    );
+    for (const scenario of vertical.scenarios) {
+      assert.ok(keys.has(scenario.productKey), scenario.productKey);
+      assert.ok(scenario.steps.length > 0 && scenario.steps.length <= 3, scenario.key);
+    }
+    for (const field of vertical.itemFields) {
+      assert.ok(field.productKeys.length > 0, field.key);
+      for (const product of field.productKeys) assert.ok(keys.has(product), product);
+      // The very fields of the Louez template a shop of the trade would adopt.
+      const template = CUSTOMER_FIELD_TEMPLATES.find((entry) => entry.id === field.templateKey);
+      assert.ok(
+        template?.fields.some((entry) => entry.key === field.key),
+        field.key,
+      );
+    }
+    // The trade case of a trade that asks per unit asks it for the scenario's product.
+    if (vertical.itemFields.length > 0) {
+      const trade = vertical.scenarios[1];
+      assert.ok(vertical.itemFields.some((field) => field.productKeys.includes(trade.productKey)));
+    }
+    for (const address of vertical.deliveryAddresses) {
+      const km = straightLineDistanceKm({
+        originLatitude: Number(vertical.store.latitude),
+        originLongitude: Number(vertical.store.longitude),
+        destinationLatitude: address.latitude,
+        destinationLongitude: address.longitude,
+      });
+      assert.ok(km < 30, `${address.formattedAddress}: ${km} km`);
+    }
   });
 
   test(`${key}: no contact detail can reach anyone`, () => {
