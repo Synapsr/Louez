@@ -10575,8 +10575,7 @@
   },
   "demo": {
     "launcher": {
-      "subtitle": "A sample store of your own, with its catalog, customers and bookings. Book on the storefront, manage from the dashboard: nothing is sent or charged.",
-      "preparing": "Preparing your demo store…",
+      "preparing": "Opening your sample store…",
       "start": "Open the demo",
       "retry": "Try again",
       "signedInNotice": "You are signed in to your Louez account. The demo opens in a separate session: you will be signed out of your account.",
@@ -10584,19 +10583,26 @@
         "rate_limited": "Several demos were already opened from your connection. Try again in an hour.",
         "capacity": "All our demo stores are busy. Try again in a few minutes.",
         "failed": "The demo could not open. Try again in a moment."
-      }
+      },
+      "ready": "Ready"
     },
     "banner": {
-      "title": "This is a demo store",
-      "detail": "Made-up data, nothing is sent or charged. It is erased after 24 hours.",
+      "badge": "Demo",
+      "short": "Demo store",
+      "line": "Demo store · made-up data, nothing is sent or charged",
+      "lineHours": "Demo store · made-up data, nothing is sent or charged · erased in {hours} h",
+      "lineSoon": "Demo store · made-up data, nothing is sent or charged · erased in less than an hour",
       "openStorefront": "View the storefront",
-      "signup": "Create my free store"
+      "signup": "Create my free store",
+      "signupShort": "Create my store"
     },
     "storefrontBanner": {
-      "title": "This is a demo store.",
-      "detail": "Book as a customer would: the payment is simulated.",
+      "badge": "Demo",
+      "short": "Demo store",
+      "line": "Demo store · book as a customer would, the payment is simulated",
       "dashboard": "Dashboard",
-      "signup": "Create my free store"
+      "signup": "Create my free store",
+      "signupShort": "Create my store"
     },
     "guide": {
       "title": "Things to try",

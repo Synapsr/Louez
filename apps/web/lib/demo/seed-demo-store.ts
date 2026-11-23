@@ -182,6 +182,8 @@ export interface SeedDemoStoreInput {
   vertical: DemoVertical;
   ownerUserId: string;
   expiresAt: Date;
+  /** Made ahead for the pool (lib/demo/demo-pool.ts), not yet claimed by a visitor. */
+  pooled?: boolean;
   now?: Date;
   /** Same seed, same bookings (row ids aside). */
   seed?: number;
@@ -228,21 +230,24 @@ async function insertAll<T>(
   }
 }
 
-/** A day offset picked with the trade's monthly demand, or null when the window has none. */
-function pickDayOffset(
+/**
+ * Picks day offsets in `[from, to]` with the trade's monthly demand, or null
+ * when the window has none. The weights are read once per window.
+ */
+function dayOffsetPicker(
   rng: Rng,
   vertical: DemoVertical,
   now: Date,
   from: number,
   to: number,
-): number | null {
+): () => number | null {
   const candidates: Array<{ item: number; weight: number }> = [];
   for (let offset = from; offset <= to; offset++) {
     const { month } = parisParts(new Date(now.getTime() + offset * DAY_MS));
     const weight = vertical.monthWeights[month - 1] ?? 0;
     if (weight > 0) candidates.push({ item: offset, weight });
   }
-  return candidates.length > 0 ? pickWeighted(rng, candidates) : null;
+  return () => (candidates.length > 0 ? pickWeighted(rng, candidates) : null);
 }
 
 /**
@@ -276,8 +281,10 @@ function planBookings(rng: Rng, vertical: DemoVertical, now: Date): PlannedBooki
   const featured: DemoBasketLine[] = [{ key: vertical.featuredProductKey, quantity: 2 }];
   const plans: PlannedBooking[] = [];
 
+  const pastDay = dayOffsetPicker(rng, vertical, now, -HISTORY_DAYS, -8);
+  const nextDay = dayOffsetPicker(rng, vertical, now, 3, UPCOMING_DAYS);
   for (let index = 0; index < HISTORY_COUNT; index++) {
-    const offset = pickDayOffset(rng, vertical, now, -HISTORY_DAYS, -8);
+    const offset = pastDay();
     if (offset === null) break;
     const days = duration();
     const start = parisDayAt(now, offset, 9, chance(rng, 0.5) ? 0 : 30);
@@ -299,8 +306,7 @@ function planBookings(rng: Rng, vertical: DemoVertical, now: Date): PlannedBooki
   }
 
   for (let index = 0; index < UPCOMING_COUNT; index++) {
-    const offset =
-      pickDayOffset(rng, vertical, now, 3, UPCOMING_DAYS) ?? randomInt(rng, 3, UPCOMING_DAYS);
+    const offset = nextDay() ?? randomInt(rng, 3, UPCOMING_DAYS);
     const days = duration();
     const start = parisDayAt(now, offset, 9);
     plans.push({
@@ -426,6 +432,8 @@ export async function seedDemoStore(input: SeedDemoStoreInput): Promise<SeededDe
       signupOrigin: null,
       demoVertical: vertical.key,
       demoExpiresAt: expiresAt,
+      // A pooled store waits for its visitor; a store made for one is theirs at once.
+      demoClaimedAt: input.pooled ? null : now,
       onboardingCompleted: true,
       createdAt: storeCreatedAt,
       updatedAt: now,

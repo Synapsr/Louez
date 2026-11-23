@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { isTrustedAuthOrigin } from "@louez/auth";
@@ -10,11 +10,15 @@ import {
   demoSessionCookieOptions,
   formatDemoSessionCookie,
 } from "@/lib/demo/demo-session-cookie";
+import { fillDemoPool } from "@/lib/demo/demo-pool";
 import { startDemo } from "@/lib/demo/start-demo";
 import { DEMO_VERTICAL_KEYS } from "@/lib/demo/verticals";
 import { isStandaloneMode } from "@/lib/deployment";
 
 const bodySchema = z.object({ vertical: z.enum(DEMO_VERTICAL_KEYS) });
+
+/** How long the pool waits after a claim before writing the next store. */
+const POOL_REFILL_DELAY_MS = 5_000;
 
 /**
  * Opens a demo store for the visitor (lib/demo/start-demo.ts) and signs them
@@ -35,10 +39,16 @@ export async function POST(request: Request) {
   const { vertical } = parsed.data;
 
   const result = await startDemo({ vertical, headers: request.headers });
+  // The next visitor's store, written a few seconds after this answer has left:
+  // the visitor's first dashboard render does not share the process with it.
+  after(async () => {
+    await new Promise((resolve) => setTimeout(resolve, POOL_REFILL_DELAY_MS));
+    await fillDemoPool(vertical);
+  });
   if (!result.ok) {
     return NextResponse.json(
       { error: result.error, retryAfterSeconds: result.retryAfterSeconds ?? null },
-      { status: result.error === "failed" ? 500 : 429 },
+      { status: result.error === "failed" ? 503 : 429 },
     );
   }
 
@@ -49,6 +59,7 @@ export async function POST(request: Request) {
     vertical,
     visitorId,
     headers: request.headers,
+    properties: { source: result.source },
   });
 
   const response = NextResponse.json({ redirectTo: "/dashboard" });

@@ -142,4 +142,67 @@ describe("demo stores (database)", { skip: skipWithoutTestDatabase() }, () => {
       [REAL],
     );
   });
+
+  test("claims hand out each fresh pooled store once, and never a stale one", async () => {
+    const now = new Date();
+    const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
+    await louezDb.db.insert(louezDb.stores).values([
+      {
+        id: "pool_a",
+        userId: "owner_a",
+        name: "A",
+        slug: "pool-a",
+        demoVertical: "velo",
+        demoExpiresAt: minutes(40),
+        createdAt: minutes(-5),
+      },
+      {
+        id: "pool_b",
+        userId: "owner_b",
+        name: "B",
+        slug: "pool-b",
+        demoVertical: "velo",
+        demoExpiresAt: minutes(42),
+        createdAt: minutes(-3),
+      },
+      // Made too long ago: its « today » is stale.
+      {
+        id: "pool_stale",
+        userId: "owner_s",
+        name: "S",
+        slug: "pool-stale",
+        demoVertical: "velo",
+        demoExpiresAt: minutes(5),
+        createdAt: minutes(-40),
+      },
+      // Already a visitor's.
+      {
+        id: "pool_taken",
+        userId: "owner_t",
+        name: "T",
+        slug: "pool-taken",
+        demoVertical: "velo",
+        demoExpiresAt: minutes(600),
+        demoClaimedAt: minutes(-60),
+        createdAt: minutes(-70),
+      },
+    ]);
+    const input = { vertical: "velo", now, freshUntil: minutes(15), expiresAt: minutes(24 * 60) };
+    assert.equal(await louezDb.countPooledDemoStores(louezDb.db, input), 2);
+
+    const [first, second] = await Promise.all([
+      louezDb.claimPooledDemoStore(louezDb.db, input),
+      louezDb.claimPooledDemoStore(louezDb.db, input),
+    ]);
+    assert.deepEqual([first?.id, second?.id].sort(), ["pool_a", "pool_b"]);
+    assert.equal(await louezDb.claimPooledDemoStore(louezDb.db, input), null);
+    assert.equal(await louezDb.countPooledDemoStores(louezDb.db, input), 0);
+
+    const [claimed] = await louezDb.db
+      .select({ claimedAt: louezDb.stores.demoClaimedAt, expiresAt: louezDb.stores.demoExpiresAt })
+      .from(louezDb.stores)
+      .where(eq(louezDb.stores.id, "pool_a"));
+    assert.ok(claimed?.claimedAt);
+    assert.ok((claimed?.expiresAt?.getTime() ?? 0) > minutes(23 * 60).getTime());
+  });
 });

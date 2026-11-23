@@ -8,8 +8,26 @@ export const DEMO_STORE_TTL_HOURS = 24;
 /** The visitor's demo: the trade, its store and an id for analytics. httpOnly. */
 export const DEMO_COOKIE = "louez_demo";
 
-/** Demo stores one address may open per hour. */
-export const DEMO_STARTS_PER_IP_PER_HOUR = 6;
+/**
+ * Demo stores one address may open per hour. High enough for a team or a class
+ * behind one office NAT clicking together; the global cap below bounds abuse.
+ */
+export const DEMO_STARTS_PER_IP_PER_HOUR = 40;
+
+/** Stores each trade keeps ready in the pool (lib/demo/demo-pool.ts). */
+export const DEMO_POOL_SIZE = 6;
+
+/** How long an unclaimed pooled store lives before the cleanup deletes it. */
+export const DEMO_POOL_TTL_MINUTES = 45;
+
+/** How long after it was made a pooled store may still be claimed: its « today » stays current. */
+export const DEMO_POOL_FRESH_MINUTES = 30;
+
+/** Stores written at once for visitors when the pool is empty; the others wait their turn. */
+export const DEMO_LIVE_CREATIONS_AT_ONCE = 3;
+
+/** How long a visitor waits for a turn to have their store written, before « try again ». */
+export const DEMO_LIVE_CREATION_WAIT_MS = 20_000;
 
 /** Demo stores the instance keeps at once; past it, a visitor waits for the cleanup. */
 export const DEMO_STORES_MAX_ACTIVE = 2000;

@@ -1,48 +1,64 @@
 "use client";
 
-import { ExternalLink, Sparkles } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useTranslations } from "next-intl";
-
-import { Button } from "@louez/ui";
 
 import { trackDemoStep } from "./track-demo-step";
 
 /**
- * The strip above every page of a demo store's dashboard: says the store is
- * a demonstration, opens its storefront, and leads to the sign-up.
+ * The one-line bar across the top of a demo store's dashboard, above the
+ * sidebar and the header, on every page: it is a demonstration, for how long,
+ * a way to its storefront, and the sign-up. Narrow screens keep the sign-up.
  */
 export function DemoBanner({
   storefrontUrl,
   signupUrl,
+  hoursLeft,
 }: {
   storefrontUrl: string;
   signupUrl: string;
+  /** Whole hours before the store is erased; null when unknown. */
+  hoursLeft: number | null;
 }) {
   const t = useTranslations("demo.banner");
+  const line =
+    hoursLeft === null
+      ? t("line")
+      : hoursLeft < 1
+        ? t("lineSoon")
+        : t("lineHours", { hours: hoursLeft });
 
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-amber-950 sm:flex-row sm:items-center sm:justify-between dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-      <div className="flex items-start gap-3">
-        <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <div className="text-sm">
-          <p className="font-semibold">{t("title")}</p>
-          <p className="text-amber-900/80 dark:text-amber-100/80">{t("detail")}</p>
-        </div>
-      </div>
-      <div className="flex shrink-0 flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          render={<a href={storefrontUrl} target="_blank" rel="noopener noreferrer" />}
-          onClick={() => trackDemoStep("storefront_opened")}
-        >
-          {t("openStorefront")}
-          <ExternalLink data-slot="icon" aria-hidden />
-        </Button>
-        <Button size="sm" render={<a href={signupUrl} />}>
-          {t("signup")}
-        </Button>
-      </div>
+    <div
+      role="region"
+      aria-label={t("short")}
+      className="relative z-30 flex h-10 shrink-0 items-center gap-3 border-b border-white/10 bg-neutral-950 px-3 text-white sm:px-4"
+    >
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase">
+        <span className="size-1.5 rounded-full bg-emerald-400" aria-hidden />
+        {t("badge")}
+      </span>
+      <p className="min-w-0 flex-1 truncate text-[13px] text-white/75">
+        <span className="sm:hidden">{t("short")}</span>
+        <span className="hidden sm:inline">{line}</span>
+      </p>
+      <a
+        href={storefrontUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => trackDemoStep("storefront_opened")}
+        className="hidden shrink-0 items-center gap-1 text-[13px] text-white/75 transition-colors hover:text-white md:inline-flex"
+      >
+        {t("openStorefront")}
+        <ArrowUpRight className="size-3.5" aria-hidden />
+      </a>
+      <a
+        href={signupUrl}
+        className="inline-flex h-7 shrink-0 items-center rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        <span className="sm:hidden">{t("signupShort")}</span>
+        <span className="hidden sm:inline">{t("signup")}</span>
+      </a>
     </div>
   );
 }

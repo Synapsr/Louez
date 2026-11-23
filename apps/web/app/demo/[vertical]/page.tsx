@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import type { CSSProperties } from "react";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
@@ -39,24 +39,44 @@ export default async function DemoEntryPage({ params }: { params: Promise<{ vert
     }
   }
 
-  const t = await getTranslations("demo.launcher");
   const trade = DEMO_VERTICALS[vertical];
   // A signed-in owner would lose their session: they choose, nothing starts by itself.
   const signedInToRealAccount = Boolean(session?.user && !isDemoOwnerEmail(session.user.email));
+  const autoStart = !signedInToRealAccount;
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/40 px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border bg-background p-8 shadow-sm">
-        <LogoIcon size={36} />
-        <p className="mt-6 text-sm font-medium text-muted-foreground">{trade.label}</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{trade.store.name}</h1>
-        <p className="mt-3 text-sm text-muted-foreground">{t("subtitle")}</p>
-        <DemoLauncher
-          vertical={vertical}
-          autoStart={!signedInToRealAccount}
-          signedIn={signedInToRealAccount}
-        />
+    <main
+      className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-background px-6"
+      style={{ "--demo-accent": trade.store.primaryColor } as CSSProperties}
+    >
+      {autoStart ? (
+        // Asks for the store as soon as the HTML arrives, before the page's
+        // scripts: DemoLauncher takes this answer over. A crawler that runs no
+        // script, or follows no form, opens nothing.
+        <script dangerouslySetInnerHTML={{ __html: earlyStartScript(vertical) }} />
+      ) : null}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_40%,color-mix(in_srgb,var(--demo-accent)_12%,transparent),transparent)]"
+      />
+      <div className="relative flex w-full max-w-sm flex-col items-center text-center">
+        <LogoIcon size={28} />
+        <h1 className="mt-10 text-3xl font-semibold tracking-tight text-balance">
+          {trade.store.name}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">{trade.label}</p>
+        <DemoLauncher vertical={vertical} autoStart={autoStart} signedIn={signedInToRealAccount} />
       </div>
     </main>
   );
 }
+
+/**
+ * The request DemoLauncher would send, sent by the HTML itself, which also
+ * goes to the dashboard as soon as the store is ready: neither waits for the
+ * page's scripts. An answer that is not a success is left to DemoLauncher.
+ */
+const earlyStartScript = (vertical: string): string =>
+  `window.__louezDemoStart=fetch("/api/demo/start",{method:"POST",headers:{"content-type":"application/json"},body:${JSON.stringify(
+    JSON.stringify({ vertical }),
+  )}}).then(function(r){return r.json().catch(function(){return {}}).then(function(b){return {ok:r.ok,body:b}})}).catch(function(){return {ok:false,body:{}}}).then(function(a){if(a.ok&&a.body.redirectTo){window.__louezDemoNavigating=true;document.documentElement.dataset.demoReady="";setTimeout(function(){location.assign(a.body.redirectTo)},120)}return a});`;

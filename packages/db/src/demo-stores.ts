@@ -1,4 +1,4 @@
-import { eq, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, gt, isNull, sql, type AnyColumn, type SQL } from "drizzle-orm";
 
 import type { Database, Transaction } from "./index";
 import { stores } from "./schema";
@@ -15,7 +15,10 @@ import { stores } from "./schema";
  *   product analytics business metrics and billing;
  * - refuses the actions that reach outside the sandbox (team invitations,
  *   Stripe, billing, integrations: packages/api platform/demo-store-policy.ts);
- * - is deleted, with its owner, once `demo_expires_at` has passed.
+ * - waits in a small pool per trade until a visitor claims it
+ *   (`demo_claimed_at`, `claimPooledDemoStore`), so the click lands at once;
+ * - is deleted, with its owner, once `demo_expires_at` has passed: half an
+ *   hour for a store no one claimed, a day for a visitor's.
  *
  * Every place that treats a demo store apart uses one of the helpers below, so
  * the whole feature is found by searching for `DemoStore` and `demoVertical`.
@@ -83,4 +86,79 @@ export async function isDemoStore(
 /** For tests: forget what `isDemoStore` remembered. */
 export function resetDemoStoreCache(): void {
   demoFlagCache.clear();
+}
+
+/** A pooled demo store a visitor just claimed. */
+export interface ClaimedDemoStore {
+  id: string;
+  slug: string;
+  ownerUserId: string;
+}
+
+/**
+ * Hands one pooled demo store of `vertical` to a visitor, or null when the pool
+ * is empty. A pooled store is one no visitor claimed yet (`demo_claimed_at`
+ * null) that stays usable a while longer (`demo_expires_at` after
+ * `freshUntil`). Claiming stamps it and gives it the visitor's lifetime. Two
+ * visitors never get the same store: the row is taken `FOR UPDATE SKIP LOCKED`
+ * in creation order along `stores_demo_pool_idx`, so a concurrent claim moves
+ * on to the next one instead of waiting.
+ */
+export async function claimPooledDemoStore(
+  executor: Pick<Database, "transaction" | "select">,
+  input: { vertical: string; now: Date; freshUntil: Date; expiresAt: Date },
+): Promise<ClaimedDemoStore | null> {
+  // A row another claim is taking at this instant is skipped: when that left
+  // nothing, but the pool still holds stores, look again before giving up.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const claimed = await claimOnce(executor, input);
+    if (claimed) return claimed;
+    if ((await countPooledDemoStores(executor, input)) === 0) return null;
+  }
+  return null;
+}
+
+function claimOnce(
+  executor: Pick<Database, "transaction">,
+  input: { vertical: string; now: Date; freshUntil: Date; expiresAt: Date },
+): Promise<ClaimedDemoStore | null> {
+  return executor.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ id: stores.id, slug: stores.slug, ownerUserId: stores.userId })
+      .from(stores)
+      .where(
+        and(
+          eq(stores.demoVertical, input.vertical),
+          isNull(stores.demoClaimedAt),
+          gt(stores.demoExpiresAt, input.freshUntil),
+        ),
+      )
+      .orderBy(asc(stores.createdAt))
+      .limit(1)
+      .for("update", { skipLocked: true });
+    if (!row) return null;
+    await tx
+      .update(stores)
+      .set({ demoClaimedAt: input.now, demoExpiresAt: input.expiresAt })
+      .where(eq(stores.id, row.id));
+    return row;
+  });
+}
+
+/** How many pooled demo stores of `vertical` are still waiting past `freshUntil`. */
+export async function countPooledDemoStores(
+  executor: Pick<Database, "select">,
+  input: { vertical: string; freshUntil: Date },
+): Promise<number> {
+  const [row] = await executor
+    .select({ value: count() })
+    .from(stores)
+    .where(
+      and(
+        eq(stores.demoVertical, input.vertical),
+        isNull(stores.demoClaimedAt),
+        gt(stores.demoExpiresAt, input.freshUntil),
+      ),
+    );
+  return Number(row?.value ?? 0);
 }

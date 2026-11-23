@@ -169,8 +169,24 @@ export default async function DashboardMainLayout({ children }: { children: Reac
           timezone={settings.timezone}
         >
           <ReservationPollingProvider interval={30000}>
-            <div className="dashboard relative h-svh overflow-hidden">
-              <SidebarProvider className="h-full min-h-0 overflow-hidden">
+            <div
+              className={
+                demo
+                  ? // The demo bar (h-10) sits above everything: the fixed sidebar starts below it.
+                    "dashboard relative flex h-svh flex-col overflow-hidden [&_[data-slot=sidebar-container]]:top-10 [&_[data-slot=sidebar-container]]:h-[calc(100svh-2.5rem)]"
+                  : "dashboard relative h-svh overflow-hidden"
+              }
+            >
+              {demo ? (
+                <DemoBanner
+                  storefrontUrl={demo.storefrontUrl}
+                  signupUrl={demo.signupUrl}
+                  hoursLeft={demo.hoursLeft}
+                />
+              ) : null}
+              <SidebarProvider
+                className={demo ? "min-h-0 flex-1 overflow-hidden" : "h-full min-h-0 overflow-hidden"}
+              >
                 <DashboardBreadcrumbsProvider>
                   <DashboardSidebar
                     planSlug={planSlug}
@@ -203,9 +219,6 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                       />
                     }
                   >
-                    {demo ? (
-                      <DemoBanner storefrontUrl={demo.storefrontUrl} signupUrl={demo.signupUrl} />
-                    ) : null}
                     {/* The card gate's banner; nothing outside service mode. */}
                     <Suspense fallback={null}>
                       <ReservationGateBanner storeId={store.id} role={store.role} />

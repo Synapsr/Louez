@@ -12,14 +12,18 @@ catalogue « Ar Mor Location » du seed de démo) et **événementiel**
 
 ## Le parcours
 
-1. `/demo/<métier>` affiche « Nous préparons votre boutique de démonstration… » et,
-   depuis le navigateur, appelle `POST /api/demo/start`. Un robot qui suit le lien du
-   site n'ouvre donc rien.
-2. Le serveur crée un compte propriétaire jetable (`visiteur-…@demo.example`), la
-   boutique du métier pour lui seul (`lib/demo/seed-demo-store.ts`, environ une
-   seconde), le connecte et le renvoie sur `/dashboard`.
-3. Le tableau de bord porte le bandeau « Ceci est une boutique de démonstration »,
-   le bouton « Créer ma boutique gratuite » et le guide « À essayer » : réserver sur la
+1. `/demo/<métier>` affiche le nom de la boutique et une fine barre de progression.
+   Un petit script dans le HTML appelle aussitôt `POST /api/demo/start`, sans attendre
+   les scripts de la page, et part vers `/dashboard` dès la réponse (fondu entre les
+   deux pages). Un robot qui suit le lien n'ouvre rien : `robots.txt` de l'app lui
+   interdit `/demo`, et rien ne s'ouvre sans script.
+2. Le serveur prend une boutique du **pool** du métier (une mise à jour d'une ligne),
+   ou, si le pool est vide, en écrit une pour ce visiteur (`lib/demo/seed-demo-store.ts`,
+   quelques dixièmes de seconde). Il connecte le visiteur au compte propriétaire jetable
+   de la boutique (`visiteur-…@demo.example`).
+3. Le tableau de bord porte, au-dessus de tout, une barre « Démo » d'une ligne (boutique
+   de démonstration, données fictives, heures restantes, « Voir la boutique », « Créer
+   ma boutique gratuite ») et le guide « À essayer » : réserver sur la
    boutique, voir la réservation arriver, faire l'état des lieux d'un départ, gérer la
    caution d'une location en cours.
 4. Sur la boutique, le paiement est simulé (la page de paiement simulé des
@@ -40,13 +44,68 @@ Trois modèles étaient possibles :
 | Une boutique partagée remise à zéro chaque nuit | Simple                                   | Les visiteurs se voient et se gênent dans la journée ; un visiteur peut tout casser pour les autres jusqu'à la nuit                |
 | **Une boutique par visiteur, éphémère**         | Tout s'essaie, personne ne gêne personne | Une boutique à créer à chaque visite, à nettoyer ensuite, à limiter contre l'abus                                                  |
 
-Retenu : **une boutique par visiteur**. La création prend environ une seconde, le
-visiteur peut tout faire, et ce qu'il fait ne touche que lui. Le coût est maîtrisé :
-6 démos par adresse IP et par heure, 2 000 boutiques de démo actives au plus
-(`lib/demo/constants.ts`), et la purge toutes les dix minutes des boutiques expirées
-par la suppression de compte existante (`lib/demo/cleanup.ts`), qui connaît toutes les
-tables d'une boutique. Revenir sur `/demo/ski` pendant 24 heures ramène à la même
-boutique.
+Retenu : **une boutique par visiteur**. Le visiteur peut tout faire, et ce qu'il fait
+ne touche que lui. Le coût est maîtrisé : 40 démos par adresse IP et par heure (assez
+pour une équipe derrière un même accès internet), 2 000 boutiques de démo actives au
+plus (`lib/demo/constants.ts`), et la purge toutes les dix minutes des boutiques
+expirées par la suppression de compte existante (`lib/demo/cleanup.ts`), qui connaît
+toutes les tables d'une boutique. Revenir sur `/demo/ski` pendant 24 heures ramène à la
+même boutique.
+
+### Un pool de boutiques prêtes, par métier
+
+Chaque métier garde 6 boutiques prêtes (`lib/demo/demo-pool.ts`) : une boutique de démo
+complète, avec son compte propriétaire et son identifiant de connexion, que personne ne
+voit (`stores.demo_claimed_at` vide). Le clic d'un visiteur en réclame une
+(`claimPooledDemoStore`, `FOR UPDATE SKIP LOCKED` : deux visiteurs n'ont jamais la même)
+et lui donne 24 heures. Une boutique du pool vit 45 minutes et n'est plus réclamée après
+30 : son « aujourd'hui » (départs et retour du jour) reste à venir. Le pool se remplit
+quelques secondes après chaque réclamation, sur l'intention d'ouvrir une démo
+(`/api/demo/warm`) et chaque minute par le cron ; les boutiques du pool expirées sont
+supprimées par la même purge.
+
+Pool vide (une rafale de clics) : la boutique est écrite pour le visiteur, trois à la
+fois par processus, les autres attendent leur tour (20 secondes au plus, puis « réessayez
+dans quelques secondes », que l'écran fait seul). Jamais d'erreur 500 : une rafale ralentit,
+elle ne casse pas.
+
+### Préchauffer sur l'intention, pas à chaque visite
+
+Créer une boutique à chaque affichage d'une page du site serait du gaspillage (la plupart
+des visiteurs ne cliquent pas) et Googlebot exécute le JavaScript. Le site appelle plutôt
+`POST /api/demo/warm?vertical=<métier>` quand un visiteur pointe, sélectionne ou touche un
+bouton de démo. L'appel ne fait que compléter le pool jusqu'à sa taille : il ne crée rien
+pour personne, mille appels ne font pas plus de boutiques qu'un seul, et un robot ne
+survole rien. Seuls l'app et les origines du site marketing sont écoutées.
+
+Pour les pages ski, vélo et événementiel du site (une PR du dépôt du site) :
+
+```html
+<a href="https://app.louez.io/demo/ski?ref_cta=pro_ski_hero" data-louez-demo="ski">
+  Essayer la démo
+</a>
+<script>
+  // Prépare une boutique de démo dès que le visiteur montre son intention de cliquer.
+  (() => {
+    const warmed = new Set();
+    const warm = (event) => {
+      const link = event.target.closest?.("[data-louez-demo]");
+      const vertical = link?.dataset.louezDemo;
+      if (!vertical || warmed.has(vertical)) return;
+      warmed.add(vertical);
+      navigator.sendBeacon(`https://app.louez.io/api/demo/warm?vertical=${vertical}`);
+      // Le document de la page démo, mis en cache pour le clic.
+      const prefetch = document.createElement("link");
+      prefetch.rel = "prefetch";
+      prefetch.href = link.href;
+      document.head.append(prefetch);
+    };
+    for (const type of ["pointerenter", "focusin", "touchstart"]) {
+      document.addEventListener(type, warm, { capture: true, passive: true });
+    }
+  })();
+</script>
+```
 
 ### Le seed est un générateur, pas un clone
 
@@ -128,6 +187,7 @@ dans son cookie, sinon sur `demo:<id de la boutique>`. Aucun profil de personne 
   derrière un autre schéma d'hôte (un tunnel), où ouvrir une boutique dans les URL que
   le serveur construit, `{slug}` pour son slug. Vide en production.
 - **Purge** : la tâche cron `demo-stores-purge`, toutes les dix minutes.
+- **Pool** : la tâche cron `demo-pools-fill`, chaque minute, après la réponse du cron.
 
 ## Limites connues
 

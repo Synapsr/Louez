@@ -976,6 +976,8 @@ export const stores = mysqlTable(
     // (packages/db demo-stores.ts). Deleted with its owner once it expires.
     demoVertical: varchar("demo_vertical", { length: 32 }),
     demoExpiresAt: timestamp("demo_expires_at", { mode: "date" }),
+    // Null while the demo store waits in the pool, ready for the next visitor.
+    demoClaimedAt: timestamp("demo_claimed_at", { mode: "date" }),
 
     // Metadata
     onboardingCompleted: boolean("onboarding_completed").default(false),
@@ -987,6 +989,12 @@ export const stores = mysqlTable(
     userIdx: index("stores_user_idx").on(table.userId),
     referralCodeIdx: index("stores_referral_code_idx").on(table.referralCode),
     demoExpiresIdx: index("stores_demo_expires_idx").on(table.demoExpiresAt),
+    // The pool's claim walks it in creation order and locks one row at a time.
+    demoPoolIdx: index("stores_demo_pool_idx").on(
+      table.demoVertical,
+      table.demoClaimedAt,
+      table.createdAt,
+    ),
   }),
 );
 

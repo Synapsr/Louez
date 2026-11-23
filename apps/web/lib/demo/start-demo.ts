@@ -1,7 +1,6 @@
 import "server-only";
 
 import { and, count, eq, gt, isNotNull } from "drizzle-orm";
-import { customAlphabet, nanoid } from "nanoid";
 
 import { consumeRateLimit } from "@louez/api/platform/rate-limit";
 import { signInDemoAccount } from "@louez/auth/demo-session";
@@ -11,17 +10,15 @@ import { log } from "@/lib/evlog";
 import { getClientIp } from "@/lib/request";
 
 import {
-  DEMO_OWNER_EMAIL_DOMAIN,
-  DEMO_OWNER_EMAIL_PREFIX,
+  DEMO_LIVE_CREATION_WAIT_MS,
+  DEMO_LIVE_CREATIONS_AT_ONCE,
   DEMO_STARTS_PER_IP_PER_HOUR,
-  DEMO_STORE_TTL_HOURS,
   DEMO_STORES_MAX_ACTIVE,
 } from "./constants";
-import { seedDemoStore } from "./seed-demo-store";
-import { DEMO_VERTICALS, type DemoVerticalKey } from "./verticals";
+import { claimDemoStore, createDemoStore } from "./demo-pool";
+import type { DemoVerticalKey } from "./verticals";
 
 const HOUR_MS = 60 * 60 * 1000;
-const ownerSuffix = customAlphabet("abcdefghijkmnpqrstuvwxyz23456789", 10);
 
 export type StartDemoResult =
   | {
@@ -31,15 +28,49 @@ export type StartDemoResult =
       userId: string;
       /** Set-Cookie headers of the visitor's session. */
       sessionHeaders: Headers;
+      /** Taken from the pool, or written for this visitor. */
+      source: "pool" | "live";
     }
   | { ok: false; error: "rate_limited" | "capacity" | "failed"; retryAfterSeconds?: number };
 
+// Stores written for visitors right now, in this process, and the visitors
+// waiting for a turn: a burst on an empty pool queues instead of filling the
+// database's connection pool with long transactions.
+let liveCreations = 0;
+const waitingForTurn: Array<() => void> = [];
+
+async function takeLiveCreationTurn(): Promise<boolean> {
+  if (liveCreations < DEMO_LIVE_CREATIONS_AT_ONCE) {
+    liveCreations += 1;
+    return true;
+  }
+  return new Promise<boolean>((resolve) => {
+    const turn = () => {
+      clearTimeout(timer);
+      liveCreations += 1;
+      resolve(true);
+    };
+    const timer = setTimeout(() => {
+      const index = waitingForTurn.indexOf(turn);
+      if (index >= 0) waitingForTurn.splice(index, 1);
+      resolve(false);
+    }, DEMO_LIVE_CREATION_WAIT_MS);
+    waitingForTurn.push(turn);
+  });
+}
+
+function releaseLiveCreationTurn(): void {
+  liveCreations -= 1;
+  waitingForTurn.shift()?.();
+}
+
 /**
- * Opens a demo store for one visitor: a throwaway owner account, the trade's
- * store seeded for it (lib/demo/seed-demo-store.ts), and a signed-in session.
- * Both are deleted by the cleanup once `demo_expires_at` passes
- * (lib/demo/cleanup.ts). Each visitor has a store of their own, so nothing one
- * does reaches another.
+ * Opens a demo store for one visitor and signs them into it: a store claimed
+ * from the trade's pool (lib/demo/demo-pool.ts), one row update, or, when the
+ * pool is empty, one written for them on the spot (a few tenths of a second;
+ * a few at a time, the others queue). Deleted with its owner by the cleanup once
+ * `demo_expires_at` passes (lib/demo/cleanup.ts). Each visitor has a store of
+ * their own, so nothing one does reaches another.
  */
 export async function startDemo(input: {
   vertical: DemoVerticalKey;
@@ -53,38 +84,51 @@ export async function startDemo(input: {
     { windowMs: HOUR_MS, max: DEMO_STARTS_PER_IP_PER_HOUR },
     now.getTime(),
   );
-  if (!limit.allowed)
+  if (!limit.allowed) {
     return { ok: false, error: "rate_limited", retryAfterSeconds: limit.retryAfterSeconds };
-
-  const [active] = await db
-    .select({ value: count() })
-    .from(stores)
-    .where(and(isNotNull(stores.demoVertical), gt(stores.demoExpiresAt, now)));
-  if ((active?.value ?? 0) >= DEMO_STORES_MAX_ACTIVE) return { ok: false, error: "capacity" };
-
-  const vertical = DEMO_VERTICALS[input.vertical];
-  const userId = nanoid();
-  const email = `${DEMO_OWNER_EMAIL_PREFIX}${ownerSuffix()}@${DEMO_OWNER_EMAIL_DOMAIN}`;
-  const expiresAt = new Date(now.getTime() + DEMO_STORE_TTL_HOURS * HOUR_MS);
+  }
 
   try {
-    await db.insert(users).values({
-      id: userId,
-      email,
-      name: vertical.store.ownerName,
-      emailVerified: true,
-      createdAt: now,
-      updatedAt: now,
+    const claimed = await claimDemoStore(input.vertical, now);
+    let store: { id: string; slug: string; ownerUserId: string; email: string };
+    let source: "pool" | "live";
+    if (claimed) {
+      const [owner] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, claimed.ownerUserId))
+        .limit(1);
+      if (!owner) throw new Error("A pooled demo store has no owner");
+      store = { ...claimed, email: owner.email };
+      source = "pool";
+    } else {
+      const [active] = await db
+        .select({ value: count() })
+        .from(stores)
+        .where(and(isNotNull(stores.demoVertical), gt(stores.demoExpiresAt, now)));
+      if ((active?.value ?? 0) >= DEMO_STORES_MAX_ACTIVE) return { ok: false, error: "capacity" };
+      if (!(await takeLiveCreationTurn()))
+        return { ok: false, error: "capacity", retryAfterSeconds: 10 };
+      try {
+        store = await createDemoStore({ vertical: input.vertical, pooled: false, now });
+      } finally {
+        releaseLiveCreationTurn();
+      }
+      source = "live";
+    }
+    const sessionHeaders = await signInDemoAccount({
+      userId: store.ownerUserId,
+      email: store.email,
+      headers: input.headers,
     });
-    const store = await seedDemoStore({
-      vertical,
-      ownerUserId: userId,
-      expiresAt,
-      now,
-      seed: now.getTime() & 0x7fffffff,
-    });
-    const sessionHeaders = await signInDemoAccount({ userId, email, headers: input.headers });
-    return { ok: true, storeId: store.storeId, slug: store.slug, userId, sessionHeaders };
+    return {
+      ok: true,
+      storeId: store.id,
+      slug: store.slug,
+      userId: store.ownerUserId,
+      sessionHeaders,
+      source,
+    };
   } catch (error) {
     log.error("demo", `start failed: ${error instanceof Error ? error.message : String(error)}`);
     // A half-made owner without a store is removed by the cleanup too (no store, demo e-mail).

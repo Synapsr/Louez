@@ -7,22 +7,27 @@ export const DEMO_TIMEZONE = "Europe/Paris";
 
 const MINUTE = 60_000;
 
+// Built once: a formatter costs far more to build than to use.
+const DATE_PARTS = new Intl.DateTimeFormat("en-CA", {
+  timeZone: DEMO_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const OFFSET_NAME = new Intl.DateTimeFormat("en-US", {
+  timeZone: DEMO_TIMEZONE,
+  timeZoneName: "shortOffset",
+});
+
 export function parisParts(at: Date): { year: number; month: number; day: number } {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: DEMO_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(at);
+  const parts = DATE_PARTS.formatToParts(at);
   const value = (type: string) => Number(parts.find((part) => part.type === type)?.value);
   return { year: value("year"), month: value("month"), day: value("day") };
 }
 
 function parisOffsetMinutes(at: Date): number {
   const name =
-    new Intl.DateTimeFormat("en-US", { timeZone: DEMO_TIMEZONE, timeZoneName: "shortOffset" })
-      .formatToParts(at)
-      .find((part) => part.type === "timeZoneName")?.value ?? "GMT+1";
+    OFFSET_NAME.formatToParts(at).find((part) => part.type === "timeZoneName")?.value ?? "GMT+1";
   const match = name.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
   if (!match) return 60;
   const hours = Number(match[1]);

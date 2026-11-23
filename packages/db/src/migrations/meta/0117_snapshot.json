@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "fcf6550d-fcdb-46f0-91d6-67eb72d6a7d5",
+  "id": "4cacece5-2d4b-4e8d-9eef-fc0821e1f211",
   "prevId": "2c602708-0ab3-47bf-8499-affdc054a338",
   "tables": {
     "account_departure_reason_counters": {
@@ -14434,6 +14434,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "demo_claimed_at": {
+          "name": "demo_claimed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "onboarding_completed": {
           "name": "onboarding_completed",
           "type": "boolean",
@@ -14485,6 +14492,15 @@
           "name": "stores_demo_expires_idx",
           "columns": [
             "demo_expires_at"
+          ],
+          "isUnique": false
+        },
+        "stores_demo_pool_idx": {
+          "name": "stores_demo_pool_idx",
+          "columns": [
+            "demo_vertical",
+            "demo_claimed_at",
+            "created_at"
           ],
           "isUnique": false
         }

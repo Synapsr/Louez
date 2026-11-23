@@ -26,9 +26,10 @@ function readMemory(storeId: string): GuideMemory {
       return { open: parsed.open !== false, done: Array.isArray(parsed.done) ? parsed.done : [] };
     }
   } catch {
-    // No storage (private window): the guide simply starts open.
+    // No storage (private window): the guide starts as it would the first time.
   }
-  return { open: true, done: [] };
+  // Folded on a phone, where it would cover the page; open elsewhere.
+  return { open: window.matchMedia("(min-width: 768px)").matches, done: [] };
 }
 
 function writeMemory(storeId: string, memory: GuideMemory): void {

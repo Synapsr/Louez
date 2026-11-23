@@ -24,7 +24,8 @@ export interface DemoDashboardContext {
   vertical: DemoVertical;
   storefrontUrl: string;
   signupUrl: string;
-  expiresAt: Date | null;
+  /** Whole hours before the store is erased, null when it has no end. */
+  hoursLeft: number | null;
   steps: DemoGuideLink[];
 }
 
@@ -100,7 +101,9 @@ export async function getDemoDashboardContext(store: {
     vertical,
     storefrontUrl,
     signupUrl: "/demo/signup",
-    expiresAt: store.demoExpiresAt,
+    hoursLeft: store.demoExpiresAt
+      ? Math.max(0, Math.floor((store.demoExpiresAt.getTime() - now.getTime()) / 3_600_000))
+      : null,
     steps: vertical.guide.map((step) => ({ ...step, ...hrefOf(step) })),
   };
 }
