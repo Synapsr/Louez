@@ -39,6 +39,17 @@ type CalendarReservationDescription = CalendarReservationLogistics & {
   customerNotes?: string | null;
 };
 
+const RESERVATION_STATUS_LABELS: Record<string, string> = {
+  pending: "Oczekująca",
+  confirmed: "Potwierdzona",
+  ongoing: "W trakcie",
+  completed: "Zakończona",
+  cancelled: "Anulowana",
+  rejected: "Odrzucona",
+  quote: "Wycena",
+  declined: "Wycena odrzucona",
+};
+
 export function getCalendarCustomerName(
   customer: CalendarReservationDescription["customer"],
 ): string {
@@ -54,6 +65,10 @@ export function getCalendarCustomerName(
   return personName || customer.email?.trim() || "Customer";
 }
 
+export function getCalendarReservationStatusLabel(status: string): string {
+  return RESERVATION_STATUS_LABELS[status] ?? status;
+}
+
 export function getReservationCalendarTitle(
   reservation: Pick<CalendarReservationDescription, "internalTitle" | "number" | "customer">,
 ): string {
@@ -63,6 +78,12 @@ export function getReservationCalendarTitle(
   if (reservation.customer.customerType === "business") {
     const companyName = reservation.customer.companyName?.trim();
     if (companyName) return companyName;
+  } else {
+    const personName = [reservation.customer.firstName, reservation.customer.lastName]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join(" ");
+    if (personName) return personName;
   }
 
   return reservation.number;
@@ -206,24 +227,64 @@ export function buildReservationCalendarDescription({
     .join("\n\n");
 }
 
+function buildGoogleCalendarDescription({
+  reservation,
+  productNames,
+  statusLabel,
+  clientName,
+  reservationUrl,
+}: {
+  reservation: CalendarReservationDescription;
+  productNames: string[];
+  statusLabel: string;
+  clientName: string;
+  reservationUrl: string;
+}): string {
+  return [
+    joinSection([
+      "KLIENT",
+      `Klient: ${clientName}`,
+      reservation.customer.email ? `E-mail: ${reservation.customer.email}` : null,
+      reservation.customer.phone ? `Telefon: ${reservation.customer.phone}` : null,
+    ]),
+    joinSection([
+      "REZERWACJA",
+      `Status: ${statusLabel}`,
+      `Numer: ${reservation.number}`,
+      `Produkty:\n${productNames.join(",\n")}`,
+      `Suma: ${reservation.totalAmount} PLN`,
+      `Link: ${reservationUrl}`,
+    ]),
+    reservation.customerNotes
+      ? joinSection(["UWAGI", `Uwagi klienta: ${reservation.customerNotes}`])
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function buildReservationCalendarEventDetails(params: {
   reservation: CalendarReservationDescription;
-  store: CalendarStoreLocation;
-  productNames: string;
+  productNames: string[];
   roomNames: string[];
   statusLabel: string;
   reservationUrl: string;
 }): {
   summary: string;
   description: string;
+  location?: string;
   startDate: Date;
   endDate: Date;
 } {
   return {
     summary: getReservationCalendarTitle(params.reservation),
-    description: buildReservationCalendarDescription({
-      ...params,
+    location: params.roomNames.length > 0 ? params.roomNames.join(", ") : undefined,
+    description: buildGoogleCalendarDescription({
+      reservation: params.reservation,
+      productNames: params.productNames,
+      statusLabel: params.statusLabel,
       clientName: getCalendarCustomerName(params.reservation.customer),
+      reservationUrl: params.reservationUrl,
     }),
     startDate: params.reservation.startDate,
     endDate: params.reservation.endDate,

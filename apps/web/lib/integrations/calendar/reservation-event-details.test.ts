@@ -4,6 +4,7 @@ import test, { describe } from "node:test";
 import {
   buildReservationCalendarEventDetails,
   getCalendarCustomerName,
+  getCalendarReservationStatusLabel,
   getCalendarRoomNames,
   getReservationCalendarTitle,
 } from "./reservation-event-details";
@@ -15,12 +16,12 @@ describe("reservation-event-details", () => {
     lastName: "Lovelace",
     companyName: "Ignored for individual clients",
     email: "ada@example.com",
-    phone: null,
+    phone: "+48 123 456 789",
   };
   const startDate = new Date("2026-11-20T09:00:00.000Z");
   const endDate = new Date("2026-11-20T12:00:00.000Z");
 
-  test("uses internal title first, then business name, then reservation number", () => {
+  test("uses internal title first, then the correct customer name, then reservation number", () => {
     assert.equal(
       getReservationCalendarTitle({
         internalTitle: "  Private event  ",
@@ -39,11 +40,52 @@ describe("reservation-event-details", () => {
     );
     assert.equal(
       getReservationCalendarTitle({
-        internalTitle: " ",
+        internalTitle: null,
         number: "R-102",
         customer,
       }),
-      "R-102",
+      "Ada Lovelace",
+    );
+    assert.equal(
+      getReservationCalendarTitle({
+        internalTitle: " ",
+        number: "R-103",
+        customer,
+      }),
+      "Ada Lovelace",
+    );
+    assert.equal(
+      getReservationCalendarTitle({
+        internalTitle: null,
+        number: "R-104",
+        customer: { ...customer, firstName: null, lastName: null },
+      }),
+      "R-104",
+    );
+  });
+
+  test("uses full Polish words for each reservation status", () => {
+    assert.deepEqual(
+      [
+        "pending",
+        "confirmed",
+        "ongoing",
+        "completed",
+        "cancelled",
+        "rejected",
+        "quote",
+        "declined",
+      ].map(getCalendarReservationStatusLabel),
+      [
+        "Oczekująca",
+        "Potwierdzona",
+        "W trakcie",
+        "Zakończona",
+        "Anulowana",
+        "Odrzucona",
+        "Wycena",
+        "Wycena odrzucona",
+      ],
     );
   });
 
@@ -78,7 +120,7 @@ describe("reservation-event-details", () => {
     );
   });
 
-  test("builds title, event time, and room details", () => {
+  test("builds Polish event details, keeps data values, and uses rooms as location", () => {
     const details = buildReservationCalendarEventDetails({
       reservation: {
         internalTitle: null,
@@ -86,22 +128,61 @@ describe("reservation-event-details", () => {
         startDate,
         endDate,
         totalAmount: "125.00",
-        customerNotes: null,
+        customerNotes: "Keep these notes unchanged",
         customer,
       },
-      store: { name: "Rental store", address: null },
-      productNames: "Camera, Studio (x2)",
-      roomNames: ["Studio (x2)"],
-      statusLabel: "[OK]",
+      productNames: ["Camera", "Studio (x2)"],
+      roomNames: ["Studio (x2)", "Meeting room"],
+      statusLabel: "Potwierdzona",
       reservationUrl: "https://example.com/dashboard/reservations/R-103",
     });
 
-    assert.equal(details.summary, "R-103");
+    assert.equal(details.summary, "Ada Lovelace");
+    assert.equal(details.location, "Studio (x2), Meeting room");
     assert.equal(details.startDate, startDate);
     assert.equal(details.endDate, endDate);
-    assert.match(details.description, /Guest: Ada Lovelace/);
-    assert.match(details.description, /Statut: \[OK\]/);
-    assert.match(details.description, /ROOMS\nStudio \(x2\)/);
+    assert.equal(
+      details.description,
+      [
+        "KLIENT",
+        "Klient: Ada Lovelace",
+        "E-mail: ada@example.com",
+        "Telefon: +48 123 456 789",
+        "",
+        "REZERWACJA",
+        "Status: Potwierdzona",
+        "Numer: R-103",
+        "Produkty:",
+        "Camera,",
+        "Studio (x2)",
+        "Suma: 125.00 PLN",
+        "Link: https://example.com/dashboard/reservations/R-103",
+        "",
+        "UWAGI",
+        "Uwagi klienta: Keep these notes unchanged",
+      ].join("\n"),
+    );
     assert.doesNotMatch(details.description, /Ignored for individual clients/);
+    assert.doesNotMatch(details.description, /LOGISTIQUE|LOGISTYKA|ROOMS|EUR/);
+  });
+
+  test("omits location when no reserved room products were selected", () => {
+    const details = buildReservationCalendarEventDetails({
+      reservation: {
+        internalTitle: "Event",
+        number: "R-105",
+        startDate,
+        endDate,
+        totalAmount: "50.00",
+        customerNotes: null,
+        customer,
+      },
+      productNames: ["Camera"],
+      roomNames: [],
+      statusLabel: "Oczekująca",
+      reservationUrl: "https://example.com/dashboard/reservations/R-105",
+    });
+
+    assert.equal(details.location, undefined);
   });
 });
