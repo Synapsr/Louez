@@ -2910,6 +2910,7 @@
         "autofillHint": "Vorgeschlagene Einheiten ausgewählt. Klicken Sie auf Speichern, um zu bestätigen.",
         "suggestUnits": "Einheiten vorschlagen"
       },
+      "openChoice": "offen",
       "smartActions": {
         "paymentIncomplete": "Miete nicht bezahlt ({remaining} verbleibend)",
         "depositNotCollected": "Kaution nicht eingezogen ({amount})",
@@ -7889,7 +7890,7 @@
       "bookingAttributeNone": "Keine",
       "availableForSelection": "Verfügbar für diese Auswahl: {count}",
       "quantityPerCombinationHint": "Die Menge gilt nur für die ausgewählte Option. Fügen Sie eine weitere Option als separate Zeile hinzu.",
-      "quantityCanSplitHint": "Die Menge kann auf passende Optionen aufgeteilt und als separate Zeilen hinzugefügt werden.",
+      "openOptionsHint": "Offen gelassene Optionen wählt der Verleiher aus.",
       "inCartCount": "Bereits im Warenkorb: {count}",
       "selectionUnavailable": "Für diese Auswahl ist keine Kombination verfügbar.",
       "gallery": {

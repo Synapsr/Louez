@@ -2871,6 +2871,7 @@
         "autofillHint": "Sugerowane jednostki wybrane. Kliknij Zapisz, aby potwierdzić.",
         "suggestUnits": "Zaproponuj jednostki"
       },
+      "openChoice": "do wyboru",
       "smartActions": {
         "paymentIncomplete": "Wynajem nieopłacony ({remaining} pozostało)",
         "depositNotCollected": "Kaucja niepobrana ({amount})",
@@ -7889,7 +7890,7 @@
       "bookingAttributeNone": "Brak",
       "availableForSelection": "Dostępne dla tego wyboru: {count}",
       "quantityPerCombinationHint": "Ilość dotyczy tylko wybranej opcji. Dodaj kolejną opcję jako osobną linię.",
-      "quantityCanSplitHint": "Ilość może zostać rozdzielona pomiędzy pasujące opcje i dodana jako osobne linie.",
+      "openOptionsHint": "Opcje pozostawione bez wyboru wybierze wypożyczalnia.",
       "inCartCount": "Już w koszyku: {count}",
       "selectionUnavailable": "Żadna kombinacja nie jest dostępna dla tego wyboru.",
       "gallery": {

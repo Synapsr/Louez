@@ -1016,11 +1016,14 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       const large = await marketplaceBooks({ color: "red" });
       assert.equal(large.outcome, "written");
       const lines = await louezDb.db
-        .select({ combinationKey: louezDb.reservationItems.combinationKey })
+        .select({
+          combinationKey: louezDb.reservationItems.combinationKey,
+          selectedAttributes: louezDb.reservationItems.selectedAttributes,
+        })
         .from(louezDb.reservationItems)
         .where(eq(louezDb.reservationItems.reservationId, large.holdId));
-      // The red M comes first in the order of the combinations: it is passed over.
-      assert.deepEqual(lines, [{ combinationKey: "size:L|color:red" }]);
+      // The red L serves it, but the size stays open: no size is written as chosen.
+      assert.deepEqual(lines, [{ combinationKey: null, selectedAttributes: { color: "red" } }]);
     });
   });
 

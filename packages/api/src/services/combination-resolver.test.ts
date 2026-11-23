@@ -66,6 +66,15 @@ const combinations = [
   }),
 ];
 
+const trackedAvailability = {
+  productId: "p1",
+  totalQuantity: 5,
+  reservedQuantity: 2,
+  availableQuantity: 3,
+  status: "limited" as const,
+  combinations,
+};
+
 test("picks the first combination in axis order that holds the quantity", () => {
   const picked = pickDeterministicCombination({
     combinations,
@@ -126,19 +135,12 @@ test("resolveLineCombination books the default combination for untracked product
   });
 });
 
-test("resolveLineCombination exposes the picked combination for tracked products", () => {
+test("resolveLineCombination books the chosen combination for tracked products", () => {
   const resolved = resolveLineCombination({
     product: { trackUnits: true, bookingAttributeAxes: axes },
-    availability: {
-      productId: "p1",
-      totalQuantity: 5,
-      reservedQuantity: 2,
-      availableQuantity: 3,
-      status: "limited",
-      combinations,
-    },
+    availability: trackedAvailability,
     quantity: 1,
-    selectedAttributes: { size: "M" },
+    selectedAttributes: { size: "M", color: "blue" },
   });
 
   assert.deepEqual(resolved, {
@@ -146,4 +148,45 @@ test("resolveLineCombination exposes the picked combination for tracked products
     selectedAttributes: { size: "M", color: "blue" },
     availableQuantity: 1,
   });
+});
+
+test("resolveLineCombination leaves an unchosen size open instead of picking one", () => {
+  const resolved = resolveLineCombination({
+    product: { trackUnits: true, bookingAttributeAxes: axes },
+    availability: trackedAvailability,
+    quantity: 3,
+  });
+
+  // M blue and S red hold three between them: no single one does.
+  assert.deepEqual(resolved, {
+    combinationKey: "__default",
+    selectedAttributes: {},
+    availableQuantity: 3,
+  });
+});
+
+test("resolveLineCombination keeps a partial choice as it was made", () => {
+  const resolved = resolveLineCombination({
+    product: { trackUnits: true, bookingAttributeAxes: axes },
+    availability: trackedAvailability,
+    quantity: 2,
+    selectedAttributes: { size: "S" },
+  });
+
+  assert.deepEqual(resolved, {
+    combinationKey: "__default",
+    selectedAttributes: { size: "S" },
+    availableQuantity: 2,
+  });
+});
+
+test("resolveLineCombination refuses an open line the matching combinations cannot hold", () => {
+  const resolved = resolveLineCombination({
+    product: { trackUnits: true, bookingAttributeAxes: axes },
+    availability: trackedAvailability,
+    quantity: 2,
+    selectedAttributes: { color: "blue" },
+  });
+
+  assert.equal(resolved, null);
 });

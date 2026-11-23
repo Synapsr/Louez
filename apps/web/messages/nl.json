@@ -2871,6 +2871,7 @@
         "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen.",
         "suggestUnits": "Eenheden voorstellen"
       },
+      "openChoice": "nog te kiezen",
       "smartActions": {
         "paymentIncomplete": "Huur niet betaald ({remaining} resterend)",
         "depositNotCollected": "Borg niet geïnd ({amount})",
@@ -7889,7 +7890,7 @@
       "bookingAttributeNone": "Geen",
       "availableForSelection": "Beschikbaar voor deze selectie: {count}",
       "quantityPerCombinationHint": "Aantal geldt alleen voor de geselecteerde optie. Voeg een andere optie toe als afzonderlijke regel.",
-      "quantityCanSplitHint": "Aantal kan worden verdeeld over overeenkomende opties en als afzonderlijke regels worden toegevoegd.",
+      "openOptionsHint": "Opties die je openlaat, kiest de verhuurder.",
       "inCartCount": "Al in winkelwagen: {count}",
       "selectionUnavailable": "Geen combinatie beschikbaar voor deze selectie.",
       "gallery": {

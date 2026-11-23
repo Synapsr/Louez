@@ -2,7 +2,7 @@
 
 import { CheckSolidIcon } from '@louez/ui/icons'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 
 import {
   AlertCircle,
@@ -46,6 +46,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { invalidateReservationAll } from '@/lib/orpc/invalidation';
 import { orpc } from '@/lib/orpc/react';
+import type { LineAttribute } from '@/lib/reservations/util.line-attributes';
 
 interface AvailableUnit {
   id: string;
@@ -78,8 +79,8 @@ interface UnitAssignmentSelectorProps {
   quantity: number;
   trackUnits: boolean;
   initialAssignedUnitIds?: string[];
-  selectedAttributes?: Record<string, string> | null;
-  attributeLabelsByKey?: Record<string, string> | null;
+  /** The line's options as booked (`describeLineAttributes`). */
+  lineAttributes?: LineAttribute[];
 }
 
 export function UnitAssignmentSelector({
@@ -89,10 +90,10 @@ export function UnitAssignmentSelector({
   quantity,
   trackUnits,
   initialAssignedUnitIds = [],
-  selectedAttributes,
-  attributeLabelsByKey,
+  lineAttributes = [],
 }: UnitAssignmentSelectorProps) {
   const t = useTranslations('dashboard.reservations.unitAssignment');
+  const tReservations = useTranslations('dashboard.reservations');
   const tErrors = useTranslations('errors');
   const queryClient = useQueryClient();
 
@@ -113,23 +114,6 @@ export function UnitAssignmentSelector({
   const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
   const [bufferOverrideFailure, setBufferOverrideFailure] =
     useState<AssignmentFailure | null>(null);
-
-  const displayAttributes = useMemo(() => {
-    const attrs = selectedAttributes || {};
-    const entries = Object.entries(attrs).filter(([, value]) =>
-      Boolean(value && value.trim()),
-    );
-    if (entries.length === 0) return [];
-
-    const labelByKey = attributeLabelsByKey || {};
-    return entries
-      .sort(([a], [b]) => a.localeCompare(b, 'en'))
-      .map(([key, value]) => ({
-        key,
-        label: labelByKey[key] || key,
-        value: value.trim(),
-      }));
-  }, [attributeLabelsByKey, selectedAttributes]);
 
   const unitsQuery = useQuery({
     ...orpc.dashboard.reservations.getAvailableUnitsForItem.queryOptions({
@@ -450,15 +434,15 @@ export function UnitAssignmentSelector({
         </div>
       </div>
 
-      {displayAttributes.length > 0 && (
+      {lineAttributes.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-xs">
             {t('optionsLabel')}
           </span>
           <div className="flex flex-wrap gap-1">
-            {displayAttributes.map((attr) => (
+            {lineAttributes.map((attr) => (
               <Badge key={attr.key} variant="expired" className="text-xs">
-                {attr.label}: {attr.value}
+                {attr.label}: {attr.value ?? tReservations('openChoice')}
               </Badge>
             ))}
           </div>

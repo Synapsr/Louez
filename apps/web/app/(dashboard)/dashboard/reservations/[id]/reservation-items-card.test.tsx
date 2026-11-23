@@ -115,3 +115,27 @@ test("prices with tax: the subtotal tax included has a line of its own", () => {
   const html = render(reservation);
   assert.match(html, /Sous-total TTC/);
 });
+
+test("a helmet booked without a size shows its size to be chosen, not a size", () => {
+  const html = render({
+    ...reservation,
+    items: [
+      {
+        id: "helmet",
+        productId: "helmet",
+        quantity: 1,
+        unitPrice: "10",
+        totalPrice: "10",
+        combinationKey: null,
+        selectedAttributes: null,
+        product: {
+          name: "Casque",
+          trackUnits: true,
+          bookingAttributeAxes: [{ key: "taille", label: "Taille", position: 0 }],
+        },
+        productSnapshot: { name: "Casque", selectedAttributes: null },
+      },
+    ],
+  });
+  assert.match(html, /Taille: à définir/);
+});

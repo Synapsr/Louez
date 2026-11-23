@@ -2910,6 +2910,7 @@
         "bufferConflictConfirm": "무시하고 할당",
         "suggestUnits": "단위 제안"
       },
+      "openChoice": "미선택",
       "smartActions": {
         "paymentIncomplete": "임대료 미납 ({remaining} 남음)",
         "depositNotCollected": "보증금 미수령 ({amount})",
@@ -7889,7 +7890,7 @@
       },
       "availableForSelection": "이 선택에 사용 가능: {count}",
       "quantityPerCombinationHint": "수량은 선택한 옵션에만 적용됩니다. 다른 옵션을 별도의 줄로 추가하세요.",
-      "quantityCanSplitHint": "수량은 일치하는 옵션으로 분할하여 별도의 줄로 추가할 수 있습니다.",
+      "openOptionsHint": "선택하지 않은 옵션은 대여점에서 정합니다.",
       "inCartCount": "이미 장바구니에 있음: {count}",
       "selectionUnavailable": "이 선택 항목에 사용할 수 있는 조합이 없습니다.",
       "gallery": {

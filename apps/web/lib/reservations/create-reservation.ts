@@ -45,6 +45,7 @@ import {
   advisorValidationCovers,
   normalizeCurrency,
   validateStripePaymentAmount,
+  type LineChoice,
 } from "@louez/utils";
 
 import { env } from "@/env";
@@ -99,8 +100,8 @@ import {
   lockReservationProducts,
   preflightStock,
   reserveInventory,
-  type ResolvedLineCombination,
 } from "@louez/api/services/reservation-inventory";
+import { bookedChoiceOf, openChoiceOf, toInventoryLine } from "./util.booked-choice";
 import {
   resolveDelivery,
   validateDeliveryMinimumOrder,
@@ -669,16 +670,15 @@ const findMarketplaceReplay = async (
 const buildProductSnapshot = (
   catalog: PricingCatalog,
   item: CreateReservationRequest["items"][number],
-  resolved: ResolvedLineCombination | undefined,
+  choice: LineChoice,
 ): ProductSnapshot => {
   const product = catalog.get(item.productId);
   return {
     name: product?.name ?? "",
     description: null,
     images: product?.images.slice(0, 1) ?? [],
-    combinationKey: resolved?.combinationKey || item.resolvedCombinationKey || null,
-    selectedAttributes:
-      resolved?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null,
+    combinationKey: choice.combinationKey,
+    selectedAttributes: choice.selectedAttributes,
   };
 };
 
@@ -764,13 +764,13 @@ const buildReservationValues = (
 const buildReservationItemValues = (
   request: CreateReservationRequest,
   prepared: PreparedReservation,
-  resolvedCombinationByLineKey: Map<string, ResolvedLineCombination>,
+  choices: LineChoice[],
 ): ReservationItemValues[] => {
   const { cart, insurance, totals } = prepared;
 
   const lines = request.items.map((item, index): ReservationItemValues => {
     const line = cart.lines[index];
-    const resolved = resolvedCombinationByLineKey.get(getReservationLineKey(item, index));
+    const choice = choices[index] ?? { combinationKey: null, selectedAttributes: null };
     const tax = getReservationItemTaxFields(totals, line, index);
 
     return {
@@ -779,10 +779,9 @@ const buildReservationItemValues = (
       quantity: item.quantity,
       // Its prices, breakdown (the promotion included, slice 9) and tax figures, as every creator stores them.
       ...catalogueLineValues(prepared.catalog.get(line.productId), line, tax),
-      productSnapshot: buildProductSnapshot(prepared.catalog, item, resolved),
-      combinationKey: resolved?.combinationKey || item.resolvedCombinationKey || null,
-      selectedAttributes:
-        resolved?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null,
+      productSnapshot: buildProductSnapshot(prepared.catalog, item, choice),
+      combinationKey: choice.combinationKey,
+      selectedAttributes: choice.selectedAttributes,
     };
   });
 
@@ -998,11 +997,14 @@ const writeReservation = async (
     // Locked before the stock check: the resumed reservation is either reused
     // or replaced below, so its own hold must not count against this checkout.
     const resumed = await lockResumableCheckout(tx, owner, store.id, resumable);
+    const openChoices = request.items.map((item) =>
+      openChoiceOf(item, lockedProductsById.get(item.productId)),
+    );
     const inventoryResult = await reserveInventory({
       tx,
       storeId: store.id,
       lockedProductsById,
-      lines: request.items,
+      lines: request.items.map((item, index) => toInventoryLine(item, openChoices[index] ?? null)),
       window,
       turnoverBufferMinutes,
       blockingStatuses,
@@ -1049,7 +1051,17 @@ const writeReservation = async (
     }
 
     const reservationValues = buildReservationValues(request, prepared, customer.id);
-    const itemValues = buildReservationItemValues(request, prepared, resolvedCombinationByLineKey);
+    const itemValues = buildReservationItemValues(
+      request,
+      prepared,
+      request.items.map((item, index) =>
+        bookedChoiceOf(
+          item,
+          openChoices[index] ?? null,
+          resolvedCombinationByLineKey.get(getReservationLineKey(item, index)),
+        ),
+      ),
+    );
 
     // Same cart, same customer, same options: the earlier reservation is the
     // booking. Only what this attempt recorded per unit is written onto it;

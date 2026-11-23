@@ -2910,6 +2910,7 @@
         "bufferConflictCancel": "Keep selection",
         "bufferConflictConfirm": "Assign anyway"
       },
+      "openChoice": "to be chosen",
       "smartActions": {
         "paymentIncomplete": "Rental unpaid ({remaining} remaining)",
         "depositNotCollected": "Deposit not collected ({amount})",
@@ -7889,7 +7890,7 @@
       },
       "availableForSelection": "Available for this selection: {count}",
       "quantityPerCombinationHint": "Quantity applies to the selected option only. Add another option as a separate line.",
-      "quantityCanSplitHint": "Quantity can be split across matching options and added as separate lines.",
+      "openOptionsHint": "Options you leave open are chosen by the rental shop.",
       "inCartCount": "Already in cart: {count}",
       "selectionUnavailable": "No combination is available for this selection.",
       "gallery": {

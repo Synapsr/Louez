@@ -9,7 +9,10 @@ import type {
 import {
   DEFAULT_COMBINATION_KEY,
   getDeterministicCombinationSortValue,
+  getTotalAvailableForSelection,
+  leavesChoiceOpen,
   matchesSelectedAttributes,
+  readLineChoice,
 } from "@louez/utils";
 import { and, eq } from "drizzle-orm";
 import { ApiServiceError } from "./errors";
@@ -65,6 +68,10 @@ export function pickDeterministicCombination({
 /**
  * Combination a resolved cart line books, from availability already computed.
  * Products without unit tracking always resolve to the default combination.
+ * A line that leaves a size or a colour open books none (`readLineChoice`):
+ * it fits when the matching combinations hold the quantity between them, and
+ * resolves to the pooled key with only the values it chose, so nothing the
+ * customer did not pick is shown or sent as their choice.
  */
 export function resolveLineCombination(params: {
   product: { trackUnits: boolean; bookingAttributeAxes: BookingAttributeAxis[] | null };
@@ -80,6 +87,21 @@ export function resolveLineCombination(params: {
       selectedAttributes: {},
       availableQuantity: availability.availableQuantity,
     };
+  }
+
+  const choice = readLineChoice(product, selectedAttributes);
+  if (leavesChoiceOpen(product, choice)) {
+    const available = getTotalAvailableForSelection(
+      availability.combinations,
+      choice.selectedAttributes,
+    );
+    return available >= quantity
+      ? {
+          combinationKey: DEFAULT_COMBINATION_KEY,
+          selectedAttributes: choice.selectedAttributes ?? {},
+          availableQuantity: available,
+        }
+      : null;
   }
 
   const combination = pickDeterministicCombination({

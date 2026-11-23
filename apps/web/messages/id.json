@@ -2910,6 +2910,7 @@
         "bufferConflictConfirm": "Tetap tetap tetapkan",
         "suggestUnits": "Sarankan unit"
       },
+      "openChoice": "belum dipilih",
       "smartActions": {
         "paymentIncomplete": "Sewa belum dibayar (sisa {remaining})",
         "depositNotCollected": "Uang jaminan belum diterima ({amount})",
@@ -7889,7 +7890,7 @@
       },
       "availableForSelection": "Tersedia untuk pilihan ini: {count}",
       "quantityPerCombinationHint": "Kuantitas hanya berlaku untuk opsi yang dipilih. Tambahkan opsi lain sebagai baris terpisah.",
-      "quantityCanSplitHint": "Kuantitas dapat dibagi menjadi beberapa opsi pencocokan dan ditambahkan sebagai baris terpisah.",
+      "openOptionsHint": "Opsi yang tidak Anda pilih akan ditentukan oleh toko rental.",
       "inCartCount": "Sudah ada di keranjang: {count}",
       "selectionUnavailable": "Tidak ada kombinasi yang tersedia untuk pilihan ini.",
       "gallery": {

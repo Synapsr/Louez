@@ -114,7 +114,6 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
   const addToCart = useAddToCart({
     product,
     accessories,
-    axes: booking.attributeAxes,
     openDrawer: false,
   });
 
@@ -158,19 +157,13 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
       return;
     }
 
-    const result = addToCart({
+    addToCart({
       period,
       quantity,
       maxQuantity: capacity.maxQuantity,
       selectedAttributes,
-      allocationMode: hasAxes ? capacity.allocationMode : "single",
-      combinations,
       extraIds,
     });
-    if (!result.ok) {
-      toastManager.add({ title: t("storefront.product.selectionUnavailable"), type: "error" });
-      return;
-    }
     quickAdd.offerExtras(
       { ...product, accessories, quantity: capacity.maxQuantity },
       { startDate: period.start.toISOString(), endDate: period.end.toISOString() },
@@ -182,7 +175,7 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
     ? `${t("storefront.product.availableForSelection", { count: capacity.maxQuantity ?? 0 })} · ${
         capacity.allocationMode === "single"
           ? t("storefront.product.quantityPerCombinationHint")
-          : t("storefront.product.quantityCanSplitHint")
+          : t("storefront.product.openOptionsHint")
       }`
     : undefined;
 

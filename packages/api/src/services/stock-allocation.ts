@@ -16,8 +16,8 @@
  *   combination, one by one, each only if it fits.
  * - Then the lines, in their order. A spread line (one booked with no exact
  *   combination) is a demand like the others' and gets the most that fits
- *   next to what was granted before it. A single line (a checkout line, or
- *   any line with an exact combination) is placed whole on its first candidate where
+ *   next to what was granted before it. A single line (any line not booked
+ *   spread) is placed whole on its first candidate where
  *   what was granted, the spread lines after it and the other bookings still
  *   fit, or failing that on its first candidate where what was granted still
  *   fits. A placement is never revisited.

@@ -284,6 +284,16 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
     });
   });
 
+  test("a checkout line that left its size open spreads over the sizes, choosing none", async () => {
+    const { storeId, productId } = await sizedProduct(["M", "L"]);
+    // No single size holds two: the line is served by both, as the checkout books it.
+    const lines = [{ lineId: "open", productId, quantity: 2, combinationKey: null, pooled: true }];
+
+    assert.deepEqual(await resolvedBy(storeId, lines), [
+      { combinationKey: "__default", selectedAttributes: {} },
+    ]);
+  });
+
   test("a held unit whose combination is taken is short, and the rest still floats", async () => {
     const {
       storeId,

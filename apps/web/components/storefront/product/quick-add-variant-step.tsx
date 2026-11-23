@@ -2,13 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { useTranslations } from "next-intl";
-
-import { toastManager } from "@louez/ui";
-import { allocateAcrossCombinations } from "@louez/utils";
-
 import type { StorefrontCatalogProduct } from "@/lib/storefront/storefront.types";
-import { pickActiveVariantAttributes } from "@/lib/util.variant-visibility";
 import { type CartLineInput, toCartLineInput } from "@/lib/utils/util.cart-line-input";
 import { parseRentalPeriod } from "@/lib/utils/util.rental-period";
 import { deriveAttributeValues } from "@/lib/utils/util.variant-combinations";
@@ -28,11 +22,10 @@ interface QuickAddVariantStepProps {
 /**
  * The variant a card cannot ask for: the product recalled at the top, one
  * select per axis fed by the combinations free on the period, and how
- * many units. Leaving an axis open is allowed, as on the product page — the
- * cart then spreads the units over whichever combinations have them.
+ * many units. Leaving an axis open is allowed, as on the product page: the
+ * line stays open, and the store picks the units among those that match.
  */
 export const QuickAddVariantStep = ({ product, period, onConfirm }: QuickAddVariantStepProps) => {
-  const t = useTranslations("storefront");
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [requestedQuantity, setRequestedQuantity] = useState(1);
 
@@ -63,27 +56,6 @@ export const QuickAddVariantStep = ({ product, period, onConfirm }: QuickAddVari
   const isChecking = availability.maxQuantity === undefined && availability.isChecking;
 
   const confirm = () => {
-    if (capacity.allocationMode === "split") {
-      const allocations = allocateAcrossCombinations(axes, combinations, selected, quantity);
-      if (!allocations || allocations.length === 0) {
-        toastManager.add({ title: t("product.selectionUnavailable"), type: "error" });
-        return;
-      }
-      onConfirm(
-        allocations.map((allocation) =>
-          toCartLineInput(product, {
-            quantity: allocation.quantity,
-            maxQuantity: Math.max(1, allocation.combination.availableQuantity || 0),
-            selectedAttributes: pickActiveVariantAttributes(
-              axes,
-              allocation.combination.selectedAttributes,
-            ),
-          }),
-        ),
-      );
-      return;
-    }
-
     onConfirm([
       toCartLineInput(product, {
         quantity,
