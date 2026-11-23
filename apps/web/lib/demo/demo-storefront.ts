@@ -26,8 +26,11 @@ export interface DemoStorefrontScenario {
 
 export interface DemoStorefrontGuideData {
   scenarios: DemoStorefrontScenario[];
-  /** The store's dashboard, on the app host, where the demo account is signed in. */
-  dashboardUrl: string;
+  /**
+   * « Voir côté loueur »: the visitor's last booking in the dashboard, on the
+   * app host where the demo account is signed in (app/demo/rental-side).
+   */
+  rentalSideUrl: string;
 }
 
 /**
@@ -72,6 +75,6 @@ export async function getDemoStorefrontGuide(store: {
 
   return {
     scenarios,
-    dashboardUrl: `${env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/dashboard`,
+    rentalSideUrl: `${env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/demo/rental-side`,
   };
 }

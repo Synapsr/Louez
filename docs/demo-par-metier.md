@@ -30,7 +30,10 @@ catalogue « Ar Mor Location » du seed de démo) et **événementiel**
    les deux ou trois gestes qui restent.
 4. Le visiteur réserve sous une identité inventée, déjà remplie, et le paiement est
    simulé (la page de paiement simulé des réservations test). Sa page de réservation
-   porte « Voir côté loueur », qui ouvre cette réservation dans le tableau de bord.
+   porte « Voir côté loueur », qui ouvre cette réservation dans le tableau de bord. Le
+   « Voir côté loueur » de la barre et de la carte mène aussi à la dernière réservation
+   du visiteur (`/demo/rental-side`), pas à la liste : une boutique de démo en contient
+   des dizaines.
 5. Le tableau de bord garde, au-dessus de tout, sa barre d'une ligne et le guide « À
    essayer » (état des lieux d'un départ, caution d'une location en cours).
    « Créer ma boutique gratuite » (`/demo/signup`) compte le clic, déconnecte le compte

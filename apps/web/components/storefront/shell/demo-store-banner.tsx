@@ -4,9 +4,9 @@ import { env } from "@/env";
 
 /**
  * The storefront's bar in a demo store (lib/demo), the dashboard's own bar in
- * the store's frame: it is a demonstration and the payment is simulated, back
- * to the store's dashboard, or on to the sign-up. Both links lead to the
- * dashboard host, where the demo lives.
+ * the store's frame: it is a demonstration and the payment is simulated, on to
+ * the rental side (the visitor's last booking, app/demo/rental-side), or to
+ * the sign-up. Both links lead to the dashboard host, where the demo lives.
  */
 export const DemoStoreBanner = async () => {
   const t = await getTranslations("demo.storefrontBanner");
@@ -23,7 +23,7 @@ export const DemoStoreBanner = async () => {
         <span className="hidden sm:inline">{t("line")}</span>
       </p>
       <a
-        href={`${appUrl}/dashboard`}
+        href={`${appUrl}/demo/rental-side`}
         className="hidden shrink-0 text-[13px] text-white/75 transition-colors hover:text-white md:inline"
       >
         {t("dashboard")}

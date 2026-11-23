@@ -151,7 +151,7 @@ export const DemoStorefrontGuide = ({
                   {t("otherScenario")}
                 </button>
                 <a
-                  href={`${guide.dashboardUrl}/reservations`}
+                  href={guide.rentalSideUrl}
                   className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                 >
                   {t("ownerSide")}
