@@ -73,20 +73,20 @@ export function getReservationCalendarTitle(
   reservation: Pick<CalendarReservationDescription, "internalTitle" | "number" | "customer">,
 ): string {
   const internalTitle = reservation.internalTitle?.trim();
-  if (internalTitle) return internalTitle;
-
+  let customerName: string | null = null;
   if (reservation.customer.customerType === "business") {
-    const companyName = reservation.customer.companyName?.trim();
-    if (companyName) return companyName;
+    customerName = reservation.customer.companyName?.trim() || null;
   } else {
-    const personName = [reservation.customer.firstName, reservation.customer.lastName]
-      .map((part) => part?.trim())
-      .filter(Boolean)
-      .join(" ");
-    if (personName) return personName;
+    customerName =
+      [reservation.customer.firstName, reservation.customer.lastName]
+        .map((part) => part?.trim())
+        .filter(Boolean)
+        .join(" ") || null;
   }
 
-  return reservation.number;
+  return [customerName, `#${reservation.number}`, internalTitle ? `(${internalTitle})` : null]
+    .filter((part): part is string => part !== null)
+    .join(", ");
 }
 
 export function getCalendarRoomNames(
@@ -243,14 +243,14 @@ function buildGoogleCalendarDescription({
   return [
     joinSection([
       "KLIENT",
-      `Klient: ${clientName}`,
+      `Nazwa: ${clientName}`,
       reservation.customer.email ? `E-mail: ${reservation.customer.email}` : null,
       reservation.customer.phone ? `Telefon: ${reservation.customer.phone}` : null,
     ]),
     joinSection([
       "REZERWACJA",
       `Status: ${statusLabel}`,
-      `Numer: ${reservation.number}`,
+      `Numer rezerwacji: #${reservation.number}`,
       `Produkty:\n${productNames.join(",\n")}`,
       `Suma: ${reservation.totalAmount} PLN`,
       `Link: ${reservationUrl}`,
