@@ -93,6 +93,11 @@ export type BuiltMondaySubitemPayload = {
   payloadHash: string;
 };
 
+export type BuiltMondayChecklistPayload = {
+  body: string;
+  hash: string;
+};
+
 export type BuiltMondayItemPayload = {
   itemName: string;
   statusLabel: string;
@@ -100,6 +105,7 @@ export type BuiltMondayItemPayload = {
   payloadHash: string;
   isCancelled: boolean;
   subitems: BuiltMondaySubitemPayload[];
+  checklist: BuiltMondayChecklistPayload;
 };
 
 const DEFAULT_MONDAY_TO_LOUEZ_STATUS_MAP: Record<string, ReservationStatus> = {
@@ -140,11 +146,7 @@ export function getMondayStatusLabelForLouezStatus(
   status: ReservationStatus,
   statusLabels?: MondayStatusLabelsConfig | null,
 ): string {
-  return (
-    statusLabels?.[status]?.trim() ||
-    DEFAULT_MONDAY_STATUS_LABELS[status] ||
-    "Oczekująca"
-  );
+  return statusLabels?.[status]?.trim() || DEFAULT_MONDAY_STATUS_LABELS[status] || "Oczekująca";
 }
 
 export function resolveLouezStatusFromMondayLabel(
@@ -319,6 +321,42 @@ export function buildMondaySubitemPayload(
   };
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return character;
+    }
+  });
+}
+
+export function buildMondayChecklistPayload(itemNames: string[]): BuiltMondayChecklistPayload {
+  const body =
+    itemNames.length > 0
+      ? itemNames
+          .map(
+            (name) =>
+              `<ul class="checklist"><li class="checklist_task">\uFEFF${escapeHtml(name)}</li></ul>`,
+          )
+          .join("")
+      : "<p>Brak pozycji do przygotowania</p>";
+  const hash = createHash("sha256")
+    .update(JSON.stringify({ version: 1, items: itemNames }))
+    .digest("hex");
+
+  return { body, hash };
+}
+
 export function buildMondayReservationPayload(
   reservation: ReservationMondayPayloadInput,
   config: Pick<ResolvedMondayStoreConfig, "columnConfig" | "statusLabels">,
@@ -326,10 +364,7 @@ export function buildMondayReservationPayload(
 ): BuiltMondayItemPayload {
   const timeZone = reservation.store.settings?.timezone || "Europe/Warsaw";
   const itemName = buildMondayMainItemTitle(reservation);
-  const statusLabel = getMondayStatusLabelForLouezStatus(
-    reservation.status,
-    config.statusLabels,
-  );
+  const statusLabel = getMondayStatusLabelForLouezStatus(reservation.status, config.statusLabels);
   const customerName = getCalendarCustomerName(reservation.customer);
   const reservationUrl = `${appBaseUrl.replace(/\/+$/, "")}/dashboard/reservations/${reservation.id}`;
 
@@ -411,13 +446,14 @@ export function buildMondayReservationPayload(
 
   // Sort subitems so rooms appear first, then equipment products
   const subitems = reservation.items
-    .map((item) => buildMondaySubitemPayload(item, cols))
+    .map((item) => buildMondaySubitemPayload(item))
     .sort((a, b) => {
       if (a.itemKind !== b.itemKind) {
         return a.itemKind === "room" ? -1 : 1;
       }
       return a.name.localeCompare(b.name);
     });
+  const checklist = buildMondayChecklistPayload(subitems.map((subitem) => subitem.name));
 
   const payloadHash = createHash("sha256")
     .update(
@@ -426,6 +462,7 @@ export function buildMondayReservationPayload(
         statusLabel,
         columnValues,
         subitems: subitems.map((s) => s.payloadHash),
+        checklistHash: checklist.hash,
       }),
     )
     .digest("hex");
@@ -437,5 +474,6 @@ export function buildMondayReservationPayload(
     payloadHash,
     isCancelled: isCancelledReservationStatus(reservation.status),
     subitems,
+    checklist,
   };
 }

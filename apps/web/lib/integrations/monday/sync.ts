@@ -1,5 +1,4 @@
 import { and, eq, inArray, lt, lte } from "drizzle-orm";
-import { nanoid } from "nanoid";
 
 import {
   db,
@@ -24,14 +23,9 @@ import {
   createMondayItem,
   createMondayItemUpdate,
   createMondaySubitem,
-  deleteMondaySubitem,
   updateMondayItemColumns,
 } from "./monday-client";
-import {
-  type BuiltMondaySubitemPayload,
-  buildMondayReservationPayload,
-  isCancelledReservationStatus,
-} from "./monday-payload";
+import { buildMondayReservationPayload, isCancelledReservationStatus } from "./monday-payload";
 
 const MAX_ATTEMPTS = 8;
 
@@ -68,55 +62,46 @@ async function loadReservationForMondaySync(reservationId: string) {
   });
 }
 
-async function reconcileMondaySubitems(params: {
+async function reconcileMondayChecklist(params: {
+  mondayMappingId: string;
   storeId: string;
-  reservationId: string;
   mondayParentItemId: string;
   configuredSubitemBoardId: string | null;
   credentials: MondayApiCredentials;
-  desiredSubitems: BuiltMondaySubitemPayload[];
+  subitemId: string | null;
+  subitemBoardId: string | null;
+  checklistHash: string;
+  previousChecklistHash: string | null;
+  checklistBody: string;
 }): Promise<void> {
-  const existingRows = await db
-    .select()
-    .from(reservationMondaySubitems)
-    .where(eq(reservationMondaySubitems.reservationId, params.reservationId));
+  let subitemId = params.subitemId;
+  let subitemBoardId = params.subitemBoardId || params.configuredSubitemBoardId;
+  let previousChecklistHash = params.previousChecklistHash;
 
-  const existingByReservationItemId = new Map(
-    existingRows.map((row) => [row.reservationItemId, row]),
-  );
-  const desiredIds = new Set(params.desiredSubitems.map((sub) => sub.reservationItemId));
+  const createChecklistSubitem = async (): Promise<string> => {
+    const created = await createMondaySubitem({
+      parentItemId: params.mondayParentItemId,
+      itemName: "Sprzęt do przygotowania",
+      credentials: params.credentials,
+    });
 
-  // 1. Delete subitems for reservation_items that were removed during reservation editing
-  for (const existing of existingRows) {
-    if (!desiredIds.has(existing.reservationItemId)) {
-      await deleteMondaySubitem({
-        subitemId: existing.mondaySubitemId,
-        credentials: params.credentials,
-      });
-      await db
-        .delete(reservationMondaySubitems)
-        .where(eq(reservationMondaySubitems.id, existing.id));
-    }
-  }
+    subitemId = created.id;
+    subitemBoardId = created.subitemBoardId ?? subitemBoardId;
+    previousChecklistHash = null;
 
-  let discoveredSubitemBoardId = params.configuredSubitemBoardId;
+    await db.transaction(async (tx) => {
+      await tx
+        .update(reservationMondayItems)
+        .set({
+          checklistSubitemId: subitemId,
+          checklistSubitemBoardId: subitemBoardId,
+          checklistHash: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(reservationMondayItems.id, params.mondayMappingId));
 
-  // 2. Create or update desired subitems
-  for (const desired of params.desiredSubitems) {
-    const existing = existingByReservationItemId.get(desired.reservationItemId);
-
-    if (!existing) {
-      const created = await createMondaySubitem({
-        parentItemId: params.mondayParentItemId,
-        itemName: desired.name,
-        columnValues: desired.columnValues,
-        credentials: params.credentials,
-      });
-
-      const resolvedSubBoardId = created.subitemBoardId ?? discoveredSubitemBoardId ?? null;
-      if (created.subitemBoardId && !discoveredSubitemBoardId) {
-        discoveredSubitemBoardId = created.subitemBoardId;
-        await db
+      if (created.subitemBoardId && !params.configuredSubitemBoardId) {
+        await tx
           .update(storeMondayIntegrations)
           .set({
             subitemBoardId: created.subitemBoardId,
@@ -124,95 +109,49 @@ async function reconcileMondaySubitems(params: {
           })
           .where(eq(storeMondayIntegrations.storeId, params.storeId));
       }
+    });
 
-      const now = new Date();
-      await db
-        .insert(reservationMondaySubitems)
-        .values({
-          id: nanoid(),
-          reservationId: params.reservationId,
-          reservationItemId: desired.reservationItemId,
-          mondayParentItemId: params.mondayParentItemId,
-          mondaySubitemBoardId: resolvedSubBoardId,
-          mondaySubitemId: created.id,
-          itemKind: desired.itemKind,
-          payloadHash: desired.payloadHash,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onDuplicateKeyUpdate({
-          set: {
-            mondayParentItemId: params.mondayParentItemId,
-            mondaySubitemBoardId: resolvedSubBoardId,
-            mondaySubitemId: created.id,
-            itemKind: desired.itemKind,
-            payloadHash: desired.payloadHash,
-            updatedAt: now,
-          },
-        });
-      continue;
-    }
+    return created.id;
+  };
 
-    // If subitem already exists and its payloadHash changed, update it in monday.com
-    if (existing.payloadHash !== desired.payloadHash) {
-      const subitemBoardId = existing.mondaySubitemBoardId || discoveredSubitemBoardId;
-
-      if (subitemBoardId) {
-        try {
-          await updateMondayItemColumns({
-            boardId: subitemBoardId,
-            itemId: existing.mondaySubitemId,
-            columnValues: {
-              ...desired.columnValues,
-              name: desired.name,
-            },
-            credentials: params.credentials,
-          });
-
-          await db
-            .update(reservationMondaySubitems)
-            .set({
-              itemKind: desired.itemKind,
-              payloadHash: desired.payloadHash,
-              updatedAt: new Date(),
-            })
-            .where(eq(reservationMondaySubitems.id, existing.id));
-          continue;
-        } catch (error) {
-          // If the subitem was manually deleted on the monday.com board, recreate it
-          if (!(error instanceof MondayApiError && error.kind === "not_found")) {
-            throw error;
-          }
-        }
-      } else {
-        // No subitemBoardId cached yet: delete and recreate to capture board.id
-        await deleteMondaySubitem({
-          subitemId: existing.mondaySubitemId,
-          credentials: params.credentials,
-        });
-      }
-
-      const recreated = await createMondaySubitem({
-        parentItemId: params.mondayParentItemId,
-        itemName: desired.name,
-        columnValues: desired.columnValues,
-        credentials: params.credentials,
-      });
-
-      const resolvedSubBoardId = recreated.subitemBoardId ?? discoveredSubitemBoardId ?? null;
-      await db
-        .update(reservationMondaySubitems)
-        .set({
-          mondayParentItemId: params.mondayParentItemId,
-          mondaySubitemBoardId: resolvedSubBoardId,
-          mondaySubitemId: recreated.id,
-          itemKind: desired.itemKind,
-          payloadHash: desired.payloadHash,
-          updatedAt: new Date(),
-        })
-        .where(eq(reservationMondaySubitems.id, existing.id));
-    }
+  if (!subitemId) {
+    subitemId = await createChecklistSubitem();
   }
+
+  if (previousChecklistHash === params.checklistHash) {
+    return;
+  }
+
+  if (!subitemId) {
+    throw new Error("Nie udało się utworzyć podzadania checklisty monday.com");
+  }
+
+  try {
+    await createMondayItemUpdate({
+      itemId: subitemId,
+      body: params.checklistBody,
+      credentials: params.credentials,
+    });
+  } catch (error) {
+    if (!(error instanceof MondayApiError && error.kind === "not_found")) {
+      throw error;
+    }
+
+    subitemId = await createChecklistSubitem();
+    await createMondayItemUpdate({
+      itemId: subitemId,
+      body: params.checklistBody,
+      credentials: params.credentials,
+    });
+  }
+
+  await db
+    .update(reservationMondayItems)
+    .set({
+      checklistHash: params.checklistHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(reservationMondayItems.id, params.mondayMappingId));
 }
 
 async function processMondayOutboxRow(
@@ -222,6 +161,9 @@ async function processMondayOutboxRow(
     reservationId: string;
     mondayBoardId: string | null;
     mondayItemId: string | null;
+    checklistSubitemId: string | null;
+    checklistSubitemBoardId: string | null;
+    checklistHash: string | null;
     payloadHash: string | null;
     lastPushedStatus: string | null;
     attemptCount: number;
@@ -252,14 +194,14 @@ async function processMondayOutboxRow(
     return;
   }
 
-  const built = buildMondayReservationPayload(
-    reservation,
-    storeConfig,
-    env.NEXT_PUBLIC_APP_URL,
-  );
+  const built = buildMondayReservationPayload(reservation, storeConfig, env.NEXT_PUBLIC_APP_URL);
 
   // Fast-path idempotency: if mondayItemId exists and payloadHash matches, skip GraphQL mutation
-  if (row.mondayItemId && row.payloadHash === built.payloadHash) {
+  const checklistIsCurrent =
+    built.isCancelled ||
+    (row.checklistSubitemId !== null && row.checklistHash === built.checklist.hash);
+
+  if (row.mondayItemId && row.payloadHash === built.payloadHash && checklistIsCurrent) {
     await db
       .update(reservationMondayItems)
       .set({
@@ -274,6 +216,9 @@ async function processMondayOutboxRow(
   }
 
   let mondayItemId = row.mondayItemId;
+  let checklistSubitemId = row.checklistSubitemId;
+  let checklistSubitemBoardId = row.checklistSubitemBoardId;
+  let checklistHash = row.checklistHash;
   const previousPushedStatus = row.lastPushedStatus as ReservationStatus | null;
 
   if (mondayItemId) {
@@ -293,9 +238,23 @@ async function processMondayOutboxRow(
       }
 
       // Main item was manually deleted on monday.com: clear stale subitem mappings & recreate item
-      await db
-        .delete(reservationMondaySubitems)
-        .where(eq(reservationMondaySubitems.reservationId, row.reservationId));
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(reservationMondaySubitems)
+          .where(eq(reservationMondaySubitems.reservationId, row.reservationId));
+        await tx
+          .update(reservationMondayItems)
+          .set({
+            checklistSubitemId: null,
+            checklistSubitemBoardId: null,
+            checklistHash: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(reservationMondayItems.id, row.id));
+      });
+      checklistSubitemId = null;
+      checklistSubitemBoardId = null;
+      checklistHash = null;
       mondayItemId = null;
     }
   }
@@ -322,18 +281,19 @@ async function processMondayOutboxRow(
       .where(eq(reservationMondayItems.id, row.id));
   }
 
-  // Reconcile subitems (equipment products & rented rooms).
-  // Note: When a reservation is cancelled, we DO NOT delete the main item or its subitems
-  // so warehouse staff can see what was being prepared; we only change status to "Anulowane"
-  // and post an Update comment.
+  // Keep the last preparation checklist visible when a reservation is cancelled.
   if (!built.isCancelled) {
-    await reconcileMondaySubitems({
+    await reconcileMondayChecklist({
+      mondayMappingId: row.id,
       storeId: row.storeId,
-      reservationId: row.reservationId,
       mondayParentItemId: mondayItemId,
       configuredSubitemBoardId: storeConfig.subitemBoardId,
       credentials,
-      desiredSubitems: built.subitems,
+      subitemId: checklistSubitemId,
+      subitemBoardId: checklistSubitemBoardId,
+      checklistHash: built.checklist.hash,
+      previousChecklistHash: checklistHash,
+      checklistBody: built.checklist.body,
     });
   }
 
@@ -417,6 +377,9 @@ export async function processMondaySyncQueue(options?: {
       reservationId: reservationMondayItems.reservationId,
       mondayBoardId: reservationMondayItems.mondayBoardId,
       mondayItemId: reservationMondayItems.mondayItemId,
+      checklistSubitemId: reservationMondayItems.checklistSubitemId,
+      checklistSubitemBoardId: reservationMondayItems.checklistSubitemBoardId,
+      checklistHash: reservationMondayItems.checklistHash,
       payloadHash: reservationMondayItems.payloadHash,
       lastPushedStatus: reservationMondayItems.lastPushedStatus,
       attemptCount: reservationMondayItems.attemptCount,
@@ -495,10 +458,7 @@ export async function processMondaySyncQueue(options?: {
         })
         .where(eq(storeMondayIntegrations.storeId, row.storeId));
 
-      if (
-        isMondayError &&
-        (error.kind === "rate_limit" || error.kind === "complexity_limit")
-      ) {
+      if (isMondayError && (error.kind === "rate_limit" || error.kind === "complexity_limit")) {
         break;
       }
     }

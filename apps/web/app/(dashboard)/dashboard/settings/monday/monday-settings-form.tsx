@@ -146,33 +146,6 @@ const MAIN_ITEM_COLUMN_FIELDS: ColumnFieldMeta[] = [
   },
 ];
 
-const SUBITEM_COLUMN_FIELDS: ColumnFieldMeta[] = [
-  {
-    key: "subitemQuantityColumnId",
-    label: "ID kolumny Ilości na podzadaniu (Subitem Quantity)",
-    mondayType: "Numbers",
-    placeholder: "np. numbers lub numbers0",
-    description:
-      "Opcjonalna kolumna liczbowa na tablicy Subitemów przechowująca liczbę sztuk danego sprzętu lub pomieszczenia. (Ilość jest zawsze widoczna również w nazwie podzadania, np. '(x2)').",
-  },
-  {
-    key: "subitemTypeColumnId",
-    label: "ID kolumny Typu pozycji (Sprzęt vs Pomieszczenie)",
-    mondayType: "Text lub Status",
-    placeholder: "np. text0 lub status",
-    description:
-      "Opcjonalna kolumna na tablicy Subitemów określająca, czy pozycja to 'Pomieszczenie' (do przygotowania) czy 'Sprzęt' (do wydania z magazynu).",
-  },
-  {
-    key: "subitemUnitsColumnId",
-    label: "ID kolumny Przypisanych egzemplarzy / Numerów seryjnych",
-    mondayType: "Text",
-    placeholder: "np. text_units",
-    description:
-      "Opcjonalna kolumna tekstowa na tablicy Subitemów, w której pojawią się przypisane w Louez identyfikatory konkretnych sztuk sprzętu (np. '#FX3-01, #FX3-02').",
-  },
-];
-
 const STATUS_LABEL_FIELDS: Array<{
   key: keyof MondayDashboardState["statusLabels"];
   louezBadge: string;
@@ -232,8 +205,7 @@ const STATUS_LABEL_FIELDS: Array<{
     key: "declined",
     louezBadge: "declined",
     title: "Wycena odrzucona przez klienta (declined)",
-    description:
-      "Etykieta statusu w monday.com ustawiana, gdy klient odrzuci przesłaną wycenę.",
+    description: "Etykieta statusu w monday.com ustawiana, gdy klient odrzuci przesłaną wycenę.",
   },
 ];
 
@@ -261,20 +233,14 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
   const [inspection, setInspection] = useState<MondayBoardInspectionResult | null>(null);
   const [inspectionError, setInspectionError] = useState<string | null>(null);
 
-  const updateColumnField = (
-    key: keyof MondayDashboardState["columnConfig"],
-    value: string,
-  ) => {
+  const updateColumnField = (key: keyof MondayDashboardState["columnConfig"], value: string) => {
     setColumnConfig((prev) => ({
       ...prev,
       [key]: value,
     }));
   };
 
-  const updateStatusLabel = (
-    key: keyof MondayDashboardState["statusLabels"],
-    value: string,
-  ) => {
+  const updateStatusLabel = (key: keyof MondayDashboardState["statusLabels"], value: string) => {
     setStatusLabels((prev) => ({
       ...prev,
       [key]: value,
@@ -321,10 +287,7 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
       if (result.inspection.currentUser?.id && !botUserId.trim()) {
         setBotUserId(result.inspection.currentUser.id);
       }
-      if (
-        result.inspection.board?.detectedSubitemBoardId &&
-        !subitemBoardId.trim()
-      ) {
+      if (result.inspection.board?.detectedSubitemBoardId && !subitemBoardId.trim()) {
         setSubitemBoardId(result.inspection.board.detectedSubitemBoardId);
       }
 
@@ -415,11 +378,7 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
               <Badge variant={enabled ? "success" : "expired"}>
                 {enabled ? "Aktywna" : "Wyłączona"}
               </Badge>
-              <Switch
-                id="monday-enabled-switch"
-                checked={enabled}
-                onCheckedChange={setEnabled}
-              />
+              <Switch id="monday-enabled-switch" checked={enabled} onCheckedChange={setEnabled} />
             </div>
           </div>
         </CardHeader>
@@ -497,9 +456,7 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
           <div className="grid gap-5 md:grid-cols-2">
             {/* API Token */}
             <div className="space-y-1.5">
-              <Label htmlFor="monday-api-token">
-                Token API monday.com (`MONDAY_API_TOKEN`) *
-              </Label>
+              <Label htmlFor="monday-api-token">Token API monday.com (`MONDAY_API_TOKEN`) *</Label>
               <Input
                 id="monday-api-token"
                 type="password"
@@ -533,9 +490,7 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
 
             {/* API Version */}
             <div className="space-y-1.5">
-              <Label htmlFor="monday-api-version">
-                Wersja API GraphQL (`MONDAY_API_VERSION`)
-              </Label>
+              <Label htmlFor="monday-api-version">Wersja API GraphQL (`MONDAY_API_VERSION`)</Label>
               <Input
                 id="monday-api-version"
                 value={apiVersion}
@@ -728,8 +683,8 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
                 {inspection.subitemBoard && (
                   <div>
                     <p className="mb-1.5 font-semibold uppercase text-muted-foreground">
-                      Kolumny na ukrytej tablicy Subitemów (ID tablicy:{" "}
-                      {inspection.subitemBoard.id}):
+                      Kolumny na ukrytej tablicy Subitemów (ID tablicy: {inspection.subitemBoard.id}
+                      ):
                     </p>
                     <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                       {inspection.subitemBoard.columns.map((col) => (
@@ -866,44 +821,20 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
         </CardContent>
       </Card>
 
-      {/* 5. MAPOWANIE KOLUMN SUBITEMÓW (PRODUKTY I POMIESZCZENIA) */}
+      {/* 5. LISTA PRZYGOTOWANIA */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-primary" />
-            4. Mapowanie kolumn Subitemów (Produkty do wydania &amp; Pomieszczenia do przygotowania)
+            4. Lista przygotowania (Subitem)
           </CardTitle>
           <CardDescription>
-            Każdy produkt oraz każde wynajęte pomieszczenie (np. Studio Foto / Studio Daylight /
-            Sala) tworzy osobny Subitem pod głównym Itemem rezerwacji. Przy usunięciu produktu z
-            aktywnej rezerwacji podczas jej edycji odpowiedni Subitem jest automatycznie usuwany.
-            Nazwa Subitemu zawsze zawiera czytelny prefiks (np.{" "}
-            <code>[POMIESZCZENIE] Studio Daylight (x1)</code> lub{" "}
-            <code>[SPRZĘT] Sony FX3 (x2) [Jednostki: #FX3-01]</code>), a poniższe kolumny pozwalają
-            dodatkowo rozbić te dane na osobne pola tabeli podzadań.
+            Dla rezerwacji Louez tworzy jeden Subitem „Sprzęt do przygotowania”. Produkty i
+            pomieszczenia, ich ilości oraz przypisane egzemplarze są publikowane w checkliście
+            wewnątrz aktualizacji (Update). Nowa aktualizacja pojawia się tylko po zmianie listy.
+            Istniejące podzadania utworzone przed tą zmianą pozostają bez zmian.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-5 md:grid-cols-2">
-            {SUBITEM_COLUMN_FIELDS.map((field) => (
-              <div key={field.key} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor={`col-${field.key}`}>{field.label}</Label>
-                  <Badge variant="expired" className="text-[10px]">
-                    Typ: {field.mondayType}
-                  </Badge>
-                </div>
-                <Input
-                  id={`col-${field.key}`}
-                  value={columnConfig[field.key]}
-                  onChange={(e) => updateColumnField(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                />
-                <p className="text-muted-foreground text-xs">{field.description}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
       </Card>
 
       {/* 6. MAPOWANIE STATUSÓW DWUKIERUNKOWYCH */}
@@ -915,9 +846,9 @@ export const MondaySettingsForm = ({ initialState }: MondaySettingsFormProps) =>
           </CardTitle>
           <CardDescription>
             Określ dokładne nazwy etykiet (Labels) w kolumnie Status na tablicy monday.com, które
-            odpowiadają poszczególnym stanom rezerwacji w Louez. Mapowanie działa w obie strony:
-            gdy pracownik zmieni status głównego Itemu w monday.com na jedną z poniższych etykiet,
-            Louez automatycznie zaktualizuje status rezerwacji w swojej bazie danych.
+            odpowiadają poszczególnym stanom rezerwacji w Louez. Mapowanie działa w obie strony: gdy
+            pracownik zmieni status głównego Itemu w monday.com na jedną z poniższych etykiet, Louez
+            automatycznie zaktualizuje status rezerwacji w swojej bazie danych.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

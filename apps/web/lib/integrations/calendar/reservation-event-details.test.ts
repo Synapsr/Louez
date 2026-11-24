@@ -32,7 +32,7 @@ describe("reservation-event-details", () => {
           companyName: "Business",
         },
       }),
-      "Business, #2026-0000, (test reservation)",
+      "[Business], #2026-0000, (test reservation)",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -40,7 +40,7 @@ describe("reservation-event-details", () => {
         number: "R-101",
         customer: { ...customer, customerType: "business", companyName: "  Example Ltd " },
       }),
-      "Example Ltd, #R-101",
+      "[Example Ltd], #R-101",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -48,7 +48,7 @@ describe("reservation-event-details", () => {
         number: "R-102",
         customer,
       }),
-      "Ada Lovelace, #R-102",
+      "[Ada Lovelace], #R-102",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -56,7 +56,7 @@ describe("reservation-event-details", () => {
         number: "R-103",
         customer,
       }),
-      "Ada Lovelace, #R-103",
+      "[Ada Lovelace], #R-103",
     );
     assert.equal(
       getReservationCalendarTitle({
@@ -141,7 +141,7 @@ describe("reservation-event-details", () => {
       reservationUrl: "https://example.com/dashboard/reservations/R-103",
     });
 
-    assert.equal(details.summary, "Ada Lovelace, #R-103");
+    assert.equal(details.summary, "[Ada Lovelace], #R-103");
     assert.equal(details.location, "Studio (x2), Meeting room");
     assert.equal(details.startDate, startDate);
     assert.equal(details.endDate, endDate);

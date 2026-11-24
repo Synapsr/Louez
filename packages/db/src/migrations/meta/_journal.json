@@ -687,6 +687,13 @@
       "when": 1795261600000,
       "tag": "0092_add_product_bundles",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "5",
+      "when": 1795521600000,
+      "tag": "0093_monday_checklist_subitem",
+      "breakpoints": true
     }
   ]
 }

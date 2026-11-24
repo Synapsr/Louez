@@ -84,7 +84,11 @@ export function getReservationCalendarTitle(
         .join(" ") || null;
   }
 
-  return [customerName, `#${reservation.number}`, internalTitle ? `(${internalTitle})` : null]
+  return [
+    customerName ? `[${customerName}]` : null,
+    `#${reservation.number}`,
+    internalTitle ? `(${internalTitle})` : null,
+  ]
     .filter((part): part is string => part !== null)
     .join(", ");
 }

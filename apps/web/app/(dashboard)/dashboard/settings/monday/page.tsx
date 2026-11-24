@@ -23,7 +23,7 @@ export default async function MondayIntegrationSettingsPage() {
   return (
     <SettingsPageShell
       title="Integracja monday.com"
-      description="Dwukierunkowa, asynchroniczna synchronizacja rezerwacji, sprzętu oraz pomieszczeń z tablicami monday.com (GraphQL API v2 + Webhooks)."
+      description="Asynchroniczna synchronizacja rezerwacji i ich statusów z monday.com oraz zbiorcza checklista sprzętu i pomieszczeń do przygotowania."
     >
       <MondaySettingsForm initialState={stateResult.data} />
     </SettingsPageShell>

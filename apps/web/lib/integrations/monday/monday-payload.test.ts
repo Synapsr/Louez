@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import test, { describe } from "node:test";
 
 import {
+  buildMondayChecklistPayload,
   buildMondayMainItemTitle,
   buildMondaySubitemPayload,
   classifyReservationItemKind,
@@ -81,15 +82,38 @@ describe("monday-payload", () => {
     );
 
     assert.equal(subitem.itemKind, "product");
-    assert.equal(
-      subitem.name,
-      "[SPRZĘT] Sony FX3 (E-Mount) (x2) [Jednostki: #FX3-01, #FX3-02]",
-    );
+    assert.equal(subitem.name, "[SPRZĘT] Sony FX3 (E-Mount) (x2) [Jednostki: #FX3-01, #FX3-02]");
     assert.deepEqual(subitem.columnValues, {
       numbers_qty: "2",
       text_type: "Sprzęt",
       text_units: "#FX3-01, #FX3-02",
     });
+  });
+
+  test("builds an HTML checklist update with escaped item names and a stable content hash", () => {
+    const checklist = buildMondayChecklistPayload([
+      "[SPRZĘT] A & B <Studio> (x2)",
+      "[POMIESZCZENIE] Sala",
+    ]);
+
+    assert.equal(
+      checklist.body,
+      '<ul class="checklist"><li class="checklist_task">\uFEFF[SPRZĘT] A &amp; B &lt;Studio&gt; (x2)</li></ul><ul class="checklist"><li class="checklist_task">\uFEFF[POMIESZCZENIE] Sala</li></ul>',
+    );
+    assert.equal(
+      checklist.hash,
+      buildMondayChecklistPayload(["[SPRZĘT] A & B <Studio> (x2)", "[POMIESZCZENIE] Sala"]).hash,
+    );
+    assert.notEqual(
+      checklist.hash,
+      buildMondayChecklistPayload(["[SPRZĘT] A & B <Studio> (x1)", "[POMIESZCZENIE] Sala"]).hash,
+    );
+  });
+
+  test("represents an empty reservation checklist without emitting an empty checklist item", () => {
+    const checklist = buildMondayChecklistPayload([]);
+
+    assert.equal(checklist.body, "<p>Brak pozycji do przygotowania</p>");
   });
 
   test("maps Louez statuses to Monday labels and back (including Polish diacritics normalization)", () => {

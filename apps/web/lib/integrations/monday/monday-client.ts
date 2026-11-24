@@ -65,12 +65,6 @@ const createSubitemDataSchema = z.object({
   }),
 });
 
-const deleteItemDataSchema = z.object({
-  delete_item: z.object({
-    id: z.string(),
-  }),
-});
-
 const createUpdateDataSchema = z.object({
   create_update: z.object({
     id: z.string(),
@@ -183,7 +177,8 @@ function resolveCredentials(credentials?: MondayApiCredentials): {
 }
 
 function parseRetryInSecondsFromMessage(message: string): number | undefined {
-  const match = message.match(/reset in (\d+) seconds/i) ?? message.match(/retry in (\d+) seconds/i);
+  const match =
+    message.match(/reset in (\d+) seconds/i) ?? message.match(/retry in (\d+) seconds/i);
   if (!match?.[1]) return undefined;
   const parsed = Number.parseInt(match[1], 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
@@ -507,37 +502,7 @@ export async function createMondaySubitem(params: {
 }
 
 /**
- * Deletes a Subitem when a product or room is removed from an active reservation during editing.
- */
-export async function deleteMondaySubitem(params: {
-  subitemId: string;
-  credentials?: MondayApiCredentials;
-}): Promise<void> {
-  const query = `
-    mutation DeleteReservationSubitem($itemId: ID!) {
-      delete_item(item_id: $itemId) {
-        id
-      }
-    }
-  `;
-
-  try {
-    await executeMondayGraphQL({
-      query,
-      variables: { itemId: params.subitemId },
-      schema: deleteItemDataSchema,
-      credentials: params.credentials,
-    });
-  } catch (error) {
-    if (error instanceof MondayApiError && error.kind === "not_found") {
-      return;
-    }
-    throw error;
-  }
-}
-
-/**
- * Posts an Update (comment) on a monday.com Item (e.g., when a reservation is cancelled).
+ * Posts an Update on a monday.com Item.
  */
 export async function createMondayItemUpdate(params: {
   itemId: string;
@@ -681,14 +646,13 @@ export async function inspectMondayBoardAndAccount(params: {
     credentials: params.credentials,
   });
 
-  const mainBoard = data.boards.find((b) => String(b.id) === params.boardId.trim()) ?? data.boards[0] ?? null;
+  const mainBoard =
+    data.boards.find((b) => String(b.id) === params.boardId.trim()) ?? data.boards[0] ?? null;
 
   // Try to detect hidden subitems board ID from the `subtasks` column settings_str
   let detectedSubitemBoardId: string | null = params.subitemBoardId?.trim() || null;
   if (mainBoard) {
-    const subtasksCol = mainBoard.columns.find(
-      (c) => c.type === "subtasks" || c.id === "subitems",
-    );
+    const subtasksCol = mainBoard.columns.find((c) => c.type === "subtasks" || c.id === "subitems");
     if (subtasksCol?.settings_str) {
       try {
         const parsedSettings: unknown = JSON.parse(subtasksCol.settings_str);
@@ -709,10 +673,9 @@ export async function inspectMondayBoardAndAccount(params: {
     }
   }
 
-  let subitemBoard =
-    detectedSubitemBoardId
-      ? data.boards.find((b) => String(b.id) === detectedSubitemBoardId) ?? null
-      : null;
+  let subitemBoard = detectedSubitemBoardId
+    ? (data.boards.find((b) => String(b.id) === detectedSubitemBoardId) ?? null)
+    : null;
 
   if (!subitemBoard && detectedSubitemBoardId && !boardIds.includes(detectedSubitemBoardId)) {
     try {
