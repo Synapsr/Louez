@@ -96,10 +96,12 @@ export async function createInspection(data: CreateInspectionInput): Promise<{
     // Fetch product info for snapshot
     const [reservationItemData] = await db
       .select({
+        isCustomItem: reservationItems.isCustomItem,
+        productSnapshot: reservationItems.productSnapshot,
         productName: products.name,
       })
       .from(reservationItems)
-      .innerJoin(products, eq(products.id, reservationItems.productId))
+      .leftJoin(products, eq(products.id, reservationItems.productId))
       .where(
         and(
           eq(reservationItems.id, item.reservationItemId),
@@ -142,7 +144,9 @@ export async function createInspection(data: CreateInspectionInput): Promise<{
       reservationItemId: item.reservationItemId,
       productUnitId: item.productUnitId || null,
       productSnapshot: {
-        name: reservationItemData.productName,
+        name: reservationItemData.isCustomItem
+          ? reservationItemData.productSnapshot.name
+          : (reservationItemData.productName ?? "Équipement"),
         ...(unitIdentifier ? { unitIdentifier } : {}),
       },
       overallCondition: item.overallCondition,
