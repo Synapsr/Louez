@@ -250,11 +250,13 @@ export default async function InspectionPage({ params }: PageProps) {
       id: reservationItems.id,
       quantity: reservationItems.quantity,
       productId: reservationItems.productId,
+      isCustomItem: reservationItems.isCustomItem,
+      productSnapshot: reservationItems.productSnapshot,
       productName: products.name,
       productImages: products.images,
     })
     .from(reservationItems)
-    .innerJoin(products, eq(products.id, reservationItems.productId))
+    .leftJoin(products, eq(products.id, reservationItems.productId))
     .where(eq(reservationItems.reservationId, reservationId));
 
   const reservationItemIds = reservationItemsData.map((item) => item.id);
@@ -285,55 +287,57 @@ export default async function InspectionPage({ params }: PageProps) {
     assignedUnitsByItemId.set(unit.reservationItemId, units);
   }
 
-  const formattedItems = reservationItemsData
-    .filter((item) => item.productId !== null)
-    .flatMap<InspectionWizardItem>((item) => {
-      const product = {
-        id: item.productId as string,
-        name: item.productName,
-        images: (item.productImages as string[]) || [],
-      };
-      const itemAssignedUnits = assignedUnitsByItemId.get(item.id) ?? [];
+  const formattedItems = reservationItemsData.flatMap<InspectionWizardItem>((item) => {
+    const snapshot = item.productSnapshot;
+    const product = {
+      id: item.productId ?? item.id,
+      name: item.isCustomItem ? snapshot.name : (item.productName ?? snapshot.name),
+      images:
+        item.productId !== null
+          ? (item.productImages as string[]) || []
+          : (snapshot.images as string[]) || [],
+    };
+    const itemAssignedUnits = assignedUnitsByItemId.get(item.id) ?? [];
 
-      if (itemAssignedUnits.length === 0) {
-        return [
-          {
-            id: item.id,
-            reservationItemId: item.id,
-            quantity: item.quantity,
-            productUnitId: null,
-            unitIdentifier: null,
-            product,
-          },
-        ];
-      }
-
-      const unitRows = itemAssignedUnits.map((unit) => ({
-        id: `${item.id}-${unit.productUnitId}`,
-        reservationItemId: item.id,
-        quantity: 1,
-        productUnitId: unit.productUnitId,
-        unitIdentifier: unit.identifier,
-        product,
-      }));
-
-      const unassignedQuantity = item.quantity - itemAssignedUnits.length;
-      if (unassignedQuantity <= 0) {
-        return unitRows;
-      }
-
+    if (itemAssignedUnits.length === 0) {
       return [
-        ...unitRows,
         {
           id: item.id,
           reservationItemId: item.id,
-          quantity: unassignedQuantity,
+          quantity: item.quantity,
           productUnitId: null,
           unitIdentifier: null,
           product,
         },
       ];
-    });
+    }
+
+    const unitRows = itemAssignedUnits.map((unit) => ({
+      id: `${item.id}-${unit.productUnitId}`,
+      reservationItemId: item.id,
+      quantity: 1,
+      productUnitId: unit.productUnitId,
+      unitIdentifier: unit.identifier,
+      product,
+    }));
+
+    const unassignedQuantity = item.quantity - itemAssignedUnits.length;
+    if (unassignedQuantity <= 0) {
+      return unitRows;
+    }
+
+    return [
+      ...unitRows,
+      {
+        id: item.id,
+        reservationItemId: item.id,
+        quantity: unassignedQuantity,
+        productUnitId: null,
+        unitIdentifier: null,
+        product,
+      },
+    ];
+  });
 
   return (
     <>
