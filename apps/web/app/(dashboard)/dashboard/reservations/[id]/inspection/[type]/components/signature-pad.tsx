@@ -51,48 +51,88 @@ export function SignaturePad({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size based on container
-    const updateCanvasSize = () => {
-      const container = containerRef.current;
-      if (!container) return;
+    let animationFrame = 0;
+    let lastWidth = 0;
+    let lastHeight = 0;
+    let lastDpr = 0;
 
-      const rect = container.getBoundingClientRect();
+    const updateCanvasSize = (width: number, height: number) => {
       const dpr = window.devicePixelRatio || 1;
+      const nextWidth = Math.max(1, Math.round(width));
+      const nextHeight = Math.max(1, Math.round(height));
+      const nextBufferWidth = Math.round(nextWidth * dpr);
+      const nextBufferHeight = Math.round(nextHeight * dpr);
 
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      if (
+        nextWidth === lastWidth &&
+        nextHeight === lastHeight &&
+        dpr === lastDpr &&
+        canvas.width === nextBufferWidth &&
+        canvas.height === nextBufferHeight
+      ) {
+        return;
+      }
 
-      ctx.scale(dpr, dpr);
+      const snapshot =
+        lastWidth > 0 && lastHeight > 0
+          ? (() => {
+              const copy = document.createElement("canvas");
+              copy.width = canvas.width;
+              copy.height = canvas.height;
+              copy.getContext("2d")?.drawImage(canvas, 0, 0);
+              return copy;
+            })()
+          : null;
+
+      canvas.width = nextBufferWidth;
+      canvas.height = nextBufferHeight;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.strokeStyle = "#1a1a1a";
       ctx.lineWidth = 2;
 
-      // Restore existing signature if any
-      if (value) {
+      if (snapshot) {
+        ctx.drawImage(snapshot, 0, 0, nextWidth, nextHeight);
+      } else if (value) {
         const img = new window.Image();
         img.onload = () => {
-          const scale = Math.min(rect.width / img.width, rect.height / img.height);
+          const scale = Math.min(nextWidth / img.width, nextHeight / img.height);
           const width = img.width * scale;
           const height = img.height * scale;
-
-          ctx.drawImage(img, (rect.width - width) / 2, (rect.height - height) / 2, width, height);
+          ctx.drawImage(img, (nextWidth - width) / 2, (nextHeight - height) / 2, width, height);
           setHasSignature(true);
         };
         img.src = value;
       }
+
+      lastWidth = nextWidth;
+      lastHeight = nextHeight;
+      lastDpr = dpr;
     };
 
-    updateCanvasSize();
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
 
-    const resizeObserver = new ResizeObserver(updateCanvasSize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        updateCanvasSize(entry.contentRect.width, entry.contentRect.height);
+      });
+    });
+
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      updateCanvasSize(rect.width, rect.height);
+      observer.observe(container);
     }
 
-    return () => resizeObserver.disconnect();
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
   }, [value]);
 
   const getPointFromEvent = useCallback((e: React.TouchEvent | React.MouseEvent): Point | null => {
@@ -179,7 +219,10 @@ export function SignaturePad({
     const ctx = canvas?.getContext("2d");
 
     if (canvas && ctx) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
       setHasSignature(false);
       setIsConfirmed(false);
       onChange(null);
@@ -226,7 +269,7 @@ export function SignaturePad({
         <canvas
           ref={canvasRef}
           data-demo-target="inspection-signature-canvas"
-          className="touch-none"
+          className="absolute inset-0 h-full w-full touch-none"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
