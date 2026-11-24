@@ -937,6 +937,9 @@ export const reservationMondayItems = mysqlTable(
     reservationId: varchar("reservation_id", { length: 21 }).notNull(),
     mondayBoardId: varchar("monday_board_id", { length: 64 }),
     mondayItemId: varchar("monday_item_id", { length: 64 }),
+    checklistSubitemId: varchar("checklist_subitem_id", { length: 64 }),
+    checklistSubitemBoardId: varchar("checklist_subitem_board_id", { length: 64 }),
+    checklistHash: varchar("checklist_hash", { length: 64 }),
     payloadHash: varchar("payload_hash", { length: 64 }),
     lastPushedStatus: varchar("last_pushed_status", { length: 32 }),
     syncStatus: mysqlEnum("sync_status", ["pending", "processing", "synced", "failed"])
