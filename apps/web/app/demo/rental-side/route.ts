@@ -14,9 +14,11 @@ import { env } from "@/env";
  * Anyone else goes to the dashboard, which signs them in as usual.
  */
 export async function GET(request: Request) {
-  const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
+  // The request's cookies first: they make the route dynamic, so the build
+  // never runs it without the app's URL.
   const demo = parseDemoSessionCookie((await cookies()).get(DEMO_COOKIE)?.value);
   const session = await authInstance.api.getSession({ headers: request.headers });
+  const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
 
   let target = "/dashboard";
   if (demo && session && isDemoOwnerEmail(session.user.email)) {
