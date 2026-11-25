@@ -3054,7 +3054,100 @@
         "requestPayment": "Minta pembayaran",
         "invoiceGenerated": "Faktur {number} dibuat",
         "refundProcessing": "Pengembalian dana sedang diproses",
-        "refundIssued": "Pengembalian dana diterbitkan di Stripe"
+        "refundIssued": "Pengembalian dana diterbitkan di Stripe",
+        "stripeRefund": {
+          "action": "Kembalikan dana",
+          "actions": "Tindakan pembayaran",
+          "viewInStripe": "Lihat di Stripe",
+          "openStripeSpace": "Buka ruang Stripe saya",
+          "openInStripe": "Buka di Stripe",
+          "blocked": {
+            "disputed": "Sengketa terbuka",
+            "notSettled": "Belum diselesaikan",
+            "noPermission": "Tidak diizinkan untuk peran Anda"
+          },
+          "blockedHint": {
+            "disputed": "Pembayaran ini memiliki sengketa terbuka: dananya bisa dikembalikan setelah sengketa selesai.",
+            "notSettled": "Stripe belum menyelesaikan pembayaran ini: dananya bisa dikembalikan setelahnya.",
+            "noPermission": "Peran Anda tidak mengizinkan pengembalian dana.",
+            "stripePermission": "Hanya anggota yang mengelola pengaturan toko yang dapat membuka Stripe."
+          },
+          "title": "Kembalikan dana pembayaran online",
+          "description": "Uang kembali ke kartu atau metode yang digunakan untuk membayar.",
+          "loading": "Membaca pembayaran dari Stripe…",
+          "amount": "Jumlah yang dikembalikan",
+          "amountHint": "Hingga {amount}",
+          "amountInvalid": "Masukkan jumlah di atas nol.",
+          "amountExceeds": "Paling banyak {amount} dapat dikembalikan.",
+          "reason": "Alasan",
+          "reasons": {
+            "requested_by_customer": "Diminta oleh pelanggan",
+            "duplicate": "Pembayaran ganda"
+          },
+          "note": "Catatan (opsional)",
+          "notePlaceholder": "Disimpan bersama pengembalian dana, untuk tim Anda",
+          "noteTooLong": "Paling banyak {max} karakter.",
+          "summary": {
+            "title": "Ringkasan",
+            "amount": "Pengembalian dana",
+            "to": "Ke",
+            "card": "Kartu {brand} berakhiran {last4}",
+            "payer": "Metode yang digunakan untuk membayar",
+            "payment": "Pembayaran",
+            "paymentValue": "{type}, {amount} pada {date}",
+            "reservation": "Reservasi",
+            "reservationValue": "#{number} · {customer}",
+            "alreadyRefunded": "Sudah dikembalikan",
+            "inFlight": "Sedang dikembalikan",
+            "remainingAfter": "Masih dapat dikembalikan setelah ini",
+            "balance": "Jumlah ini keluar dari saldo Stripe Anda. Biaya platform yang dipungut atas bagian ini, jika ada, dikembalikan kepada Anda.",
+            "noMessage": "Tidak ada pesan yang dikirim ke pelanggan.",
+            "final": "Pengembalian dana tidak dapat dibatalkan.",
+            "creditNote": "Nota kredit akan diterbitkan."
+          },
+          "confirm": "Kembalikan {amount}",
+          "confirmNoAmount": "Kembalikan dana",
+          "toast": {
+            "succeeded": "Pengembalian dana berhasil",
+            "pending": "Pengembalian dana sedang diproses",
+            "pendingDescription": "Stripe sedang memprosesnya. Halaman ini diperbarui sendiri.",
+            "failed": "Stripe tidak dapat melakukan pengembalian dana",
+            "alreadyInProgress": "Pengembalian dana untuk pembayaran ini sedang diproses",
+            "alreadyInProgressDescription": "Hasilnya akan muncul di riwayat pembayaran."
+          },
+          "failedRow": "Pengembalian dana gagal. {reason}",
+          "failures": {
+            "disputed": "Pembayaran sedang disengketakan.",
+            "balance": "Saldo Stripe Anda tidak mencukupi.",
+            "card": "Kartu yang digunakan untuk membayar tidak dapat lagi menerimanya.",
+            "alreadyRefunded": "Stripe sudah mengembalikan dana pembayaran ini.",
+            "notMade": "Stripe tidak melakukan pengembalian dana.",
+            "canceled": "Pengembalian dana dibatalkan di Stripe.",
+            "generic": "Periksa pembayaran di Stripe."
+          },
+          "errors": {
+            "exceedsRefundable": "Paling banyak {amount} masih dapat dikembalikan dari pembayaran ini.",
+            "currencyNotSupported": "Pembayaran dalam {currency} tidak dapat dikembalikan melalui Louez.",
+            "disputed": "Pembayaran ini memiliki sengketa terbuka: dananya bisa dikembalikan setelah sengketa selesai.",
+            "notSettled": "Stripe belum menyelesaikan pembayaran ini: belum ada yang bisa dikembalikan sampai saat itu.",
+            "notRefundable": "Pembayaran ini tidak dapat dikembalikan secara online.",
+            "chargeShared": "Pembayaran Stripe ini dibagi dengan reservasi lain: kembalikan dananya dari dasbor Stripe.",
+            "noStripeAccount": "Toko tidak memiliki akun Stripe untuk mengembalikan dana.",
+            "amountInvalid": "Masukkan jumlah di atas nol, dengan desimal tidak lebih dari yang diizinkan mata uang.",
+            "takenByHand": "Pembayaran ini diterima secara manual: catat saja pengembalian dana yang telah Anda berikan.",
+            "notFound": "Pembayaran ini sudah tidak ada. Muat ulang halaman.",
+            "stripeUnavailable": "Stripe tidak menjawab: tidak ada dana yang dikembalikan. Coba lagi sebentar lagi.",
+            "notInStripe": "Stripe belum memiliki pembayaran untuk baris ini.",
+            "inProgress": "Pengembalian dana ini masih dikirim. Tunggu sebentar, lalu kirim lagi: tidak akan dilakukan dua kali.",
+            "outcomeUnknown": "Louez tidak dapat memastikan apakah pengembalian dana ini berhasil. Periksa riwayat pembayaran sebelum mengembalikan dana lagi.",
+            "alreadyInProgress": "Pengembalian dana untuk pembayaran ini sedang diproses: hasilnya akan muncul di riwayat pembayaran."
+          },
+          "repeat": {
+            "question": "Pengembalian dana {amount} dilakukan pada {time} oleh {name}. Kembalikan jumlah yang sama lagi?",
+            "questionNoName": "Pengembalian dana {amount} dilakukan pada {time}. Kembalikan jumlah yang sama lagi?",
+            "confirm": "Kembalikan {amount} lagi"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "Minta pembayaran",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Buka dasbor Stripe Anda",
-        "description": "Agen AI Anda meminta Anda membuka dasbor Stripe milik “{store}”.",
+        "description": "Lanjutkan ke dasbor Stripe milik “{store}”, tempat Anda masuk ke Stripe.",
         "continue": "Buka Stripe"
       },
       "billing_card_setup": {

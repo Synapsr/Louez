@@ -27,6 +27,14 @@ interface ReservationQuickActionsViewedProperties extends ReservationAnalyticsPr
   visibleActions: ReservationAnalyticsAction[];
 }
 
+interface StripeRefundRequestedProperties extends ReservationAnalyticsProperties {
+  /** The refund's state (`succeeded`, `pending`, `failed`) or the refusal's code. */
+  outcome: string;
+  /** The whole refundable remainder, or part of it. */
+  scope: "full" | "partial";
+  reason: "requested_by_customer" | "duplicate";
+}
+
 interface ReservationQuickActionClickedProperties
   extends ReservationActionAnalyticsProperties {
   slot: "primary" | "secondary";
@@ -118,5 +126,20 @@ export const captureReservationQuickActionClicked = ({
     entry_point: "mobile_quick_actions",
     action,
     slot,
+  });
+};
+
+/** A refund of an online payment sent from the payment history: its outcome, no amount, no person. */
+export const captureStripeRefundRequested = ({
+  outcome,
+  scope,
+  reason,
+  ...properties
+}: StripeRefundRequestedProperties) => {
+  posthog.capture(productAnalyticsEvents.stripeRefundRequested, {
+    ...getCommonProperties(properties),
+    outcome,
+    refund_scope: scope,
+    refund_reason: reason,
   });
 };

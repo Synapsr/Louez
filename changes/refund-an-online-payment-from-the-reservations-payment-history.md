@@ -1,0 +1,14 @@
+---
+type: new
+---
+
+## Refund an online payment from the reservation's payment history
+
+You can now refund a payment your customer made online without leaving Louez, even when your Stripe account's own dashboard has no refund button. In a reservation's payment history, each Stripe payment has a "⋯" menu (shown when you point at the line or reach it with the keyboard, always shown on a phone or tablet) with two actions:
+
+- **Refund**: refund all or part of the payment, back to the card or means that paid it. The amount starts at what is left to refund, and you choose a reason ("Requested by the customer" or "Duplicate payment") and can add a note for your team. Before you confirm, Louez shows the card it goes back to, the payment, what was already refunded and what stays refundable after this refund. The money leaves your Stripe balance, and any platform fee taken on that part is given back to you. No message is sent to your customer, and a credit note is issued when you invoice the payment. A refund cannot be undone, and clicking twice still refunds once; while it is being sent the dialog stays open. Louez also guards against refunding twice from another tab, after a reload or by a teammate: while a refund of the payment is still being processed, it says so instead of refunding again, and if the same amount was refunded in the last 10 minutes, it shows when and by whom and asks you to confirm before refunding it again.
+- **View in Stripe** opens the payment in your Stripe dashboard, in a new tab, on the Stripe account it was taken on. If your account uses Stripe Express, it reads **Open my Stripe space** and opens your Express dashboard instead.
+
+Refund is greyed out, with the reason, while the payment has an open dispute, while Stripe has not settled it yet, or when your role does not allow refunds. It does not appear on refunds, on deposit authorizations, on failed payments or on payments already refunded in full. After you confirm, the line shows the refund in progress and updates on its own until Stripe confirms it, without reloading the page. A refund that fails says why on the line, and the reservation's history names the team member who made it.
+
+For an integration, `POST /payments/{paymentId}/refunds` now documents these two answers, `REFUND_ALREADY_IN_PROGRESS` and `REFUND_REPEAT_UNCONFIRMED`, and the `confirmRepeat` field; they apply to the dashboard, an API key's refund still waits for a person's approval. `GET /reservations/{id}` (MCP: `reservations_get`) now gives each refund's amount, currency, date, failure and the person who made it from the dashboard (`requestedBy`), and lists the disputes on its online payments (`disputes`). `payments_open_stripe_dashboard` (`POST /payments/stripe/dashboard`) takes an optional `paymentId` to open Stripe's dashboard on that payment.

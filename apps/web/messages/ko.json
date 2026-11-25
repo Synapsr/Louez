@@ -3054,7 +3054,100 @@
         "requestPayment": "결제 요청",
         "invoiceGenerated": "송장 {number}가 생성되었습니다.",
         "refundProcessing": "환불 진행 중",
-        "refundIssued": "Stripe에서 환불 발행됨"
+        "refundIssued": "Stripe에서 환불 발행됨",
+        "stripeRefund": {
+          "action": "환불",
+          "actions": "결제 작업",
+          "viewInStripe": "Stripe에서 보기",
+          "openStripeSpace": "내 Stripe 공간 열기",
+          "openInStripe": "Stripe에서 열기",
+          "blocked": {
+            "disputed": "분쟁 진행 중",
+            "notSettled": "아직 정산되지 않음",
+            "noPermission": "내 역할로는 허용되지 않음"
+          },
+          "blockedHint": {
+            "disputed": "이 결제에는 진행 중인 분쟁이 있습니다. 분쟁이 끝나면 환불할 수 있습니다.",
+            "notSettled": "Stripe가 아직 이 결제를 정산하지 않았습니다. 정산 후 환불할 수 있습니다.",
+            "noPermission": "내 역할로는 환불할 수 없습니다.",
+            "stripePermission": "스토어 설정을 관리하는 멤버만 Stripe를 열 수 있습니다."
+          },
+          "title": "온라인 결제 환불",
+          "description": "돈은 결제에 사용된 카드나 수단으로 돌아갑니다.",
+          "loading": "Stripe에서 결제를 읽는 중…",
+          "amount": "환불 금액",
+          "amountHint": "최대 {amount}",
+          "amountInvalid": "0보다 큰 금액을 입력하세요.",
+          "amountExceeds": "최대 {amount}까지 환불할 수 있습니다.",
+          "reason": "사유",
+          "reasons": {
+            "requested_by_customer": "고객 요청",
+            "duplicate": "중복 결제"
+          },
+          "note": "메모(선택)",
+          "notePlaceholder": "환불과 함께 팀을 위해 저장됩니다",
+          "noteTooLong": "최대 {max}자까지 입력할 수 있습니다.",
+          "summary": {
+            "title": "요약",
+            "amount": "환불",
+            "to": "환불 대상",
+            "card": "{last4}(으)로 끝나는 {brand} 카드",
+            "payer": "결제에 사용된 수단",
+            "payment": "결제",
+            "paymentValue": "{type}, {amount}, {date}",
+            "reservation": "예약",
+            "reservationValue": "#{number} · {customer}",
+            "alreadyRefunded": "이미 환불됨",
+            "inFlight": "환불 진행 중",
+            "remainingAfter": "이번 환불 후 환불 가능 금액",
+            "balance": "금액은 Stripe 잔액에서 빠져나갑니다. 이 부분에 플랫폼 수수료가 부과되었다면 돌려받습니다.",
+            "noMessage": "고객에게는 메시지가 발송되지 않습니다.",
+            "final": "환불은 취소할 수 없습니다.",
+            "creditNote": "대변 전표가 발행됩니다."
+          },
+          "confirm": "{amount} 환불",
+          "confirmNoAmount": "환불",
+          "toast": {
+            "succeeded": "환불이 완료되었습니다",
+            "pending": "환불 진행 중",
+            "pendingDescription": "Stripe가 처리 중입니다. 이 페이지는 자동으로 업데이트됩니다.",
+            "failed": "Stripe가 환불하지 못했습니다",
+            "alreadyInProgress": "이 결제의 환불이 처리 중입니다",
+            "alreadyInProgressDescription": "결과는 결제 내역에 표시됩니다."
+          },
+          "failedRow": "환불에 실패했습니다. {reason}",
+          "failures": {
+            "disputed": "결제에 분쟁이 있습니다.",
+            "balance": "Stripe 잔액이 부족합니다.",
+            "card": "결제에 사용된 카드로는 더 이상 받을 수 없습니다.",
+            "alreadyRefunded": "Stripe가 이미 이 결제를 환불했습니다.",
+            "notMade": "Stripe가 환불하지 않았습니다.",
+            "canceled": "Stripe에서 환불이 취소되었습니다.",
+            "generic": "Stripe에서 결제를 확인하세요."
+          },
+          "errors": {
+            "exceedsRefundable": "이 결제에서 아직 환불할 수 있는 금액은 최대 {amount}입니다.",
+            "currencyNotSupported": "{currency} 결제는 Louez를 통해 환불할 수 없습니다.",
+            "disputed": "이 결제에는 진행 중인 분쟁이 있습니다. 분쟁이 끝나면 환불할 수 있습니다.",
+            "notSettled": "Stripe가 아직 이 결제를 정산하지 않았습니다. 그때까지는 환불할 금액이 없습니다.",
+            "notRefundable": "이 결제는 온라인으로 환불할 수 없습니다.",
+            "chargeShared": "이 Stripe 결제는 다른 예약과 공유됩니다. Stripe 대시보드에서 환불하세요.",
+            "noStripeAccount": "스토어에 환불할 Stripe 계정이 없습니다.",
+            "amountInvalid": "0보다 크고 통화가 허용하는 소수 자릿수를 넘지 않는 금액을 입력하세요.",
+            "takenByHand": "이 결제는 직접 받은 결제입니다. 대신 실제로 진행한 환불을 기록하세요.",
+            "notFound": "이 결제는 더 이상 존재하지 않습니다. 페이지를 새로고침하세요.",
+            "stripeUnavailable": "Stripe가 응답하지 않았습니다. 아무것도 환불되지 않았습니다. 잠시 후 다시 시도하세요.",
+            "notInStripe": "Stripe에 아직 이 항목의 결제가 없습니다.",
+            "inProgress": "이 환불은 아직 전송 중입니다. 잠시 기다린 후 다시 보내세요. 두 번 환불되지 않습니다.",
+            "outcomeUnknown": "Louez가 이 환불이 완료되었는지 확인하지 못했습니다. 다시 환불하기 전에 결제 내역을 확인하세요.",
+            "alreadyInProgress": "이 결제의 환불이 처리 중입니다. 결과는 결제 내역에 표시됩니다."
+          },
+          "repeat": {
+            "question": "{time}에 {name}님이 {amount}을(를) 환불했습니다. 같은 금액을 다시 환불할까요?",
+            "questionNoName": "{time}에 {amount} 환불이 이루어졌습니다. 같은 금액을 다시 환불할까요?",
+            "confirm": "{amount} 다시 환불"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "결제 요청",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Stripe 대시보드 열기",
-        "description": "AI 에이전트가 “{store}”의 Stripe 대시보드를 열어 달라고 요청했습니다.",
+        "description": "“{store}”의 Stripe 대시보드로 이동해 Stripe에 로그인합니다.",
         "continue": "Stripe 열기"
       },
       "billing_card_setup": {

@@ -3054,7 +3054,100 @@
         "requestPayment": "支払いを要求する",
         "invoiceGenerated": "請求書 {number} が生成されました",
         "refundProcessing": "返金処理中",
-        "refundIssued": "Stripeで返金を発行済み"
+        "refundIssued": "Stripeで返金を発行済み",
+        "stripeRefund": {
+          "action": "返金",
+          "actions": "支払いの操作",
+          "viewInStripe": "Stripe で表示",
+          "openStripeSpace": "Stripe のマイページを開く",
+          "openInStripe": "Stripe で開く",
+          "blocked": {
+            "disputed": "異議申し立て中",
+            "notSettled": "未確定",
+            "noPermission": "あなたの役割では許可されていません"
+          },
+          "blockedHint": {
+            "disputed": "この支払いには異議申し立てがあります。終了後に返金できます。",
+            "notSettled": "Stripe でこの支払いはまだ確定していません。確定後に返金できます。",
+            "noPermission": "あなたの役割では返金できません。",
+            "stripePermission": "Stripe を開けるのは、ストアの設定を管理するメンバーだけです。"
+          },
+          "title": "オンライン支払いを返金",
+          "description": "お金は支払いに使われたカードまたは方法に戻ります。",
+          "loading": "Stripe から支払いを読み込んでいます…",
+          "amount": "返金額",
+          "amountHint": "最大 {amount}",
+          "amountInvalid": "0 より大きい金額を入力してください。",
+          "amountExceeds": "返金できるのは最大 {amount} です。",
+          "reason": "理由",
+          "reasons": {
+            "requested_by_customer": "お客様の依頼",
+            "duplicate": "重複した支払い"
+          },
+          "note": "メモ（任意）",
+          "notePlaceholder": "返金とともにチーム向けに保存されます",
+          "noteTooLong": "{max} 文字以内で入力してください。",
+          "summary": {
+            "title": "概要",
+            "amount": "返金",
+            "to": "返金先",
+            "card": "末尾 {last4} の {brand} カード",
+            "payer": "支払いに使われた方法",
+            "payment": "支払い",
+            "paymentValue": "{type}、{amount}（{date}）",
+            "reservation": "予約",
+            "reservationValue": "#{number} · {customer}",
+            "alreadyRefunded": "返金済み",
+            "inFlight": "返金処理中",
+            "remainingAfter": "この返金後の返金可能額",
+            "balance": "金額はあなたの Stripe 残高から差し引かれます。この部分にプラットフォーム手数料がかかっていた場合は返還されます。",
+            "noMessage": "お客様にメッセージは送信されません。",
+            "final": "返金は取り消せません。",
+            "creditNote": "クレジットノートが発行されます。"
+          },
+          "confirm": "{amount} を返金",
+          "confirmNoAmount": "返金",
+          "toast": {
+            "succeeded": "返金が完了しました",
+            "pending": "返金を処理中です",
+            "pendingDescription": "Stripe が処理しています。このページは自動で更新されます。",
+            "failed": "Stripe は返金できませんでした",
+            "alreadyInProgress": "この支払いの返金を処理中です",
+            "alreadyInProgressDescription": "結果は支払い履歴に表示されます。"
+          },
+          "failedRow": "返金に失敗しました。{reason}",
+          "failures": {
+            "disputed": "支払いに異議申し立てがあります。",
+            "balance": "Stripe の残高が不足しています。",
+            "card": "支払いに使われたカードでは受け取れなくなっています。",
+            "alreadyRefunded": "Stripe はこの支払いをすでに返金していました。",
+            "notMade": "Stripe は返金を行いませんでした。",
+            "canceled": "返金は Stripe でキャンセルされました。",
+            "generic": "Stripe で支払いを確認してください。"
+          },
+          "errors": {
+            "exceedsRefundable": "この支払いでまだ返金できるのは最大 {amount} です。",
+            "currencyNotSupported": "{currency} の支払いは Louez から返金できません。",
+            "disputed": "この支払いには異議申し立てがあります。終了後に返金できます。",
+            "notSettled": "Stripe でこの支払いはまだ確定していません。確定するまで返金するものはありません。",
+            "notRefundable": "この支払いはオンラインで返金できません。",
+            "chargeShared": "この Stripe の支払いは別の予約と共有されています。Stripe ダッシュボードから返金してください。",
+            "noStripeAccount": "ストアには返金元となる Stripe アカウントがありません。",
+            "amountInvalid": "0 より大きく、通貨で許される桁数以内の金額を入力してください。",
+            "takenByHand": "この支払いは手動で受け取ったものです。代わりに行った返金を記録してください。",
+            "notFound": "この支払いはもう存在しません。ページを再読み込みしてください。",
+            "stripeUnavailable": "Stripe から応答がありませんでした。何も返金されていません。しばらくしてからもう一度お試しください。",
+            "notInStripe": "Stripe にはこの行の支払いがまだありません。",
+            "inProgress": "この返金はまだ送信中です。少し待ってからもう一度送信してください。二重に行われることはありません。",
+            "outcomeUnknown": "Louez はこの返金が完了したか確認できませんでした。もう一度返金する前に支払い履歴を確認してください。",
+            "alreadyInProgress": "この支払いの返金を処理中です。結果は支払い履歴に表示されます。"
+          },
+          "repeat": {
+            "question": "{time} に {name} が {amount} を返金しました。同じ金額をもう一度返金しますか？",
+            "questionNoName": "{time} に {amount} の返金が行われました。同じ金額をもう一度返金しますか？",
+            "confirm": "{amount} をもう一度返金"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "支払いを要求する",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Stripe ダッシュボードを開く",
-        "description": "AI エージェントが、「{store}」の Stripe ダッシュボードを開くよう求めています。",
+        "description": "「{store}」の Stripe ダッシュボードに進み、Stripe にログインします。",
         "continue": "Stripe を開く"
       },
       "billing_card_setup": {

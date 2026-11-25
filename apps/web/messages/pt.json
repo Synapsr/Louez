@@ -3015,7 +3015,100 @@
         "requestPayment": "Solicitar pagamento",
         "invoiceGenerated": "Fatura {number} gerada",
         "refundProcessing": "Reembolso em curso",
-        "refundIssued": "Reembolso emitido no Stripe"
+        "refundIssued": "Reembolso emitido no Stripe",
+        "stripeRefund": {
+          "action": "Reembolsar",
+          "actions": "Ações do pagamento",
+          "viewInStripe": "Ver no Stripe",
+          "openStripeSpace": "Abrir o meu espaço Stripe",
+          "openInStripe": "Abrir no Stripe",
+          "blocked": {
+            "disputed": "Disputa aberta",
+            "notSettled": "Ainda não liquidado",
+            "noPermission": "Não permitido para a sua função"
+          },
+          "blockedHint": {
+            "disputed": "Este pagamento tem uma disputa aberta: poderá ser reembolsado quando a disputa terminar.",
+            "notSettled": "O Stripe ainda não liquidou este pagamento: poderá ser reembolsado depois disso.",
+            "noPermission": "A sua função não permite reembolsos.",
+            "stripePermission": "Só um membro que gere as definições da loja pode abrir o Stripe."
+          },
+          "title": "Reembolsar um pagamento online",
+          "description": "O dinheiro volta para o cartão ou meio que pagou.",
+          "loading": "A ler o pagamento no Stripe…",
+          "amount": "Montante a reembolsar",
+          "amountHint": "Até {amount}",
+          "amountInvalid": "Introduza um montante superior a zero.",
+          "amountExceeds": "Pode ser reembolsado no máximo {amount}.",
+          "reason": "Motivo",
+          "reasons": {
+            "requested_by_customer": "Pedido pelo cliente",
+            "duplicate": "Pagamento duplicado"
+          },
+          "note": "Nota (opcional)",
+          "notePlaceholder": "Guardada com o reembolso, para a sua equipa",
+          "noteTooLong": "No máximo {max} caracteres.",
+          "summary": {
+            "title": "Resumo",
+            "amount": "Reembolso",
+            "to": "Para",
+            "card": "Cartão {brand} terminado em {last4}",
+            "payer": "O meio que pagou",
+            "payment": "Pagamento",
+            "paymentValue": "{type}, {amount} a {date}",
+            "reservation": "Reserva",
+            "reservationValue": "n.º {number} · {customer}",
+            "alreadyRefunded": "Já reembolsado",
+            "inFlight": "Em reembolso",
+            "remainingAfter": "Ainda reembolsável após este reembolso",
+            "balance": "O montante sai do seu saldo Stripe. Qualquer taxa de plataforma cobrada sobre esta parte é-lhe devolvida.",
+            "noMessage": "Não é enviada nenhuma mensagem ao cliente.",
+            "final": "Um reembolso não pode ser anulado.",
+            "creditNote": "Será emitida uma nota de crédito."
+          },
+          "confirm": "Reembolsar {amount}",
+          "confirmNoAmount": "Reembolsar",
+          "toast": {
+            "succeeded": "Reembolso efetuado",
+            "pending": "Reembolso em curso",
+            "pendingDescription": "O Stripe está a processá-lo. Esta página atualiza-se sozinha.",
+            "failed": "O Stripe não conseguiu efetuar o reembolso",
+            "alreadyInProgress": "Está a ser processado um reembolso deste pagamento",
+            "alreadyInProgressDescription": "O resultado aparecerá no histórico de pagamentos."
+          },
+          "failedRow": "Reembolso falhado. {reason}",
+          "failures": {
+            "disputed": "O pagamento está em disputa.",
+            "balance": "O seu saldo Stripe é insuficiente.",
+            "card": "O cartão que pagou já não o pode receber.",
+            "alreadyRefunded": "O Stripe já tinha reembolsado este pagamento.",
+            "notMade": "O Stripe não efetuou nenhum reembolso.",
+            "canceled": "O reembolso foi cancelado no Stripe.",
+            "generic": "Verifique o pagamento no Stripe."
+          },
+          "errors": {
+            "exceedsRefundable": "Ainda pode ser reembolsado no máximo {amount} deste pagamento.",
+            "currencyNotSupported": "Os pagamentos em {currency} não podem ser reembolsados através do Louez.",
+            "disputed": "Este pagamento tem uma disputa aberta: poderá ser reembolsado quando a disputa terminar.",
+            "notSettled": "O Stripe ainda não liquidou este pagamento: não há nada a reembolsar até lá.",
+            "notRefundable": "Este pagamento não pode ser reembolsado online.",
+            "chargeShared": "Este pagamento Stripe é partilhado com outra reserva: reembolse-o a partir do painel do Stripe.",
+            "noStripeAccount": "A loja não tem uma conta Stripe a partir da qual reembolsar.",
+            "amountInvalid": "Introduza um montante superior a zero, sem mais casas decimais do que a moeda permite.",
+            "takenByHand": "Este pagamento foi registado manualmente: registe antes o reembolso que fez.",
+            "notFound": "Este pagamento já não existe. Recarregue a página.",
+            "stripeUnavailable": "O Stripe não respondeu: nada foi reembolsado. Tente novamente dentro de momentos.",
+            "notInStripe": "O Stripe ainda não tem um pagamento para esta linha.",
+            "inProgress": "Este reembolso ainda está a ser enviado. Aguarde um momento e envie-o de novo: não será feito duas vezes.",
+            "outcomeUnknown": "O Louez não conseguiu confirmar se este reembolso foi feito. Verifique o histórico de pagamentos antes de reembolsar de novo.",
+            "alreadyInProgress": "Está a ser processado um reembolso deste pagamento: o resultado aparecerá no histórico de pagamentos."
+          },
+          "repeat": {
+            "question": "Foi feito um reembolso de {amount} às {time} por {name}. Reembolsar de novo o mesmo montante?",
+            "questionNoName": "Foi feito um reembolso de {amount} às {time}. Reembolsar de novo o mesmo montante?",
+            "confirm": "Reembolsar de novo {amount}"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "Solicitar pagamento",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Abrir o seu painel do Stripe",
-        "description": "O seu agente de IA pede-lhe que abra o painel do Stripe de «{store}».",
+        "description": "Continue para o painel do Stripe de «{store}», onde inicia sessão no Stripe.",
         "continue": "Abrir o Stripe"
       },
       "billing_card_setup": {

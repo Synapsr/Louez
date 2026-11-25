@@ -3015,7 +3015,100 @@
         "requestPayment": "Betaling aanvragen",
         "invoiceGenerated": "Factuur {number} aangemaakt",
         "refundProcessing": "Terugbetaling bezig",
-        "refundIssued": "Terugbetaling uitgegeven bij Stripe"
+        "refundIssued": "Terugbetaling uitgegeven bij Stripe",
+        "stripeRefund": {
+          "action": "Terugbetalen",
+          "actions": "Betalingsacties",
+          "viewInStripe": "Bekijken in Stripe",
+          "openStripeSpace": "Mijn Stripe-omgeving openen",
+          "openInStripe": "Openen in Stripe",
+          "blocked": {
+            "disputed": "Open geschil",
+            "notSettled": "Nog niet verwerkt",
+            "noPermission": "Niet toegestaan voor uw rol"
+          },
+          "blockedHint": {
+            "disputed": "Deze betaling heeft een open geschil: ze kan worden terugbetaald zodra het geschil is afgerond.",
+            "notSettled": "Stripe heeft deze betaling nog niet verwerkt: ze kan daarna worden terugbetaald.",
+            "noPermission": "Uw rol staat geen terugbetalingen toe.",
+            "stripePermission": "Alleen een lid dat de winkelinstellingen beheert, kan Stripe openen."
+          },
+          "title": "Een online betaling terugbetalen",
+          "description": "Het geld gaat terug naar de kaart of het betaalmiddel waarmee is betaald.",
+          "loading": "Betaling wordt gelezen bij Stripe…",
+          "amount": "Terug te betalen bedrag",
+          "amountHint": "Tot {amount}",
+          "amountInvalid": "Voer een bedrag boven nul in.",
+          "amountExceeds": "Er kan hoogstens {amount} worden terugbetaald.",
+          "reason": "Reden",
+          "reasons": {
+            "requested_by_customer": "Op verzoek van de klant",
+            "duplicate": "Dubbele betaling"
+          },
+          "note": "Notitie (optioneel)",
+          "notePlaceholder": "Bewaard bij de terugbetaling, voor uw team",
+          "noteTooLong": "Hoogstens {max} tekens.",
+          "summary": {
+            "title": "Overzicht",
+            "amount": "Terugbetaling",
+            "to": "Naar",
+            "card": "{brand}-kaart eindigend op {last4}",
+            "payer": "Het betaalmiddel waarmee is betaald",
+            "payment": "Betaling",
+            "paymentValue": "{type}, {amount} op {date}",
+            "reservation": "Reservering",
+            "reservationValue": "nr. {number} · {customer}",
+            "alreadyRefunded": "Al terugbetaald",
+            "inFlight": "Wordt terugbetaald",
+            "remainingAfter": "Nog terug te betalen na deze terugbetaling",
+            "balance": "Het bedrag verlaat uw Stripe-saldo. Platformkosten die op dit deel zijn ingehouden, krijgt u terug.",
+            "noMessage": "Er wordt geen bericht naar de klant gestuurd.",
+            "final": "Een terugbetaling kan niet ongedaan worden gemaakt.",
+            "creditNote": "Er wordt een creditnota uitgegeven."
+          },
+          "confirm": "{amount} terugbetalen",
+          "confirmNoAmount": "Terugbetalen",
+          "toast": {
+            "succeeded": "Terugbetaling gelukt",
+            "pending": "Terugbetaling bezig",
+            "pendingDescription": "Stripe verwerkt ze. Deze pagina werkt zichzelf bij.",
+            "failed": "Stripe kon de terugbetaling niet uitvoeren",
+            "alreadyInProgress": "Er wordt een terugbetaling van deze betaling verwerkt",
+            "alreadyInProgressDescription": "De uitkomst verschijnt in de betalingsgeschiedenis."
+          },
+          "failedRow": "Terugbetaling mislukt. {reason}",
+          "failures": {
+            "disputed": "Over de betaling loopt een geschil.",
+            "balance": "Uw Stripe-saldo is te laag.",
+            "card": "De kaart waarmee is betaald, kan het niet meer ontvangen.",
+            "alreadyRefunded": "Stripe had deze betaling al terugbetaald.",
+            "notMade": "Stripe heeft geen terugbetaling uitgevoerd.",
+            "canceled": "De terugbetaling is bij Stripe geannuleerd.",
+            "generic": "Controleer de betaling in Stripe."
+          },
+          "errors": {
+            "exceedsRefundable": "Op deze betaling kan nog hoogstens {amount} worden terugbetaald.",
+            "currencyNotSupported": "Betalingen in {currency} kunnen niet via Louez worden terugbetaald.",
+            "disputed": "Deze betaling heeft een open geschil: ze kan worden terugbetaald zodra het geschil is afgerond.",
+            "notSettled": "Stripe heeft deze betaling nog niet verwerkt: tot dan is er niets terug te betalen.",
+            "notRefundable": "Deze betaling kan niet online worden terugbetaald.",
+            "chargeShared": "Deze Stripe-betaling wordt gedeeld met een andere reservering: betaal ze terug via het Stripe-dashboard.",
+            "noStripeAccount": "De winkel heeft geen Stripe-account om vanaf terug te betalen.",
+            "amountInvalid": "Voer een bedrag boven nul in, met niet meer decimalen dan de valuta toestaat.",
+            "takenByHand": "Deze betaling is handmatig ontvangen: registreer in plaats daarvan de terugbetaling die u hebt gedaan.",
+            "notFound": "Deze betaling bestaat niet meer. Laad de pagina opnieuw.",
+            "stripeUnavailable": "Stripe antwoordde niet: er is niets terugbetaald. Probeer het zo opnieuw.",
+            "notInStripe": "Stripe heeft nog geen betaling voor deze regel.",
+            "inProgress": "Deze terugbetaling wordt nog verstuurd. Wacht even en verstuur ze dan opnieuw: ze wordt niet twee keer uitgevoerd.",
+            "outcomeUnknown": "Louez kon niet bevestigen of deze terugbetaling is gelukt. Controleer de betalingsgeschiedenis voordat u opnieuw terugbetaalt.",
+            "alreadyInProgress": "Er wordt een terugbetaling van deze betaling verwerkt: de uitkomst verschijnt in de betalingsgeschiedenis."
+          },
+          "repeat": {
+            "question": "Er is om {time} een terugbetaling van {amount} gedaan door {name}. Hetzelfde bedrag opnieuw terugbetalen?",
+            "questionNoName": "Er is om {time} een terugbetaling van {amount} gedaan. Hetzelfde bedrag opnieuw terugbetalen?",
+            "confirm": "{amount} opnieuw terugbetalen"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "Betaling aanvragen",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Uw Stripe-dashboard openen",
-        "description": "Uw AI-agent vraagt u het Stripe-dashboard van “{store}” te openen.",
+        "description": "Ga verder naar het Stripe-dashboard van “{store}”, waar u zich aanmeldt bij Stripe.",
         "continue": "Stripe openen"
       },
       "billing_card_setup": {

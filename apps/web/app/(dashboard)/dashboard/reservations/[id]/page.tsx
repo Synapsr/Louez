@@ -26,12 +26,17 @@ import { DEFAULT_INSPECTION_SETTINGS } from "@louez/types";
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 import { TestReservationGuide } from "@/components/dashboard/test-reservation/test-reservation-guide";
 
+import { getDashboardKind } from "@louez/api/adapters/stripe-connect";
+import { logProviderError } from "@louez/api/platform/sanitize-error";
+
+import { apiPorts } from "@/lib/api/ports";
 import { serverApi } from "@/lib/api/server-api";
 
 import { isSmsConfigured } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { ReservationDetailClient } from "./reservation-detail-client";
+import { opensInStripe } from "./util.stripe-refund";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -64,6 +69,17 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
   const storeTimezone = store.settings?.timezone;
   const smsConfigured = isSmsConfigured();
   const stripeConfigured = Boolean(store.stripeAccountId);
+  // The dashboard Stripe gives the store's account, read once for the page when a payment
+  // row can open in Stripe: its link says where it leads.
+  const stripeClient = apiPorts.stripeConnect?.() ?? null;
+  const stripeAccountId = store.stripeAccountId;
+  const dashboardKind =
+    stripeClient && stripeAccountId && reservation.payments.some(opensInStripe)
+      ? await getDashboardKind(stripeClient, stripeAccountId).catch((error: unknown) => {
+          logProviderError("Stripe account read failed", error);
+          return null;
+        })
+      : null;
   const inspectionSettings = store.settings?.inspection || DEFAULT_INSPECTION_SETTINGS;
 
   // Default the payment method select to the store's last manually recorded method
@@ -244,6 +260,11 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
         returnInspection={formattedReturnInspection}
         invoices={reservationInvoices}
         canGenerateInvoice={Boolean(legalProfile?.invoicingEnabled && uninvoicedPayment)}
+        stripeAccess={{
+          canRefund: hasPermission(store.role, "write"),
+          canOpenStripe: hasPermission(store.role, "manage_settings"),
+          dashboardKind,
+        }}
         initialItemDetails={itemDetails}
       />
     </>

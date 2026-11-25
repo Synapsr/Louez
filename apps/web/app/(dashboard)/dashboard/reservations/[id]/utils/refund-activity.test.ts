@@ -7,8 +7,8 @@ import {
   refundActivityView,
 } from "./refund-activity";
 
-// The history tells a refund of an online payment as a refund of that amount, with who
-// approved it when a person did, never as a payment updated: the refund writer, the
+// The history tells a refund of an online payment as a refund of that amount, with the
+// person who made it from the dashboard or approved an agent's, never as a payment updated: the refund writer, the
 // Connect webhook and the refund undone each write a `payment_updated` line of their own
 // shape, kept as written.
 
@@ -30,7 +30,15 @@ const context = (
 ): RefundActivityContext => ({
   payments: [refundRow(rowStatus)],
   refunds: operation
-    ? [{ id: "op_1", refundPaymentId: "pay_refund", status: operation, approvedBy: owner }]
+    ? [
+        {
+          id: "op_1",
+          refundPaymentId: "pay_refund",
+          status: operation,
+          requestedBy: null,
+          approvedBy: owner,
+        },
+      ]
     : [],
 });
 // The line the refund writer adds once Stripe made the refund.
@@ -52,7 +60,32 @@ describe("refundActivityView", () => {
       state: "done",
       amount: 10,
       currency: "EUR",
+      requestedBy: null,
       approvedBy: owner,
+    });
+  });
+
+  test("a refund made from the dashboard names the person who made it, approved by no one", () => {
+    const member = { name: "Team member", email: "member@example.com", image: null };
+    const fromDashboard: RefundActivityContext = {
+      payments: [refundRow("completed")],
+      refunds: [
+        {
+          id: "op_1",
+          refundPaymentId: "pay_refund",
+          status: "succeeded",
+          requestedBy: member,
+          approvedBy: null,
+        },
+      ],
+    };
+    assert.deepEqual(refundActivityView(operationLine, fromDashboard), {
+      kind: "refund",
+      state: "done",
+      amount: 10,
+      currency: "EUR",
+      requestedBy: member,
+      approvedBy: null,
     });
   });
 
@@ -62,6 +95,7 @@ describe("refundActivityView", () => {
       state: "processing",
       amount: 10,
       currency: "EUR",
+      requestedBy: null,
       approvedBy: owner,
     });
   });
@@ -72,6 +106,7 @@ describe("refundActivityView", () => {
       state: "failed",
       amount: 10,
       currency: "EUR",
+      requestedBy: null,
       approvedBy: owner,
     });
   });
@@ -94,6 +129,7 @@ describe("refundActivityView", () => {
       state: "failed",
       amount: 10,
       currency: "EUR",
+      requestedBy: null,
       approvedBy: owner,
     });
   });
@@ -142,6 +178,7 @@ describe("refundActivityView", () => {
       state: "issued",
       amount: 10,
       currency: "EUR",
+      requestedBy: null,
       approvedBy: null,
     });
   });
@@ -157,7 +194,14 @@ describe("refundActivityView", () => {
     const row = { ...refundRow("completed"), refundOfPaymentId: null, currency: "EUR" };
     assert.deepEqual(
       refundActivityView(dashboardStripeLine("pay_refund"), { payments: [row], refunds: [] }),
-      { kind: "refund", state: "issued", amount: 10, currency: "EUR", approvedBy: null },
+      {
+        kind: "refund",
+        state: "issued",
+        amount: 10,
+        currency: "EUR",
+        requestedBy: null,
+        approvedBy: null,
+      },
     );
     // Its row failed since: failed.
     assert.equal(
@@ -185,7 +229,14 @@ describe("refundActivityView", () => {
         payments: [],
         refunds: [],
       }),
-      { kind: "refund", state: "issued", amount: 10, currency: null, approvedBy: null },
+      {
+        kind: "refund",
+        state: "issued",
+        amount: 10,
+        currency: null,
+        requestedBy: null,
+        approvedBy: null,
+      },
     );
   });
 
@@ -213,6 +264,7 @@ describe("refundActivityView", () => {
       state: "done",
       amount: 15,
       currency: null,
+      requestedBy: null,
       approvedBy: null,
     });
   });
@@ -254,6 +306,7 @@ test("each refund line has a title of its own, never the generic payment updated
       state,
       amount: 10,
       currency: "EUR",
+      requestedBy: null,
       approvedBy: null,
     });
   assert.equal(refund("done"), "activity.refundDone");

@@ -92,8 +92,13 @@ import {
   captureReservationActionFailed,
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
+import type { StripeDashboardKind } from "@louez/api/adapters/stripe-connect";
+
 import { DepositAttemptDialog } from "./deposit-attempt-dialog";
 import { ManualPaymentRefundDialog } from "./manual-payment-refund-dialog";
+import { PendingStripeRefundsWatcher } from "./pending-stripe-refunds-watcher";
+import { StripePaymentRowActions } from "./stripe-payment-row-actions";
+import { StripeRefundDialog } from "./stripe-refund-dialog";
 import { RequestPaymentModal } from "./request-payment-modal";
 import { useReservationMoney } from "./use-reservation-money";
 import {
@@ -103,36 +108,20 @@ import {
   isManualPaymentRefundEligible,
 } from "./util.payment-refunds";
 import { onlineRentalTile, paymentHistoryRows } from "./util.payment-history";
+import {
+  type ReservationPayment,
+  type StripePaymentDispute,
+  type StripeRefundOperation,
+  cardBrandLabel,
+  opensInStripe,
+  paymentTypeKey,
+  stripeRefundAvailability,
+  stripeRefundFailureOf,
+} from "./util.stripe-refund";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
-interface Payment {
-  id: string;
-  amount: string;
-  /** Its own currency; null on an older row, which is in its reservation's. */
-  currency?: string | null;
-  type:
-    | "rental"
-    | "deposit"
-    | "deposit_return"
-    | "damage"
-    | "deposit_hold"
-    | "deposit_capture"
-    | "adjustment";
-  method: "stripe" | "cash" | "card" | "transfer" | "check" | "other";
-  status: "pending" | "completed" | "failed" | "refunded" | "authorized" | "cancelled";
-  createdAt: Date;
-  paidAt: Date | null;
-  notes: string | null;
-  stripeChargeId?: string | null;
-  stripePaymentIntentId?: string | null;
-  stripeCheckoutSessionId?: string | null;
-  stripeRefundId?: string | null;
-  refundOfPaymentId: string | null;
-  /** On a deposit hold the reservation does not keep, until Stripe released it. */
-  releaseOwedAt?: Date | string | null;
-  /** On a rental row's Checkout Session: when Stripe said it can no longer be paid. */
-  sessionSettledAt?: Date | string | null;
-}
+/** A payment row, as `reservations.get` gives it. */
+type Payment = ReservationPayment;
 
 /** The errors of a deposit hold request that tell the store what to do next. */
 const HOLD_REQUEST_ERRORS = new Set([
@@ -173,10 +162,17 @@ interface UnifiedPaymentSectionProps {
   totalAmount: string;
   payments: Payment[];
   /** The refunds asked through Louez (`reservation.refunds`): whether Stripe settled each. */
-  refunds: readonly {
-    refundPaymentId: string | null;
-    status: "pending" | "succeeded" | "failed";
-  }[];
+  refunds: readonly StripeRefundOperation[];
+  /** The disputes on its online payments (`reservation.disputes`): an open one stops a refund. */
+  disputes: readonly StripePaymentDispute[];
+  /** What the member may do with a payment taken online, and the store's Stripe dashboard. */
+  stripeAccess: {
+    /** Refund it: the right a refund given by hand needs (`write`). */
+    canRefund: boolean;
+    /** Open the store's Stripe dashboard (`manage_settings`). */
+    canOpenStripe: boolean;
+    dashboardKind: StripeDashboardKind | null;
+  };
   status: string;
   currency?: string;
   // Deposit authorization props
@@ -186,6 +182,7 @@ interface UnifiedPaymentSectionProps {
   // Request payment props
   customer: {
     firstName: string;
+    lastName: string;
     email: string;
     phone?: string | null;
   };
@@ -202,16 +199,6 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   check: <Receipt className="h-3.5 w-3.5" />,
   stripe: <CreditCard className="h-3.5 w-3.5 text-[#635BFF]" />,
   other: <Wallet className="h-3.5 w-3.5" />,
-};
-
-const CARD_BRANDS: Record<string, string> = {
-  visa: "Visa",
-  mastercard: "Mastercard",
-  amex: "American Express",
-  discover: "Discover",
-  diners: "Diners Club",
-  jcb: "JCB",
-  unionpay: "UnionPay",
 };
 
 const VISIBLE_HISTORY_COUNT = 3;
@@ -267,6 +254,8 @@ export function UnifiedPaymentSection({
   totalAmount,
   payments,
   refunds,
+  disputes,
+  stripeAccess,
   status,
   currency = "EUR",
   depositStatus: depositStatusProp,
@@ -328,6 +317,7 @@ export function UnifiedPaymentSection({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
   const [paymentToRefund, setPaymentToRefund] = useState<Payment | null>(null);
+  const [onlinePaymentToRefund, setOnlinePaymentToRefund] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [captureModalOpen, setCaptureModalOpen] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
@@ -822,18 +812,7 @@ export function UnifiedPaymentSection({
     setDepositReturnModalOpen(true);
   };
 
-  const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      rental: t("payment.types.rental"),
-      deposit: t("payment.types.deposit"),
-      deposit_return: t("payment.types.depositReturn"),
-      damage: t("payment.types.damage"),
-      deposit_hold: t("payment.types.depositHold"),
-      deposit_capture: t("payment.types.depositCapture"),
-      adjustment: t("payment.types.adjustment"),
-    };
-    return labels[type] || type;
-  };
+  const getTypeLabel = (type: string) => t(`payment.types.${paymentTypeKey(type)}`);
 
   // Global payment status
   const isFullyPaid = isRentalFullyPaid && (deposit === 0 || isDepositFullyCollected);
@@ -1093,7 +1072,7 @@ export function UnifiedPaymentSection({
                     </div>
                     {paymentMethod && (
                       <span className="text-xs text-muted-foreground">
-                        {CARD_BRANDS[paymentMethod.brand || ""] || paymentMethod.brand} ****
+                        {paymentMethod.brand ? cardBrandLabel(paymentMethod.brand) : null} ****
                         {paymentMethod.last4}
                       </span>
                     )}
@@ -1278,11 +1257,12 @@ export function UnifiedPaymentSection({
                   {visiblePayments.map((payment, index) => {
                     const reading = readRow(payment);
                     const refundState = reading.kind === "refund" ? reading.state : null;
+                    const refundFailure = stripeRefundFailureOf(payment, refunds);
                     return (
                       <div
                         key={payment.id}
                         className={cn(
-                          "flex items-center justify-between p-2 rounded-lg border bg-card text-xs transition-opacity",
+                          "group/row flex items-center justify-between p-2 rounded-lg border bg-card text-xs transition-opacity",
                           payment.method === "stripe" && "border-l-2 border-l-[#635BFF]",
                           !historyExpanded &&
                             index === VISIBLE_HISTORY_COUNT - 1 &&
@@ -1366,6 +1346,13 @@ export function UnifiedPaymentSection({
                                   )
                                 : "-"}
                             </p>
+                            {refundFailure && (
+                              <p className="text-[10px] text-destructive">
+                                {t("payment.stripeRefund.failedRow", {
+                                  reason: t(`payment.stripeRefund.failures.${refundFailure}`),
+                                })}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -1403,6 +1390,22 @@ export function UnifiedPaymentSection({
                                   : "+"}
                             {money(payment.amount)}
                           </span>
+                          {payment.method === "stripe" && (
+                            <StripePaymentRowActions
+                              paymentId={payment.id}
+                              refund={stripeRefundAvailability(payment, {
+                                payments,
+                                refunds,
+                                disputes,
+                                canRefund: stripeAccess.canRefund,
+                              })}
+                              opensInStripe={opensInStripe(payment)}
+                              canOpenStripe={stripeAccess.canOpenStripe}
+                              dashboardKind={stripeAccess.dashboardKind}
+                              readOnly={readOnly}
+                              onRefund={() => setOnlinePaymentToRefund(payment.id)}
+                            />
+                          )}
                           {isManualPaymentRefundEligible(payment, payments) && (
                             <Button
                               disabled={readOnly}
@@ -1796,6 +1799,22 @@ export function UnifiedPaymentSection({
           onClose={() => setPaymentToRefund(null)}
         />
       )}
+
+      {onlinePaymentToRefund && (
+        <StripeRefundDialog
+          paymentId={onlinePaymentToRefund}
+          reservationId={reservationId}
+          reservationStatus={status}
+          customerName={`${customer.firstName} ${customer.lastName}`.trim()}
+          onClose={() => setOnlinePaymentToRefund(null)}
+        />
+      )}
+
+      <PendingStripeRefundsWatcher
+        reservationId={reservationId}
+        refunds={refunds}
+        enabled={!readOnly}
+      />
 
       {/* Delete Payment Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

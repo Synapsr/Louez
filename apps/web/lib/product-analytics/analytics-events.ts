@@ -17,6 +17,8 @@ export const productAnalyticsEvents = {
   reservationActionFailed: 'reservation_action_failed',
   reservationQuickActionsViewed: 'reservation_quick_actions_viewed',
   reservationQuickActionClicked: 'reservation_quick_action_clicked',
+  // A refund of an online payment sent from the reservation's payment history.
+  stripeRefundRequested: 'stripe_refund_requested',
   keyboardShortcutTriggered: 'keyboard_shortcut_triggered',
   keyboardShortcutSettingsUpdated: 'keyboard_shortcut_settings_updated',
   checkoutReservationCreated: 'checkout_reservation_created',

@@ -3015,7 +3015,100 @@
         "requestPayment": "Poproś o płatność",
         "invoiceGenerated": "Faktura {number} wygenerowana",
         "refundProcessing": "Zwrot w toku",
-        "refundIssued": "Zwrot wystawiony w Stripe"
+        "refundIssued": "Zwrot wystawiony w Stripe",
+        "stripeRefund": {
+          "action": "Zwróć",
+          "actions": "Działania płatności",
+          "viewInStripe": "Zobacz w Stripe",
+          "openStripeSpace": "Otwórz moje konto Stripe",
+          "openInStripe": "Otwórz w Stripe",
+          "blocked": {
+            "disputed": "Otwarty spór",
+            "notSettled": "Jeszcze nierozliczona",
+            "noPermission": "Niedozwolone dla Twojej roli"
+          },
+          "blockedHint": {
+            "disputed": "Ta płatność ma otwarty spór: można ją zwrócić po jego zakończeniu.",
+            "notSettled": "Stripe nie rozliczył jeszcze tej płatności: można ją zwrócić później.",
+            "noPermission": "Twoja rola nie pozwala na zwroty.",
+            "stripePermission": "Stripe może otworzyć tylko członek zarządzający ustawieniami sklepu."
+          },
+          "title": "Zwrot płatności online",
+          "description": "Pieniądze wracają na kartę lub środek, którym zapłacono.",
+          "loading": "Odczytywanie płatności ze Stripe…",
+          "amount": "Kwota do zwrotu",
+          "amountHint": "Do {amount}",
+          "amountInvalid": "Wpisz kwotę większą od zera.",
+          "amountExceeds": "Można zwrócić najwyżej {amount}.",
+          "reason": "Powód",
+          "reasons": {
+            "requested_by_customer": "Na prośbę klienta",
+            "duplicate": "Podwójna płatność"
+          },
+          "note": "Notatka (opcjonalnie)",
+          "notePlaceholder": "Zapisana przy zwrocie, dla Twojego zespołu",
+          "noteTooLong": "Najwyżej {max} znaków.",
+          "summary": {
+            "title": "Podsumowanie",
+            "amount": "Zwrot",
+            "to": "Na",
+            "card": "Karta {brand} kończąca się na {last4}",
+            "payer": "Środek, którym zapłacono",
+            "payment": "Płatność",
+            "paymentValue": "{type}, {amount}, {date}",
+            "reservation": "Rezerwacja",
+            "reservationValue": "nr {number} · {customer}",
+            "alreadyRefunded": "Już zwrócono",
+            "inFlight": "W trakcie zwrotu",
+            "remainingAfter": "Do zwrotu po tym zwrocie",
+            "balance": "Kwota schodzi z Twojego salda Stripe. Opłata platformy pobrana od tej części, jeśli była, zostanie Ci zwrócona.",
+            "noMessage": "Klient nie otrzyma żadnej wiadomości.",
+            "final": "Zwrotu nie można cofnąć.",
+            "creditNote": "Zostanie wystawiona faktura korygująca."
+          },
+          "confirm": "Zwróć {amount}",
+          "confirmNoAmount": "Zwróć",
+          "toast": {
+            "succeeded": "Zwrot wykonany",
+            "pending": "Zwrot w toku",
+            "pendingDescription": "Stripe go przetwarza. Ta strona odświeży się sama.",
+            "failed": "Stripe nie mógł wykonać zwrotu",
+            "alreadyInProgress": "Zwrot tej płatności jest przetwarzany",
+            "alreadyInProgressDescription": "Jego wynik pojawi się w historii płatności."
+          },
+          "failedRow": "Zwrot nieudany. {reason}",
+          "failures": {
+            "disputed": "Płatność jest przedmiotem sporu.",
+            "balance": "Twoje saldo Stripe jest za niskie.",
+            "card": "Karta, którą zapłacono, nie może już go przyjąć.",
+            "alreadyRefunded": "Stripe już zwrócił tę płatność.",
+            "notMade": "Stripe nie wykonał żadnego zwrotu.",
+            "canceled": "Zwrot został anulowany w Stripe.",
+            "generic": "Sprawdź płatność w Stripe."
+          },
+          "errors": {
+            "exceedsRefundable": "Z tej płatności można jeszcze zwrócić najwyżej {amount}.",
+            "currencyNotSupported": "Płatności w {currency} nie można zwrócić przez Louez.",
+            "disputed": "Ta płatność ma otwarty spór: można ją zwrócić po jego zakończeniu.",
+            "notSettled": "Stripe nie rozliczył jeszcze tej płatności: do tego czasu nie ma czego zwracać.",
+            "notRefundable": "Tej płatności nie można zwrócić online.",
+            "chargeShared": "Ta płatność Stripe jest wspólna z inną rezerwacją: zwróć ją w panelu Stripe.",
+            "noStripeAccount": "Sklep nie ma konta Stripe, z którego można zwrócić.",
+            "amountInvalid": "Wpisz kwotę większą od zera, z nie większą liczbą miejsc po przecinku, niż pozwala waluta.",
+            "takenByHand": "Ta płatność została przyjęta ręcznie: zamiast tego zapisz zwrot, którego dokonałeś.",
+            "notFound": "Ta płatność już nie istnieje. Odśwież stronę.",
+            "stripeUnavailable": "Stripe nie odpowiedział: nic nie zostało zwrócone. Spróbuj ponownie za chwilę.",
+            "notInStripe": "Stripe nie ma jeszcze płatności dla tej pozycji.",
+            "inProgress": "Ten zwrot jest jeszcze wysyłany. Poczekaj chwilę, a potem wyślij go ponownie: nie zostanie wykonany dwa razy.",
+            "outcomeUnknown": "Louez nie mógł potwierdzić, czy ten zwrot został wykonany. Sprawdź historię płatności, zanim zwrócisz ponownie.",
+            "alreadyInProgress": "Zwrot tej płatności jest przetwarzany: jego wynik pojawi się w historii płatności."
+          },
+          "repeat": {
+            "question": "Zwrot {amount} został wykonany o {time} przez {name}. Zwrócić ponownie tę samą kwotę?",
+            "questionNoName": "Zwrot {amount} został wykonany o {time}. Zwrócić ponownie tę samą kwotę?",
+            "confirm": "Zwróć ponownie {amount}"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "Poproś o płatność",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Otwórz panel Stripe",
-        "description": "Twój agent AI prosi o otwarcie panelu Stripe sklepu „{store}”.",
+        "description": "Przejdź do panelu Stripe sklepu „{store}”, gdzie zalogujesz się do Stripe.",
         "continue": "Otwórz Stripe"
       },
       "billing_card_setup": {

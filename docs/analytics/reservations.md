@@ -87,6 +87,18 @@ création reste silencieux), avec `surface: marketplace` et `source: marketplace
 les funnels filtrés sur `surface: storefront` ne la comptent pas. Pour compter les réservations
 venues de reeent : `sales_channel = marketplace`.
 
+## Remboursement d'un paiement en ligne depuis l'historique des paiements
+
+Émis côté client dans `apps/web/app/(dashboard)/dashboard/reservations/[id]/stripe-refund-form.tsx`
+(`feature: reservation_management`, `surface: dashboard`), à chaque envoi du dialogue de
+remboursement d'un paiement Stripe, une fois la réponse reçue.
+
+| Événement                 | Quand                           | Propriétés clés                                                                                                                                                                              |
+| ------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stripe_refund_requested` | Réponse au remboursement envoyé | `outcome` (`succeeded`, `pending`, `failed`, ou le code du refus : `PAYMENT_DISPUTED`, `REFUND_EXCEEDS_REFUNDABLE`…), `refund_scope` (`full` / `partial`), `refund_reason`, `reservation_id` |
+
+Aucun montant, aucune donnée du client ni de l'équipe.
+
 ## Notes
 
 - Le tracking préexistant n'est pas touché : OpenReplay (wizard dashboard) et `/api/track`

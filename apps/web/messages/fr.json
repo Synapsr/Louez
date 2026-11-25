@@ -3063,7 +3063,100 @@
         "requestPayment": "Demander un paiement",
         "invoiceGenerated": "Facture {number} générée",
         "refundProcessing": "Remboursement en cours",
-        "refundIssued": "Remboursement émis sur Stripe"
+        "refundIssued": "Remboursement émis sur Stripe",
+        "stripeRefund": {
+          "action": "Rembourser",
+          "actions": "Actions du paiement",
+          "viewInStripe": "Voir dans Stripe",
+          "openStripeSpace": "Ouvrir mon espace Stripe",
+          "openInStripe": "Ouvrir dans Stripe",
+          "blocked": {
+            "disputed": "Litige en cours",
+            "notSettled": "Pas encore réglé",
+            "noPermission": "Non autorisé pour votre rôle"
+          },
+          "blockedHint": {
+            "disputed": "Ce paiement fait l’objet d’un litige : il pourra être remboursé une fois le litige clos.",
+            "notSettled": "Stripe n’a pas encore réglé ce paiement : il pourra être remboursé une fois réglé.",
+            "noPermission": "Votre rôle ne permet pas de rembourser.",
+            "stripePermission": "Seul un membre qui gère les réglages de la boutique peut ouvrir Stripe."
+          },
+          "title": "Rembourser un paiement en ligne",
+          "description": "L’argent revient sur la carte ou le moyen qui a payé.",
+          "loading": "Lecture du paiement auprès de Stripe…",
+          "amount": "Montant à rembourser",
+          "amountHint": "Jusqu’à {amount}",
+          "amountInvalid": "Saisissez un montant supérieur à zéro.",
+          "amountExceeds": "Au plus {amount} peut être remboursé.",
+          "reason": "Motif",
+          "reasons": {
+            "requested_by_customer": "Demandé par le client",
+            "duplicate": "Paiement en double"
+          },
+          "note": "Note (facultatif)",
+          "notePlaceholder": "Conservée avec le remboursement, pour votre équipe",
+          "noteTooLong": "{max} caractères au maximum.",
+          "summary": {
+            "title": "Récapitulatif",
+            "amount": "Remboursement",
+            "to": "Vers",
+            "card": "Carte {brand} se terminant par {last4}",
+            "payer": "Le moyen qui a payé",
+            "payment": "Paiement",
+            "paymentValue": "{type}, {amount} le {date}",
+            "reservation": "Réservation",
+            "reservationValue": "n° {number} · {customer}",
+            "alreadyRefunded": "Déjà remboursé",
+            "inFlight": "En cours de remboursement",
+            "remainingAfter": "Encore remboursable après ce remboursement",
+            "balance": "Le montant quitte votre solde Stripe. Les frais de plateforme prélevés sur cette part vous sont rendus, le cas échéant.",
+            "noMessage": "Aucun message n’est envoyé au client.",
+            "final": "Un remboursement ne peut pas être annulé.",
+            "creditNote": "Un avoir sera émis."
+          },
+          "confirm": "Rembourser {amount}",
+          "confirmNoAmount": "Rembourser",
+          "toast": {
+            "succeeded": "Remboursement effectué",
+            "pending": "Remboursement en cours",
+            "pendingDescription": "Stripe le traite. Cette page se met à jour toute seule.",
+            "failed": "Stripe n’a pas pu effectuer le remboursement",
+            "alreadyInProgress": "Un remboursement de ce paiement est en cours de traitement",
+            "alreadyInProgressDescription": "Son résultat apparaîtra dans l’historique des paiements."
+          },
+          "failedRow": "Remboursement échoué. {reason}",
+          "failures": {
+            "disputed": "Le paiement fait l’objet d’un litige.",
+            "balance": "Votre solde Stripe est insuffisant.",
+            "card": "La carte qui a payé ne peut plus le recevoir.",
+            "alreadyRefunded": "Stripe avait déjà remboursé ce paiement.",
+            "notMade": "Stripe n’a fait aucun remboursement.",
+            "canceled": "Le remboursement a été annulé chez Stripe.",
+            "generic": "Vérifiez le paiement dans Stripe."
+          },
+          "errors": {
+            "exceedsRefundable": "Au plus {amount} peut encore être remboursé sur ce paiement.",
+            "currencyNotSupported": "Les paiements en {currency} ne peuvent pas être remboursés via Louez.",
+            "disputed": "Ce paiement fait l’objet d’un litige : il pourra être remboursé une fois le litige clos.",
+            "notSettled": "Stripe n’a pas encore réglé ce paiement : il n’y a rien à rembourser tant qu’il ne l’est pas.",
+            "notRefundable": "Ce paiement ne peut pas être remboursé en ligne.",
+            "chargeShared": "Ce paiement Stripe est partagé avec une autre réservation : remboursez-le depuis le tableau de bord Stripe.",
+            "noStripeAccount": "La boutique n’a pas de compte Stripe d’où rembourser.",
+            "amountInvalid": "Saisissez un montant supérieur à zéro, sans plus de décimales que la devise n’en permet.",
+            "takenByHand": "Ce paiement a été encaissé à la main : enregistrez plutôt le remboursement que vous avez fait.",
+            "notFound": "Ce paiement n’existe plus. Rechargez la page.",
+            "stripeUnavailable": "Stripe n’a pas répondu : rien n’a été remboursé. Réessayez dans un instant.",
+            "notInStripe": "Stripe n’a pas encore de paiement pour cette ligne.",
+            "inProgress": "Ce remboursement est encore en cours d’envoi. Patientez un instant puis renvoyez-le : il ne sera pas fait deux fois.",
+            "outcomeUnknown": "Louez n’a pas pu confirmer si ce remboursement a abouti. Vérifiez l’historique des paiements avant de rembourser à nouveau.",
+            "alreadyInProgress": "Un remboursement de ce paiement est en cours de traitement : son résultat apparaîtra dans l’historique des paiements."
+          },
+          "repeat": {
+            "question": "Un remboursement de {amount} a été fait à {time} par {name}. Rembourser à nouveau le même montant ?",
+            "questionNoName": "Un remboursement de {amount} a été fait à {time}. Rembourser à nouveau le même montant ?",
+            "confirm": "Rembourser à nouveau {amount}"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "Demander un paiement",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Ouvrir votre tableau de bord Stripe",
-        "description": "Votre agent IA vous demande d’ouvrir le tableau de bord Stripe de « {store} ».",
+        "description": "Continuez vers le tableau de bord Stripe de « {store} », où vous vous connectez à Stripe.",
         "continue": "Ouvrir Stripe"
       },
       "billing_card_setup": {

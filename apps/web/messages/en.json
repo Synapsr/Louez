@@ -3054,7 +3054,100 @@
         "requestPayment": "Request payment",
         "invoiceGenerated": "Invoice {number} generated",
         "refundProcessing": "Refund in progress",
-        "refundIssued": "Refund issued at Stripe"
+        "refundIssued": "Refund issued at Stripe",
+        "stripeRefund": {
+          "action": "Refund",
+          "actions": "Payment actions",
+          "viewInStripe": "View in Stripe",
+          "openStripeSpace": "Open my Stripe space",
+          "openInStripe": "Open in Stripe",
+          "blocked": {
+            "disputed": "Open dispute",
+            "notSettled": "Not settled yet",
+            "noPermission": "Not allowed for your role"
+          },
+          "blockedHint": {
+            "disputed": "This payment has an open dispute: it can be refunded once the dispute ends.",
+            "notSettled": "Stripe has not settled this payment yet: it can be refunded once it has.",
+            "noPermission": "Your role does not allow refunds.",
+            "stripePermission": "Only a member who manages the store’s settings can open Stripe."
+          },
+          "title": "Refund an online payment",
+          "description": "The money goes back to the card or means that paid.",
+          "loading": "Reading the payment from Stripe…",
+          "amount": "Amount to refund",
+          "amountHint": "Up to {amount}",
+          "amountInvalid": "Enter an amount above zero.",
+          "amountExceeds": "At most {amount} can be refunded.",
+          "reason": "Reason",
+          "reasons": {
+            "requested_by_customer": "Requested by the customer",
+            "duplicate": "Duplicate payment"
+          },
+          "note": "Note (optional)",
+          "notePlaceholder": "Kept with the refund, for your team",
+          "noteTooLong": "{max} characters at most.",
+          "summary": {
+            "title": "Summary",
+            "amount": "Refund",
+            "to": "Back to",
+            "card": "{brand} card ending {last4}",
+            "payer": "The means that paid",
+            "payment": "Payment",
+            "paymentValue": "{type}, {amount} on {date}",
+            "reservation": "Reservation",
+            "reservationValue": "#{number} · {customer}",
+            "alreadyRefunded": "Already refunded",
+            "inFlight": "Being refunded",
+            "remainingAfter": "Still refundable after this refund",
+            "balance": "The amount leaves your Stripe balance. Any platform fee taken on this part is given back to you.",
+            "noMessage": "No message is sent to the customer.",
+            "final": "A refund cannot be undone.",
+            "creditNote": "A credit note will be issued."
+          },
+          "confirm": "Refund {amount}",
+          "confirmNoAmount": "Refund",
+          "toast": {
+            "succeeded": "Refund succeeded",
+            "pending": "Refund in progress",
+            "pendingDescription": "Stripe is processing it. This page updates on its own.",
+            "failed": "Stripe could not make the refund",
+            "alreadyInProgress": "A refund of this payment is being processed",
+            "alreadyInProgressDescription": "Its outcome will show in the payment history."
+          },
+          "failedRow": "Refund failed. {reason}",
+          "failures": {
+            "disputed": "The payment is disputed.",
+            "balance": "Your Stripe balance is too low.",
+            "card": "The card that paid can no longer receive it.",
+            "alreadyRefunded": "Stripe had already refunded this payment.",
+            "notMade": "Stripe made no refund.",
+            "canceled": "The refund was canceled at Stripe.",
+            "generic": "Check the payment in Stripe."
+          },
+          "errors": {
+            "exceedsRefundable": "At most {amount} can still be refunded on this payment.",
+            "currencyNotSupported": "Payments in {currency} cannot be refunded through Louez.",
+            "disputed": "This payment has an open dispute: it can be refunded once the dispute ends.",
+            "notSettled": "Stripe has not settled this payment yet: there is nothing to refund until it has.",
+            "notRefundable": "This payment cannot be refunded online.",
+            "chargeShared": "This Stripe payment is shared with another reservation: refund it from the Stripe dashboard.",
+            "noStripeAccount": "The store has no Stripe account to refund from.",
+            "amountInvalid": "Enter an amount above zero, with no more decimals than the currency allows.",
+            "takenByHand": "This payment was taken by hand: record the refund you gave instead.",
+            "notFound": "This payment no longer exists. Reload the page.",
+            "stripeUnavailable": "Stripe did not answer: nothing was refunded. Try again in a moment.",
+            "notInStripe": "Stripe has no payment for this line yet.",
+            "inProgress": "This refund is still being sent. Wait a moment, then send it again: it will not be made twice.",
+            "outcomeUnknown": "Louez could not confirm whether this refund went through. Check the payment history before you refund again.",
+            "alreadyInProgress": "A refund of this payment is being processed: its outcome will show in the payment history."
+          },
+          "repeat": {
+            "question": "A refund of {amount} was made at {time} by {name}. Refund the same amount again?",
+            "questionNoName": "A refund of {amount} was made at {time}. Refund the same amount again?",
+            "confirm": "Refund {amount} again"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "Request payment",
@@ -10446,7 +10539,7 @@
       },
       "stripe_dashboard": {
         "title": "Open your Stripe dashboard",
-        "description": "Your AI agent asked you to open the Stripe dashboard of “{store}”.",
+        "description": "Continue to the Stripe dashboard of “{store}”, where you sign in to Stripe.",
         "continue": "Open Stripe"
       },
       "billing_card_setup": {
