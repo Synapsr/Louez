@@ -14,7 +14,7 @@ Every user-visible change ships with a note in `changes/` (see the existing note
 
 ```markdown
 ---
-type: new # new | added | improved | changed | fixed
+type: new
 ---
 
 ## The title, in the user's words
@@ -22,11 +22,13 @@ type: new # new | added | improved | changed | fixed
 What changes for the store, then a "Self-hosting:" paragraph when an operator has something to do.
 ```
 
+`type` is one of `new` (or `added`), `improved`, `changed` and `fixed`, alone on its line: it picks the changelog section the note goes in. Within a section, notes are sorted by title, by Unicode code point (the same on every machine: capitals before lower case, accented letters after `z`); notes with the same title follow their file names.
+
 ## Steps
 
 1. **Freeze**: pick the last green commit of `main`.
 2. **Checks**: CI, the Docker and Compose smoke tests, an upgrade from a database of the previous version (`packages/db/src/docker-migrator.db.test.ts`), and the critical paths by hand on a staging instance: book, pay in Stripe test mode, confirm, contract PDF, customer portal.
-3. **Changelog**: `pnpm release:notes X.Y.Z` prints the English section built from `changes/` and from what `[Unreleased]` holds. `pnpm release:notes X.Y.Z --write --archive` adds it to `CHANGELOG.md` and moves the notes to `changes/released/X.Y.Z/`. Write the French section from it, and put any action self-hosters must take at the top.
+3. **Changelog**: `pnpm release:notes X.Y.Z` prints the English section built from `changes/` and from what `[Unreleased]` holds. `pnpm release:notes X.Y.Z --write --archive` adds it to `CHANGELOG.md` and moves the notes to `changes/released/X.Y.Z/`. It checks everything before writing (every note, the date, a version `CHANGELOG.md` has no section for, a free archive folder) and refuses otherwise; if writing still fails, the notes are moved back and running it again finishes the release. Write the French section from it, and put any action self-hosters must take at the top.
 4. **Approval** by a partner, then the tag `vX.Y.Z` on that commit. CI publishes the images.
 5. **GitHub release** with the notes.
 
