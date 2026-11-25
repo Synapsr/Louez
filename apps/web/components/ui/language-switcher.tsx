@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useState, useEffect } from "react";
-import { locales, localeCountries, localeNames, Locale } from "@/i18n/config";
+import { locales, localeFlags, localeNames, Locale } from "@/i18n/config";
 import { cn } from "@louez/utils";
 import {
   DropdownMenu,
@@ -16,7 +16,6 @@ import {
 } from "@louez/ui";
 import { Button } from "@louez/ui";
 import { CheckIcon, GlobeIcon } from "@louez/ui/icons";
-import { CountryFlag } from "@louez/ui/icons/flags";
 import { useTranslations } from "next-intl";
 
 interface LanguageSwitcherProps {
@@ -24,15 +23,14 @@ interface LanguageSwitcherProps {
   className?: string;
 }
 
-function LanguageFlag({ locale }: { locale: Locale }) {
-  return (
-    <CountryFlag
-      country={localeCountries[locale]}
-      countryName={localeNames[locale]}
-      className="h-4 w-6 shrink-0 [&_img]:size-full [&_svg]:size-full"
-    />
-  );
-}
+const LanguageFlag = ({ locale }: { locale: Locale }) => (
+  <span
+    aria-hidden
+    className="inline-flex h-4 w-6 shrink-0 items-center justify-center text-sm leading-none"
+  >
+    {localeFlags[locale]}
+  </span>
+);
 
 function setLocaleCookie(locale: Locale) {
   document.cookie = `NEXT_LOCALE=${locale};path=/;max-age=31536000;samesite=lax`;

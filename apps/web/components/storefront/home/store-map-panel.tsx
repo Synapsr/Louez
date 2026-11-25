@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { MapPinIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
-import { StoreMap } from "@/components/storefront/store-map";
+import { StoreMapLazy } from "@/components/storefront/home/store-map-lazy";
 
 interface StoreMapPanelProps {
   name: string;
@@ -33,28 +33,29 @@ export const StoreMapPanel = async ({
   const lat = toCoordinate(latitude);
   const lng = toCoordinate(longitude);
 
+  if (lat !== null && lng !== null) {
+    return (
+      <StoreMapLazy
+        latitude={lat}
+        longitude={lng}
+        storeName={name}
+        address={address}
+        className={className}
+      />
+    );
+  }
+
   return (
     <div className={cn("overflow-hidden rounded-2xl bg-muted", className)}>
-      {lat !== null && lng !== null ? (
-        <StoreMap
-          latitude={lat}
-          longitude={lng}
-          storeName={name}
-          address={address}
-          tileTheme="auto"
-          className="h-full w-full"
-        />
-      ) : (
-        <a
-          href={buildSearchUrl(address)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center transition-colors hover:bg-muted/70"
-        >
-          <MapPinIcon aria-hidden className="size-8 text-muted-foreground" />
-          <span className="text-sm font-medium">{t("viewOnMap")}</span>
-        </a>
-      )}
+      <a
+        href={buildSearchUrl(address)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center transition-colors hover:bg-muted/70"
+      >
+        <MapPinIcon aria-hidden className="size-8 text-muted-foreground" />
+        <span className="text-sm font-medium">{t("viewOnMap")}</span>
+      </a>
     </div>
   );
 };
