@@ -95,8 +95,11 @@ describe("writing the key", () => {
   });
 
   test("refuses a target that is not a regular file", async () => {
+    // The directory is created 0700 on its own: made by `recursive`, its mode
+    // would follow the umask, and one others can write to is refused first.
     const dir = await newDir();
-    await mkdir(configFile(dir), { recursive: true });
+    await mkdir(dir, { mode: 0o700 });
+    await mkdir(configFile(dir));
     await assert.rejects(writeConfig(dir, config), /not a regular file/);
   });
 
