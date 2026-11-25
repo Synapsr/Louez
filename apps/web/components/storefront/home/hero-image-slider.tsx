@@ -92,7 +92,10 @@ export const HeroImageSlider = ({
       data-slot="hero-image-slider"
     >
       {slides.map((media, slide) => {
-        const shouldRenderMedia = slide === 0 || mounted;
+        const shouldRenderMedia =
+          media.kind === "image"
+            ? slide === 0 || mounted
+            : slide === activeIndex && (mounted || slide === 0);
         const defaultAlt = storeName
           ? `${storeName} – Wypożyczalnia sprzętu i narzędzi`
           : "Wypożyczalnia sprzętu – Baner główny";
