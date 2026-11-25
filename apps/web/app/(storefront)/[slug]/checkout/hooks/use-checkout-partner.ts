@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { useMutation } from "@tanstack/react-query";
 
-import type { CheckoutPartner } from "@louez/api/services/partners";
-
 import { checkPartnerCode } from "../actions";
 import type { CheckoutLinkPartner } from "../checkout.types";
 import type { useCheckoutPromo } from "./use-checkout-promo";
@@ -19,10 +17,14 @@ interface UseCheckoutPartnerParams {
   cartReady: boolean;
 }
 
+/** Why a typed code was not taken. */
+type PartnerCodeIssue = "notFound" | "rateLimited";
+
 /**
  * Liens partenaires at checkout: the partner's code the customer types, and
- * the perk (a promo code) of the partner who brought them, applied once for
- * them. The server credits the partner when the booking is made.
+ * the perk of the partner who brought them, applied once for them. The page
+ * only knows what the customer sees of a perk; the server applies its promo
+ * code and credits the partner when the booking is made.
  */
 export const useCheckoutPartner = ({
   storeId,
@@ -30,44 +32,46 @@ export const useCheckoutPartner = ({
   promo,
   cartReady,
 }: UseCheckoutPartnerParams) => {
-  const [typed, setTyped] = useState<CheckoutPartner | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const { validate: applyPromo, promo: appliedPromo } = promo;
+  const [typed, setTyped] = useState<{ code: string; name: string } | null>(null);
+  const [issue, setIssue] = useState<PartnerCodeIssue | null>(null);
+  const { applyPartnerPerk, removePartnerPerk, promo: appliedPromo } = promo;
 
   const check = useMutation({
     mutationFn: (code: string) => checkPartnerCode({ storeId, code }),
-    onSuccess: (partner) => {
-      if (!partner) {
-        setNotFound(true);
+    onSuccess: (answer, code) => {
+      if (answer.status !== "found") {
+        setIssue(answer.status === "rate_limited" ? "rateLimited" : "notFound");
         return;
       }
-      setNotFound(false);
-      setTyped(partner);
-      if (partner.perkCode && !appliedPromo) applyPromo(partner.perkCode);
+      setIssue(null);
+      setTyped({ code, name: answer.partner.name });
+      if (answer.partner.perk) applyPartnerPerk(answer.partner.perk);
     },
-    onError: () => setNotFound(true),
+    onError: () => setIssue("notFound"),
   });
 
   // The link's perk, once the cart can be priced; never over a code the customer chose.
   const linkPerkApplied = useRef(false);
   useEffect(() => {
-    if (linkPerkApplied.current || !cartReady || !linkPartner?.perkCode || appliedPromo) return;
+    if (linkPerkApplied.current || !cartReady || !linkPartner?.perk || appliedPromo) return;
     linkPerkApplied.current = true;
-    applyPromo(linkPartner.perkCode);
-  }, [applyPromo, appliedPromo, cartReady, linkPartner]);
+    applyPartnerPerk(linkPartner.perk);
+  }, [applyPartnerPerk, appliedPromo, cartReady, linkPartner]);
 
   return {
     /** The typed partner the booking will credit, or null. */
     typed,
-    notFound,
+    issue,
     isChecking: check.isPending,
     check: (code: string) => {
       if (code.trim()) check.mutate(code.trim());
     },
+    /** Credits no partner any more; its perk goes with it. */
     remove: () => {
       setTyped(null);
-      setNotFound(false);
+      setIssue(null);
+      removePartnerPerk();
     },
-    clearNotFound: () => setNotFound(false),
+    clearIssue: () => setIssue(null),
   };
 };

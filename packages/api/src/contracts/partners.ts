@@ -277,6 +277,26 @@ export const partnerNotificationsSchema = z.object({
 });
 export type PartnerNotifications = z.infer<typeof partnerNotificationsSchema>;
 
+// --- Storefront ---------------------------------------------------------------
+
+/**
+ * What a customer sees of a partner's perk at checkout: the discount, never
+ * the promo code behind it, which the server applies at booking.
+ */
+export interface PartnerPerkView {
+  type: "percentage" | "fixed";
+  value: number;
+  /** The rental subtotal the discount needs; 0 for none. */
+  minimumAmount: number;
+}
+
+/** A partner's code checked at checkout, as the storefront may see the answer. */
+export type PartnerCodeCheck =
+  | { status: "found"; partner: { name: string; perk: PartnerPerkView | null } }
+  /** The same for an unknown store and an unknown code. */
+  | { status: "not_found" }
+  | { status: "rate_limited"; retryAfterSeconds: number };
+
 export const partnerErrors = {
   notFound: () =>
     apiError("NOT_FOUND", "PARTNER_NOT_FOUND", {

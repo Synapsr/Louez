@@ -8625,7 +8625,9 @@
         "placeholder": "Code eingeben",
         "apply": "Anwenden",
         "discount": "Rabatt ({code})",
-        "remove": "Gutscheincode entfernen"
+        "remove": "Gutscheincode entfernen",
+        "partnerPerk": "Partnervorteil",
+        "removePartnerPerk": "Partnervorteil entfernen"
       },
       "lineNeedsUpdate": "Einige Zeilen sind nicht mehr verfügbar. Aktualisieren Sie Ihren Warenkorb vor dem Absenden.",
       "advisor": {
@@ -8724,7 +8726,8 @@
         "apply": "Anwenden",
         "notFound": "Dieser Code gehört zu keinem Partner.",
         "credited": "Empfohlen von {partner}",
-        "remove": "Partner entfernen"
+        "remove": "Partner entfernen",
+        "rateLimited": "Zu viele Versuche: Versuchen Sie es in ein paar Minuten erneut. Sie können sofort buchen."
       }
     },
     "confirmation": {
@@ -10274,7 +10277,8 @@
     "partnerNothingToPay": "An diesen Partner ist für diesen Monat nichts mehr zu zahlen.",
     "partnerReservationNotAttributed": "Diese Buchung ist keinem Partner gutgeschrieben.",
     "partnerPerkNotFound": "Dieser Aktionscode existiert in Ihrem Shop nicht.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Der Partnervorteil ist nicht mehr verfügbar, wir haben ihn entfernt. Prüfen Sie den Gesamtbetrag und buchen Sie erneut."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

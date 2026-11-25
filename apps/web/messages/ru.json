@@ -8625,7 +8625,9 @@
         "placeholder": "Введите свой код",
         "apply": "Применить",
         "discount": "Скидка ({code})",
-        "remove": "Удалить промокод"
+        "remove": "Удалить промокод",
+        "partnerPerk": "Преимущество партнёра",
+        "removePartnerPerk": "Удалить преимущество партнёра"
       },
       "lineNeedsUpdate": "Некоторые строки больше не доступны. Перед отправкой обновите корзину.",
       "advisor": {
@@ -8724,7 +8726,8 @@
         "apply": "Применить",
         "notFound": "Этот код не соответствует ни одному партнёру.",
         "credited": "Рекомендует {partner}",
-        "remove": "Убрать партнёра"
+        "remove": "Убрать партнёра",
+        "rateLimited": "Слишком много попыток: повторите через несколько минут. Забронировать можно сразу."
       }
     },
     "confirmation": {
@@ -10274,7 +10277,8 @@
     "partnerNothingToPay": "За этот месяц этому партнёру больше нечего выплачивать.",
     "partnerReservationNotAttributed": "Это бронирование не засчитано ни одному партнёру.",
     "partnerPerkNotFound": "Такого промокода нет в вашем магазине.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Преимущество партнёра больше недоступно, поэтому мы его удалили. Проверьте итог и забронируйте снова."
   },
   "welcome": {
     "greeting": "Добро пожаловать в Louez.io",

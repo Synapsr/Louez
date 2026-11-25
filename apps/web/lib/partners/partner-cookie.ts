@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 import {
   MAX_PARTNER_ATTRIBUTION_DAYS,
   PARTNER_LINK_PARAM,
@@ -11,8 +13,11 @@ import {
  * `/api/track`. httpOnly, on the store's host. It names the store and the time
  * of the click, so a browser that visits two stores on one host (a local
  * preview) never credits one store's partner on the other, and each store's
- * attribution window is checked at the booking. No import beyond the code's
- * rules: the proxy reads it.
+ * attribution window is checked at the booking. It is signed with the
+ * server's secret (`AUTH_SECRET`): a value the proxy did not write, an older
+ * unsigned one included, names no partner, so a forged cookie can neither
+ * probe codes at the checkout nor credit anyone. Only node:crypto beyond the
+ * code's rules: the proxy reads it.
  */
 export const PARTNER_COOKIE = "louez_partner";
 
@@ -21,17 +26,38 @@ export const PARTNER_COOKIE_MAX_AGE = MAX_PARTNER_ATTRIBUTION_DAYS * 24 * 60 * 6
 
 export { PARTNER_LINK_PARAM };
 
-/** `<store slug>.<code>.<click time, in seconds>`. */
-export const encodePartnerCookie = (storeSlug: string, code: string, clickedAt: Date): string =>
-  `${storeSlug}.${code}.${Math.floor(clickedAt.getTime() / 1000)}`;
+const KEY_PURPOSE = "louez-partner-link:";
 
-/** The partner code and click time the cookie holds for this store, or null. */
+const signatureOf = (payload: string, secret: string): string =>
+  createHmac("sha256", `${KEY_PURPOSE}${secret}`).update(payload, "utf8").digest("base64url");
+
+/** `<store slug>.<code>.<click time, in seconds>.<signature>`. */
+export const encodePartnerCookie = (
+  storeSlug: string,
+  code: string,
+  clickedAt: Date,
+  secret: string,
+): string => {
+  if (!secret) throw new Error("No secret to sign the partner cookie with.");
+  const payload = `${storeSlug}.${code}.${Math.floor(clickedAt.getTime() / 1000)}`;
+  return `${payload}.${signatureOf(payload, secret)}`;
+};
+
+/**
+ * The partner code and click time the cookie holds for this store, or null:
+ * for another store's cookie, a malformed one, or one whose signature does
+ * not verify with the server's secret.
+ */
 export const readPartnerCookie = (
   value: string | undefined | null,
   storeSlug: string,
+  secret: string,
 ): { code: string; clickedAt: Date } | null => {
   const parts = value?.split(".") ?? [];
-  if (parts.length !== 3 || parts[0] !== storeSlug) return null;
+  if (!secret || parts.length !== 4 || parts[0] !== storeSlug) return null;
+  const given = Buffer.from(parts[3] ?? "", "utf8");
+  const expected = Buffer.from(signatureOf(parts.slice(0, 3).join("."), secret), "utf8");
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
   const code = parsePartnerCode(parts[1]);
   const seconds = Number(parts[2]);
   if (!code || !Number.isSafeInteger(seconds) || seconds <= 0) return null;

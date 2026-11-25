@@ -36,6 +36,8 @@ interface BuildReservationPayloadInput {
   promoCode?: string;
   /** A partner's code the customer typed and the store recognised. */
   partnerCode?: string;
+  /** The customer kept the partner's perk the checkout showed; the server applies it. */
+  partnerPerk?: boolean;
   advisorConversationId?: string;
   /** Pending reservation of an earlier attempt, reused or replaced server-side. */
   resumeReservationId?: string;
@@ -100,6 +102,7 @@ export const buildReservationPayload = ({
   tulipInsuranceMode,
   promoCode,
   partnerCode,
+  partnerPerk,
   advisorConversationId,
   resumeReservationId,
   checkoutFields,
@@ -154,6 +157,7 @@ export const buildReservationPayload = ({
   locale,
   promoCode,
   partnerCode,
+  partnerPerk,
   advisorConversationId,
   resumeReservationId,
   delivery: {

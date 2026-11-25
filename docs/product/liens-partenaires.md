@@ -113,20 +113,28 @@ réservation au moment de l'attribution).
   `louez_partner` sur le domaine de la boutique (le slug de la boutique, le code, l'heure du
   clic), sans rien demander au client : **décision de Téo du 19 novembre 2026**, en
   connaissance de la position de la CNIL (voir « Vie privée »). **Dernier lien cliqué** : un
-  autre lien partenaire le remplace ; les liens `via` de la boutique ne le touchent pas.
+  autre lien partenaire le remplace ; les liens `via` de la boutique ne le touchent pas. Le
+  cookie est signé avec le secret du serveur (`AUTH_SECRET`) : un cookie que le proxy n'a pas
+  posé, un ancien cookie non signé compris, n'attribue rien et ne donne aucun avantage.
 - **Durée** : réglable par boutique (7, 14, 30, 60 ou 90 jours ; 30 par défaut). Le cookie vit
   90 jours ; la durée de la boutique est vérifiée à la réservation.
 - **Code partenaire** au paiement : « Un partenaire vous a recommandé ? » (replié), pour le
   client recommandé de vive voix ou passé d'un appareil à l'autre. Un code tapé compte toujours,
   sans durée, et passe avant le lien. Le champ n'apparaît que si la boutique a des partenaires,
-  et pas quand le client est déjà arrivé par un lien.
+  et pas quand le client est déjà arrivé par un lien. La vérification du code est limitée : 10
+  essais par adresse IP en 15 minutes, 120 par boutique en une heure ; au-delà, le champ le
+  dit, et la réservation reste possible. Elle donne le nom du partenaire et la réduction de son
+  avantage, jamais le code promo ; une boutique inconnue répond comme un code inconnu.
 - **À la réservation** : le checkout attribue la réservation au partenaire actif de **cette**
   boutique (code tapé, sinon lien dans la durée). Un code inconnu ou archivé n'attribue rien,
   une réservation test jamais, une réservation déjà attribuée garde son partenaire. Une erreur
   d'attribution ne fait jamais échouer une réservation.
 - **L'avantage client** (facultatif) : un des codes promo de la boutique, appliqué tout seul au
-  paiement quand le client arrive par le lien ou tape le code. Il se voit comme un code promo ;
-  il ne marche que tant que le code promo est actif.
+  paiement quand le client arrive par le lien ou tape le code. Le client en voit la réduction
+  (« Avantage partenaire »), jamais le code : le serveur l'applique à la réservation, pour le
+  partenaire qu'elle crédite. Il ne marche que tant que le code promo est actif ; s'il ne peut
+  plus servir au moment de réserver, la réservation est refusée avec un message, l'avantage
+  est retiré, et le client réserve à nouveau sans lui.
 - **La visite** : `/api/track` note le partenaire sur les pages vues (`page_views.partner_id`) :
   la boutique voit si l'affiche sert, avant la première réservation.
 - **À la main** : en créant une réservation (carte « Partenaire »), ou sur la fiche d'une
@@ -272,8 +280,8 @@ restent dans le dashboard, avec le droit `manage_settings`. 13 langues ; événe
   consentement (position examinée par le Conseil d'État le 8 avril 2022, n° 452668) : c'est un
   risque assumé, comme pour le cookie reeent `louez_channel`. Si une carte de consentement
   devient nécessaire, elle se pose devant le cookie sans toucher au reste (une première version
-  l'avait). Le cookie ne contient que le slug de la boutique, le code et l'heure du clic, sur le
-  domaine de la boutique, httpOnly, 90 jours au plus.
+  l'avait). Le cookie ne contient que le slug de la boutique, le code, l'heure du clic et leur
+  signature, sur le domaine de la boutique, httpOnly, 90 jours au plus.
 - Les coordonnées du partenaire (souvent une personne) sont des données de la boutique :
   effacées avec elle. Ses e-mails ne parlent que de ses gains, et se coupent depuis son espace.
 - Le lien de l'espace est un secret : page `noindex`, sans analytics, sans référent, comme les
@@ -287,11 +295,12 @@ restent dans le dashboard, avec le droit `manage_settings`. 13 langues ; événe
 | Commission sur des clients que la boutique avait déjà      | La boutique retire ou ajuste une attribution ; la durée du lien est réglable                                        |
 | Le loueur teste le lien sur la tablette du comptoir        | Les réservations faites ensuite depuis la vitrine sur cette tablette iraient au partenaire : la boutique les retire |
 | Un partenaire réserve pour lui-même par son lien           | La boutique choisit ses partenaires ; elle retire l'attribution                                                     |
-| Deviner un code partenaire au paiement                     | Il ne donne que le nom du partenaire et son avantage, un code promo fait pour circuler                              |
+| Deviner un code partenaire au paiement                     | Vérification limitée par IP et par boutique ; nom et réduction seulement, jamais le code promo                      |
 | Commission sur une réservation annulée                     | Annulée avec elle ; une annulation après paiement apparaît en écart négatif                                         |
 | Deux partenaires pour une réservation                      | Un seul : le code tapé, sinon le dernier lien, ou le choix de la boutique                                           |
 | Lien de l'espace transmis à un tiers                       | Il ne montre rien du client ; il ne permet que de changer les e-mails du partenaire ; la boutique change le lien    |
 | Faux code dans l'URL                                       | Un code inconnu de la boutique n'attribue rien                                                                      |
+| Faux cookie de lien pour tester des codes au paiement      | Le cookie est signé par le serveur : un cookie fabriqué ne donne ni avantage ni attribution                         |
 | Un membre de l'équipe crédite ou paie un partenaire        | Les écritures demandent `manage_settings`, comme les codes promo : un membre ne fait que lire                       |
 | Un mois noté payé deux fois (deux onglets, nouvel essai)   | Recalculé sous un verrou : le second trouve « rien à payer », sans e-mail ; un même essai, même réponse             |
 

@@ -5,6 +5,7 @@ import { cookies, headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { env as authEnv } from "@louez/auth/env";
 import { db, stores } from "@louez/db";
 import type { TulipPublicMode } from "@louez/types";
 import {
@@ -20,11 +21,12 @@ import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-m
 import { SALES_CHANNEL_COOKIE, salesChannelFromCookie } from "@/lib/util.sales-channel";
 import { PARTNER_COOKIE, readPartnerCookie } from "@/lib/partners/partner-cookie";
 import { dispatchApiEffects } from "@/lib/api/effects";
-import { parsePartnerCode } from "@louez/api/contracts/partners";
+import type { PartnerCodeCheck } from "@louez/api/contracts/partners";
 import {
   attributeReservation,
-  findCheckoutPartner,
-  type CheckoutPartner,
+  checkStorefrontPartnerCode,
+  resolveCheckoutCredit,
+  type CheckoutCredit,
 } from "@louez/api/services/partners";
 import { getTulipCoverageSummary } from "@/lib/integrations/tulip/contracts";
 import {
@@ -255,61 +257,78 @@ const checkPartnerCodeSchema = z.object({
 });
 
 /**
- * A partner's code typed at checkout (Liens partenaires): the partner it names
- * in this store, with the customer perk its link gives, or null. Public, like
- * the promo code check.
+ * A partner's code typed at checkout (Liens partenaires): the partner's name
+ * and what the customer sees of its perk, never the perk's promo code. Public,
+ * so rate limited per IP and per store (`PARTNER_CODE_CHECK_LIMITS`); an
+ * unknown store answers as an unknown code does.
  */
-export async function checkPartnerCode(input: unknown): Promise<CheckoutPartner | null> {
+export async function checkPartnerCode(input: unknown): Promise<PartnerCodeCheck> {
   const parsed = checkPartnerCodeSchema.safeParse(input);
-  const code = parsed.success ? parsePartnerCode(parsed.data.code) : null;
-  if (!parsed.success || !code) return null;
-  return findCheckoutPartner({ storeId: parsed.data.storeId, code });
+  if (!parsed.success) return { status: "not_found" };
+  return checkStorefrontPartnerCode({ ...parsed.data, ip: getClientIp(await headers()) });
 }
 
+const logPartnerFailure = (
+  event: "credit_unresolved" | "attribution_failed",
+  storeId: string,
+  error: unknown,
+  reservationId?: string,
+) =>
+  log.warn({
+    partner: {
+      event,
+      storeId,
+      ...(reservationId ? { reservationId } : {}),
+      error: error instanceof Error ? error.message : String(error),
+    },
+  });
+
 /**
- * Credits a partner with the reservation (docs/product/liens-partenaires.md):
+ * The partner a storefront booking credits (docs/product/liens-partenaires.md):
  * the code the customer typed, else the partner link the storefront's cookie
- * remembers, within the store's window. Never fails the checkout: a
- * reservation is worth more than its attribution, which the store can still
- * set by hand.
+ * remembers, with its perk's promo code. Null when there is none, or when it
+ * cannot be read: a reservation is worth more than its attribution.
  */
-const creditPartner = async (input: {
+const resolvePartnerCredit = async (input: {
   storeId: string;
-  reservationId: string;
   typedCode: string | undefined;
   cookieValue: string | undefined;
-}): Promise<void> => {
+}) => {
   try {
-    const typed = parsePartnerCode(input.typedCode);
-    let credit: { code: string; origin: "code" | "link"; clickedAt?: Date } | null = typed
-      ? { code: typed, origin: "code" }
-      : null;
-    if (!credit && input.cookieValue) {
+    let link: { code: string; clickedAt: Date } | null = null;
+    if (input.cookieValue) {
       const store = await db.query.stores.findFirst({
         where: eq(stores.id, input.storeId),
         columns: { slug: true },
       });
-      const link = store ? readPartnerCookie(input.cookieValue, store.slug) : null;
-      if (link) credit = { code: link.code, origin: "link", clickedAt: link.clickedAt };
+      link = store ? readPartnerCookie(input.cookieValue, store.slug, authEnv.AUTH_SECRET) : null;
     }
-    if (!credit) return;
-    const { effectIds } = await attributeReservation({
+    return await resolveCheckoutCredit({
       storeId: input.storeId,
-      reservationId: input.reservationId,
-      ...credit,
+      typedCode: input.typedCode,
+      link,
     });
-    dispatchApiEffects(effectIds);
   } catch (error) {
-    log.warn({
-      partner: {
-        event: "attribution_failed",
-        storeId: input.storeId,
-        reservationId: input.reservationId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-    });
+    logPartnerFailure("credit_unresolved", input.storeId, error);
+    return null;
   }
 };
+
+/**
+ * Credits the partner with the reservation, within the store's window for a
+ * link. Never fails the checkout: the store can still set it by hand.
+ */
+const creditPartner = async (storeId: string, reservationId: string, credit: CheckoutCredit) => {
+  try {
+    const { effectIds } = await attributeReservation({ storeId, reservationId, ...credit });
+    dispatchApiEffects(effectIds);
+  } catch (error) {
+    logPartnerFailure("attribution_failed", storeId, error, reservationId);
+  }
+};
+
+/** The partner's perk was kept at checkout but can no longer be used. */
+const PARTNER_PERK_UNAVAILABLE = "errors.partnerPerkUnavailable";
 
 /**
  * Public checkout submission. The payload is validated with Zod, the source
@@ -328,9 +347,26 @@ export async function createReservation(input: unknown): Promise<CreateReservati
   // Test mode is read from its signed cookie only (lib/test-reservations).
   const testMode = await getStorefrontTestMode(parsed.data.storeId);
   const cookieStore = await cookies();
-  const { partnerCode, ...reservationInput } = parsed.data;
+  const { partnerCode, partnerPerk, ...reservationInput } = parsed.data;
+
+  // A test checkout credits no partner. The perk the customer kept is the
+  // partner's promo code, applied here: the storefront never sees it.
+  const partner = testMode
+    ? null
+    : await resolvePartnerCredit({
+        storeId: parsed.data.storeId,
+        typedCode: partnerCode,
+        cookieValue: cookieStore.get(PARTNER_COOKIE)?.value,
+      });
+  let promoCode = reservationInput.promoCode;
+  if (partnerPerk && !promoCode) {
+    if (!partner?.perkPromoCode) return { error: PARTNER_PERK_UNAVAILABLE };
+    promoCode = partner.perkPromoCode;
+  }
+
   const result = await createReservationInternal({
     ...reservationInput,
+    promoCode,
     source: "online",
     salesChannel: salesChannelFromCookie(cookieStore.get(SALES_CHANNEL_COOKIE)?.value),
     customerSignedIn: testMode
@@ -348,14 +384,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     };
   }
 
-  if (!testMode) {
-    await creditPartner({
-      storeId: parsed.data.storeId,
-      reservationId: result.reservationId,
-      typedCode: partnerCode,
-      cookieValue: cookieStore.get(PARTNER_COOKIE)?.value,
-    });
-  }
+  if (partner) await creditPartner(parsed.data.storeId, result.reservationId, partner.credit);
 
   return {
     success: true,

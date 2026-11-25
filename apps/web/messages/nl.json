@@ -8625,7 +8625,9 @@
         "placeholder": "Voer uw code in",
         "apply": "Toepassen",
         "discount": "Korting ({code})",
-        "remove": "Kortingscode verwijderen"
+        "remove": "Kortingscode verwijderen",
+        "partnerPerk": "Partnervoordeel",
+        "removePartnerPerk": "Partnervoordeel verwijderen"
       },
       "lineNeedsUpdate": "Sommige regels zijn niet meer beschikbaar. Pas uw winkelwagen aan voordat u verstuurt.",
       "advisor": {
@@ -8724,7 +8726,8 @@
         "apply": "Toepassen",
         "notFound": "Deze code hoort bij geen enkele partner.",
         "credited": "Aanbevolen door {partner}",
-        "remove": "Partner verwijderen"
+        "remove": "Partner verwijderen",
+        "rateLimited": "Te veel pogingen: probeer het over een paar minuten opnieuw. U kunt meteen reserveren."
       }
     },
     "confirmation": {
@@ -10274,7 +10277,8 @@
     "partnerNothingToPay": "Er staat voor deze maand niets meer open voor deze partner.",
     "partnerReservationNotAttributed": "Deze reservering is aan geen enkele partner toegekend.",
     "partnerPerkNotFound": "Deze actiecode bestaat niet in je winkel.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Het partnervoordeel is niet meer beschikbaar, dus we hebben het verwijderd. Controleer het totaal en reserveer opnieuw."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

@@ -9,11 +9,12 @@ import { Badge, Button, Collapsible, CollapsiblePanel, CollapsibleTrigger, Input
 
 import { useFormatMoney } from "@/hooks/use-format-money";
 
-import type { ValidatedPromo } from "../checkout.types";
+import type { CheckoutPromo } from "../checkout.types";
 import type { PromoValidationError } from "../hooks/use-checkout-promo";
 
 interface CheckoutPromoCodeProps {
-  promo: ValidatedPromo | null;
+  /** A code the customer applied, or the partner's perk, applied for them. */
+  promo: CheckoutPromo | null;
   discountAmount: number;
   isValidating: boolean;
   validationError: PromoValidationError | null;
@@ -49,7 +50,7 @@ export const CheckoutPromoCode = ({
       <div className="flex items-center justify-between gap-3 rounded-lg bg-success/12 px-3 py-2 text-sm text-success">
         <div className="flex min-w-0 items-center gap-2">
           <Tag aria-hidden className="size-4 shrink-0" />
-          <Badge variant="promo">{promo.code}</Badge>
+          <Badge variant="promo">{promo.source === "code" ? promo.code : t("partnerPerk")}</Badge>
           <span className="font-medium tabular-nums">-{formatMoney(discountAmount)}</span>
         </div>
         <Button
@@ -57,7 +58,7 @@ export const CheckoutPromoCode = ({
           variant="ghost"
           size="icon-sm"
           onClick={onRemove}
-          aria-label={t("remove")}
+          aria-label={promo.source === "code" ? t("remove") : t("removePartnerPerk")}
           className="text-success hover:text-success"
         >
           <X />

@@ -23,11 +23,11 @@ import { getDetailedDuration } from "@/lib/utils/duration";
 import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
 
 import type {
+  CheckoutPromo,
   CheckoutTulipInsurance,
   LineResolutionState,
   ReservationMode,
   TulipQuotePreview,
-  ValidatedPromo,
 } from "../checkout.types";
 import { CheckoutDeposit } from "./checkout-deposit";
 import type { CheckoutTotals } from "../util.checkout-totals";
@@ -56,7 +56,7 @@ interface CheckoutOrderSummaryProps {
   };
   tulipInsuranceOptIn: boolean;
   lineResolutions: Record<string, LineResolutionState>;
-  promo: ValidatedPromo | null;
+  promo: CheckoutPromo | null;
   discountAmount: number;
   onEditDates: () => void;
   /** `card` = desktop sticky card; `bare` = inside the mobile disclosure. */
@@ -274,7 +274,11 @@ export const CheckoutOrderSummary = ({
 
         {promo && discountAmount > 0 && (
           <SummaryRow
-            label={t("promoCode.discount", { code: promo.code })}
+            label={
+              promo.source === "code"
+                ? t("promoCode.discount", { code: promo.code })
+                : t("promoCode.partnerPerk")
+            }
             value={`-${formatMoney(discountAmount)}`}
             tone="success"
           />

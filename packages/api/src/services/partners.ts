@@ -17,21 +17,25 @@ import { and, asc, eq, gt, gte, inArray, isNotNull, isNull, lt, or, sql } from "
 import {
   DEFAULT_PARTNER_ATTRIBUTION_DAYS,
   PARTNER_STATEMENT_MONTHS,
+  parsePartnerCode,
   partnerAttributionDays,
   partnerCodeFromName,
   partnerErrors,
   type Partner,
   type PartnerBooking,
   type PartnerBookingOrigin,
+  type PartnerCodeCheck,
   type PartnerCommissionType,
   type PartnerFields,
   type PartnerList,
   type PartnerMonthTotals,
+  type PartnerPerkView,
   type PartnerSettings,
   type PartnerStatement,
   type ReservationPartner,
 } from "../contracts/partners";
 import { enqueueEffects } from "../platform/effects";
+import { consumeRateLimit } from "../platform/rate-limit";
 import {
   commissionBase,
   commissionState,
@@ -816,8 +820,12 @@ async function withinWindow(storeId: string, clickedAt: Date, now: Date): Promis
 export interface CheckoutPartner {
   code: string;
   name: string;
-  /** The perk's promo code, when the store gave one and it can be used now. */
-  perkCode: string | null;
+  /**
+   * The perk, when the store gave one and it can be used now: its discount,
+   * and the promo code the server applies at booking. The code never reaches
+   * the storefront (`checkoutPerkView`).
+   */
+  perk: (PartnerPerkView & { promoCode: string }) | null;
 }
 
 /**
@@ -839,6 +847,9 @@ export async function findCheckoutPartner(input: {
       code: storePartners.code,
       name: storePartners.name,
       perkCode: promoCodes.code,
+      perkType: promoCodes.type,
+      perkValue: promoCodes.value,
+      perkMinimum: promoCodes.minimumAmount,
     })
     .from(storePartners)
     .leftJoin(
@@ -851,7 +862,106 @@ export async function findCheckoutPartner(input: {
     )
     .where(activeCode(input.storeId, input.code))
     .limit(1);
-  return row ? { code: row.code, name: row.name, perkCode: row.perkCode ?? null } : null;
+  if (!row) return null;
+  return {
+    code: row.code,
+    name: row.name,
+    perk:
+      row.perkCode && row.perkType && row.perkValue !== null
+        ? {
+            promoCode: row.perkCode,
+            type: row.perkType,
+            value: Number(row.perkValue),
+            minimumAmount: Number(row.perkMinimum ?? 0),
+          }
+        : null,
+  };
+}
+
+/** What the storefront may see of a perk: its discount, without its promo code. */
+export const checkoutPerkView = (perk: CheckoutPartner["perk"]): PartnerPerkView | null =>
+  perk ? { type: perk.type, value: perk.value, minimumAmount: perk.minimumAmount } : null;
+
+/**
+ * How often the checkout's partner code field may be tried. Per IP, a
+ * customer typing the code they were given needs a few tries, never dozens.
+ * Per store, guessing codes from many addresses stays slow, while one person
+ * cannot easily block the field for the store's other customers. Only the
+ * check is limited: booking never is, and partner links keep working.
+ */
+export const PARTNER_CODE_CHECK_LIMITS = {
+  perIp: { windowMs: 15 * 60 * 1000, max: 10 },
+  perStore: { windowMs: 60 * 60 * 1000, max: 120 },
+} as const;
+
+/**
+ * A partner's code typed at checkout: the partner's name and what the
+ * customer sees of its perk, never the perk's promo code. Both limits are
+ * counted before anything is read, and an unknown store answers as an
+ * unknown code does.
+ */
+export async function checkStorefrontPartnerCode(input: {
+  storeId: string;
+  code: string;
+  ip: string;
+  now?: Date;
+}): Promise<PartnerCodeCheck> {
+  const now = input.now ?? new Date();
+  const perIp = await consumeRateLimit(
+    `partner-code:ip:${input.ip.slice(0, 64)}`,
+    PARTNER_CODE_CHECK_LIMITS.perIp,
+    now.getTime(),
+  );
+  if (!perIp.allowed) return { status: "rate_limited", retryAfterSeconds: perIp.retryAfterSeconds };
+  const perStore = await consumeRateLimit(
+    `partner-code:store:${input.storeId}`,
+    PARTNER_CODE_CHECK_LIMITS.perStore,
+    now.getTime(),
+  );
+  if (!perStore.allowed) {
+    return { status: "rate_limited", retryAfterSeconds: perStore.retryAfterSeconds };
+  }
+  const code = parsePartnerCode(input.code);
+  const partner = code ? await findCheckoutPartner({ storeId: input.storeId, code, now }) : null;
+  if (!partner) return { status: "not_found" };
+  return { status: "found", partner: { name: partner.name, perk: checkoutPerkView(partner.perk) } };
+}
+
+/** The partner a booking credits, and how. */
+export interface CheckoutCredit {
+  code: string;
+  origin: Exclude<PartnerBookingOrigin, "manual">;
+  clickedAt?: Date;
+}
+
+/**
+ * The partner a storefront booking credits, read before it is written: the
+ * code the customer typed, else the link the storefront's cookie remembers
+ * (within the store's window, checked again at attribution). With the
+ * promo code of its perk when it can be used now, for the server to apply
+ * when the customer kept the perk the checkout showed. Null without a code
+ * or a link.
+ */
+export async function resolveCheckoutCredit(input: {
+  storeId: string;
+  typedCode: string | undefined;
+  link: { code: string; clickedAt: Date } | null;
+  now?: Date;
+}): Promise<{ credit: CheckoutCredit; perkPromoCode: string | null } | null> {
+  const typed = parsePartnerCode(input.typedCode);
+  const credit: CheckoutCredit | null = typed
+    ? { code: typed, origin: "code" }
+    : input.link
+      ? { code: input.link.code, origin: "link", clickedAt: input.link.clickedAt }
+      : null;
+  if (!credit) return null;
+  const partner = await findCheckoutPartner({
+    storeId: input.storeId,
+    code: credit.code,
+    clickedAt: credit.clickedAt,
+    now: input.now,
+  });
+  return { credit, perkPromoCode: partner?.perk?.promoCode ?? null };
 }
 
 /**

@@ -8625,7 +8625,9 @@
         "placeholder": "コードを入力してください",
         "apply": "申し込む",
         "discount": "割引 ({code})",
-        "remove": "プロモーションコードを削除する"
+        "remove": "プロモーションコードを削除する",
+        "partnerPerk": "パートナー特典",
+        "removePartnerPerk": "パートナー特典を削除する"
       },
       "lineNeedsUpdate": "一部の回線はご利用いただけなくなりました。送信する前にカートを更新してください。",
       "advisor": {
@@ -8724,7 +8726,8 @@
         "apply": "適用",
         "notFound": "このコードに該当するパートナーはありません。",
         "credited": "{partner} のご紹介",
-        "remove": "パートナーを外す"
+        "remove": "パートナーを外す",
+        "rateLimited": "試行回数が多すぎます。数分後にもう一度お試しください。予約はすぐにできます。"
       }
     },
     "confirmation": {
@@ -10274,7 +10277,8 @@
     "partnerNothingToPay": "このパートナーへの今月の未払いはありません。",
     "partnerReservationNotAttributed": "この予約はどのパートナーにも計上されていません。",
     "partnerPerkNotFound": "このプロモーションコードはストアに存在しません。",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "パートナー特典はご利用いただけなくなったため、削除しました。合計金額をご確認のうえ、もう一度予約してください。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

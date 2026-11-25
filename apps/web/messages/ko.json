@@ -8625,7 +8625,9 @@
         "placeholder": "코드를 입력하세요",
         "apply": "적용",
         "discount": "할인 ({code})",
-        "remove": "프로모션 코드 삭제"
+        "remove": "프로모션 코드 삭제",
+        "partnerPerk": "파트너 혜택",
+        "removePartnerPerk": "파트너 혜택 삭제"
       },
       "lineNeedsUpdate": "일부 회선은 더 이상 사용할 수 없습니다. 제출하기 전에 장바구니를 업데이트하세요.",
       "advisor": {
@@ -8724,7 +8726,8 @@
         "apply": "적용",
         "notFound": "이 코드와 일치하는 파트너가 없습니다.",
         "credited": "{partner} 추천",
-        "remove": "파트너 제거"
+        "remove": "파트너 제거",
+        "rateLimited": "시도 횟수가 너무 많습니다. 몇 분 후에 다시 시도해 주세요. 예약은 바로 하실 수 있습니다."
       }
     },
     "confirmation": {
@@ -10274,7 +10277,8 @@
     "partnerNothingToPay": "이번 달에 이 파트너에게 지급할 금액이 남아 있지 않아요.",
     "partnerReservationNotAttributed": "이 예약은 어떤 파트너에도 반영되어 있지 않아요.",
     "partnerPerkNotFound": "이 프로모션 코드는 스토어에 없어요.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "파트너 혜택을 더 이상 사용할 수 없어 삭제했습니다. 총액을 확인한 후 다시 예약해 주세요."
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",

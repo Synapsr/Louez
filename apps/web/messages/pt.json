@@ -8625,7 +8625,9 @@
         "placeholder": "Introduza o seu código",
         "apply": "Aplicar",
         "discount": "Desconto ({code})",
-        "remove": "Remover o código promocional"
+        "remove": "Remover o código promocional",
+        "partnerPerk": "Vantagem de parceiro",
+        "removePartnerPerk": "Remover a vantagem de parceiro"
       },
       "lineNeedsUpdate": "Algumas linhas já não estão disponíveis. Atualize o carrinho antes de submeter.",
       "advisor": {
@@ -8724,7 +8726,8 @@
         "apply": "Aplicar",
         "notFound": "Este código não corresponde a nenhum parceiro.",
         "credited": "Recomendado por {partner}",
-        "remove": "Remover o parceiro"
+        "remove": "Remover o parceiro",
+        "rateLimited": "Demasiadas tentativas: tente novamente dentro de alguns minutos. Pode reservar já."
       }
     },
     "confirmation": {
@@ -10274,7 +10277,8 @@
     "partnerNothingToPay": "Não há nada por pagar a este parceiro neste mês.",
     "partnerReservationNotAttributed": "Esta reserva não está atribuída a nenhum parceiro.",
     "partnerPerkNotFound": "Este código promocional não existe na sua loja.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "A vantagem de parceiro já não está disponível: retirámo-la. Verifique o total e reserve novamente."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

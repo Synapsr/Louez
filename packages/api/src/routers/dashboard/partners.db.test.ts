@@ -100,6 +100,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   beforeEach(async () => {
     const { db } = louezDb;
     await db.delete(louezDb.apiEffects);
+    await db.delete(louezDb.apiRateLimits);
     await db.delete(louezDb.promoCodes);
     await db.delete(louezDb.storePartnerSettings);
     await db.delete(louezDb.partnerPayouts);
@@ -319,7 +320,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       {
         code: "camping-les-pins",
         name: "Camping Les Pins",
-        perkCode: "PINS5",
+        perk: { promoCode: "PINS5", type: "percentage", value: 5, minimumAmount: 0 },
       },
     );
 
@@ -328,10 +329,73 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       .set({ isActive: false })
       .where(eq(louezDb.promoCodes.id, "pl_promo_pins_000001"));
     assert.equal(
-      (await service.findCheckoutPartner({ storeId: STORE, code: partner.code, now: NOW }))
-        ?.perkCode,
+      (await service.findCheckoutPartner({ storeId: STORE, code: partner.code, now: NOW }))?.perk,
       null,
     );
+  });
+
+  test("the public code check: the perk as the customer sees it, never its promo code; an unknown store answers as an unknown code", async () => {
+    await promo("pl_promo_pins_000001", "PINS5");
+    const partner = await service.createPartner(STORE, {
+      name: "Camping Les Pins",
+      commission: { type: "percent", value: 10 },
+      promoCodeId: "pl_promo_pins_000001",
+    });
+    const check = (storeId: string, code: string, ip: string) =>
+      service.checkStorefrontPartnerCode({ storeId, code, ip, now: NOW });
+
+    const found = await check(STORE, partner.code.toUpperCase(), "198.51.100.1");
+    assert.deepEqual(found, {
+      status: "found",
+      partner: {
+        name: "Camping Les Pins",
+        perk: { type: "percentage", value: 5, minimumAmount: 0 },
+      },
+    });
+    assert.doesNotMatch(JSON.stringify(found), /PINS5/);
+
+    const unknownCode = await check(STORE, "les-sapins", "198.51.100.2");
+    const unknownStore = await check("pl_store_none_000001", partner.code, "198.51.100.3");
+    const notACode = await check(STORE, "?!", "198.51.100.4");
+    assert.deepEqual(unknownCode, { status: "not_found" });
+    assert.deepEqual(unknownStore, unknownCode);
+    assert.deepEqual(notACode, unknownCode);
+  });
+
+  test("the public code check is limited per IP, then per store, whatever the answer", async () => {
+    const partner = await campsite();
+    const { perIp, perStore } = service.PARTNER_CODE_CHECK_LIMITS;
+    assert.deepEqual(
+      [perIp.max, perIp.windowMs, perStore.max, perStore.windowMs],
+      [10, 15 * 60 * 1000, 120, 60 * 60 * 1000],
+    );
+    const check = (storeId: string, ip: string, code = partner.code, now = NOW) =>
+      service.checkStorefrontPartnerCode({ storeId, code, ip, now });
+
+    // One address: its tenth try answers, the eleventh is refused, a known code too.
+    for (let attempt = 1; attempt < perIp.max; attempt += 1) {
+      assert.equal((await check(STORE, "203.0.113.7", "nobody")).status, "not_found");
+    }
+    assert.equal((await check(STORE, "203.0.113.7")).status, "found");
+    const limited = await check(STORE, "203.0.113.7");
+    assert.equal(limited.status, "rate_limited");
+    assert.ok(limited.status === "rate_limited" && limited.retryAfterSeconds > 0);
+    // Another address still checks; the first one again once its window is over.
+    assert.equal((await check(STORE, "203.0.113.8")).status, "found");
+    const later = new Date(NOW.getTime() + perIp.windowMs);
+    assert.equal((await check(STORE, "203.0.113.7", partner.code, later)).status, "found");
+
+    // Many addresses on one store: its 120 tries an hour answer, then none.
+    const other = await service.createPartner(OTHER_STORE, {
+      name: "Hôtel du Port",
+      commission: { type: "percent", value: 10 },
+    });
+    for (let attempt = 0; attempt < perStore.max; attempt += 1) {
+      assert.equal((await check(OTHER_STORE, `192.0.2.${attempt}`, "nobody")).status, "not_found");
+    }
+    assert.equal((await check(OTHER_STORE, "192.0.2.200", other.code)).status, "rate_limited");
+    // The other store's customers are not touched.
+    assert.equal((await check(STORE, "192.0.2.201")).status, "found");
   });
 
   test("the statement: base without insurance or discount, due, upcoming and cancelled, by month of the rental's end", async () => {

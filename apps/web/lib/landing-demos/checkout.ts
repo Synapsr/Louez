@@ -159,7 +159,9 @@ export const CHECKOUT_DEMO_PROMO = {
   isValidating: false,
   validationError: null,
   validate: () => {},
+  applyPartnerPerk: () => {},
   remove: () => {},
+  removePartnerPerk: () => {},
   clearError: () => {},
 } satisfies ConfirmProps["promo"];
 

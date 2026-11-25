@@ -218,3 +218,40 @@ describe("proxy billing gate", () => {
     }
   });
 });
+
+describe("proxy partner link", () => {
+  let proxy: typeof import("./proxy").proxy;
+  let partnerCookie: typeof import("./lib/partners/partner-cookie");
+  const SECRET = "a-server-secret-for-the-proxy-test";
+
+  before(async () => {
+    ({ proxy } = await import("./proxy"));
+    partnerCookie = await import("./lib/partners/partner-cookie");
+  });
+
+  afterEach(() => {
+    delete process.env.AUTH_SECRET;
+  });
+
+  const follow = (path: string) =>
+    proxy(
+      new NextRequest(new URL(path, "http://shop.localhost:3000"), {
+        headers: { host: "shop.localhost:3000" },
+      }),
+    );
+
+  test("a partner's link sets a cookie signed with the server's secret, which the checkout reads", async () => {
+    process.env.AUTH_SECRET = SECRET;
+    const response = await follow("/?partner=Camping-Les-Pins");
+    const value = response.cookies.get(partnerCookie.PARTNER_COOKIE)?.value;
+    assert.ok(value);
+    const link = partnerCookie.readPartnerCookie(value, "shop", SECRET);
+    assert.equal(link?.code, "camping-les-pins");
+    assert.equal(partnerCookie.readPartnerCookie(value, "shop", "another-secret"), null);
+  });
+
+  test("without a secret to sign it, no partner cookie is set", async () => {
+    const response = await follow("/?partner=camping-les-pins");
+    assert.equal(response.cookies.get(partnerCookie.PARTNER_COOKIE), undefined);
+  });
+});
