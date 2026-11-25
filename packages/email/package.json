@@ -21,13 +21,12 @@
     "@react-email/components": "^1.0.3",
     "@react-email/render": "^2.0.1",
     "@t3-oss/env-core": "^0.13.10",
-    "nodemailer": "^9.0.1",
+    "nodemailer": "^10.6.1",
     "react-email": "^5.1.1",
     "zod": "^4.3.5"
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
-    "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
     "react": "19.2.6",
     "react-dom": "19.2.6",
