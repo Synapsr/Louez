@@ -212,7 +212,7 @@ importers:
         version: 3.35.0
       '@vis.gl/react-maplibre':
         specifier: 8.1.1
-        version: 8.1.1(maplibre-gl@5.24.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 8.1.1(maplibre-gl@5.24.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       ai:
         specifier: ^6.0.116
         version: 6.0.116(zod@4.3.5)
@@ -262,8 +262,8 @@ importers:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.6)
       maplibre-gl:
-        specifier: 5.24.0
-        version: 5.24.0
+        specifier: 5.24.1
+        version: 5.24.1
       marked:
         specifier: ^18.0.7
         version: 18.0.7
@@ -6042,8 +6042,8 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  maplibre-gl@5.24.0:
-    resolution: {integrity: sha512-ALyFxgtd5R+65UqZ/++lOqwWcC0SNho9c27fYSyLmG7AfnAul2o46F05aDJGPbFU57wos9dgcIySHs0Xe6ia3A==}
+  maplibre-gl@5.24.1:
+    resolution: {integrity: sha512-HyiYBwtsbk3L1n1EPLJHWqdoyMiF80n7tEYXFZyu2m1TjvaNx6KMLiFeDdmszt1/mq2zvsR1TJuX/NMu5BonXQ==}
     engines: {node: '>=16.14.0', npm: '>=8.1.0'}
 
   marked@15.0.12:
@@ -11265,13 +11265,13 @@ snapshots:
 
   '@vercel/oidc@3.1.0': {}
 
-  '@vis.gl/react-maplibre@8.1.1(maplibre-gl@5.24.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@vis.gl/react-maplibre@8.1.1(maplibre-gl@5.24.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@maplibre/maplibre-gl-style-spec': 19.3.3
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
     optionalDependencies:
-      maplibre-gl: 5.24.0
+      maplibre-gl: 5.24.1
 
   '@xstate/fsm@1.6.5': {}
 
@@ -12461,7 +12461,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  maplibre-gl@5.24.0:
+  maplibre-gl@5.24.1:
     dependencies:
       '@mapbox/jsonlint-lines-primitives': 2.0.3
       '@mapbox/point-geometry': 1.1.0
