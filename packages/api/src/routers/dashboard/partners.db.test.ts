@@ -645,6 +645,29 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.deepEqual([notice.totals.bookings, notice.totals.due], [1, 11]);
   });
 
+  test("a demo store's partners get no monthly statement", async () => {
+    const partner = await campsite();
+    await louezDb.db.insert(louezDb.reservations).values(reservation("pl_resa_demo_0000001"));
+    await credit("pl_resa_demo_0000001", partner.code);
+    await louezDb.db.delete(louezDb.apiEffects);
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ demoVertical: "velo" })
+      .where(eq(louezDb.stores.id, STORE));
+    try {
+      assert.deepEqual(
+        await space.queueMonthlyPartnerStatements(new Date("2026-12-02T08:00:00Z")),
+        [],
+      );
+      assert.deepEqual(await effects(), []);
+    } finally {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ demoVertical: null })
+        .where(eq(louezDb.stores.id, STORE));
+    }
+  });
+
   test("procedures stay in the session's store, and give their links", async () => {
     const created = await orpc.call(
       router.create,

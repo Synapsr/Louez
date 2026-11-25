@@ -1,5 +1,6 @@
 import {
   db,
+  notDemoStoreId,
   partnerBookings,
   partnerPayouts,
   promoCodes,
@@ -364,6 +365,8 @@ export async function queueMonthlyPartnerStatements(
           lt(storePartners.statementSentMonth, utcPrevious),
         ),
         sql`EXISTS (SELECT 1 FROM ${partnerBookings} WHERE ${partnerBookings.partnerId} = ${storePartners.id})`,
+        // A demo store sends nothing: its partners get no statement.
+        notDemoStoreId(storePartners.storeId),
       ),
     )
     .limit(limit);
