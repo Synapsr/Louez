@@ -86,7 +86,11 @@ export const SketchHomePage = ({
 }: SketchHomePageProps) => {
   const { identity, home, contact } = values;
   const phone = device === "phone";
-  const youtubeEmbedUrl = getYouTubeEmbedUrl(home.heroYoutubeUrl, !reduceMotion);
+  const localVideoUrl = home.heroVideoSource === "file" ? home.heroFileVideoUrl : "";
+  const youtubeEmbedUrl =
+    home.heroVideoSource === "youtube"
+      ? getYouTubeEmbedUrl(home.heroYoutubeUrl, !reduceMotion)
+      : null;
   const youtubeIframeRef = useYouTubeCaptionsDisabled(Boolean(youtubeEmbedUrl));
   const hero = resolveStoreHeroPresentation({
     theme: {
@@ -94,7 +98,7 @@ export const SketchHomePage = ({
       heroAlign: home.heroAlign,
       heroVerticalAlign: home.heroVerticalAlign,
     },
-    mediaCount: home.heroImages.length + Number(Boolean(youtubeEmbedUrl)),
+    mediaCount: home.heroImages.length + Number(Boolean(youtubeEmbedUrl || localVideoUrl)),
   });
   const photo = home.heroImages[0];
   const primary = identity.primaryColor;
@@ -279,6 +283,7 @@ export const SketchHomePage = ({
 
   const heroMediaKeys = [
     ...home.heroImages.map((image) => `image:${image}`),
+    ...(localVideoUrl ? [`video:${localVideoUrl}`] : []),
     ...(youtubeEmbedUrl ? [`youtube:${home.heroYoutubeUrl}`] : []),
   ];
   const dots =
@@ -353,7 +358,16 @@ export const SketchHomePage = ({
                 VERTICAL_ITEMS[hero.verticalAlign],
               )}
             >
-              {youtubeEmbedUrl ? (
+              {localVideoUrl ? (
+                <video
+                  src={localVideoUrl}
+                  autoPlay={!reduceMotion}
+                  muted
+                  loop
+                  playsInline
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : youtubeEmbedUrl ? (
                 <div className="absolute inset-0 overflow-hidden [container-type:size]">
                   <iframe
                     src={youtubeEmbedUrl}
@@ -398,7 +412,16 @@ export const SketchHomePage = ({
                   !phone && hero.align === "end" ? "order-first" : "order-last",
                 )}
               >
-                {youtubeEmbedUrl ? (
+                {localVideoUrl ? (
+                  <video
+                    src={localVideoUrl}
+                    autoPlay={!reduceMotion}
+                    muted
+                    loop
+                    playsInline
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : youtubeEmbedUrl ? (
                   <iframe
                     src={youtubeEmbedUrl}
                     ref={youtubeIframeRef}

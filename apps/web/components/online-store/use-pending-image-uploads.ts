@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFiles } from "files-sdk/react";
+
+import { MAX_HERO_VIDEO_SIZE } from "@louez/validations";
 import { useImageUpload } from "@/hooks/use-image-upload";
+import { getImageKeyFromUrl } from "@/lib/uploads/image-upload";
 
 export type OnlineStoreImageKind = "logo" | "hero";
 
@@ -14,21 +18,57 @@ export type OnlineStoreImageKind = "logo" | "hero";
 export const usePendingImageUploads = () => {
   const logoFiles = useImageUpload("logo");
   const heroFiles = useImageUpload("hero");
-  const pendingRef = useRef(new Map<string, OnlineStoreImageKind>());
+  const videoFiles = useFiles({ endpoint: "/api/files/hero-video" });
+  const pendingRef = useRef(new Map<string, OnlineStoreImageKind | "hero-video">());
   const [inFlight, setInFlight] = useState(0);
-  const deleteRef = useRef({ logo: logoFiles.deleteImage, hero: heroFiles.deleteImage });
+  const deleteRef = useRef({
+    logo: logoFiles.deleteImage,
+    hero: heroFiles.deleteImage,
+    video: async (url: string) => {
+      const key = getImageKeyFromUrl(url);
+      if (key) await videoFiles.delete(key);
+    },
+  });
 
   useEffect(() => {
-    deleteRef.current = { logo: logoFiles.deleteImage, hero: heroFiles.deleteImage };
-  }, [heroFiles.deleteImage, logoFiles.deleteImage]);
+    deleteRef.current = {
+      logo: logoFiles.deleteImage,
+      hero: heroFiles.deleteImage,
+      video: async (url: string) => {
+        const key = getImageKeyFromUrl(url);
+        if (key) await videoFiles.delete(key);
+      },
+    };
+  }, [heroFiles.deleteImage, logoFiles.deleteImage, videoFiles]);
 
   useEffect(
     () => () => {
       void Promise.allSettled(
-        [...pendingRef.current].map(([url, kind]) => deleteRef.current[kind](url)),
+        [...pendingRef.current].map(([url, kind]) =>
+          kind === "hero-video" ? deleteRef.current.video(url) : deleteRef.current[kind](url),
+        ),
       );
     },
     [],
+  );
+
+  const uploadHeroVideo = useCallback(
+    async (file: File): Promise<string> => {
+      if (file.type !== "video/mp4" || !file.name.toLowerCase().endsWith(".mp4")) {
+        throw new Error("videoNotMp4");
+      }
+      if (file.size > MAX_HERO_VIDEO_SIZE) throw new Error("videoTooLarge");
+      setInFlight((count) => count + 1);
+      try {
+        const uploaded = await videoFiles.upload(file, { contentType: "video/mp4" });
+        const url = await videoFiles.url(uploaded.key);
+        pendingRef.current.set(url, "hero-video");
+        return url;
+      } finally {
+        setInFlight((count) => count - 1);
+      }
+    },
+    [videoFiles],
   );
 
   const upload = useCallback(
@@ -52,19 +92,22 @@ export const usePendingImageUploads = () => {
     if (!kind) return;
 
     pendingRef.current.delete(url);
-    void deleteRef.current[kind](url).catch(() => undefined);
+    void (kind === "hero-video" ? deleteRef.current.video(url) : deleteRef.current[kind](url)).catch(
+      () => undefined,
+    );
   }, []);
 
   /** After a save: pending uploads are now owned by the store; delete the images it dropped. */
-  const settle = useCallback((replaced: { logos: string[]; heroes: string[] }) => {
+  const settle = useCallback((replaced: { logos: string[]; heroes: string[]; videos: string[] }) => {
     pendingRef.current.clear();
     void Promise.allSettled([
       ...replaced.logos.map((url) => deleteRef.current.logo(url)),
       ...replaced.heroes.map((url) => deleteRef.current.hero(url)),
+      ...replaced.videos.map((url) => deleteRef.current.video(url)),
     ]);
   }, []);
 
-  return { upload, discard, settle, isUploading: inFlight > 0 };
+  return { upload, uploadHeroVideo, discard, settle, isUploading: inFlight > 0 };
 };
 
 export type PendingImageUploads = ReturnType<typeof usePendingImageUploads>;

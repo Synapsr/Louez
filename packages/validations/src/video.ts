@@ -1,3 +1,7 @@
+import { getStorageRelativePath } from "./image";
+
+export const MAX_HERO_VIDEO_SIZE = 30 * 1024 * 1024;
+
 const YOUTUBE_HOSTS = new Set([
   "youtube.com",
   "www.youtube.com",
@@ -39,6 +43,19 @@ export const getYouTubeVideoId = (value: string): string | null => {
 };
 
 export const isValidYouTubeVideoUrl = (value: string): boolean => getYouTubeVideoId(value) !== null;
+
+/** Hero videos must be uploaded MP4 assets in our configured public storage. */
+export const isValidHeroVideoUrl = (value: string): boolean => {
+  const path = getStorageRelativePath(value);
+  return path !== null && /^[a-zA-Z0-9/_-]+\.mp4$/i.test(path);
+};
+
+export const isOwnedHeroVideoUrl = (value: string, ownerPrefix: string): boolean => {
+  const path = getStorageRelativePath(value);
+  if (path === null) return false;
+  const prefix = ownerPrefix.replace(/^\/+|\/+$/g, "");
+  return path.startsWith(`${prefix}/`) && isValidHeroVideoUrl(value);
+};
 
 export const getYouTubeEmbedUrl = (value: string, autoplay: boolean): string | null => {
   const videoId = getYouTubeVideoId(value);

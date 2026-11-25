@@ -379,6 +379,9 @@ export interface StoreTheme {
   heroImages?: string[];
   heroImageAlts?: Record<string, string>;
   heroYoutubeUrl?: string;
+  /** Optional MP4 stored in the store's public media bucket. */
+  heroFileVideoUrl?: string;
+  heroVideoSource?: "youtube" | "file";
   /** @deprecated Legacy uploaded MP4 setting. It is not rendered and is dropped on theme updates. */
   heroVideoUrl?: string;
   /** Home hero layout. 'cover' (default) = the text over full-width media; 'split' = the text beside framed media. Without media both render the same centred band. */

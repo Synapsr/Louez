@@ -2,8 +2,18 @@
 
 import { useStore } from "@tanstack/react-form";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
-import { Slider, Switch } from "@louez/ui";
+import {
+  Button,
+  Label,
+  Slider,
+  Spinner,
+  Switch,
+  toastManager,
+  useControlsDisabled,
+} from "@louez/ui";
+import { VideoIcon, YoutubeIcon } from "lucide-react";
 
 import { withForm } from "@/hooks/form/form";
 
@@ -32,10 +42,17 @@ export const HomeSection = withForm({
     const t = useTranslations("dashboard.onlineStore.home");
     const tCommon = useTranslations("common");
     const tAppearance = useTranslations("dashboard.settings.appearanceSettings");
+    const tErrors = useTranslations("errors");
+    const controlsDisabled = useControlsDisabled();
+    const videoSource = useStore(form.store, (state) => state.values.home.heroVideoSource);
+    const [videoUploading, setVideoUploading] = useState(false);
     const hasHeroMedia = useStore(
       form.store,
       (state) =>
-        state.values.home.heroImages.length > 0 || Boolean(state.values.home.heroYoutubeUrl.trim()),
+        state.values.home.heroImages.length > 0 ||
+        (state.values.home.heroVideoSource === "youtube"
+          ? Boolean(state.values.home.heroYoutubeUrl.trim())
+          : Boolean(state.values.home.heroFileVideoUrl)),
     );
     const heroLayout = useStore(form.store, (state) => state.values.home.heroLayout);
     const heroAlign = useStore(form.store, (state) => state.values.home.heroAlign);
@@ -61,17 +78,108 @@ export const HomeSection = withForm({
             )}
           </form.Field>
 
-          <form.AppField name="home.heroYoutubeUrl">
+          <form.Field name="home.heroVideoSource">
             {(field) => (
-              <field.Input
-                label={t("video")}
-                placeholder={t("youtubeLinkPlaceholder")}
-                type="url"
-                inputMode="url"
+              <PanelSegmentedControl
+                aria-label={t("video")}
+                value={videoSource}
+                onChange={field.handleChange}
+                options={[
+                  { value: "youtube", label: "YouTube", icon: YoutubeIcon },
+                  { value: "file", label: t("addVideo"), icon: VideoIcon },
+                ]}
               />
             )}
-          </form.AppField>
-          <p className="text-muted-foreground text-xs">{t("videoDescription")}</p>
+          </form.Field>
+          {videoSource === "youtube" ? (
+            <>
+              <form.AppField name="home.heroYoutubeUrl">
+                {(field) => (
+                  <field.Input
+                    label={t("video")}
+                    placeholder={t("youtubeLinkPlaceholder")}
+                    type="url"
+                    inputMode="url"
+                  />
+                )}
+              </form.AppField>
+              <p className="text-muted-foreground text-xs">{t("videoDescription")}</p>
+            </>
+          ) : (
+            <form.Field name="home.heroFileVideoUrl">
+              {(field) => (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="hero-video-upload">{t("addVideo")}</Label>
+                  {field.state.value ? (
+                    <video
+                      src={field.state.value}
+                      muted
+                      playsInline
+                      controls
+                      className="aspect-video w-full rounded-lg bg-muted object-contain"
+                    />
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={controlsDisabled || videoUploading}
+                      render={<label htmlFor="hero-video-upload" />}
+                    >
+                      {videoUploading ? <Spinner className="size-4" /> : <VideoIcon aria-hidden />}
+                      {field.state.value ? t("replaceVideo") : t("addVideo")}
+                    </Button>
+                    {field.state.value ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={controlsDisabled || videoUploading}
+                        onClick={() => {
+                          uploads.discard(field.state.value);
+                          field.handleChange("");
+                        }}
+                      >
+                        {t("removeVideo")}
+                      </Button>
+                    ) : null}
+                  </div>
+                  <input
+                    id="hero-video-upload"
+                    type="file"
+                    accept="video/mp4,.mp4"
+                    disabled={controlsDisabled || videoUploading}
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      event.currentTarget.value = "";
+                      if (!file) return;
+                      setVideoUploading(true);
+                      void uploads
+                        .uploadHeroVideo(file)
+                        .then((url) => {
+                          if (field.state.value) uploads.discard(field.state.value);
+                          field.handleChange(url);
+                        })
+                        .catch((error: unknown) => {
+                          toastManager.add({
+                            title:
+                              error instanceof Error && error.message === "videoTooLarge"
+                                ? t("videoTooLarge")
+                                : error instanceof Error && error.message === "videoNotMp4"
+                                  ? t("videoNotMp4")
+                                  : tErrors("generic"),
+                            type: "error",
+                          });
+                        })
+                        .finally(() => setVideoUploading(false));
+                    }}
+                  />
+                </div>
+              )}
+            </form.Field>
+          )}
 
           {hasHeroMedia ? (
             <>

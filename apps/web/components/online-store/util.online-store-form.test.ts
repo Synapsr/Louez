@@ -265,6 +265,7 @@ test("replaced and unsaved images cover logos, favicon, hero photos and the shar
   assert.deepEqual(listReplacedImages({ value, baseline }), {
     logos: ["https://s3/s1/logo/logo.png"],
     heroes: ["https://s3/s1/logo/hero-1.jpg", "https://s3/s1/logo/share.jpg"],
+    videos: [],
   });
   assert.deepEqual(listUnsavedImages({ value, baseline }), [
     "https://s3/s1/logo/new-logo.png",

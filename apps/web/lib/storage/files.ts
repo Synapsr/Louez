@@ -11,6 +11,7 @@ import { publicImageAssets } from "@/lib/storage/public-image-assets-plugin";
 import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
 
 let imageFiles: ReturnType<typeof createImageFiles> | undefined;
+let heroVideoFiles: ReturnType<typeof createHeroVideoFiles> | undefined;
 let rawClient: S3Client | undefined;
 
 /**
@@ -82,9 +83,37 @@ const createImageFiles = () => {
   });
 };
 
+const createHeroVideoFiles = () => {
+  const adapter = createS3Adapter();
+  return createFiles({
+    adapter,
+    plugins: [
+      publicImageAssets({
+        setPublicReadAcl: async (key) => {
+          if (isProxiedStorage()) return;
+          await getStorageClient().send(
+            new PutObjectAclCommand({ ACL: "public-read", Bucket: env.S3_BUCKET, Key: key }),
+          );
+        },
+      }),
+      contentType({ onMismatch: "reject", onUnknown: "reject" }),
+      validation({
+        minSize: 1,
+        allowedTypes: ["video/mp4"],
+        key: /^[a-zA-Z0-9/_-]+\.mp4$/i,
+      }),
+    ],
+  });
+};
+
 export const getImageFiles = () => {
   imageFiles ??= createImageFiles();
   return imageFiles;
+};
+
+export const getHeroVideoFiles = () => {
+  heroVideoFiles ??= createHeroVideoFiles();
+  return heroVideoFiles;
 };
 
 /** Raw S3 client shared with the /files streaming route. */

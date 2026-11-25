@@ -748,6 +748,8 @@ export const updateStoreAppearanceInputSchema = z.object({
       primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color"),
       heroImages: z.array(s3UrlSchema).max(5).optional(),
       heroYoutubeUrl: z.union([youtubeVideoUrlSchema, z.literal(""), z.null()]).optional(),
+      heroFileVideoUrl: z.string().max(1000).regex(/\.mp4$/i).nullable().optional(),
+      heroVideoSource: z.enum(["youtube", "file"]).optional(),
       heroLayout: z.enum(["cover", "split"]).optional(),
       heroAlign: z.enum(["start", "center", "end"]).optional(),
       heroVerticalAlign: z.enum(["start", "center", "end"]).optional(),
@@ -784,6 +786,18 @@ const optionalOwnedImageSchema = z.union([s3UrlSchema, z.literal(""), z.null()])
 const optionalYoutubeVideoSchema = z
   .union([youtubeVideoUrlSchema, z.literal(""), z.null()])
   .optional();
+const optionalHeroVideoSchema = z
+  .union([
+    z
+      .string()
+      .refine(
+        (url) => !url.startsWith("data:") && /\.mp4(?:\?.*)?$/i.test(url),
+        "errors.invalidData",
+      ),
+    z.literal(""),
+    z.null(),
+  ])
+  .optional();
 
 const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color");
 
@@ -814,6 +828,8 @@ const onlineStoreIdentityInputSchema = z.object({
 const onlineStoreHomeInputSchema = z.object({
   heroImages: z.array(s3UrlSchema).max(5).optional(),
   heroYoutubeUrl: optionalYoutubeVideoSchema,
+  heroFileVideoUrl: optionalHeroVideoSchema,
+  heroVideoSource: z.enum(["youtube", "file"]).optional(),
   heroLayout: z.enum(["cover", "split"]),
   heroAlign: z.enum(["start", "center", "end"]),
   heroVerticalAlign: z.enum(["start", "center", "end"]),

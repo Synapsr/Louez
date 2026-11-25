@@ -21,6 +21,7 @@ interface StoreHeroProps {
   backgroundImageAlts?: Record<string, string>;
   /** The optional YouTube video is an additional slide after the background photos. */
   backgroundYouTubeUrl?: string | null;
+  backgroundVideoUrl?: string | null;
   /** `cover` = text over hero media, `split` = text beside framed media, `band` = no media. */
   shape: StoreHeroShape;
   align: StoreHeroAlign;
@@ -100,6 +101,7 @@ export const StoreHero = ({
   backgroundImages = [],
   backgroundImageAlts,
   backgroundYouTubeUrl,
+  backgroundVideoUrl,
   shape,
   align,
   verticalAlign,
@@ -150,6 +152,7 @@ export const StoreHero = ({
               images={backgroundImages}
               imageAlts={backgroundImageAlts}
               youtubeUrl={backgroundYouTubeUrl}
+              videoUrl={backgroundVideoUrl}
               storeName={name}
             />
           </div>
@@ -186,6 +189,7 @@ export const StoreHero = ({
             images={backgroundImages}
             imageAlts={backgroundImageAlts}
             youtubeUrl={backgroundYouTubeUrl}
+            videoUrl={backgroundVideoUrl}
             storeName={name}
           />
           <div

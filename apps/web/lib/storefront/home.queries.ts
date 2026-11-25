@@ -18,7 +18,7 @@ import type {
   StoreTheme,
 } from "@louez/types";
 import type { StockQuantityLimit } from "@louez/utils";
-import { isValidYouTubeVideoUrl } from "@louez/validations";
+import { isValidHeroVideoUrl, isValidYouTubeVideoUrl } from "@louez/validations";
 
 import type { CategoryBrowseEntry } from "@/components/storefront/category-browse-grid";
 import { getCachedPlaceDetails } from "@/lib/google-places/cache";
@@ -67,6 +67,7 @@ export interface HomePageData {
   theme: StoreTheme;
   heroImages: string[];
   heroYoutubeUrl: string | null;
+  heroFileVideoUrl: string | null;
   /** One-line pitch under the hero title; the description takes its place when null. */
   tagline: string | null;
   /** Editor HTML from the dashboard, rendered as written under the hero title. */
@@ -279,6 +280,7 @@ export const loadHomePage = async (
 
   const settings = store.settings ?? DEFAULT_STORE_SETTINGS;
   const theme = store.theme ?? DEFAULT_STORE_THEME;
+  const heroVideoSource = theme.heroVideoSource ?? (theme.heroFileVideoUrl ? "file" : "youtube");
 
   const [inventory, place] = await Promise.all([
     loadInventory(store.id, theme, labels),
@@ -291,8 +293,16 @@ export const loadHomePage = async (
     theme,
     heroImages: theme.heroImages ?? [],
     heroYoutubeUrl:
-      theme.heroYoutubeUrl && isValidYouTubeVideoUrl(theme.heroYoutubeUrl)
+      heroVideoSource === "youtube" &&
+      theme.heroYoutubeUrl &&
+      isValidYouTubeVideoUrl(theme.heroYoutubeUrl)
         ? theme.heroYoutubeUrl
+        : null,
+    heroFileVideoUrl:
+      heroVideoSource === "file" &&
+      theme.heroFileVideoUrl &&
+      isValidHeroVideoUrl(theme.heroFileVideoUrl)
+        ? theme.heroFileVideoUrl
         : null,
     tagline: hasRichTextContent(store.tagline) ? store.tagline : null,
     description: store.description,

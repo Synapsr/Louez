@@ -50,6 +50,8 @@ export interface OnlineStoreHomeValues {
   heroImages: string[];
   heroImageAlts: Record<string, string>;
   heroYoutubeUrl: string;
+  heroFileVideoUrl: string;
+  heroVideoSource: "youtube" | "file";
   heroLayout: "cover" | "split";
   heroAlign: "start" | "center" | "end";
   heroVerticalAlign: "start" | "center" | "end";
@@ -173,6 +175,8 @@ export const onlineStoreFormSchema = z.object({
     heroImages: z.array(z.string()).max(MAX_HERO_IMAGES),
     heroImageAlts: z.record(z.string(), z.string()),
     heroYoutubeUrl: optionalYouTubeUrl,
+    heroFileVideoUrl: z.string().max(1000),
+    heroVideoSource: z.enum(["youtube", "file"]),
     heroLayout: z.enum(["cover", "split"]),
     heroAlign: z.enum(["start", "center", "end"]),
     heroVerticalAlign: z.enum(["start", "center", "end"]),
@@ -280,6 +284,9 @@ export const buildOnlineStoreDefaults = (store: OnlineStoreEditorStore): OnlineS
       heroImages: theme?.heroImages ?? [],
       heroImageAlts: theme?.heroImageAlts ?? {},
       heroYoutubeUrl: getHeroYoutubeUrl(theme),
+      heroFileVideoUrl: theme?.heroFileVideoUrl ?? "",
+      heroVideoSource:
+        theme?.heroVideoSource ?? (theme?.heroFileVideoUrl ? "file" : "youtube"),
       heroLayout: theme?.heroLayout ?? "cover",
       heroAlign: theme?.heroAlign ?? "center",
       heroVerticalAlign: theme?.heroVerticalAlign ?? "end",
@@ -441,6 +448,12 @@ export const buildOnlineStorePayload = ({
       ...(home.heroYoutubeUrl !== baseline.home.heroYoutubeUrl
         ? { heroYoutubeUrl: home.heroYoutubeUrl.trim() }
         : {}),
+      ...(home.heroFileVideoUrl !== baseline.home.heroFileVideoUrl
+        ? { heroFileVideoUrl: home.heroFileVideoUrl }
+        : {}),
+      ...(home.heroVideoSource !== baseline.home.heroVideoSource
+        ? { heroVideoSource: home.heroVideoSource }
+        : {}),
       ...(keepsLegacyHero ? {} : { heroImages: home.heroImages, heroImageAlts: home.heroImageAlts }),
     };
   }
@@ -484,6 +497,7 @@ export const isEmptyPayload = (payload: UpdateOnlineStoreClientInput): boolean =
 export interface ReplacedImages {
   logos: string[];
   heroes: string[];
+  videos: string[];
 }
 
 /** Saved images the new values no longer reference, to delete from storage after a save. */
@@ -496,11 +510,15 @@ export const listReplacedImages = ({ value, baseline }: OnlineStoreDiff): Replac
   }
 
   const heroes = baseline.home.heroImages.filter((image) => !value.home.heroImages.includes(image));
+  const videos =
+    baseline.home.heroFileVideoUrl && baseline.home.heroFileVideoUrl !== value.home.heroFileVideoUrl
+      ? [baseline.home.heroFileVideoUrl]
+      : [];
   if (baseline.seo.shareImageUrl && baseline.seo.shareImageUrl !== value.seo.shareImageUrl) {
     heroes.push(baseline.seo.shareImageUrl);
   }
 
-  return { logos, heroes };
+  return { logos, heroes, videos };
 };
 
 /** Uploads of the current values that the saved values do not know, to delete on reset. */
@@ -515,6 +533,12 @@ export const listUnsavedImages = ({ value, baseline }: OnlineStoreDiff): string[
   }
   for (const image of value.home.heroImages) {
     if (!baseline.home.heroImages.includes(image)) unsaved.push(image);
+  }
+  if (
+    value.home.heroFileVideoUrl &&
+    value.home.heroFileVideoUrl !== baseline.home.heroFileVideoUrl
+  ) {
+    unsaved.push(value.home.heroFileVideoUrl);
   }
   if (value.seo.shareImageUrl && value.seo.shareImageUrl !== baseline.seo.shareImageUrl) {
     unsaved.push(value.seo.shareImageUrl);

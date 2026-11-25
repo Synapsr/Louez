@@ -7,23 +7,22 @@ import { env } from "@/env";
 import { getStorageClient, isProxiedStorage } from "@/lib/storage/files";
 
 // Same shape the upload pipeline enforces on keys (lib/storage/files.ts):
-// alphanumeric path segments ending in an image extension. Rejecting anything
-// else keeps this from becoming a generic bucket browser.
-const KEY_PATTERN = /^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|gif|webp)$/;
+// alphanumeric path segments ending in an approved media extension.
+const KEY_PATTERN = /^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|gif|webp|mp4)$/i;
 
 interface RouteContext {
   params: Promise<{ key: string[] }>;
 }
 
 /**
- * Public, same-origin delivery of stored images.
+ * Public, same-origin delivery of stored images and hero videos.
  *
  * Standalone instances run their object store (bundled MinIO) privately
  * inside the compose network and set S3_PUBLIC_URL to the path "/files", so
  * stored image URLs resolve here and stream from the bucket. Objects are
  * public product/logo assets by design — the ACL is set at upload time.
  */
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   // This credentialed proxy only serves when storage is configured to be
   // same-origin (S3_PUBLIC_URL is a path). Deployments that serve assets from
   // a public bucket URL — the multi-tenant cloud — must not gain a bucket-read
@@ -40,8 +39,14 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   try {
+    const range = request.headers.get("range");
+    const byteRange = range && /^bytes=(?:\d+-\d*|-\d+)$/.test(range) ? range : undefined;
     const object = await getStorageClient().send(
-      new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
+      new GetObjectCommand({
+        Bucket: env.S3_BUCKET,
+        Key: key,
+        ...(byteRange ? { Range: byteRange } : {}),
+      }),
     );
 
     if (!object.Body) {
@@ -53,6 +58,8 @@ export async function GET(_request: Request, context: RouteContext) {
     return new NextResponse(stream, {
       headers: {
         "Content-Type": object.ContentType ?? "application/octet-stream",
+        "Accept-Ranges": "bytes",
+        ...(object.ContentRange ? { "Content-Range": object.ContentRange } : {}),
         ...(object.ContentLength !== undefined
           ? { "Content-Length": String(object.ContentLength) }
           : {}),
@@ -60,6 +67,7 @@ export async function GET(_request: Request, context: RouteContext) {
         // upload), so aggressive immutable caching is safe.
         "Cache-Control": "public, max-age=31536000, immutable",
       },
+      status: object.ContentRange ? 206 : 200,
     });
   } catch {
     return new NextResponse(null, { status: 404 });

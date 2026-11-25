@@ -20,6 +20,7 @@ interface HeroImageSliderProps {
   images: string[];
   imageAlts?: Record<string, string>;
   youtubeUrl?: string | null;
+  videoUrl?: string | null;
   className?: string;
   storeName?: string;
 }
@@ -46,6 +47,7 @@ export const HeroImageSlider = ({
   images,
   imageAlts,
   youtubeUrl,
+  videoUrl,
   className,
   storeName,
 }: HeroImageSliderProps) => {
@@ -57,28 +59,32 @@ export const HeroImageSlider = ({
   const youtubeEmbedUrl = youtubeUrl ? getYouTubeEmbedUrl(youtubeUrl, !reducedMotion) : null;
   const slides = [
     ...images.map((src) => ({ key: `image:${src}`, kind: "image" as const, src })),
+    ...(videoUrl ? [{ key: `video:${videoUrl}`, kind: "video" as const, src: videoUrl }] : []),
     ...(youtubeEmbedUrl
       ? [{ key: `youtube:${youtubeUrl}`, kind: "youtube" as const, src: youtubeEmbedUrl }]
       : []),
   ];
   const count = slides.length;
   const activeIndex = count > 0 ? index % count : 0;
-  const videoSlideIndex = youtubeEmbedUrl ? images.length : -1;
-  const youtubeIframeRef = useYouTubeCaptionsDisabled(activeIndex === videoSlideIndex);
+  const youtubeSlideIndex = youtubeEmbedUrl
+    ? slides.findIndex((slide) => slide.kind === "youtube")
+    : -1;
+  const activeSlideIsVideo = slides[activeIndex]?.kind !== "image";
+  const youtubeIframeRef = useYouTubeCaptionsDisabled(activeIndex === youtubeSlideIndex);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (count <= 1 || paused || reducedMotion || activeIndex === videoSlideIndex) return;
+    if (count <= 1 || paused || reducedMotion || activeSlideIsVideo) return;
 
     const interval = setInterval(() => {
       setIndex((current) => (current + 1) % count);
     }, AUTOPLAY_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [activeIndex, count, paused, reducedMotion, videoSlideIndex]);
+  }, [activeIndex, activeSlideIsVideo, count, paused, reducedMotion]);
 
   if (count === 0) return null;
 
@@ -122,6 +128,17 @@ export const HeroImageSlider = ({
                   fetchPriority={slide === 0 ? "high" : "auto"}
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1920px"
                   className="object-cover"
+                />
+              ) : media.kind === "video" ? (
+                <video
+                  src={media.src}
+                  autoPlay={!reducedMotion}
+                  muted
+                  loop
+                  playsInline
+                  preload={slide === activeIndex ? "metadata" : "none"}
+                  aria-hidden="true"
+                  className="absolute inset-0 size-full object-cover"
                 />
               ) : (
                 <iframe
