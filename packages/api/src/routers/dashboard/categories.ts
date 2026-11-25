@@ -285,7 +285,7 @@ const completeImageUploadProcedure = storeProcedure
       name: "categories_complete_image_upload",
       title: "Complete Category Image Upload",
       description:
-        "Finish a category image upload: checks the file just sent to the key, makes it publicly readable and returns its `url`, which `imageUrl` takes in categories_create and categories_update. It changes no record and deletes nothing. A file that is not a valid image of the declared type is refused and stays private; the upload starts over with a new key.",
+        "Finish a category image upload: reads the file sent to the key once, checks it and publishes exactly those bytes under the image's own `key`, returned with its public `url`, which `imageUrl` takes in categories_create and categories_update. It changes no record and replaces no image. A file that is not a valid image of the declared type is refused and never published; the upload starts over with a new key. Completing the key again returns the same image, even if another file was sent since; simultaneous completions keep one of the files they checked.",
       bundle: "catalog",
       effect: "additive",
       reach: "public",
@@ -296,17 +296,21 @@ const completeImageUploadProcedure = storeProcedure
     method: "POST",
     path: "/categories/image-uploads/complete",
     description:
-      "Finishes a category image upload started with `POST /categories/image-uploads`, once its file was sent: checks the file at the `key` (its size, and that its bytes are an image of the declared type), makes it publicly readable and returns its `url`, its type and its size. `imageUrl` takes that `url` in `POST /categories` and `PATCH /categories/{id}`. It changes no category. A key that is not a category upload of the store answers `UPLOAD_NOT_OWNED`; a key with no file sent yet, `UPLOAD_NOT_FOUND`. A file over 5 MB (`UPLOAD_TOO_LARGE`) or whose bytes are not an image of the declared type (`UPLOAD_CONTENT_INVALID`) is refused and stays private: start over with a new upload. Completing the same key again returns the same answer.",
+      "Finishes a category image upload started with `POST /categories/image-uploads`, once its file was sent: reads the file at the `key` once, checks those bytes (their size, and that they are an image of the declared type) and publishes exactly them under the image's own key. Returns its public `url`, that `key` (not the upload's: in the store's folder, named after the upload's id and the kind, as `<id>-category.png`), its type and its size. `imageUrl` takes that `url` in `POST /categories` and `PATCH /categories/{id}`. It changes no category. A key that is not a category upload of the store answers `UPLOAD_NOT_OWNED`; a key with no file sent yet, `UPLOAD_NOT_FOUND`. A file over 5 MB (`UPLOAD_TOO_LARGE`) or whose bytes are not an image of the declared type (`UPLOAD_CONTENT_INVALID`) is refused and never published: start over with a new upload. Completing the same key again returns the same answer, even if another file was sent since; simultaneous completions keep one of the files they checked, and the type and size returned are the image's as stored.",
   })
   .input(completeImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
     withSetupMark(context.actor.storeId, () =>
-      completeImageUpload(context.ports.storage, {
-        storeId: context.actor.storeId,
-        kind: "category",
-        key: input.key,
-      }),
+      completeImageUpload(
+        context.ports.storage,
+        {
+          storeId: context.actor.storeId,
+          kind: "category",
+          key: input.key,
+        },
+        context.ports.log,
+      ),
     ),
   );
 
@@ -335,11 +339,15 @@ const uploadImageProcedure = storeProcedure
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
     withSetupMark(context.actor.storeId, () =>
-      uploadImage(context.ports.storage, {
-        storeId: context.actor.storeId,
-        kind: "category",
-        source: input,
-      }),
+      uploadImage(
+        context.ports.storage,
+        {
+          storeId: context.actor.storeId,
+          kind: "category",
+          source: input,
+        },
+        context.ports.log,
+      ),
     ),
   );
 

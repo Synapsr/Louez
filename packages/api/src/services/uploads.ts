@@ -10,29 +10,34 @@ import {
 } from "@louez/validations";
 import { nanoid } from "nanoid";
 
-import { INLINE_UPLOAD_MAX_BYTES, uploadErrors } from "../contracts/uploads";
-import { isRefusal } from "../platform/errors";
-import type { StoragePort, UploadTarget } from "../platform/ports";
+import { INLINE_UPLOAD_MAX_BYTES, UPLOAD_STAGING_PREFIX, uploadErrors } from "../contracts/uploads";
+import type { LogPort, StoragePort, UploadTarget } from "../platform/ports";
 
 /**
  * Image uploads through the API, for any store-owned kind of image.
  *
- * 1. `createImageUpload` mints a key in the store's folder for the kind and
- *    says where to send the bytes: a presigned upload straight to the bucket
- *    when the storage allows it, else the app's upload endpoint
- *    (`/api/v1/uploads/<token>`, platform/uploads.ts) with a signed token.
+ * 1. `createImageUpload` mints a staging key
+ *    (`uploads-staging/<storeId>/<folder>/<id>.<ext>`) and says where to send
+ *    the bytes: a presigned upload straight to the bucket when the storage
+ *    allows it, else the app's upload endpoint (`/api/v1/uploads/<token>`,
+ *    platform/uploads.ts) with a signed token. Either works again and again
+ *    until it expires, so what a staging key holds may change at any time.
  * 2. The caller sends the bytes there, without its API key.
- * 3. `completeImageUpload` checks what arrived (owner, size, type, the bytes
- *    themselves), makes it publicly readable and returns its URL to set on
- *    the record. It refuses a wrong file and deletes nothing: an unpublished
- *    object stays private and unreferenced, as an upload never completed.
+ * 3. `completeImageUpload` reads what arrived once, checks those bytes
+ *    (owner, size, type, the bytes themselves) and writes exactly them to the
+ *    image's key in the store's folder (`<id>-<kind>.<ext>`, a shape only
+ *    completion writes), publishes that key and returns its URL to set on
+ *    the record. A file sent again meanwhile is never published.
  *
- * Nothing sweeps those private objects yet, refused or never completed.
+ * Nothing in staging is published or served (the app's /files route refuses
+ * it). What waits there, an upload refused, never completed or sent again
+ * after its completion, is deleted a day later by `purgeStagedUploads` (the
+ * cron).
  *
  * A caller that cannot reach the upload URL (an agent in a sandbox whose
  * network allows only Louez) sends the bytes in the call instead, or a public
- * URL Louez downloads through the guarded fetch: `uploadImage` stores them
- * under a fresh key and completes it as step 3 does.
+ * URL Louez downloads through the guarded fetch: `uploadImage` checks them,
+ * then stores and publishes them under a fresh key of the store's folder.
  */
 
 /** Kinds the API takes. The avatar is the user's, not the store's: never here. */
@@ -74,6 +79,10 @@ export function detectImageType(bytes: Uint8Array): ImageUploadMimeType | null {
 const isAllowedType = (value: string): value is ImageUploadMimeType =>
   (IMAGE_UPLOAD_MIME_TYPES as readonly string[]).includes(value);
 
+/** The type a key's extension names. */
+const typeOfExtension = (extension: string) =>
+  IMAGE_UPLOAD_MIME_TYPES.find((type) => EXTENSIONS[type] === extension);
+
 /** `image/png; charset=…` → `image/png`. */
 export const baseContentType = (value: string | null | undefined) =>
   (value ?? "").split(";")[0].trim().toLowerCase();
@@ -86,6 +95,18 @@ function assertKind(kind: string): asserts kind is ApiUploadKind {
 
 const folderOf = (storeId: string, kind: ApiUploadKind) =>
   `${storeId}/${IMAGE_UPLOAD_CONFIG[kind].folder}/`;
+
+const stagingFolderOf = (storeId: string, kind: ApiUploadKind) =>
+  `${UPLOAD_STAGING_PREFIX}${folderOf(storeId, kind)}`;
+
+/**
+ * The image's key an upload completes to: a name of its own shape
+ * (`<id>-<kind>.<ext>`), longer than every name an upload URL or token is
+ * handed (`<id>.<ext>`), so only completion writes it, from checked bytes;
+ * and one per kind, as logos and banners share a folder.
+ */
+const imageKeyOf = (storeId: string, kind: ApiUploadKind, id: string, extension: string) =>
+  `${folderOf(storeId, kind)}${id}-${kind}.${extension}`;
 
 // --- Upload tokens -----------------------------------------------------------
 
@@ -141,7 +162,7 @@ export async function createImageUpload(
   const { maxSize } = IMAGE_UPLOAD_CONFIG[input.kind];
   if (input.size > maxSize) throw uploadErrors.tooLarge(input.size, maxSize);
 
-  const key = `${folderOf(input.storeId, input.kind)}${nanoid()}.${EXTENSIONS[contentType]}`;
+  const key = `${stagingFolderOf(input.storeId, input.kind)}${nanoid()}.${EXTENSIONS[contentType]}`;
   const expiresAt = new Date((input.now ?? new Date()).getTime() + UPLOAD_TTL_SECONDS * 1000);
 
   // The bound is the kind's limit, not the declared size: a size off by a few
@@ -168,46 +189,129 @@ export async function createImageUpload(
 }
 
 /**
- * Checks an upload and makes it publicly readable. Only a key this store
- * minted for this kind passes; a wrong size, type or content is refused and
- * left unpublished, so it stays private: a presigned upload sets no ACL, and
- * a proxied bucket (served by /files) refuses bad bytes at the app's upload
- * endpoint before they are stored. Running it again on a good upload returns
- * the same answer.
+ * The bytes at `key`, read once and checked as an image of `kind` whose name
+ * says `declared`: a stored size within the kind's limit (refused before
+ * reading), a type the API takes, at most the limit read (the read stops one
+ * byte past it), and first bytes showing that type. Null when nothing is
+ * there; a refusal otherwise, leaving the object as it is.
+ */
+async function readChecked(
+  storage: StoragePort,
+  key: string,
+  kind: ApiUploadKind,
+  declared: ImageUploadMimeType,
+): Promise<{ bytes: Uint8Array; contentType: ImageUploadMimeType } | null> {
+  const stored = await storage.head(key);
+  if (!stored) return null;
+  const { maxSize } = IMAGE_UPLOAD_CONFIG[kind];
+  if (stored.size > maxSize) throw uploadErrors.tooLarge(stored.size, maxSize);
+  const contentType = baseContentType(stored.contentType);
+  if (!isAllowedType(contentType)) throw uploadErrors.typeNotAllowed(contentType);
+
+  const bytes = await storage.read(key, maxSize + 1);
+  if (!bytes) return null;
+  if (bytes.byteLength > maxSize) throw uploadErrors.tooLarge(null, maxSize);
+  const found = detectImageType(bytes.subarray(0, SNIFF_LENGTH));
+  if (found !== contentType || found !== declared) {
+    throw uploadErrors.contentInvalid(declared, found);
+  }
+  return { bytes, contentType: found };
+}
+
+/**
+ * Checks an upload and publishes it. Only a staging key this store minted for
+ * this kind passes. The staging file is read once and checked
+ * (`readChecked`), and those bytes are written as they are to the image's key
+ * (`imageKeyOf`), with the type they show, and published there; the staging
+ * file is then deleted. A refused file is left private in staging. Once the
+ * image is in place, completing again checks it again and publishes it,
+ * never reading staging again, whatever was sent there since. Simultaneous
+ * completions of one upload each write bytes they checked, and one of them
+ * stays: the answer describes the image as stored once published.
  */
 export async function completeImageUpload(
   storage: StoragePort,
   input: { storeId: string; kind: ApiUploadKind; key: string },
+  log?: LogPort,
 ): Promise<{ key: string; url: string; contentType: string; size: number }> {
   assertKind(input.kind);
-  const folder = folderOf(input.storeId, input.kind);
-  const name = input.key.startsWith(folder) ? input.key.slice(folder.length) : null;
-  const match = name ? /^[A-Za-z0-9_-]{21}\.(jpg|png|gif|webp)$/.exec(name) : null;
-  if (!match) throw uploadErrors.notOwned();
+  const staging = stagingFolderOf(input.storeId, input.kind);
+  const name = input.key.startsWith(staging) ? input.key.slice(staging.length) : null;
+  const match = name ? /^([A-Za-z0-9_-]{21})\.(jpg|png|gif|webp)$/.exec(name) : null;
+  const declared = match ? typeOfExtension(match[2]) : undefined;
+  if (!match || !declared) throw uploadErrors.notOwned();
+  const key = imageKeyOf(input.storeId, input.kind, match[1], match[2]);
 
-  const stored = await storage.head(input.key);
-  if (!stored) throw uploadErrors.notFound(input.key);
-
-  const { maxSize } = IMAGE_UPLOAD_CONFIG[input.kind];
-  const declared = Object.entries(EXTENSIONS).find(([, ext]) => ext === match[1])?.[0] as
-    | ImageUploadMimeType
-    | undefined;
-  const contentType = baseContentType(stored.contentType);
-  let refusal: Error | null = null;
-  if (stored.size > maxSize) refusal = uploadErrors.tooLarge(stored.size, maxSize);
-  else if (!isAllowedType(contentType)) refusal = uploadErrors.typeNotAllowed(contentType);
-  else {
-    const found = detectImageType(await storage.readStart(input.key, SNIFF_LENGTH));
-    if (found !== contentType || found !== declared) {
-      refusal = uploadErrors.contentInvalid(declared ?? contentType, found);
-    }
+  const inPlace = await readChecked(storage, key, input.kind, declared);
+  if (!inPlace) {
+    const sent = await readChecked(storage, input.key, input.kind, declared);
+    if (!sent) throw uploadErrors.notFound(input.key);
+    // Only these bytes were checked, so only they are published: the file
+    // may be sent again to staging at any time.
+    await storage.put(key, sent.bytes, sent.contentType);
   }
-  if (refusal) throw refusal;
-
-  const url = await storage.publish(input.key);
-  return { key: input.key, url, contentType, size: stored.size };
+  const url = await storage.publish(key);
+  if (!inPlace) {
+    // The image is in place: a staging file left behind goes with the cron.
+    await storage.delete(input.key).catch((cleanup: unknown) => {
+      logError(log, cleanupFailure(input.key, input.kind, cleanup));
+    });
+  }
+  const image = await storage.head(key);
+  if (!image) throw uploadErrors.notFound(input.key);
+  return { key, url, contentType: baseContentType(image.contentType), size: image.size };
 }
 
+/** How long an upload may wait in staging before the cron deletes it. */
+export const UPLOAD_STAGING_TTL_MS = 24 * 60 * 60 * 1000;
+/** Objects the cron deletes from staging in one run, at most. */
+export const PURGE_MAX_DELETES = 200;
+/** Failed deletes after which a run stops: the storage is likely refusing them all. */
+export const PURGE_MAX_FAILURES = 50;
+/**
+ * Pages of staging the cron lists in one run, at most: only a safety net, as
+ * a run ends at its budget or at the end of the listing.
+ */
+export const PURGE_MAX_PAGES = 100;
+
+/**
+ * Deletes what waited in staging longer than a day: uploads refused, never
+ * completed, or sent again once completed. A run lists staging until it has
+ * deleted `PURGE_MAX_DELETES` objects, failed `PURGE_MAX_FAILURES` deletes,
+ * or reached the end of the listing, so neither recent uploads nor a few
+ * objects that will not go hold older ones back. A delete that fails is
+ * logged and skipped, left to a later run. Returns how many objects went,
+ * and how many could not.
+ */
+export async function purgeStagedUploads(
+  storage: StoragePort,
+  options: { now?: Date; log?: LogPort } = {},
+): Promise<{ deleted: number; failed: number }> {
+  const cutoff = (options.now ?? new Date()).getTime() - UPLOAD_STAGING_TTL_MS;
+  let cursor: string | undefined;
+  let deleted = 0;
+  let failed = 0;
+  for (let page = 0; page < PURGE_MAX_PAGES; page++) {
+    const listed = await storage.list(UPLOAD_STAGING_PREFIX, cursor);
+    for (const item of listed.items) {
+      // A date the storage does not give is no reason to delete.
+      if (!item.lastModified || item.lastModified.getTime() > cutoff) continue;
+      try {
+        await storage.delete(item.key);
+        deleted++;
+      } catch (error) {
+        logError(options.log, cleanupFailure(item.key, null, error));
+        failed++;
+      }
+      if (deleted === PURGE_MAX_DELETES || failed === PURGE_MAX_FAILURES) {
+        return { deleted, failed };
+      }
+    }
+    if (!listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return { deleted, failed };
+}
 // --- Bytes in the call, or a public URL ----------------------------------------
 
 /** Time given to each request of an import and to reading its body. */
@@ -299,10 +403,11 @@ async function download(imageUrl: string, maxBytes: number): Promise<Uint8Array>
 
 /**
  * Uploads an image sent in the call (base64) or found at a public URL. The
- * type is the one its bytes show, never the declared one alone: a declared
- * type that differs is refused. The bytes go under a fresh key of the store's
- * folder for the kind, then `completeImageUpload` checks them and makes them
- * public, as for an upload through the URL.
+ * bytes are checked before anything is stored: the size, and the type, the
+ * one they show, never the declared one alone (a declared type that differs
+ * is refused). They then go, as they are, under a fresh key of the store's
+ * folder for the kind, published there: no staging, since nobody else can
+ * change them.
  */
 export async function uploadImage(
   storage: StoragePort,
@@ -311,6 +416,7 @@ export async function uploadImage(
     kind: ApiUploadKind;
     source: ImageSource;
   },
+  log?: LogPort,
 ): Promise<{ key: string; url: string; contentType: string; size: number }> {
   assertKind(input.kind);
   const { maxSize } = IMAGE_UPLOAD_CONFIG[input.kind];
@@ -337,46 +443,32 @@ export async function uploadImage(
   const key = `${folderOf(input.storeId, input.kind)}${nanoid()}.${EXTENSIONS[found]}`;
   try {
     await storage.put(key, bytes, found);
-    return await completeImageUpload(storage, {
-      storeId: input.storeId,
-      kind: input.kind,
-      key,
-    });
+    const url = await storage.publish(key);
+    return { key, url, contentType: found, size: bytes.byteLength };
   } catch (error) {
     // Nobody else knows this key: a failed upload leaves nothing behind, so
     // a retry does not add a second object.
-    try {
-      await storage.delete(key);
-    } catch (cleanup) {
-      console.error(cleanupFailure(key, input.kind, cleanup));
-      // The object may remain: a refusal would let the same idempotency key
-      // store a second one (`isRefusal`, platform/errors.ts).
-      if (isRefusal(error)) throw refusalNotUndone(error, cleanup);
-    }
+    await storage.delete(key).catch((cleanup: unknown) => {
+      logError(log, cleanupFailure(key, input.kind, cleanup));
+    });
     throw error;
   }
 }
 
-/**
- * A refusal raised once the bytes were stored, whose deletion failed: an
- * ordinary error carrying both, so the operation is unknown and its key
- * never runs again.
- */
-const refusalNotUndone = (refusal: unknown, cleanup: unknown) =>
-  new AggregateError(
-    [refusal, cleanup],
-    "The upload was refused, but the stored file could not be deleted.",
-    { cause: refusal },
-  );
+/** Logs through the app's logger (`LogPort`), or as one JSON line on stderr without one. */
+function logError(log: LogPort | undefined, event: ReturnType<typeof cleanupFailure>) {
+  if (log) log.error(event);
+  else console.error(JSON.stringify(event));
+}
 
 /**
- * The log event of an object an upload could not delete: an opaque
- * reference to it (the start of the key's SHA-256: an operator finds the
- * object by hashing the keys of the store's folder), never the key itself,
- * and the error's name, code and HTTP status, never the provider's message
- * or the error object.
+ * The log event of an object an upload, or the cron's purge of staging (no
+ * kind), could not delete: an opaque reference to it (the start of the key's
+ * SHA-256: an operator finds the object by hashing the keys of the store's
+ * folder), never the key itself, and the error's name, code and HTTP status,
+ * never the provider's message or the error object.
  */
-export function cleanupFailure(key: string, kind: ApiUploadKind, error: unknown) {
+export function cleanupFailure(key: string, kind: ApiUploadKind | null, error: unknown) {
   const fields = typeof error === "object" && error !== null ? error : {};
   const pick = (name: string): unknown => (fields as Record<string, unknown>)[name];
   const metadata = pick("$metadata");

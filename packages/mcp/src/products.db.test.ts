@@ -744,6 +744,74 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(toolError(both)?.code, "PRODUCT_UNITS_SENT_AND_REMOVED");
   });
 
+  test("an upload through its URL waits in staging, then the bytes checked are published, on OpenAPI and MCP", async () => {
+    const authorization = await key();
+    const storage = ports.storage;
+    const png = (fill: number) =>
+      Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, fill, fill, fill, fill]);
+    const transports = {
+      openApi: {
+        start: async () =>
+          (await (
+            await openApi(
+              "POST",
+              "/products/image-uploads",
+              { contentType: "image/png", size: 12 },
+              { authorization },
+            )
+          ).json()) as Json,
+        complete: async (key: string) =>
+          (await (
+            await openApi("POST", "/products/image-uploads/complete", { key }, { authorization })
+          ).json()) as Json,
+      },
+      mcp: {
+        start: async () =>
+          output(
+            await mcpCall(authorization, "products_create_image_upload", {
+              contentType: "image/png",
+              size: 12,
+            }),
+          ),
+        complete: async (key: string) =>
+          output(await mcpCall(authorization, "products_complete_image_upload", { key })),
+      },
+    };
+    for (const [name, transport] of Object.entries(transports)) {
+      const staged = String((await transport.start()).key);
+      assert.match(
+        staged,
+        new RegExp(`^uploads-staging/${STORE}/products/[\\w-]{21}\\.png$`),
+        name,
+      );
+      const checked = png(1);
+      await storage.put(staged, checked, "image/png");
+      const image = staged.slice("uploads-staging/".length).replace(/\.png$/, "-product.png");
+      const completed = await transport.complete(staged);
+      assert.deepEqual(
+        completed,
+        {
+          key: image,
+          url: `https://files.louez.test/${image}`,
+          contentType: "image/png",
+          size: 12,
+        },
+        name,
+      );
+      assert.deepEqual(
+        storage.content(image),
+        { bytes: checked, contentType: "image/png", public: true },
+        name,
+      );
+      assert.equal(storage.objects.has(staged), false, `${name}: the staging file went`);
+
+      // Sent again through the upload URL: the same answer, the same image.
+      await storage.put(staged, png(2), "image/png");
+      assert.deepEqual(await transport.complete(staged), completed, name);
+      assert.deepEqual(storage.objects.get(image)?.bytes, checked, name);
+    }
+  });
+
   test("a tool's answer carries the record's links, built from the deployment's urls", async () => {
     const authorization = await key({ ...readOnly, products: "write" });
     await louezDb.db

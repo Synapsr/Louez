@@ -207,6 +207,10 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     (result.structuredContent as { error?: { code?: string } } | undefined)?.error?.code;
   const text = (result: ToolResult) =>
     (result.content as Array<{ text?: string }>).map((part) => part.text ?? "").join("");
+  const output = (result: ToolResult) => {
+    assert.notEqual(result.isError, true, text(result));
+    return json(result.structuredContent);
+  };
 
   async function rpcError(promise: Promise<unknown>) {
     try {
@@ -495,6 +499,79 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     );
     assert.deepEqual(reader.sort(), ["categories_get", "categories_list"]);
   });
+  test("an upload through its URL waits in staging, then the bytes checked are published, on RPC, OpenAPI and MCP", async () => {
+    const authorization = await key();
+    const storage = ports.storage;
+    const png = (fill: number) =>
+      Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, fill, fill, fill, fill]);
+    const transports = {
+      rpc: {
+        start: async () =>
+          json(await rpc("createImageUpload", { contentType: "image/png", size: 12 })),
+        complete: async (key: string) => json(await rpc("completeImageUpload", { key })),
+      },
+      openApi: {
+        start: async () =>
+          (await (
+            await openApi(
+              "POST",
+              "/categories/image-uploads",
+              { contentType: "image/png", size: 12 },
+              { authorization },
+            )
+          ).json()) as Json,
+        complete: async (key: string) =>
+          (await (
+            await openApi("POST", "/categories/image-uploads/complete", { key }, { authorization })
+          ).json()) as Json,
+      },
+      mcp: {
+        start: async () =>
+          output(
+            await mcpCall(authorization, "categories_create_image_upload", {
+              contentType: "image/png",
+              size: 12,
+            }),
+          ),
+        complete: async (key: string) =>
+          output(await mcpCall(authorization, "categories_complete_image_upload", { key })),
+      },
+    };
+    for (const [name, transport] of Object.entries(transports)) {
+      const staged = String((await transport.start()).key);
+      assert.match(
+        staged,
+        new RegExp(`^uploads-staging/${STORE}/categories/[\\w-]{21}\\.png$`),
+        name,
+      );
+      const checked = png(1);
+      await storage.put(staged, checked, "image/png");
+      const image = staged.slice("uploads-staging/".length).replace(/\.png$/, "-category.png");
+      const completed = await transport.complete(staged);
+      assert.deepEqual(
+        completed,
+        {
+          key: image,
+          url: `https://files.louez.test/${image}`,
+          contentType: "image/png",
+          size: 12,
+        },
+        name,
+      );
+      assert.deepEqual(
+        storage.content(image),
+        { bytes: checked, contentType: "image/png", public: true },
+        name,
+      );
+      assert.equal(storage.objects.has(staged), false, `${name}: the staging file went`);
+
+      // Sent again through the upload URL: the same answer, the same image.
+      await storage.put(staged, png(2), "image/png");
+      assert.deepEqual(await transport.complete(staged), completed, name);
+      assert.deepEqual(storage.objects.get(image)?.bytes, checked, name);
+    }
+  });
+
   test("an image sent in the call goes up on RPC, OpenAPI and MCP, and MCP takes its larger body", async () => {
     const authorization = await key();
     const png = Buffer.alloc(9);

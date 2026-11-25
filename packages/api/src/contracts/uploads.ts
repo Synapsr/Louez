@@ -6,8 +6,16 @@ import { apiError } from "../platform/errors";
 /**
  * Image uploads through the API: a procedure hands out where to send the
  * bytes, the caller sends them, a second procedure checks what arrived and
- * returns its public URL. Shared by every domain that takes images.
+ * publishes it, returning its public URL. Shared by every domain that takes
+ * images.
  */
+
+/**
+ * Where uploads wait for their check, outside every store's folders: nothing
+ * there is published, no URL Louez hands out points there, and the app's
+ * /files route refuses it.
+ */
+export const UPLOAD_STAGING_PREFIX = "uploads-staging/";
 
 export const createImageUploadInput = z.object({
   contentType: z
@@ -32,7 +40,7 @@ export const uploadTargetSchema = z.discriminatedUnion("method", [
 ]);
 
 export const createImageUploadOutput = z.object({
-  /** Storage key of the upload; pass it to the matching complete procedure. */
+  /** The upload's key, where the file waits unpublished; pass it to the matching complete procedure. */
   key: z.string(),
   /** One HTTP request that sends the bytes; no Authorization header needed. */
   upload: uploadTargetSchema,
@@ -88,6 +96,10 @@ export const uploadImageInput = z.object({
 });
 
 export const completeImageUploadOutput = z.object({
+  /**
+   * The image's key in the store's folder. After an upload through a URL, not
+   * the upload's key: `<storeId>/<folder>/<id>-<kind>.<ext>`, the upload's id.
+   */
   key: z.string(),
   /** Public URL of the image, to set as an image URL. */
   url: z.string(),

@@ -307,9 +307,7 @@ export const OPERATION_STATE_CODES: ReadonlySet<string> = new Set([
  * approval of `APPROVAL_REQUIRED`, written once the write's transaction is
  * over, in a transaction of its own; the activity line of
  * `DEPOSIT_ATTEMPT_NEEDS_STRIPE`), which records that the write did not
- * happen. A refusal raised after a write whose undoing failed
- * is raised as an ordinary error carrying both (`uploadImage`,
- * services/uploads.ts); a read after a commit goes through `readAfterCommit`.
+ * happen. A read after a commit goes through `readAfterCommit`.
  */
 export function isRefusal(error: unknown): error is ORPCError<string, ApiErrorData> {
   return (

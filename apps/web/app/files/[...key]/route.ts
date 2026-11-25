@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { Readable } from "node:stream";
 
+import { UPLOAD_STAGING_PREFIX } from "@louez/api/contracts/uploads";
+
 import { env } from "@/env";
 import { getStorageClient, isProxiedStorage } from "@/lib/storage/files";
 
@@ -35,7 +37,8 @@ export async function GET(_request: Request, context: RouteContext) {
   const { key: segments } = await context.params;
   const key = segments.map((segment) => decodeURIComponent(segment)).join("/");
 
-  if (!KEY_PATTERN.test(key)) {
+  // An API upload waits in staging until Louez has checked it: never served.
+  if (!KEY_PATTERN.test(key) || key.startsWith(UPLOAD_STAGING_PREFIX)) {
     return new NextResponse(null, { status: 404 });
   }
 
@@ -48,9 +51,7 @@ export async function GET(_request: Request, context: RouteContext) {
       return new NextResponse(null, { status: 404 });
     }
 
-    const stream = Readable.toWeb(
-      object.Body as Readable,
-    ) as ReadableStream<Uint8Array>;
+    const stream = Readable.toWeb(object.Body as Readable) as ReadableStream<Uint8Array>;
 
     return new NextResponse(stream, {
       headers: {

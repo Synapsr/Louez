@@ -506,7 +506,9 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       } finally {
         await holder.end();
       }
-      await louezDb.db.delete(louezDb.products).where(orm.inArray(louezDb.products.id, [low, high]));
+      await louezDb.db
+        .delete(louezDb.products)
+        .where(orm.inArray(louezDb.products.id, [low, high]));
     }
   });
 
@@ -653,14 +655,14 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
 
   // --- Image uploads --------------------------------------------------------
 
-  test("an upload through the app: create, send the bytes, complete, then use the url", async () => {
+  test("an upload through the app: create, send the bytes to staging, complete, then use the url", async () => {
     const context = await apiKey();
     const started = await run(
       "createImageUpload",
       { contentType: "image/png", size: PNG.byteLength },
       context({ "idempotency-key": "ignored" }),
     );
-    assert.match(started.key, new RegExp(`^${STORE}/categories/[\\w-]{21}\\.png$`));
+    assert.match(started.key, new RegExp(`^uploads-staging/${STORE}/categories/[\\w-]{21}\\.png$`));
     assert.equal(started.upload.method, "PUT");
     const url = new URL(started.upload.url);
     const token = url.pathname.slice(uploadHandler.UPLOAD_PATH_PREFIX.length);
@@ -694,14 +696,37 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     const stored = await put(PNG, { "content-type": "image/png" });
     assert.equal(stored.status, 200);
 
+    // The staging file is never an image a record takes.
+    await rejects(
+      run(
+        "create",
+        { name: "Staged", imageUrl: `https://files.louez.test/${started.key}` },
+        context(),
+      ),
+      "CATEGORY_IMAGE_INVALID",
+    );
+
+    // Checked in staging, then published under the store's folder.
+    const image = started.key.slice("uploads-staging/".length).replace(/\.png$/, "-category.png");
     const completed = await run("completeImageUpload", { key: started.key }, context());
     assert.deepEqual(completed, {
-      key: started.key,
-      url: `https://files.louez.test/${started.key}`,
+      key: image,
+      url: `https://files.louez.test/${image}`,
       contentType: "image/png",
       size: PNG.byteLength,
     });
-    assert.equal(storage.objects.get(started.key)?.public, true);
+    assert.deepEqual(storage.content(image), {
+      bytes: PNG,
+      contentType: "image/png",
+      public: true,
+    });
+    assert.equal(storage.objects.has(started.key), false, "the staging file went");
+
+    // The token still works, but completing again answers the same image.
+    const another = new Uint8Array([...PNG.subarray(0, 12), 7, 7]);
+    assert.equal((await put(another, { "content-type": "image/png" })).status, 200);
+    assert.deepEqual(await run("completeImageUpload", { key: started.key }, context()), completed);
+    assert.deepEqual(storage.objects.get(image)?.bytes, PNG);
 
     const category = await run("create", { name: "Pictured", imageUrl: completed.url }, context());
     assert.equal(category.imageUrl, completed.url);
@@ -714,7 +739,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(operation, undefined);
   });
 
-  test("a direct upload is checked on completion: bad bytes are refused and stay private", async () => {
+  test("a direct upload is checked on completion: bad bytes are refused and never published", async () => {
     storage = createMemoryStorage({ direct: true });
     const context = await apiKey();
     const started = await run(
@@ -725,7 +750,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(started.upload.method, "PUT");
     assert.match(started.upload.url, /^https:\/\/bucket\.louez\.test\//);
 
-    // The caller sent HTML to the bucket under the image's key.
+    // The caller sent HTML to the bucket under the upload's staging key.
     storage.objects.set(started.key, {
       bytes: new TextEncoder().encode("<script>alert(1)</script>"),
       contentType: "image/png",
@@ -735,12 +760,15 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       run("completeImageUpload", { key: started.key }, context()),
       "UPLOAD_CONTENT_INVALID",
     );
-    // Nothing is deleted: the refused object stays unpublished, so private.
-    assert.equal(storage.objects.get(started.key)?.public, false, "kept private");
+    // Refused: it stays in staging, private, and nothing reaches the store's folder.
+    const image = started.key.slice("uploads-staging/".length).replace(/\.png$/, "-category.png");
+    assert.equal(storage.objects.get(started.key)?.public, false, "left private in staging");
+    assert.equal(storage.objects.has(image), false, "never published");
 
     storage.objects.set(started.key, { bytes: PNG, contentType: "image/png", public: false });
     const completed = await run("completeImageUpload", { key: started.key }, context());
     assert.equal(completed.size, PNG.byteLength);
+    assert.equal(storage.objects.get(image)?.public, true);
   });
 
   test("an upload refuses another kind, type, size, or another store's key", async () => {
@@ -772,12 +800,14 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       "UPLOAD_TOO_LARGE",
     );
 
-    const theirs = `${OTHER_STORE}/categories/ccccccccccccccccccccc.png`;
+    const theirs = `uploads-staging/${OTHER_STORE}/categories/ccccccccccccccccccccc.png`;
     storage.objects.set(theirs, { bytes: PNG, contentType: "image/png", public: false });
     for (const key of [
       theirs,
-      `${STORE}/products/ccccccccccccccccccccc.png`,
-      `${STORE}/categories/../${OTHER_STORE}/categories/ccccccccccccccccccccc.png`,
+      // A key of the store's folder, not an upload's: completion never takes it.
+      `${STORE}/categories/ccccccccccccccccccccc.png`,
+      `uploads-staging/${STORE}/products/ccccccccccccccccccccc.png`,
+      `uploads-staging/${STORE}/categories/../../${OTHER_STORE}/categories/ccccccccccccccccccccc.png`,
     ]) {
       await rejects(run("completeImageUpload", { key }, context()), "UPLOAD_NOT_OWNED");
     }
@@ -799,7 +829,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       contentType: "image/png",
       size: PNG.byteLength,
     });
-    assert.deepEqual(storage.objects.get(sent.key), {
+    assert.deepEqual(storage.content(sent.key), {
       bytes: PNG,
       contentType: "image/png",
       public: true,
@@ -893,86 +923,6 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       "PERMISSION_DENIED",
     );
     assert.equal(storage.objects.size, 1, "only the other store's image");
-  });
-
-  describe("an upload refused once its bytes are stored", () => {
-    /** The storage reports another type than the one stored: the metadata check refuses. */
-    const misreported = () => {
-      storage.head = async (key) => {
-        const object = storage.objects.get(key);
-        return object ? { size: object.bytes.byteLength, contentType: "text/html" } : null;
-      };
-    };
-    const recorded = async (idempotencyKey: string) => {
-      const [row] = await louezDb.db
-        .select({ status: louezDb.apiOperations.status, error: louezDb.apiOperations.error })
-        .from(louezDb.apiOperations)
-        .where(orm.eq(louezDb.apiOperations.idempotencyKey, idempotencyKey));
-      return { status: row?.status, code: (row?.error as { code?: string } | null)?.code };
-    };
-
-    test("deleted again: a refusal, nothing stored, and the same key runs it again", async () => {
-      const context = await apiKey();
-      misreported();
-      await rejects(
-        run(
-          "uploadImage",
-          { contentBase64: base64(PNG) },
-          context({ "idempotency-key": "refused-upload" }),
-        ),
-        "UPLOAD_TYPE_NOT_ALLOWED",
-      );
-      assert.equal(storage.objects.size, 0, "nothing stored");
-      assert.deepEqual(await recorded("refused-upload"), {
-        status: "failed",
-        code: "UPLOAD_TYPE_NOT_ALLOWED",
-      });
-
-      storage = createMemoryStorage();
-      const sent = await run(
-        "uploadImage",
-        { contentBase64: base64(PNG) },
-        context({ "idempotency-key": "refused-upload" }),
-      );
-      assert.equal(storage.objects.get(sent.key)?.public, true, "the same key ran it again");
-      assert.equal((await recorded("refused-upload")).status, "succeeded");
-    });
-
-    test("not deleted: unknown, and the same key never stores a second object", async (t) => {
-      t.mock.method(console, "error", () => {});
-      const context = await apiKey();
-      misreported();
-      storage.delete = async () => {
-        throw Object.assign(new Error("Access denied"), { name: "AccessDenied" });
-      };
-      await assert.rejects(
-        run(
-          "uploadImage",
-          { contentBase64: base64(PNG) },
-          context({ "idempotency-key": "orphaned-upload" }),
-        ),
-        (error: unknown) => {
-          assert.notEqual(
-            (error as { data?: { code?: string } }).data?.code,
-            "UPLOAD_TYPE_NOT_ALLOWED",
-            "no refusal: an object remains",
-          );
-          return true;
-        },
-      );
-      assert.equal(storage.objects.size, 1, "the object remains");
-      assert.deepEqual(await recorded("orphaned-upload"), { status: "unknown", code: "INTERNAL" });
-
-      await rejects(
-        run(
-          "uploadImage",
-          { contentBase64: base64(PNG) },
-          context({ "idempotency-key": "orphaned-upload" }),
-        ),
-        "OPERATION_OUTCOME_UNKNOWN",
-      );
-      assert.equal(storage.objects.size, 1, "one stored object, never two");
-    });
   });
 
   // --- Images by URL --------------------------------------------------------
