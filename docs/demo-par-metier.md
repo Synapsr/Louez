@@ -121,7 +121,8 @@ bouton de démo. L'appel ne fait que compléter le pool jusqu'à sa taille : il 
 pour personne, mille appels ne font pas plus de boutiques qu'un seul, et un robot ne
 survole rien. Seuls l'app et les origines du site marketing sont écoutées.
 
-Pour les pages ski, vélo et événementiel du site (une PR du dépôt du site) :
+Les pages ski, vélo et événementiel du site le font avec le bouton « Essayer la démo »
+(dépôt Louez-Website, `LiveDemoLink`), sur le principe suivant :
 
 ```html
 <a href="https://app.louez.io/demo/ski?ref_cta=pro_ski_hero" data-louez-demo="ski">
@@ -322,14 +323,11 @@ launchctl kickstart -k gui/$(id -u)/<label>
 
 ## Prochaines étapes
 
-1. Les boutons du site : « Essayer la démo » sur `/fr/pro/location-ski`, la page vélo et
-   la page événementiel, vers `/demo/ski`, `/demo/velo`, `/demo/evenementiel`, avec leur
-   `ref_cta` (le cookie `louez_attribution` suit jusqu'à `demo_started`).
-2. D'autres métiers : un fichier de données par métier (kayak et paddle, matériel de
+1. D'autres métiers : un fichier de données par métier (kayak et paddle, matériel de
    chantier, photo et vidéo, mobilité).
-3. Mesurer le tunnel `demo_started` → `demo_step` → `demo_signup_clicked` →
+2. Mesurer le tunnel `demo_started` → `demo_step` → `demo_signup_clicked` →
    `account_created` par métier, puis décider des pas du guide.
-4. Les packs comme lot d'articles suivis, quand le catalogue saura les composer.
+3. Les packs comme lot d'articles suivis, quand le catalogue saura les composer.
 
 ## Related
 
