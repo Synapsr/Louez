@@ -12,6 +12,21 @@ export interface StripeConnectClient {
     retrieve: (id: string) => Promise<StripeAccountLike>;
     createLoginLink: (id: string) => Promise<{ url: string }>;
   };
+  /** A connected account's payment, read for the dashboard link: its mode. */
+  paymentIntents: {
+    retrieve: (
+      id: string,
+      params: undefined,
+      options: { stripeAccount: string },
+    ) => Promise<StripeObjectLike>;
+  };
+  charges: {
+    retrieve: (
+      id: string,
+      params: undefined,
+      options: { stripeAccount: string },
+    ) => Promise<StripeObjectLike>;
+  };
   accountLinks: {
     create: (params: {
       account: string;
@@ -21,6 +36,12 @@ export interface StripeConnectClient {
       collect: "eventually_due";
     }) => Promise<{ url: string }>;
   };
+}
+
+/** What Louez reads of a PaymentIntent or a charge: Stripe's own word on its mode. */
+export interface StripeObjectLike {
+  id: string;
+  livemode: boolean;
 }
 
 /** What Louez reads of a connected account. */
@@ -192,14 +213,65 @@ export async function createOnboardingLink(
   return link.url;
 }
 
-/** Stripe's own dashboard: an Express account gets a one-click login link, a Standard one signs in there. */
+const STRIPE_DASHBOARD = "https://dashboard.stripe.com";
+
+/**
+ * The dashboard Stripe gives a connected account: its own (`full`, a Standard account,
+ * where its owner signs in), or Express's, reached by a login link.
+ */
+export type StripeDashboardKind = "full" | "express";
+
+export const dashboardKindOf = (account: StripeAccountLike): StripeDashboardKind =>
+  account.type === "express" ? "express" : "full";
+
+/** The dashboard Stripe gives the account, read from Stripe. */
+export async function getDashboardKind(
+  client: StripeConnectClient,
+  accountId: string,
+): Promise<StripeDashboardKind> {
+  return dashboardKindOf(await client.accounts.retrieve(accountId));
+}
+
+/** A payment to open in Stripe's dashboard: its PaymentIntent or, without one, its charge. */
+export interface DashboardPayment {
+  paymentIntentId: string | null;
+  chargeId: string | null;
+}
+
+/**
+ * A payment's page in the account's own dashboard: the account named in the path, so
+ * Stripe opens it on that account, and test mode's path for a test payment.
+ */
+export function paymentDashboardUrl(payment: {
+  accountId: string;
+  id: string;
+  livemode: boolean;
+}): string {
+  const mode = payment.livemode ? "" : "/test";
+  return `${STRIPE_DASHBOARD}/${encodeURIComponent(payment.accountId)}${mode}/payments/${encodeURIComponent(payment.id)}`;
+}
+
+/**
+ * Stripe's own dashboard, created when the person goes there. An Express account gets a
+ * login link (single use, short-lived: never made in advance), on its home. A Standard
+ * account's owner signs in there: on the payment's page when one is named, as Stripe
+ * states its mode on the object read, else on the home.
+ */
 export async function createDashboardUrl(
   client: StripeConnectClient,
   accountId: string,
+  payment?: DashboardPayment,
 ): Promise<string> {
   const account = await client.accounts.retrieve(accountId);
-  if (account.type === "express") {
+  if (dashboardKindOf(account) === "express") {
     return (await client.accounts.createLoginLink(accountId)).url;
   }
-  return "https://dashboard.stripe.com";
+  const options = { stripeAccount: accountId };
+  const object = payment?.paymentIntentId
+    ? await client.paymentIntents.retrieve(payment.paymentIntentId, undefined, options)
+    : payment?.chargeId
+      ? await client.charges.retrieve(payment.chargeId, undefined, options)
+      : null;
+  if (!object) return STRIPE_DASHBOARD;
+  return paymentDashboardUrl({ accountId, id: object.id, livemode: object.livemode });
 }

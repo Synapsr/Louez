@@ -24,9 +24,28 @@ export const refundPaymentInput = z
       .optional()
       .describe("Why it is refunded, as Stripe records it (default requested_by_customer)"),
     notes: z.string().max(1000).optional().describe("Optional notes, kept on the refund"),
+    confirmRepeat: z
+      .boolean()
+      .optional()
+      .describe(
+        "From the dashboard: confirms a refund of the same amount as one made on this payment in the last 10 minutes (REFUND_REPEAT_UNCONFIRMED). An API key's or an agent's refund is approved by a person instead, and ignores it",
+      ),
   })
   .strict();
 export type RefundPaymentInput = z.infer<typeof refundPaymentInput>;
+
+/** How long after a refund of a payment the same amount again asks the person to confirm it. */
+export const REFUND_REPEAT_WINDOW_MINUTES = 10;
+
+/** A refund of the same amount made on the payment within the window, as the refusal names it. */
+export interface RecentRefund {
+  /** When it was asked (ISO 8601). */
+  refundedAt: string;
+  /** Who refunded it, by their name or e-mail; null when no person is known. */
+  by: string | null;
+  amount: string;
+  currency: string;
+}
 
 export const getRefundInput = z
   .object({
@@ -35,6 +54,35 @@ export const getRefundInput = z
   })
   .strict();
 export type GetRefundInput = z.infer<typeof getRefundInput>;
+
+export const previewRefundInput = z
+  .object({ paymentId: z.string().describe("The ID of the payment taken online to refund") })
+  .strict();
+export type PreviewRefundInput = z.infer<typeof previewRefundInput>;
+
+/** What a payment taken online could give back now: what a person sees before refunding it. */
+export const previewRefundOutput = z.object({
+  paymentId: z.string(),
+  reservationId: z.string(),
+  number: z.string().describe("The reservation's number."),
+  type: z.string().describe("The payment's type: rental, damage, adjustment or deposit_capture."),
+  paidAt: z.string().describe("When it was paid (ISO 8601)."),
+  currency: z.string().describe("The payment's own currency, upper case: the refund's."),
+  paid: z.string().describe("What the payment took, before any refund."),
+  refunded: z.string().describe("What was already given back, as Stripe and Louez count it."),
+  inFlight: z.string().describe("What refunds still being sent hold back."),
+  refundable: z.string().describe("What can still be refunded now."),
+  card: z
+    .object({ brand: z.string(), last4: z.string() })
+    .nullable()
+    .describe("The card that paid, when Stripe states it."),
+  creditNote: z
+    .boolean()
+    .describe(
+      "Whether the refund gets a credit note: the store issues invoices and the payment has one.",
+    ),
+});
+export type PreviewRefundOutput = z.infer<typeof previewRefundOutput>;
 
 export const STRIPE_REFUND_STATUSES = ["pending", "succeeded", "failed"] as const;
 export type StripeRefundStatus = (typeof STRIPE_REFUND_STATUSES)[number];
@@ -162,10 +210,15 @@ export const stripeRefundErrors = {
         `being refunded: ${money(balance.inFlight)}, refundable: ${money(balance.refundable)}.`,
       details: { ...balance },
     }),
-  notFromDashboard: () =>
-    apiError("FORBIDDEN", "REFUND_NOT_FROM_DASHBOARD", {
+  alreadyInProgress: () =>
+    apiError("CONFLICT", "REFUND_ALREADY_IN_PROGRESS", {
       message:
-        "Refunding an online payment is not available from the dashboard yet: refund it from the Stripe dashboard, or through a connected agent with a person's approval.",
+        "A refund of this payment is still being processed and its outcome is not known yet: refunding again could give the money back twice. Read the reservation's refunds for its outcome.",
+    }),
+  repeatUnconfirmed: (recent: RecentRefund, money: (amount: string) => string) =>
+    apiError("CONFLICT", "REFUND_REPEAT_UNCONFIRMED", {
+      message: `A refund of ${money(recent.amount)} was made on this payment at ${recent.refundedAt}${recent.by ? ` by ${recent.by}` : ""}, less than ${REFUND_REPEAT_WINDOW_MINUTES} minutes ago. Send confirmRepeat: true to refund the same amount again.`,
+      details: { ...recent },
     }),
   stripeUnavailable: () =>
     apiError("INTERNAL_SERVER_ERROR", "STRIPE_UNAVAILABLE", {
@@ -190,6 +243,7 @@ export const STRIPE_REFUND_REFUSAL_CODES = [
   "PAYMENT_CHARGE_SHARED",
   "NO_STRIPE_ACCOUNT",
   "REFUND_EXCEEDS_REFUNDABLE",
-  "REFUND_NOT_FROM_DASHBOARD",
+  "REFUND_ALREADY_IN_PROGRESS",
+  "REFUND_REPEAT_UNCONFIRMED",
   "STRIPE_UNAVAILABLE",
 ] as const;

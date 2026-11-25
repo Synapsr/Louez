@@ -4919,6 +4919,14 @@ export interface ApiHandoffPayload {
 }
 
 /**
+ * What a step to Stripe's dashboard carries (`stripe_dashboard`), when it opens on one
+ * payment: that payment, by its id. A step with none opens the dashboard's home.
+ */
+export interface ApiStripeDashboardPayload {
+  paymentId: string;
+}
+
+/**
  * What a person's approval of an operation carries (`operation_approval`,
  * packages/api services/approvals.ts): the request as the agent sent it,
  * the preview Louez showed for it, and the right the action needs.
@@ -4963,7 +4971,9 @@ export const apiHandoffs = mysqlTable(
     /** What the step is about within its kind: empty, or a team invitation's address hash. */
     subject: varchar("subject", { length: 64 }).default("").notNull(),
     /** What the page shows and the step acts on, for the kinds that need it. */
-    payload: json("payload").$type<ApiHandoffPayload | ApiApprovalPayload>(),
+    payload: json("payload").$type<
+      ApiHandoffPayload | ApiApprovalPayload | ApiStripeDashboardPayload
+    >(),
     /** An approval's procedure, by its router path (`dashboard.payments.record`); null for the other kinds. */
     procedure: varchar("procedure", { length: 128 }),
     /**

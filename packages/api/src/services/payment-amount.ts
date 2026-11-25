@@ -162,6 +162,15 @@ export function currencyMinorOf(amount: string, currency: string): number {
 }
 
 /**
+ * A whole number of a currency's minor units as a decimal string with its decimals:
+ * `currencyMinorOf`'s inverse (4500 yen is "4500", 4500 cents "45.00").
+ */
+export function decimalOfMinor(minor: number, currency: string): string {
+  const digits = currencyMinorDigits(currency) ?? 2;
+  return (minor / 10 ** digits).toFixed(digits);
+}
+
+/**
  * Whether a write that does not know the currency yet refuses `raw` for its
  * text: not a plain decimal `paymentAmount` takes, unless it is one only
  * refused for its decimals (`pastTheRowsDecimals`), which waits for the

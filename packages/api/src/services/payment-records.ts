@@ -420,6 +420,7 @@ function selectStorePayment(executor: Database | Transaction, storeId: string, i
       refundOfPaymentId: payments.refundOfPaymentId,
       stripeRefundId: payments.stripeRefundId,
       stripePaymentIntentId: payments.stripePaymentIntentId,
+      stripeChargeId: payments.stripeChargeId,
       stripeCheckoutSessionId: payments.stripeCheckoutSessionId,
       number: reservations.number,
       reservationCurrency: reservations.currency,

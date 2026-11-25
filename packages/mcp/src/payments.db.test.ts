@@ -1056,7 +1056,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       refusal(await mcpCall(authorization, "delete_payment", { paymentId: charged })),
       refused(
         "PAYMENT_STRIPE_NOT_DELETABLE",
-        "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+        "Cannot delete a Stripe payment. Refund it instead, from the reservation's payment history in Louez or with refund_payment.",
       ),
     );
 

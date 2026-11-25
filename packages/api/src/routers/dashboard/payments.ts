@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { db } from "@louez/db";
+
 import { ORPCError } from "@orpc/server";
 
 import type { ConnectAccountStatus } from "../../adapters/stripe-connect";
@@ -30,13 +32,17 @@ import {
 } from "../../platform/approval-help";
 import { CONFIRMATION_HEADER, checkConfirmation } from "../../platform/confirmation";
 import {
+  REFUND_REPEAT_WINDOW_MINUTES,
   getRefundInput,
+  previewRefundInput,
+  previewRefundOutput,
   refundPaymentInput,
   refundPaymentOutput,
   stripeRefundErrors,
 } from "../../contracts/stripe-refunds";
 import {
   getOnlineRefund,
+  previewOnlineRefund,
   recoverOnlineRefund,
   refundOnlinePayment,
 } from "../../services/stripe-refunds";
@@ -52,6 +58,7 @@ import {
   recordDepositReturn,
   recordPayment,
   recordPaymentRefund,
+  storePayment,
   type PaymentWriteCaller,
 } from "../../services/payment-records";
 import {
@@ -182,7 +189,7 @@ const openStripeDashboard = storeProcedure
     mcp: {
       name: "payments_open_stripe_dashboard",
       title: "Open Stripe Dashboard",
-      description: `Send the user to the store's own Stripe dashboard (payouts, disputes, bank details), where they sign in to Stripe. ${HANDOFF_HELP} The handoff completes once the user is on their way to Stripe. Refused without a Stripe account (NO_STRIPE_ACCOUNT).`,
+      description: `Send the user to the store's own Stripe dashboard (payouts, disputes, bank details), where they sign in to Stripe. With paymentId, a payment taken online (among the payments reservations_get returns), it opens on that payment where the account it was taken on has its own Stripe dashboard; an Express account, or a payment whose account Louez did not record, opens on the home. ${HANDOFF_HELP} The handoff completes once the user is on their way to Stripe. Refused without a Stripe account (NO_STRIPE_ACCOUNT), for a payment the store does not have (PAYMENT_NOT_FOUND), and for one Stripe has no payment for (PAYMENT_NOT_IN_STRIPE).`,
       bundle: "settings",
       effect: "overwrite",
       reach: "provider",
@@ -191,14 +198,24 @@ const openStripeDashboard = storeProcedure
   .route({
     method: "POST",
     path: "/payments/stripe/dashboard",
-    description: `Starts a visit to the store's own Stripe dashboard (payouts, disputes, bank details), where the person signs in to Stripe. ${REST_HANDOFF_HELP} The step completes once the person is on their way to Stripe. Refused with \`NO_STRIPE_ACCOUNT\` when the store has no Stripe account, and \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe.`,
+    description: `Starts a visit to the store's own Stripe dashboard (payouts, disputes, bank details), where the person signs in to Stripe. With \`paymentId\`, a payment taken online, it opens on that payment where the account it was taken on has its own Stripe dashboard (a Standard account), in test mode's pages for a test payment; an Express account, or a payment whose account Louez did not record, opens on the home. ${REST_HANDOFF_HELP} The step completes once the person is on their way to Stripe. Refused with \`NO_STRIPE_ACCOUNT\` when the store has no Stripe account, \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe, \`PAYMENT_NOT_FOUND\` for a payment the store does not have, and \`PAYMENT_NOT_IN_STRIPE\` for one taken by hand or that Stripe has no payment for yet.`,
   })
   .input(openStripeDashboardInput)
   .output(openStripeDashboardOutput)
-  .handler(({ context }) => {
+  .handler(async ({ context, input }) => {
     requireConnectClient(context.ports);
     if (!context.store.stripeAccountId) throw stripeConnectErrors.noAccount();
-    return startHandoff(context, "stripe_dashboard");
+    if (!input.paymentId) return startHandoff(context, "stripe_dashboard");
+    // A test reservation's payment is not found by a key, an agent or the assistant.
+    if (await hidesTestPayment(context.actor, input.paymentId)) {
+      throw stripeRefundErrors.paymentNotFound(input.paymentId);
+    }
+    const payment = await storePayment(db, context.actor.storeId, input.paymentId);
+    if (!payment) throw stripeRefundErrors.paymentNotFound(input.paymentId);
+    if (payment.method !== "stripe" || !(payment.stripePaymentIntentId || payment.stripeChargeId)) {
+      throw stripeConnectErrors.paymentNotInStripe();
+    }
+    return startHandoff(context, "stripe_dashboard", { paymentId: payment.id });
   });
 
 const syncStripeStatus = storeProcedure
@@ -419,7 +436,7 @@ const deletePaymentProcedure = storeProcedure
     mcp: {
       name: "delete_payment",
       title: "Delete Payment",
-      description: `Delete a payment of a reservation: it leaves the reservation's balance and the billing figures. A Stripe payment is refused: its refunds are made in Stripe. ${approvalAsked("a preview of the payment")} ${LINKS_NOTE}`,
+      description: `Delete a payment of a reservation: it leaves the reservation's balance and the billing figures. A Stripe payment is refused: refund it with refund_payment instead. ${approvalAsked("a preview of the payment")} ${LINKS_NOTE}`,
       bundle: "daily",
       effect: "delete",
     },
@@ -427,7 +444,7 @@ const deletePaymentProcedure = storeProcedure
   .route({
     method: "DELETE",
     path: "/payments/{paymentId}",
-    description: `Deletes a payment recorded on a reservation: it leaves the reservation's balance and the billing figures. A payment made through Stripe is refused: refund it in Stripe. ${restApprovalAsked("a preview of the payment")} ${REST_LINKS_NOTE}`,
+    description: `Deletes a payment recorded on a reservation: it leaves the reservation's balance and the billing figures. A payment made through Stripe is refused: refund it with \`POST /payments/{paymentId}/refunds\` instead. ${restApprovalAsked("a preview of the payment")} ${REST_LINKS_NOTE}`,
   })
   .input(deletePaymentInput)
   .output(deletePaymentOutput)
@@ -484,16 +501,12 @@ const refund = storeProcedure
   .route({
     method: "POST",
     path: "/payments/{paymentId}/refunds",
-    description: `Refunds all or part of a payment the store took online, back to the means that paid it, through Stripe: a \`rental\`, \`damage\`, \`adjustment\` or \`deposit_capture\` payment. The amount is in the payment's own currency, with at most its decimals. Partial refunds may follow one another. One refund is one durable operation: it reaches Stripe at most once, and its outcome can always be read with \`GET /payments/{paymentId}/refunds/{refundId}\`. No message is sent to the customer. Refused, before anything is asked, for ${onlineRefundRefusals(inBackticks)}. A dashboard session is refused with \`REFUND_NOT_FROM_DASHBOARD\`. ${restApprovalAsked("a preview of the refund, the payment and what stays refundable")} ${STRIPE_MAY_STILL_REFUSE} ${REFUND_STATES} The platform's \`Idempotency-Key\` answers the same refund, as first answered or, if that answer was lost, as it is now (\`Louez-Replayed\`); it may be \`pending\`: read the refund for its outcome rather than repeating the request. ${REST_LINKS_NOTE}`,
+    description: `Refunds all or part of a payment the store took online, back to the means that paid it, through Stripe: a \`rental\`, \`damage\`, \`adjustment\` or \`deposit_capture\` payment. The amount is in the payment's own currency, with at most its decimals. Partial refunds may follow one another. One refund is one durable operation: it reaches Stripe at most once, and its outcome can always be read with \`GET /payments/{paymentId}/refunds/{refundId}\`. No message is sent to the customer. Refused, before anything is asked, for ${onlineRefundRefusals(inBackticks)}. A refund asked from a dashboard session, which no approval stops, is also refused while another refund of the payment has no known outcome yet (\`REFUND_ALREADY_IN_PROGRESS\`), and for the same amount as a refund of the payment made in the last ${REFUND_REPEAT_WINDOW_MINUTES} minutes unless \`confirmRepeat\` is true (\`REFUND_REPEAT_UNCONFIRMED\`, whose \`details\` give \`refundedAt\`, \`by\`, \`amount\` and \`currency\`); an API key ignores \`confirmRepeat\`. ${restApprovalAsked("a preview of the refund, the payment and what stays refundable")} ${STRIPE_MAY_STILL_REFUSE} ${REFUND_STATES} The platform's \`Idempotency-Key\` answers the same refund, as first answered or, if that answer was lost, as it is now (\`Louez-Replayed\`); it may be \`pending\`: read the refund for its outcome rather than repeating the request. ${REST_LINKS_NOTE}`,
   })
   .input(refundPaymentInput)
   .output(refundPaymentOutput)
   .handler(async ({ context, input, path }) => {
     const { credential } = context.actor;
-    // A plain dashboard session has no screen in front of this yet.
-    if (credential.kind === "session" && credential.assistant !== true) {
-      throw stripeRefundErrors.notFromDashboard();
-    }
     // A test reservation's payment is not found by a key, an agent or the assistant.
     if (await hidesTestPayment(context.actor, input.paymentId)) {
       throw stripeRefundErrors.paymentNotFound(input.paymentId);
@@ -506,6 +519,8 @@ const refund = storeProcedure
         ...paymentRecordsCaller(context, path, input, "money", port),
         requestedBy: { userId: credential.userId, credentialId: credential.id },
         approvalId: presented && PRESENTED_APPROVAL.test(presented) ? presented : null,
+        // A person in the dashboard, whom no approval stops.
+        dashboard: credential.kind === "session" && credential.assistant !== true,
       },
       input,
     );
@@ -542,6 +557,25 @@ const getRefund = storeProcedure
     return { ...read, ...reservationLinksFor(context, read.reservationId) };
   });
 
+/**
+ * What the dashboard's refund dialog shows before a person refunds a payment taken
+ * online: the dashboard's own read (not exposed to agents, whose approval page shows
+ * the same facts). Read without a lock; the refund checks everything again under it.
+ */
+const previewRefund = storeProcedure
+  .meta({ capability: "reservations.refundStripePayment", scope: PAYMENTS_READ })
+  .input(previewRefundInput)
+  .output(previewRefundOutput)
+  .handler(async ({ context, input }) => {
+    // A test reservation's payment is not found by a key, an agent or the assistant.
+    if (await hidesTestPayment(context.actor, input.paymentId)) {
+      throw stripeRefundErrors.paymentNotFound(input.paymentId);
+    }
+    const port = context.ports.stripeRefunds;
+    if (!port) throw stripeRefundErrors.unavailable();
+    return previewOnlineRefund({ storeId: context.actor.storeId, port }, input);
+  });
+
 export const dashboardPaymentsRouter = {
   payouts,
   record,
@@ -549,6 +583,7 @@ export const dashboardPaymentsRouter = {
   recordRefund,
   refund,
   getRefund,
+  previewRefund,
   delete: deletePaymentProcedure,
   startStripeOnboarding,
   openStripeDashboard,

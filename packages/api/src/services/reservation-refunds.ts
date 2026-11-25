@@ -1,8 +1,16 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 
-import { type Database, apiHandoffs, paymentRefundOperations, users } from "@louez/db";
+import {
+  type Database,
+  apiHandoffs,
+  paymentDisputes,
+  paymentRefundOperations,
+  users,
+} from "@louez/db";
 
 import type { StripeRefundStatus } from "../contracts/stripe-refunds";
+import { decimalOfMinor } from "./payment-amount";
 
 /**
  * A refund operation's status as Stripe's outcome reads it (`get_refund`'s `status`):
@@ -14,6 +22,13 @@ export const onlineRefundStatus = (
 ): StripeRefundStatus =>
   status === "succeeded" ? "succeeded" : status === "failed" ? "failed" : "pending";
 
+/** A person of the store, as the reservation's page names them. */
+export interface RefundPerson {
+  name: string | null;
+  email: string;
+  image: string | null;
+}
+
 /** A refund of an online payment the store asked for, as the reservation's page reads it. */
 export interface ReservationOnlineRefund {
   id: string;
@@ -21,9 +36,27 @@ export interface ReservationOnlineRefund {
   /** Its own payment row once Stripe made the refund; null before. */
   refundPaymentId: string | null;
   status: StripeRefundStatus;
+  /** The amount given back, in the payment's currency, with its decimals. */
+  amount: string;
+  currency: string;
+  /** When it was asked. */
+  createdAt: Date;
+  /** Why Stripe made no refund, or why the one it made failed; null unless failed. */
+  failure: { code: string; message: string | null } | null;
+  /** The person who refunded it from the dashboard; null when an agent asked (see `approvedBy`). */
+  requestedBy: RefundPerson | null;
   /** The person who approved it, when one did (an agent's refund). */
-  approvedBy: { name: string | null; email: string; image: string | null } | null;
+  approvedBy: RefundPerson | null;
 }
+
+/** A dispute opened on one of the reservation's payments taken online. */
+export interface ReservationPaymentDispute {
+  paymentId: string;
+  /** `open` while the customer's bank holds the money: no refund until it ends. */
+  status: "open" | "won" | "lost";
+}
+
+const requesters = alias(users, "refund_requesters");
 
 /**
  * The query of a reservation's refund operations, through its payments taken online: the
@@ -37,30 +70,42 @@ export const reservationOnlineRefundsQuery = (
   onlinePaymentIds: readonly string[],
 ) => {
   const o = paymentRefundOperations;
-  return executor
-    .select({
-      id: o.id,
-      paymentId: o.paymentId,
-      refundPaymentId: o.refundPaymentId,
-      status: o.status,
-      approverName: users.name,
-      approverEmail: users.email,
-      approverImage: users.image,
-    })
-    .from(o)
-    .leftJoin(
-      apiHandoffs,
-      and(eq(apiHandoffs.id, o.approvalId), eq(apiHandoffs.storeId, o.storeId)),
-    )
-    .leftJoin(users, eq(users.id, apiHandoffs.decidedByUserId))
-    .where(
-      and(
-        inArray(o.paymentId, [...onlinePaymentIds]),
-        eq(o.storeId, storeId),
-        eq(o.reservationId, reservationId),
-      ),
-    )
-    .orderBy(asc(o.createdAt), asc(o.id));
+  return (
+    executor
+      .select({
+        id: o.id,
+        paymentId: o.paymentId,
+        refundPaymentId: o.refundPaymentId,
+        status: o.status,
+        amountMinor: o.amountMinor,
+        currency: o.currency,
+        createdAt: o.createdAt,
+        failureCode: o.failureCode,
+        failureMessage: o.failureMessage,
+        requesterName: requesters.name,
+        requesterEmail: requesters.email,
+        requesterImage: requesters.image,
+        approverName: users.name,
+        approverEmail: users.email,
+        approverImage: users.image,
+      })
+      .from(o)
+      .leftJoin(
+        apiHandoffs,
+        and(eq(apiHandoffs.id, o.approvalId), eq(apiHandoffs.storeId, o.storeId)),
+      )
+      .leftJoin(users, eq(users.id, apiHandoffs.decidedByUserId))
+      // Asked without an approval: a person in the dashboard, who is the one to name.
+      .leftJoin(requesters, and(eq(requesters.id, o.requestedByUserId), isNull(o.approvalId)))
+      .where(
+        and(
+          inArray(o.paymentId, [...onlinePaymentIds]),
+          eq(o.storeId, storeId),
+          eq(o.reservationId, reservationId),
+        ),
+      )
+      .orderBy(asc(o.createdAt), asc(o.id))
+  );
 };
 
 /**
@@ -92,9 +137,43 @@ export async function listReservationOnlineRefunds(
     paymentId: row.paymentId,
     refundPaymentId: row.refundPaymentId,
     status: onlineRefundStatus(row.status),
+    amount: decimalOfMinor(row.amountMinor, row.currency),
+    currency: row.currency,
+    createdAt: row.createdAt,
+    failure:
+      row.status === "failed"
+        ? { code: row.failureCode ?? "failed", message: row.failureMessage }
+        : null,
+    requestedBy:
+      row.requesterEmail === null
+        ? null
+        : { name: row.requesterName, email: row.requesterEmail, image: row.requesterImage },
     approvedBy:
       row.approverEmail === null
         ? null
         : { name: row.approverName, email: row.approverEmail, image: row.approverImage },
   }));
+}
+
+/**
+ * The disputes opened on the reservation's payments taken online, oldest first: an open
+ * one stops any refund of its payment (`PAYMENT_DISPUTED`). Reached through the
+ * reservation's own payments, by the table's index on the payment; no query for a
+ * reservation paid only by hand.
+ */
+export async function listReservationPaymentDisputes(
+  executor: Pick<Database, "select">,
+  reservationId: string,
+  payments: readonly { id: string; method: string }[],
+): Promise<ReservationPaymentDispute[]> {
+  const onlinePaymentIds = payments.flatMap((payment) =>
+    payment.method === "stripe" ? [payment.id] : [],
+  );
+  if (onlinePaymentIds.length === 0) return [];
+  const d = paymentDisputes;
+  return executor
+    .select({ paymentId: d.paymentId, status: d.status })
+    .from(d)
+    .where(and(inArray(d.paymentId, onlinePaymentIds), eq(d.reservationId, reservationId)))
+    .orderBy(asc(d.createdAt), asc(d.id));
 }

@@ -1,8 +1,12 @@
-import { db } from "@louez/db";
-import { currencyMinorDigits } from "@louez/utils";
+import { and, asc, eq, sql } from "drizzle-orm";
+
+import { type Transaction, apiHandoffs, db, paymentRefundOperations, users } from "@louez/db";
 
 import {
   type GetRefundInput,
+  REFUND_REPEAT_WINDOW_MINUTES,
+  type PreviewRefundInput,
+  type PreviewRefundOutput,
   type RefundPaymentInput,
   type RefundPaymentOutput,
   stripeRefundErrors,
@@ -16,7 +20,7 @@ import type {
 import { recordOperationTarget } from "../platform/operations";
 import { refundOnlinePresentation } from "./approval-presentations";
 import { onlineRefundStatus } from "./reservation-refunds";
-import { currencyFit, currencyMinorOf, paymentAmount } from "./payment-amount";
+import { currencyFit, currencyMinorOf, decimalOfMinor, paymentAmount } from "./payment-amount";
 import {
   type PaymentWriteCaller,
   moneyIn,
@@ -53,13 +57,106 @@ export interface StripeRefundCaller extends PaymentWriteCaller<StripeRefundsPort
   requestedBy: { userId: string | null; credentialId: string | null };
   /** The approval this call carries out, as presented; null when none is. */
   approvalId: string | null;
+  /**
+   * A person refunding from the dashboard, whom no approval stops: one unresolved refund
+   * per payment, and a refund of the same amount again only once confirmed
+   * (`dashboardRefundRefusal`). False for a key, an agent and the assistant.
+   */
+  dashboard: boolean;
 }
 
-/** A whole number of a currency's minor units, as a decimal string. */
-const decimalOf = (minor: number, currency: string): string => {
-  const digits = currencyMinorDigits(currency) ?? 2;
-  return (minor / 10 ** digits).toFixed(digits);
-};
+/** The operations Louez has no outcome for yet: still to be sent, or awaiting Stripe's account of the charge. */
+const UNRESOLVED_OPERATION_STATUSES = new Set(["requested", "unresolved"]);
+
+/** The name a refund's person reads under: theirs, else their e-mail. */
+async function personName(tx: Transaction, userId: string | null): Promise<string | null> {
+  if (!userId) return null;
+  const [person] = await tx
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId));
+  return person ? person.name?.trim() || person.email : null;
+}
+
+/** Who refunded: the person who approved an agent's refund, else the one who asked it. */
+async function refundedBy(
+  tx: Transaction,
+  storeId: string,
+  operation: { approvalId: string | null; requestedByUserId: string | null },
+): Promise<string | null> {
+  if (operation.approvalId) {
+    const [approval] = await tx
+      .select({ userId: apiHandoffs.decidedByUserId })
+      .from(apiHandoffs)
+      .where(and(eq(apiHandoffs.id, operation.approvalId), eq(apiHandoffs.storeId, storeId)));
+    const approver = await personName(tx, approval?.userId ?? null);
+    if (approver) return approver;
+  }
+  return personName(tx, operation.requestedByUserId);
+}
+
+/**
+ * What stops a person refunding from the dashboard, whom no approval stops, read in the
+ * refund's transaction under the reservation's lock, the payment's operations locked: two
+ * sessions, tabs or team members cannot both pass. Another refund of the payment Louez
+ * has no outcome for yet (asked, or awaiting Stripe's account of the charge) refuses any
+ * refund (`REFUND_ALREADY_IN_PROGRESS`); a refund Stripe made and holds pending is made,
+ * for Louez, and does not. A refund of the same amount made on the payment, by anyone,
+ * in the last minutes and not failed, refuses this one unless it is confirmed
+ * (`REFUND_REPEAT_UNCONFIRMED`): a lost answer followed by a retry from any tab. A call
+ * whose operation never committed made no refund (its target is recorded with it).
+ */
+async function dashboardRefundRefusal(
+  tx: Transaction,
+  input: {
+    storeId: string;
+    paymentId: string;
+    amountMinor: number;
+    currency: string;
+    confirmRepeat: boolean;
+  },
+): Promise<Error | null> {
+  const o = paymentRefundOperations;
+  const operations = await tx
+    .select({
+      status: o.status,
+      amountMinor: o.amountMinor,
+      createdAt: o.createdAt,
+      recent: sql<number>`${o.createdAt} > NOW() - INTERVAL ${sql.raw(String(REFUND_REPEAT_WINDOW_MINUTES))} MINUTE`,
+      approvalId: o.approvalId,
+      requestedByUserId: o.requestedByUserId,
+    })
+    .from(o)
+    .where(and(eq(o.paymentId, input.paymentId), eq(o.storeId, input.storeId)))
+    .orderBy(asc(o.id))
+    .for("update");
+  if (operations.some((operation) => UNRESOLVED_OPERATION_STATUSES.has(operation.status))) {
+    return stripeRefundErrors.alreadyInProgress();
+  }
+  if (input.confirmRepeat) return null;
+  const repeat = operations
+    .filter(
+      (operation) =>
+        operation.status !== "failed" &&
+        Number(operation.recent) === 1 &&
+        operation.amountMinor === input.amountMinor,
+    )
+    .reduce<(typeof operations)[number] | null>(
+      (latest, operation) =>
+        !latest || operation.createdAt.getTime() >= latest.createdAt.getTime() ? operation : latest,
+      null,
+    );
+  if (!repeat) return null;
+  return stripeRefundErrors.repeatUnconfirmed(
+    {
+      refundedAt: repeat.createdAt.toISOString(),
+      by: await refundedBy(tx, input.storeId, repeat),
+      amount: decimalOfMinor(repeat.amountMinor, input.currency),
+      currency: input.currency,
+    },
+    (amount) => moneyIn(amount, input.currency),
+  );
+}
 
 /** A refusal of the app's service, as the API answers it. */
 function refusalError(refusal: StripeRefundRefusal, paymentId: string): Error {
@@ -88,10 +185,10 @@ function refusalError(refusal: StripeRefundRefusal, paymentId: string): Error {
     case "REFUND_EXCEEDS_REFUNDABLE":
       return stripeRefundErrors.exceedsRefundable(
         {
-          paid: decimalOf(minor("paidMinor"), currency),
-          refunded: decimalOf(minor("refundedMinor"), currency),
-          inFlight: decimalOf(minor("inFlightMinor"), currency),
-          refundable: decimalOf(minor("refundableMinor"), currency),
+          paid: decimalOfMinor(minor("paidMinor"), currency),
+          refunded: decimalOfMinor(minor("refundedMinor"), currency),
+          inFlight: decimalOfMinor(minor("inFlightMinor"), currency),
+          refundable: decimalOfMinor(minor("refundableMinor"), currency),
           currency,
         },
         (amount) => moneyIn(amount, currency),
@@ -119,7 +216,7 @@ export function refundAnswer(
             : view.status === "pending"
               ? "processing"
               : null,
-      amount: decimalOf(view.amountMinor, view.currency),
+      amount: decimalOfMinor(view.amountMinor, view.currency),
       currency: view.currency,
       reason: view.reason,
       createdAt: view.createdAt.toISOString(),
@@ -163,7 +260,7 @@ export async function refundOnlinePayment(
   if (fit === "currency_unsupported") throw stripeRefundErrors.currencyNotSupported(currency);
   if (fit === "too_precise") throw stripeRefundErrors.amountInvalid();
   const amountMinor = currencyMinorOf(text, currency);
-  const amount = decimalOf(amountMinor, currency);
+  const amount = decimalOfMinor(amountMinor, currency);
   const request: StripeRefundRequest = {
     storeId,
     paymentId: input.paymentId,
@@ -175,12 +272,22 @@ export async function refundOnlinePayment(
   };
 
   const recorded = await underReservationLock(storeId, found.reservationId, async (tx) => {
+    if (caller.dashboard) {
+      const blocked = await dashboardRefundRefusal(tx, {
+        storeId,
+        paymentId: found.id,
+        amountMinor,
+        currency,
+        confirmRepeat: input.confirmRepeat === true,
+      });
+      if (blocked) return refused(blocked);
+    }
     const checking = await port.check(tx, request);
     if (!checking.ok) return refused(refusalError(checking.refusal, input.paymentId));
     const { checked } = checking;
     const left = checked.ceiling.refundableMinor - amountMinor;
     // What the payment took, before any refund: its row's amount is what it keeps now.
-    const paid = decimalOf(checked.ceiling.paidMinor, currency);
+    const paid = decimalOfMinor(checked.ceiling.paidMinor, currency);
     const details = {
       paymentId: found.id,
       reservationId: found.reservationId,
@@ -195,8 +302,8 @@ export async function refundOnlinePayment(
           currency,
           reason: request.reason,
           payment: { type: found.type, amount: paid, method: found.method },
-          alreadyRefunded: decimalOf(checked.ceiling.refundedMinor, currency),
-          refundableAfter: decimalOf(left, currency),
+          alreadyRefunded: decimalOfMinor(checked.ceiling.refundedMinor, currency),
+          refundableAfter: decimalOfMinor(left, currency),
           ...(request.notes ? { notes: request.notes } : {}),
         },
       },
@@ -227,8 +334,8 @@ export async function refundOnlinePayment(
           method: found.method,
           currency,
           paidAt: found.paidAt ?? found.createdAt,
-          refunded: decimalOf(checked.ceiling.refundedMinor, currency),
-          refundableAfter: decimalOf(left, currency),
+          refunded: decimalOfMinor(checked.ceiling.refundedMinor, currency),
+          refundableAfter: decimalOfMinor(left, currency),
           card: charge.card ?? null,
         },
       ),
@@ -285,6 +392,45 @@ export async function refundOnlinePayment(
     },
     found,
   );
+}
+
+/**
+ * What a payment taken online could give back now, for a person about to refund it from
+ * the dashboard: the payment, the card that paid, what was paid, refunded and is still
+ * refundable, and whether a credit note follows. Read without a lock, writing nothing;
+ * refused, as the refund would be whatever its amount, with the refund's own errors. The
+ * refund checks everything again under the reservation's lock.
+ */
+export async function previewOnlineRefund(
+  caller: { storeId: string; port: StripeRefundsPort },
+  input: PreviewRefundInput,
+): Promise<PreviewRefundOutput> {
+  const { storeId, port } = caller;
+  const found = await storePayment(db, storeId, input.paymentId);
+  if (!found) throw stripeRefundErrors.paymentNotFound(input.paymentId);
+  if (found.method !== "stripe") throw stripeRefundErrors.takenByHand();
+  let read: Awaited<ReturnType<StripeRefundsPort["preview"]>>;
+  try {
+    read = await port.preview({ storeId, paymentId: found.id });
+  } catch {
+    throw stripeRefundErrors.stripeUnavailable();
+  }
+  if (!read.ok) throw refusalError(read.refusal, input.paymentId);
+  const { currency, card, ceiling, creditNote } = read.preview;
+  return {
+    paymentId: found.id,
+    reservationId: found.reservationId,
+    number: found.number,
+    type: found.type,
+    paidAt: (found.paidAt ?? found.createdAt).toISOString(),
+    currency,
+    paid: decimalOfMinor(ceiling.paidMinor, currency),
+    refunded: decimalOfMinor(ceiling.refundedMinor, currency),
+    inFlight: decimalOfMinor(ceiling.inFlightMinor, currency),
+    refundable: decimalOfMinor(ceiling.refundableMinor, currency),
+    card,
+    creditNote,
+  };
 }
 
 /**

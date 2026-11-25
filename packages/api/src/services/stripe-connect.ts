@@ -58,6 +58,11 @@ export const stripeConnectErrors = {
         "The store has no Stripe account yet. Start one with payments_start_stripe_onboarding.",
       i18nKey: "errors.noStripeAccount",
     }),
+  paymentNotInStripe: () =>
+    apiError("CONFLICT", "PAYMENT_NOT_IN_STRIPE", {
+      message:
+        "This payment was not taken through Stripe, or Stripe has no payment for it yet: there is nothing to open there.",
+    }),
   unavailable: (i18nKey: string) =>
     apiError("INTERNAL_SERVER_ERROR", "STRIPE_UNAVAILABLE", {
       message: "Stripe did not answer as expected. Try again in a moment.",

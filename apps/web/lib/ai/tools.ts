@@ -138,7 +138,7 @@ const PAYMENT_REFUSALS: Record<string, (details: Record<string, unknown>) => str
   PAYMENT_RESERVATION_CLOSED: (details) =>
     `Cannot record payment on a ${String(details.status)} reservation`,
   PAYMENT_STRIPE_NOT_DELETABLE: () =>
-    "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+    "Cannot delete a Stripe payment. Refund it from the reservation's payment history in Louez.",
   DEPOSIT_RETURN_AMOUNT_INVALID: (details) =>
     details.currency
       ? tooPreciseWords(details)

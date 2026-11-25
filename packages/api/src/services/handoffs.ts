@@ -6,10 +6,13 @@ import {
   apiKeys,
   db,
   lockStoreRow,
+  payments,
+  reservations,
   storeMembers,
   stores,
   type ApiApprovalPayload,
   type ApiHandoffPayload,
+  type ApiStripeDashboardPayload,
   type Transaction,
 } from "@louez/db";
 import { hasPermission, type MemberRole } from "@louez/utils";
@@ -149,6 +152,14 @@ export function invitationPayloadOf(
   row: Pick<HandoffRow, "kind" | "payload">,
 ): ApiHandoffPayload | null {
   if (row.kind !== "team_invitation" || !row.payload || !("email" in row.payload)) return null;
+  return row.payload;
+}
+
+/** The payment a step to Stripe's dashboard opens on, or null: its home, or another kind. */
+export function stripeDashboardPayloadOf(
+  row: Pick<HandoffRow, "kind" | "payload">,
+): ApiStripeDashboardPayload | null {
+  if (row.kind !== "stripe_dashboard" || !row.payload || !("paymentId" in row.payload)) return null;
   return row.payload;
 }
 
@@ -489,7 +500,7 @@ export async function issueHandoff(
     prepare?: (
       tx: Transaction,
       active: HandoffRow | undefined,
-    ) => Promise<ApiHandoffPayload | null>;
+    ) => Promise<ApiHandoffPayload | ApiStripeDashboardPayload | null>;
   },
 ): Promise<HandoffLink> {
   const subject = context.subject ?? "";
@@ -988,6 +999,23 @@ async function connectStore(storeId: string): Promise<ConnectStore | null> {
   return store ?? null;
 }
 
+/**
+ * The store's payment a step opens Stripe's dashboard on: its PaymentIntent or charge, and
+ * the account its row records it was taken on. Null when the store no longer has it.
+ */
+async function dashboardPayment(storeId: string, paymentId: string) {
+  const [payment] = await db
+    .select({
+      paymentIntentId: payments.stripePaymentIntentId,
+      chargeId: payments.stripeChargeId,
+      accountId: payments.stripeAccountId,
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .where(and(eq(payments.id, paymentId), eq(reservations.storeId, storeId)));
+  return payment ?? null;
+}
+
 const codeOf = (error: unknown) => (isApiError(error) ? error.data.code : null);
 
 /**
@@ -1031,9 +1059,14 @@ export async function launchHandoff(input: {
   if (!client || !store) return fail("not_available");
 
   if (row.kind === "stripe_dashboard") {
-    if (!store.stripeAccountId) return fail("not_available");
+    const target = stripeDashboardPayloadOf(row);
+    const payment = target ? await dashboardPayment(row.storeId, target.paymentId) : null;
+    // On the payment only on the account its row records; otherwise the store's home.
+    const onPayment = payment?.accountId ? payment : null;
+    const accountId = onPayment?.accountId ?? store.stripeAccountId;
+    if (!accountId) return fail("not_available");
     try {
-      const url = await createDashboardUrl(client, store.stripeAccountId);
+      const url = await createDashboardUrl(client, accountId, onPayment ?? undefined);
       await completeHandoff(row.id, now, attempt);
       return { ok: true, redirect: url };
     } catch (error) {

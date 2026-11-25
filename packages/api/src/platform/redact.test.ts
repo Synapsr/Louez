@@ -93,6 +93,8 @@ describe("handoff secrets in logs", () => {
         retrieve: async () => ({ country: "FR", charges_enabled: false }),
         createLoginLink: async () => ({ url: "https://connect.stripe.test/login" }),
       },
+      paymentIntents: { retrieve: async (id) => ({ id, livemode: false }) },
+      charges: { retrieve: async (id) => ({ id, livemode: false }) },
       accountLinks: {
         create: async () => {
           throw Object.assign(new Error(`Not a valid URL: return_url=${returnUrl}`), {

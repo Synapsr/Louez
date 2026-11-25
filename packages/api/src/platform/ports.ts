@@ -348,6 +348,22 @@ export interface StripeRefundChecked {
   };
 }
 
+/** What a payment taken online could give back now, read without a lock (minor units). */
+export interface StripeRefundPreview {
+  /** Upper case. */
+  currency: string;
+  /** The card that paid, when Stripe states it. */
+  card: { brand: string; last4: string } | null;
+  ceiling: {
+    paidMinor: number;
+    refundedMinor: number;
+    inFlightMinor: number;
+    refundableMinor: number;
+  };
+  /** Whether a refund of it gets a credit note: the store issues invoices and the payment has one. */
+  creditNote: boolean;
+}
+
 /** A refund operation as its caller reads it. */
 export interface StripeRefundView {
   id: string;
@@ -381,6 +397,17 @@ export interface StripeRefundsPort {
     paymentId: string;
   }) => Promise<
     { ok: false; refusal: StripeRefundRefusal } | { ok: true; charge: StripeRefundCharge }
+  >;
+  /**
+   * The charge read at Stripe, then what it could give back now and the refusals any
+   * amount would get, read without a lock: nothing written. Throws when Stripe cannot
+   * be read.
+   */
+  preview: (input: {
+    storeId: string;
+    paymentId: string;
+  }) => Promise<
+    { ok: false; refusal: StripeRefundRefusal } | { ok: true; preview: StripeRefundPreview }
   >;
   /** In the caller's transaction, under the reservation's lock: every check, nothing written. */
   check: (

@@ -65,6 +65,8 @@ const stripe: StripeConnectClient = {
     }),
     createLoginLink: async () => ({ url: "https://connect.stripe.test/express/login" }),
   },
+  paymentIntents: { retrieve: async (id) => ({ id, livemode: false }) },
+  charges: { retrieve: async (id) => ({ id, livemode: false }) },
   accountLinks: {
     create: async (params) => ({ url: `https://connect.stripe.test/setup/${params.account}` }),
   },

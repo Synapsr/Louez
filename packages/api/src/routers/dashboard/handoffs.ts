@@ -1,3 +1,5 @@
+import type { ApiStripeDashboardPayload } from "@louez/db";
+
 import {
   HANDOFF_TTL_HOURS,
   decideHandoffInput,
@@ -72,8 +74,18 @@ async function readableHandoff(context: Pick<ProductContext, "actor">, id: strin
   return { row, domain };
 }
 
-/** Starts or resumes a handoff for the caller, bound to their user and connection. */
-export function startHandoff(context: ProductContext, kind: StepKind): Promise<HandoffLink> {
+/**
+ * Starts or resumes a handoff for the caller, bound to their user and connection. A step
+ * about one payment (Stripe's dashboard on it) is a step of its own, by the payment's id:
+ * opening payment A then B gives two steps, each leading to its own payment; the
+ * dashboard's home is the store-wide one.
+ */
+export function startHandoff(
+  context: ProductContext,
+  kind: StepKind,
+  /** What the step carries for its page and its provider. */
+  payload: ApiStripeDashboardPayload | null = null,
+): Promise<HandoffLink> {
   const { actor, ports } = context;
   return issueHandoff(
     {
@@ -84,7 +96,7 @@ export function startHandoff(context: ProductContext, kind: StepKind): Promise<H
       clientName: actor.credential.clientName,
     },
     kind,
-    { urls: ports.urls },
+    { urls: ports.urls, subject: payload?.paymentId, prepare: async () => payload },
   );
 }
 
