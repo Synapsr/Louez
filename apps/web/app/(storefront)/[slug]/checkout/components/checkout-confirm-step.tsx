@@ -38,6 +38,8 @@ import {
 } from "./checkout-advisor-verification-panel";
 import { CheckoutDeposit } from "./checkout-deposit";
 import { CheckoutDetailsRecap } from "./checkout-details-recap";
+import type { useCheckoutPartner } from "../hooks/use-checkout-partner";
+import { CheckoutPartnerCode } from "./checkout-partner-code";
 import { CheckoutPromoCode } from "./checkout-promo-code";
 import { CheckoutStepActions } from "./checkout-step-actions";
 import { InsuranceOptionCard } from "./insurance-option-card";
@@ -50,6 +52,8 @@ interface CheckoutConfirmStepProps {
   advisorGate: ReturnType<typeof useCheckoutAdvisorGate>;
   promo: ReturnType<typeof useCheckoutPromo>;
   hasActivePromoCodes: boolean;
+  /** The partner code field (Liens partenaires); null when the store has none to offer. */
+  partner?: ReturnType<typeof useCheckoutPartner> | null;
   totalDeposit: number;
   submitLabel: CheckoutSubmitLabel;
   blockedReason: CheckoutBlockedReason | null;
@@ -78,6 +82,7 @@ export const CheckoutConfirmStep = withForm({
     advisorGate,
     promo,
     hasActivePromoCodes,
+    partner,
     totalDeposit,
     submitLabel,
     blockedReason,
@@ -220,6 +225,8 @@ export const CheckoutConfirmStep = withForm({
               onClearError={promo.clearError}
             />
           )}
+
+          {partner && <CheckoutPartnerCode partner={partner} />}
 
           {/* Desktop repeats the deposit in the sticky summary; on phones that
             summary is collapsed, so this stays the only visible mention. */}

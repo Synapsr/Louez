@@ -407,5 +407,25 @@
     "savingsLabel": "节省：",
     "cta": "查看优惠",
     "footer": "按月订阅，无需长期合约，可随时取消。Stripe 手续费和 reeent 市场费用仍需支付。"
+  },
+  "partnerNotification": {
+    "greeting": "{partner}，您好：",
+    "cta": "查看我的合作伙伴专区",
+    "footer": "您收到此邮件，是因为 {store} 已将您添加为合作伙伴。您可以在合作伙伴专区选择要接收的邮件。",
+    "booking": {
+      "subject": "您为 {store} 带来了一笔新预订",
+      "title": "您带来了一笔新预订",
+      "body": "一位客户经您推荐在 {store} 预订。您的预计佣金：{amount}，在租赁于 {endDate} 结束后支付。"
+    },
+    "payout": {
+      "subject": "{store} 已向您支付 {amount}",
+      "title": "收到付款",
+      "body": "{store} 已记录向您支付 {amount}，用于 {month} 结束的租赁。感谢您的推荐！"
+    },
+    "statement": {
+      "subject": "您在 {store} 的 {month} 对账单",
+      "title": "您的 {month} 对账单",
+      "body": "经您推荐的预订：{bookings, plural, other {# 笔}}。应付：{due}。已付：{paid}。待支付：{remaining}。"
+    }
   }
 }

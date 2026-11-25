@@ -49,6 +49,9 @@ import {
   DepositAuthorizationRequestEmail,
   QuoteSentEmail,
   SupplierInvoiceReceivedEmail,
+  PartnerNotificationEmail,
+  getPartnerNotificationSubject,
+  type PartnerNotification,
 } from './templates'
 
 interface Store {
@@ -2474,4 +2477,42 @@ export async function sendSupplierInvoiceReceivedEmail({
     })
     throw error
   }
+}
+
+// Liens partenaires: a partner's e-mail (a booking credited, a payment, a month's statement)
+export async function sendPartnerNotificationEmail({
+  to,
+  storeName,
+  storeLogoUrl,
+  primaryColor,
+  partnerName,
+  notification,
+  spaceUrl,
+  locale = 'fr',
+}: {
+  to: string
+  storeName: string
+  storeLogoUrl?: string | null
+  /** The store's colour: the e-mail wears it, as its customers' e-mails do. */
+  primaryColor?: string | null
+  partnerName: string
+  notification: PartnerNotification
+  spaceUrl: string
+  locale?: EmailLocale
+}) {
+  const subject = getPartnerNotificationSubject(locale, storeName, notification)
+  const logo = await resolveEmailLogo(storeLogoUrl)
+  const html = await render(
+    PartnerNotificationEmail({
+      storeName,
+      storeLogoUrl: logo.url,
+      primaryColor: primaryColor ?? undefined,
+      partnerName,
+      notification,
+      spaceUrl,
+      locale,
+    })
+  )
+  const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: storeName })
+  return { success: true, messageId: result.messageId }
 }

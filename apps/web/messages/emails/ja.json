@@ -407,5 +407,25 @@
     "savingsLabel": "節約額：",
     "cta": "オファーを見る",
     "footer": "月額プラン、契約期間の縛りなし、いつでも解約できます。Stripeの手数料とreeentマーケットプレイスの手数料はかかります。"
+  },
+  "partnerNotification": {
+    "greeting": "{partner} 様",
+    "cta": "パートナーページを開く",
+    "footer": "{store} があなたをパートナーとして登録したため、このメールをお送りしています。受け取るメールはパートナーページで選べます。",
+    "booking": {
+      "subject": "{store} であなたの紹介による新しい予約がありました",
+      "title": "あなたの紹介で新しい予約がありました",
+      "body": "お客様があなたの紹介で {store} を予約しました。見込みの紹介料：{amount}（レンタルが終了する {endDate} に確定）。"
+    },
+    "payout": {
+      "subject": "{store} から {amount} のお支払い",
+      "title": "お支払いを受け取りました",
+      "body": "{store} は、{month}に終了したレンタル分として {amount} をお支払いしたことを記録しました。ご紹介いただきありがとうございます！"
+    },
+    "statement": {
+      "subject": "{store} の{month}の明細",
+      "title": "{month}の明細",
+      "body": "あなたの紹介による予約：{bookings, plural, other {#件}}。支払額：{due}。支払い済み：{paid}。未払い：{remaining}。"
+    }
   }
 }

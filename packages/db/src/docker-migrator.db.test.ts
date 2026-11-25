@@ -54,6 +54,7 @@ const RELEASE = [
   "0115_google_ads_conversions",
   "0116_ai_visibility",
   "0117_demo_stores",
+  "0118_partner_links",
 ];
 
 interface Journal {
@@ -154,6 +155,12 @@ describe("Docker migrator after the app's runner (database)", { skip: skipWithou
       ["google_ads_conversions", "click_id"],
       ["page_views", "ai_assistant"],
       ["store_ai_crawls", "hits"],
+      ["page_views", "partner_id"],
+      ["store_partners", "statement_token"],
+      ["partner_bookings", "adjusted_amount"],
+      ["partner_payouts", "amount"],
+      ["store_partner_settings", "attribution_days"],
+      ["store_partners", "notify_bookings"],
     ] as const) {
       assert.ok(await columnExists(table, column), `${table}.${column} exists`);
     }

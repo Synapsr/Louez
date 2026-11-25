@@ -230,6 +230,7 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
       <ReservationDetailClient
         reservationId={id}
         initialReservation={reservation}
+        storeId={store.id}
         storeSlug={store.slug}
         currency={currency}
         storeTimezone={storeTimezone}

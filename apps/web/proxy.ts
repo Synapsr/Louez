@@ -1,5 +1,6 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
 import { HANDOFF_ROUTE_HEADER, isHandoffPath } from "@/lib/handoffs/handoff-privacy";
+import { isPartnerSpacePath } from "@/lib/partners/partner-space-path";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing-demos/policy";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -11,6 +12,13 @@ import { NO_INDEX_DIRECTIVE, isSearchIndexingEnabled } from "@/lib/search-indexi
 import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import { MARKETPLACE_SALES_CHANNEL, SALES_CHANNEL_COOKIE } from "@/lib/util.sales-channel";
+import {
+  PARTNER_COOKIE,
+  PARTNER_COOKIE_MAX_AGE,
+  PARTNER_LINK_PARAM,
+  encodePartnerCookie,
+} from "@/lib/partners/partner-cookie";
+import { parsePartnerCode } from "@louez/api/contracts/partner-code";
 import {
   buildDemoSecurityHeaders,
   buildEmbedSecurityHeaders,
@@ -224,6 +232,20 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
     response.cookies.delete(SALES_CHANNEL_COOKIE);
   }
 
+  // A partner's link (Liens partenaires): last click wins, for the longest
+  // window a store may choose; the checkout checks the store's own window and
+  // whether the code names one of its partners.
+  const partnerCode = parsePartnerCode(request.nextUrl.searchParams.get(PARTNER_LINK_PARAM));
+  if (partnerCode) {
+    response.cookies.set(PARTNER_COOKIE, encodePartnerCookie(slug, partnerCode, new Date()), {
+      maxAge: PARTNER_COOKIE_MAX_AGE,
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+      secure: !isLoopbackHost((request.headers.get("host") ?? "").split(":")[0]),
+    });
+  }
+
   return response;
 }
 
@@ -435,9 +457,11 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
     return withRuntimeSecurityHeaders(response, pathname, getRuntimePublicEnv());
   }
 
-  // A handoff's URL may hold a secret: the root layout loads no analytics for it, and
-  // no page or redirect of it tells another site where the user came from.
-  if (isHandoffPath(pathname)) {
+  // A handoff's URL may hold a secret, and so does a partner's space
+  // (Liens partenaires): the root layout loads no analytics for them, no page or
+  // redirect of them tells another site where the user came from, and in
+  // standalone mode they stay off the storefront.
+  if (isHandoffPath(pathname) || isPartnerSpacePath(pathname)) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set(HANDOFF_ROUTE_HEADER, "1");
     const response = withRuntimeSecurityHeaders(

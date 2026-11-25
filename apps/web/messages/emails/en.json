@@ -407,5 +407,25 @@
     "savingsLabel": "Savings:",
     "cta": "See the offer",
     "footer": "Monthly plan, no commitment, cancel anytime. Stripe fees and reeent marketplace fees still apply."
+  },
+  "partnerNotification": {
+    "greeting": "Hello {partner},",
+    "cta": "Open my partner space",
+    "footer": "You receive this email because {store} added you as a partner. Choose which emails you get from your partner space.",
+    "booking": {
+      "subject": "A new booking thanks to you at {store}",
+      "title": "A new booking thanks to you",
+      "body": "A customer booked at {store} thanks to you. Your expected commission: {amount}, due once the rental ends on {endDate}."
+    },
+    "payout": {
+      "subject": "{store} paid you {amount}",
+      "title": "Payment received",
+      "body": "{store} recorded paying you {amount} for the rentals that ended in {month}. Thank you for your recommendations!"
+    },
+    "statement": {
+      "subject": "Your {month} statement at {store}",
+      "title": "Your {month} statement",
+      "body": "{bookings, plural, one {# booking} other {# bookings}} thanks to you. Due: {due}. Already paid: {paid}. Left to pay: {remaining}."
+    }
   }
 }

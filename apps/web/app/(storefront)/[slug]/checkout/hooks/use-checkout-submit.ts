@@ -65,6 +65,8 @@ interface UseCheckoutSubmitParams {
   isDeliveryEnabled: boolean;
   tulipInsuranceMode: TulipInsuranceMode;
   promoCode?: string;
+  /** A partner's code the customer typed and the store recognised. */
+  partnerCode?: string;
   advisorConversationId?: string;
   blockedReason: CheckoutBlockedReason | null;
   /** Custom fields asked for the buyer's type; lines in the order of `items`. */
@@ -115,6 +117,7 @@ export const useCheckoutSubmit = ({
   isDeliveryEnabled,
   tulipInsuranceMode,
   promoCode,
+  partnerCode,
   advisorConversationId,
   blockedReason,
   checkoutFields,
@@ -157,6 +160,7 @@ export const useCheckoutSubmit = ({
         returnLocationId: delivery.returnLocationId,
         tulipInsuranceMode,
         promoCode,
+        partnerCode,
         advisorConversationId,
         resumeReservationId: readPendingCheckout(storeId),
         checkoutFields,

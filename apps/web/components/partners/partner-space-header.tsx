@@ -1,0 +1,80 @@
+import type { ReactNode } from "react";
+
+import { ArrowUpRight } from "lucide-react";
+
+import { cn } from "@louez/utils";
+
+interface PartnerSpaceHeaderProps {
+  storeName: string;
+  storeUrl: string;
+  logoUrl: string | null;
+  /** The storefront's home photo: the banner shows it, darkened under the text. */
+  heroImage: string | null;
+  eyebrow: string;
+  title: string;
+  intro: string;
+  visitStore: string;
+  /** What the partner reaches without scrolling: its link and poster. */
+  actions?: ReactNode;
+}
+
+/**
+ * The top of a partner's space, in its store's look: the store's colour or
+ * home photo, its logo (or name), and a word for the partner.
+ */
+export const PartnerSpaceHeader = ({
+  storeName,
+  storeUrl,
+  logoUrl,
+  heroImage,
+  eyebrow,
+  title,
+  intro,
+  visitStore,
+  actions,
+}: PartnerSpaceHeaderProps) => (
+  <header
+    className={cn(
+      "relative overflow-hidden",
+      heroImage ? "bg-neutral-900 text-white" : "bg-primary text-primary-foreground",
+    )}
+  >
+    {heroImage && (
+      <>
+        <img
+          src={heroImage}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        {/* A store's photo can be light: a steady veil, darker under the text, keeps it readable. */}
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
+      </>
+    )}
+    <div className="relative mx-auto max-w-2xl px-4 pt-6 pb-10 sm:pt-8 sm:pb-12">
+      <div className="flex items-center justify-between gap-3">
+        {logoUrl ? (
+          <span className="flex h-12 items-center rounded-xl bg-white px-3 shadow-sm">
+            <img src={logoUrl} alt={storeName} className="h-8 w-auto max-w-40 object-contain" />
+          </span>
+        ) : (
+          <span className="truncate text-lg font-semibold tracking-tight">{storeName}</span>
+        )}
+        <a
+          href={storeUrl}
+          target="_blank"
+          rel="noopener"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-sm font-medium backdrop-blur-sm transition-colors hover:bg-white/25"
+        >
+          {visitStore}
+          <ArrowUpRight className="size-4" aria-hidden />
+        </a>
+      </div>
+      <p className="mt-10 text-sm font-medium opacity-85">{eyebrow}</p>
+      <h1 className="mt-1 text-3xl font-bold tracking-tight text-balance sm:text-4xl">{title}</h1>
+      <p className="mt-3 max-w-xl text-pretty opacity-90">{intro}</p>
+      {actions}
+    </div>
+  </header>
+);

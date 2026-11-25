@@ -1000,7 +1000,8 @@
       "visibility": "知ってもらう",
       "visibilityFirstCustomers": "最初のお客様",
       "visibilityAi": "AI に見つけてもらう",
-      "analyticsAi": "AI アシスタント"
+      "analyticsAi": "AI アシスタント",
+      "visibilityPartners": "パートナー"
     },
     "multiStore": {
       "title": "多店舗展開",
@@ -2806,7 +2807,8 @@
           "label": "割引",
           "add": "割引を追加する",
           "remove": "割引を削除する"
-        }
+        },
+        "partnerNotCredited": "予約を作成しましたが、パートナーには計上されませんでした。予約画面から追加してください。"
       },
       "rejectDialog": {
         "title": "リクエストを拒否する",
@@ -7129,7 +7131,8 @@
       "needsALook": "要確認",
       "visibility": "お店を知ってもらう",
       "visibilityAi": "AI に見つけてもらう",
-      "analyticsAi": "AI アシスタント"
+      "analyticsAi": "AI アシスタント",
+      "visibilityPartners": "パートナー"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7386,7 +7389,8 @@
         "viewProduct": "商品を見る",
         "invoicingSettings": "請求書の設定",
         "notificationSettings": "通知の設定",
-        "openTeam": "チームを開く"
+        "openTeam": "チームを開く",
+        "openPartner": "パートナーを開く"
       },
       "facts": {
         "stripeCharge": "Stripe の請求",
@@ -7463,7 +7467,11 @@
       },
       "unknownTitle": "確認事項",
       "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。",
-      "viewAll": "すべて見る"
+      "viewAll": "すべて見る",
+      "partnerPayoutDue": {
+        "title": "支払う紹介料",
+        "summary": "{month}に終了したレンタル分として、{partner} に {amount} を支払う必要があります。支払い後、その月を支払い済みにしてください。"
+      }
     },
     "visibility": {
       "title": "お店を知ってもらう",
@@ -7511,7 +7519,6 @@
         "headline": "オンライン予約",
         "scanHint": "スマホのカメラで読み取り",
         "save": "ポスターを保存",
-        "hint": "A4で印刷してカウンターや窓に貼るか、スマホで見せましょう。",
         "previewAlt": "ポスターのプレビュー",
         "fileName": "poster"
       },
@@ -7627,6 +7634,164 @@
           "title": "ご利用のプランに含まれていません",
           "description": "AI アシスタントに見つけてもらう機能は現在のプランに含まれていません。"
         }
+      }
+    },
+    "partners": {
+      "title": "パートナー",
+      "description": "キャンプ場、ホテル、観光案内所にリンクを渡しましょう。お客様がそのリンクから予約すると、設定した紹介料をパートナーに支払います。支払いはご自身で行います。",
+      "add": "パートナーを追加",
+      "toPay": "未払い：",
+      "archived": "アーカイブ済み",
+      "bookings": "{count, plural, =0 {予約なし} other {# 件の予約}}",
+      "dueAmount": "{amount} 支払い予定",
+      "archivedNotice": "このパートナーはアーカイブ済みです。リンクからの新しい予約は計上されません。明細は引き続き確認できます。",
+      "empty": {
+        "title": "お店を紹介してくれる人にお礼を",
+        "description": "地元のキャンプ場、ホテル、観光案内所からすでにお客様が来ていますか？リンクを渡せば、Louez が予約を数えて紹介料を計算します。",
+        "steps": {
+          "add": "パートナーと紹介料（例：10%）を追加します。",
+          "share": "リンクとQRポスターを渡します。",
+          "pay": "毎月 Louez が支払額を計算します。支払いはご自身で行います。"
+        }
+      },
+      "rule": {
+        "percent": "レンタル料金の{value}%",
+        "fixed": "予約1件につき{value}"
+      },
+      "form": {
+        "titleCreate": "新しいパートナー",
+        "titleEdit": "パートナーを編集",
+        "description": "名前と紹介料だけで始められます。保存するとすぐにリンクが使えます。",
+        "name": "名前",
+        "namePlaceholder": "松林キャンプ場",
+        "nameRequired": "パートナーの名前を入力してください。",
+        "commission": "紹介料",
+        "types": {
+          "percent": "レンタル料金の割合",
+          "fixed": "予約1件ごとの定額"
+        },
+        "rate": "割合",
+        "amount": "金額",
+        "percentInvalid": "0〜100の間で入力してください。",
+        "amountInvalid": "正の金額を入力してください。",
+        "baseHint": "割引後のレンタル料金で計算します。保証金、配送料、保険料は含みません。",
+        "rateChangeHint": "変更は今後の予約に適用されます。",
+        "contact": "連絡先（任意）",
+        "contactName": "担当者",
+        "contactEmail": "メールアドレス",
+        "contactPhone": "電話番号",
+        "emailInvalid": "メールアドレスが正しくありません。",
+        "cancel": "キャンセル",
+        "create": "追加",
+        "save": "保存",
+        "perk": "パートナー経由のお客様への特典",
+        "perkHint": "プロモーションコードのいずれか。お客様がパートナーのリンクから来たとき、またはそのコードを入力したときに自動で適用されます。",
+        "perkNone": "なし"
+      },
+      "link": {
+        "title": "パートナーのリンク",
+        "description": "このリンクをクリックした後の予約はすべて {partner} に計上されます。お客様の料金は変わりません。",
+        "copy": "コピー",
+        "copied": "リンクをコピーしました",
+        "poster": "QRポスター",
+        "posterTitle": "{partner} 用のポスター",
+        "posterDescription": "QRコードから、パートナーのリンク付きでストアが開きます。",
+        "posterFileName": "partner-poster",
+        "sendEmail": "メール",
+        "emailSubject": "{store} のパートナーリンク",
+        "message": "こんにちは。\n\n{store} のパートナーリンクをお送りします：{link}\nこのリンクから予約されたレンタルごとに、レンタル終了後に {rule} をお支払いします。\n\nパートナーページで報酬の確認や通知の設定ができます：{space}\n\nご紹介いただきありがとうございます！",
+        "posterRecommended": "{partner} のおすすめ"
+      },
+      "statement": {
+        "title": "明細",
+        "due": "支払額",
+        "paid": "支払い済み",
+        "remaining": "未払い",
+        "upcoming": "今後の予定：{amount}",
+        "visits": "{count, plural, =0 {リンクからの訪問なし} other {リンクからの訪問 # 件}}",
+        "export": "エクスポート（CSV）",
+        "markPaid": "支払い済みにする",
+        "markPaidTitle": "{month} の {amount} を支払い済みにしますか？",
+        "markPaidDescription": "{partner} への支払いはご自身で行います（振込、現金など）。二重払いを防ぐため、Louez が記録します。",
+        "cancel": "キャンセル",
+        "payout": "{date} に {amount} を支払い済み",
+        "cancelPayout": "取り消す",
+        "empty": "今月、このパートナー経由の予約はありません。",
+        "rules": "紹介料は割引後のレンタル料金にかかり、保証金、配送料、保険料は含みません。レンタル終了時に確定し、予約がキャンセルされた場合は取り消されます。計上月はレンタルが終了した月です。この明細は請求書ではありません。",
+        "manual": "手動で追加",
+        "adjusted": "調整済み（計算値：{amount}）",
+        "actions": "操作",
+        "adjust": "紹介料を調整",
+        "remove": "パートナーから外す",
+        "removed": "予約をパートナーから外しました",
+        "states": {
+          "upcoming": "予定",
+          "due": "確定",
+          "cancelled": "取り消し"
+        },
+        "csv": {
+          "number": "予約",
+          "startDate": "開始",
+          "endDate": "終了",
+          "base": "レンタル料金",
+          "rule": "ルール",
+          "commission": "紹介料",
+          "state": "状態",
+          "note": "メモ"
+        },
+        "byCode": "コード経由"
+      },
+      "adjust": {
+        "title": "予約 {number} の紹介料",
+        "description": "ルールによる計算では {amount} です。一部返金の後など、実際に支払う額を入力してください。",
+        "amount": "支払額",
+        "amountInvalid": "0以上の金額を入力してください。",
+        "note": "理由",
+        "notePlaceholder": "一部返金",
+        "reset": "ルールの計算に戻す",
+        "save": "保存"
+      },
+      "reservation": {
+        "title": "パートナー",
+        "attribute": "パートナーに計上",
+        "change": "パートナーを変更",
+        "remove": "パートナーを外す",
+        "commission": "{amount}、{state}",
+        "origin": {
+          "link": "リンク経由",
+          "manual": "手動で追加",
+          "code": "コード経由"
+        }
+      },
+      "menu": {
+        "label": "パートナーの操作",
+        "edit": "編集",
+        "copySpace": "パートナーページのリンクをコピー",
+        "spaceCopied": "パートナーページのリンクをコピーしました",
+        "rotateSpace": "パートナーページのリンクを変更",
+        "rotated": "パートナーページのリンクを新しくしました。古いリンクは使えません。",
+        "archive": "アーカイブ",
+        "restore": "元に戻す"
+      },
+      "window": "{count, plural, other {パートナーリンクはクリックから予約まで#日間有効です。}}",
+      "changeWindow": "変更",
+      "perkLine": "お客様特典：{code}",
+      "notified": {
+        "yes": "予約や支払いのたびにメールが届きます。",
+        "no": "メールは届きません。メールアドレスを追加するか、パートナー自身がパートナーページで有効にできます。"
+      },
+      "settings": {
+        "title": "パートナーリンクの有効期間",
+        "description": "お客様がこの期間内にパートナーのリンクをクリックしていれば、予約はそのパートナーに計上されます。決済時に入力されたコードは常に有効です。",
+        "window": "期間",
+        "days": "{count, plural, other {#日}}",
+        "cancel": "キャンセル",
+        "save": "保存"
+      },
+      "newReservation": {
+        "title": "パートナー",
+        "description": "このお客様はパートナーの紹介ですか？予約はそのパートナーに計上されます。",
+        "none": "パートナーなし"
       }
     }
   },
@@ -8458,6 +8623,14 @@
       "customFields": {
         "savedSummary": "入力済みの情報",
         "detailsIntro": "この情報は、{store}が機材を準備する際に役立ちます。"
+      },
+      "partnerCode": {
+        "question": "パートナーからのご紹介ですか？",
+        "placeholder": "パートナーコード",
+        "apply": "適用",
+        "notFound": "このコードに該当するパートナーはありません。",
+        "credited": "{partner} のご紹介",
+        "remove": "パートナーを外す"
       }
     },
     "confirmation": {
@@ -10003,6 +10176,10 @@
     },
     "planOfferUnavailable": "このオファーはストアに適用されなくなりました。プランはサブスクリプションのページでご確認ください。",
     "aiVisibilityNotIncluded": "ご利用のプランには AI アシスタントでの表示が含まれていません。",
+    "partnerNotFound": "このパートナーは存在しないか、アーカイブされています。",
+    "partnerNothingToPay": "このパートナーへの今月の未払いはありません。",
+    "partnerReservationNotAttributed": "この予約はどのパートナーにも計上されていません。",
+    "partnerPerkNotFound": "このプロモーションコードはストアに存在しません。",
     "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
@@ -10572,6 +10749,96 @@
           }
         }
       }
+    }
+  },
+  "partnerSpace": {
+    "metaTitle": "パートナーページ",
+    "title": "{partner} 様",
+    "howItWorks": "あなたのリンクまたはコードを通じて予約されたレンタルごとに {rule} を受け取れます。リンクはクリックから{days}日間有効です。紹介料はレンタル終了時に確定します。",
+    "perk": "あなたのお客様はコード {code} をご利用いただけます。",
+    "archived": "ストアがこのパートナーシップを一時停止しました。新しい予約はあなたに計上されません。",
+    "rule": {
+      "percent": "レンタル料金の{value}%",
+      "fixed": "予約1件につき{value}"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "受取予定",
+        "hint": "終了済みで、まだ支払われていないレンタル。"
+      },
+      "upcoming": {
+        "label": "今後の予定",
+        "hint": "予約済みで、まだ終了していないレンタル。"
+      },
+      "received": {
+        "label": "受取済み",
+        "hint": "ストアからあなたへの支払い額。"
+      }
+    },
+    "activity": {
+      "title": "最近のアクティビティ",
+      "empty": "まだご紹介による予約はありません。リンクやポスターを共有しましょう。",
+      "booking": "新しい予約",
+      "bookingWhen": "{date} · レンタル期間：{end}まで",
+      "payout": "{month}分のお支払い",
+      "payoutWhen": "{date}"
+    },
+    "link": {
+      "title": "あなたのリンク",
+      "description": "お客様にお渡しください：ウェルカムメール、受付のポスター、メッセージなど。",
+      "copy": "コピー",
+      "copied": "リンクをコピーしました",
+      "poster": "QRポスター",
+      "posterTitle": "あなたのポスター",
+      "posterDescription": "QRコードを読み取ると、あなたのリンク経由でストアが開きます。",
+      "posterFileName": "poster",
+      "code": "口頭で伝えるためのコード：{code}",
+      "posterRecommended": "{partner} のおすすめ"
+    },
+    "months": {
+      "title": "月ごとの内訳",
+      "due": "支払額",
+      "paid": "支払い済み",
+      "remaining": "未払い",
+      "upcoming": "今後の予定：まだ終了していないレンタル分 {amount}",
+      "empty": "今月、ご紹介による予約はありません。",
+      "rentalEnds": "レンタル期間：{date}まで"
+    },
+    "states": {
+      "upcoming": "予定",
+      "due": "確定",
+      "cancelled": "取り消し",
+      "paid": "支払い済み"
+    },
+    "notifications": {
+      "title": "通知設定",
+      "description": "報酬が発生したときにメールでお知らせします。",
+      "email": "メールアドレス",
+      "emailPlaceholder": "taro@example.jp",
+      "bookings": {
+        "title": "新しい予約",
+        "description": "お客様があなたの紹介で予約したとき。"
+      },
+      "payouts": {
+        "title": "支払いの受領",
+        "description": "ストアがあなたへの支払いを記録したとき。"
+      },
+      "statements": {
+        "title": "月次明細",
+        "description": "毎月初めに、前月のまとめをお送りします。"
+      },
+      "save": "保存",
+      "saved": "通知設定を保存しました",
+      "failed": "保存できませんでした。もう一度お試しください。"
+    },
+    "rules": "紹介料は、あなたの紹介で行われた予約が対象です。レンタル終了時に確定し、予約がキャンセルされた場合は取り消されます。このページに顧客情報は表示されず、請求書ではありません。",
+    "paidBy": "{store} から直接お支払いします。金額は Louez が計算していますが、お金が Louez を経由することはありません。",
+    "eyebrow": "パートナーページ · {store}",
+    "visitStore": "ストアを見る",
+    "poweredBy": "Powered by",
+    "quick": {
+      "copy": "リンクをコピー",
+      "poster": "QRポスター"
     }
   },
   "demo": {

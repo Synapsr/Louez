@@ -51,6 +51,7 @@ const staticBreadcrumbRoutes = [
   { href: "/dashboard/whats-new", translationKey: "whatsNew" },
   { href: "/dashboard/visibility", translationKey: "visibility" },
   { href: "/dashboard/visibility/ai", translationKey: "visibilityAi" },
+  { href: "/dashboard/visibility/partners", translationKey: "visibilityPartners" },
   { href: "/dashboard/settings", translationKey: "settings" },
   {
     href: "/dashboard/settings/admin",

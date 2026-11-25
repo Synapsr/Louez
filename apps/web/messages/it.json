@@ -1000,7 +1000,8 @@
       "visibility": "Farsi conoscere",
       "visibilityFirstCustomers": "Primi clienti",
       "visibilityAi": "Farsi trovare dalle IA",
-      "analyticsAi": "Assistenti IA"
+      "analyticsAi": "Assistenti IA",
+      "visibilityPartners": "Partner"
     },
     "home": {
       "viewAll": "Vedi tutto",
@@ -2767,7 +2768,8 @@
           "label": "Sconto",
           "add": "Aggiungi uno sconto",
           "remove": "Rimuovi lo sconto"
-        }
+        },
+        "partnerNotCredited": "Prenotazione creata, ma non è stata attribuita al partner. Aggiungilo dalla prenotazione."
       },
       "rejectDialog": {
         "title": "Rifiuta richiesta",
@@ -7129,7 +7131,8 @@
       "needsALook": "Da verificare",
       "visibility": "Fatti conoscere",
       "visibilityAi": "Farsi trovare dalle IA",
-      "analyticsAi": "Assistenti IA"
+      "analyticsAi": "Assistenti IA",
+      "visibilityPartners": "Partner"
     },
     "notificationsCenter": {
       "title": "Notifiche",
@@ -7386,7 +7389,8 @@
         "viewProduct": "Vedi il prodotto",
         "invoicingSettings": "Impostazioni di fatturazione",
         "notificationSettings": "Impostazioni delle notifiche",
-        "openTeam": "Apri il team"
+        "openTeam": "Apri il team",
+        "openPartner": "Apri il partner"
       },
       "facts": {
         "stripeCharge": "Addebito Stripe",
@@ -7463,7 +7467,11 @@
       },
       "unknownTitle": "Qualcosa da verificare",
       "neutral": "Louez non è riuscito a risolverlo da solo. Aprilo per vedere cosa è successo.",
-      "viewAll": "Vedi tutto"
+      "viewAll": "Vedi tutto",
+      "partnerPayoutDue": {
+        "title": "Commissione da pagare",
+        "summary": "Devi {amount} a {partner} per i noleggi conclusi a {month}. Pagalo, poi segna il mese come pagato."
+      }
     },
     "visibility": {
       "title": "Fatti conoscere",
@@ -7511,7 +7519,6 @@
         "headline": "Prenota online",
         "scanHint": "Inquadra con la fotocamera del telefono",
         "save": "Salva il poster",
-        "hint": "Stampalo in A4 per il banco o la vetrina, oppure mostralo dal telefono.",
         "previewAlt": "Anteprima del poster",
         "fileName": "poster"
       },
@@ -7627,6 +7634,164 @@
           "title": "Non incluso nel tuo piano",
           "description": "Farsi trovare dagli assistenti IA non fa parte del tuo piano attuale."
         }
+      }
+    },
+    "partners": {
+      "title": "Partner",
+      "description": "Campeggi, hotel, uffici turistici: dai loro un link. Quando un cliente prenota tramite quel link, devi loro la commissione che hai scelto e li paghi tu direttamente.",
+      "add": "Aggiungi un partner",
+      "toPay": "Da pagare:",
+      "archived": "Archiviato",
+      "bookings": "{count, plural, =0 {Nessuna prenotazione} one {# prenotazione} other {# prenotazioni}}",
+      "dueAmount": "{amount} da pagare",
+      "archivedNotice": "Questo partner è archiviato: il suo link non gli attribuisce più nuove prenotazioni. I suoi estratti restano consultabili.",
+      "empty": {
+        "title": "Premia chi ti consiglia",
+        "description": "Il campeggio, l'hotel o l'ufficio turistico della zona ti manda già clienti? Dagli un link: Louez conta le prenotazioni e calcola la sua commissione.",
+        "steps": {
+          "add": "Aggiungi un partner e la sua commissione, per esempio il 10%.",
+          "share": "Dagli il suo link e il suo poster QR.",
+          "pay": "Ogni mese Louez calcola quanto gli devi; lo paghi tu direttamente."
+        }
+      },
+      "rule": {
+        "percent": "{value}% del noleggio",
+        "fixed": "{value} per prenotazione"
+      },
+      "form": {
+        "titleCreate": "Nuovo partner",
+        "titleEdit": "Modifica partner",
+        "description": "Bastano un nome e una commissione. Il suo link è pronto appena salvi.",
+        "name": "Nome",
+        "namePlaceholder": "Campeggio I Pini",
+        "nameRequired": "Indica il nome del partner.",
+        "commission": "Commissione",
+        "types": {
+          "percent": "Percentuale del noleggio",
+          "fixed": "Importo fisso per prenotazione"
+        },
+        "rate": "Percentuale",
+        "amount": "Importo",
+        "percentInvalid": "Tra 0 e 100.",
+        "amountInvalid": "Indica un importo positivo.",
+        "baseHint": "Calcolata sul prezzo del noleggio al netto degli sconti, senza deposito, consegna né assicurazione.",
+        "rateChangeHint": "Una modifica vale per le prossime prenotazioni.",
+        "contact": "Recapiti (facoltativo)",
+        "contactName": "Persona di riferimento",
+        "contactEmail": "Email",
+        "contactPhone": "Telefono",
+        "emailInvalid": "Questa email non è valida.",
+        "cancel": "Annulla",
+        "create": "Aggiungi",
+        "save": "Salva",
+        "perk": "Vantaggio per i suoi clienti",
+        "perkHint": "Uno dei tuoi codici promozionali, applicato in automatico quando un cliente arriva dal suo link o inserisce il suo codice.",
+        "perkNone": "Nessuno"
+      },
+      "link": {
+        "title": "Il suo link",
+        "description": "Ogni prenotazione fatta dopo un clic su questo link viene attribuita a {partner}. Il prezzo per il cliente non cambia.",
+        "copy": "Copia",
+        "copied": "Link copiato",
+        "poster": "Poster QR",
+        "posterTitle": "Poster per {partner}",
+        "posterDescription": "Il QR code apre il tuo negozio con il suo link.",
+        "posterFileName": "poster-partner",
+        "sendEmail": "Email",
+        "emailSubject": "Il Suo link partner di {store}",
+        "message": "Buongiorno,\n\necco il Suo link partner per {store}: {link}\nRiceve {rule} su ogni noleggio prenotato tramite questo link, una volta concluso il noleggio.\n\nLa Sua area partner, per seguire i Suoi guadagni e scegliere le notifiche: {space}\n\nGrazie per averci consigliato!",
+        "posterRecommended": "Consigliato da {partner}"
+      },
+      "statement": {
+        "title": "Estratto",
+        "due": "Dovuto",
+        "paid": "Pagato",
+        "remaining": "Da pagare",
+        "upcoming": "In arrivo: {amount}",
+        "visits": "{count, plural, =0 {Nessuna visita dal suo link} one {# visita dal suo link} other {# visite dal suo link}}",
+        "export": "Esporta (CSV)",
+        "markPaid": "Segna come pagato",
+        "markPaidTitle": "Segnare {amount} come pagato per {month}?",
+        "markPaidDescription": "Paghi tu direttamente {partner} (bonifico, contanti…). Louez lo registra così non paghi mai due volte.",
+        "cancel": "Annulla",
+        "payout": "Pagato {amount} il {date}",
+        "cancelPayout": "Annulla",
+        "empty": "Nessuna prenotazione tramite questo partner questo mese.",
+        "rules": "La commissione si calcola sul prezzo del noleggio al netto degli sconti, senza deposito, consegna né assicurazione. È dovuta quando il noleggio è concluso e annullata se la prenotazione viene annullata. Il mese è quello in cui termina il noleggio. Questo estratto non è una fattura.",
+        "manual": "aggiunta a mano",
+        "adjusted": "Modificata (calcolo: {amount})",
+        "actions": "Azioni",
+        "adjust": "Modifica la commissione",
+        "remove": "Togli dal partner",
+        "removed": "Prenotazione tolta dal partner",
+        "states": {
+          "upcoming": "In arrivo",
+          "due": "Dovuta",
+          "cancelled": "Annullata"
+        },
+        "csv": {
+          "number": "Prenotazione",
+          "startDate": "Inizio",
+          "endDate": "Fine",
+          "base": "Noleggio",
+          "rule": "Regola",
+          "commission": "Commissione",
+          "state": "Stato",
+          "note": "Nota"
+        },
+        "byCode": "dal suo codice"
+      },
+      "adjust": {
+        "title": "Commissione della prenotazione {number}",
+        "description": "La regola dà {amount}. Indica quanto gli devi davvero, per esempio dopo un rimborso parziale.",
+        "amount": "Importo dovuto",
+        "amountInvalid": "Indica un importo pari o superiore a zero.",
+        "note": "Motivo",
+        "notePlaceholder": "Rimborso parziale",
+        "reset": "Torna alla regola",
+        "save": "Salva"
+      },
+      "reservation": {
+        "title": "Partner",
+        "attribute": "Attribuisci a un partner",
+        "change": "Cambia partner",
+        "remove": "Togli il partner",
+        "commission": "{amount}, {state}",
+        "origin": {
+          "link": "Dal suo link",
+          "manual": "Aggiunto a mano",
+          "code": "Dal suo codice"
+        }
+      },
+      "menu": {
+        "label": "Azioni del partner",
+        "edit": "Modifica",
+        "copySpace": "Copia il link della sua area",
+        "spaceCopied": "Link dell'area copiato",
+        "rotateSpace": "Cambia il link della sua area",
+        "rotated": "Nuovo link dell'area: quello vecchio non funziona più.",
+        "archive": "Archivia",
+        "restore": "Ripristina"
+      },
+      "window": "{count, plural, one {Un link partner vale # giorno, dal clic alla prenotazione.} other {Un link partner vale # giorni, dal clic alla prenotazione.}}",
+      "changeWindow": "Modifica",
+      "perkLine": "vantaggio cliente: {code}",
+      "notified": {
+        "yes": "Riceve un'email per ogni prenotazione e ogni pagamento.",
+        "no": "Non riceve email: aggiungi il suo indirizzo, oppure può attivarle dalla sua area."
+      },
+      "settings": {
+        "title": "Durata di un link partner",
+        "description": "Una prenotazione viene attribuita al partner se il cliente ha cliccato sul suo link entro questo periodo. Un codice inserito al pagamento conta sempre.",
+        "window": "Durata",
+        "days": "{count, plural, one {# giorno} other {# giorni}}",
+        "cancel": "Annulla",
+        "save": "Salva"
+      },
+      "newReservation": {
+        "title": "Partner",
+        "description": "Questo cliente arriva da un partner? La prenotazione gli verrà attribuita.",
+        "none": "Nessun partner"
       }
     }
   },
@@ -8458,6 +8623,14 @@
       "customFields": {
         "savedSummary": "Informazioni già registrate",
         "detailsIntro": "Queste informazioni aiutano {store} a preparare la tua attrezzatura."
+      },
+      "partnerCode": {
+        "question": "Viene da parte di un partner?",
+        "placeholder": "Codice partner",
+        "apply": "Applica",
+        "notFound": "Questo codice non corrisponde a nessun partner.",
+        "credited": "Consigliato da {partner}",
+        "remove": "Rimuovi il partner"
       }
     },
     "confirmation": {
@@ -10003,6 +10176,10 @@
     },
     "planOfferUnavailable": "Questa offerta non vale più per il tuo negozio. Trovi gli abbonamenti nella pagina Abbonamento.",
     "aiVisibilityNotIncluded": "Il tuo piano non include la visibilità presso gli assistenti IA.",
+    "partnerNotFound": "Questo partner non esiste o è stato archiviato.",
+    "partnerNothingToPay": "Non resta nulla da pagare a questo partner per questo mese.",
+    "partnerReservationNotAttributed": "Questa prenotazione non è attribuita a nessun partner.",
+    "partnerPerkNotFound": "Questo codice promozionale non esiste nel tuo negozio.",
     "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
@@ -10572,6 +10749,96 @@
           }
         }
       }
+    }
+  },
+  "partnerSpace": {
+    "metaTitle": "Area partner",
+    "title": "Buongiorno {partner}",
+    "howItWorks": "Riceve {rule} su ogni noleggio prenotato grazie a Lei, tramite il Suo link o il Suo codice. Un link vale {days} giorni dopo il clic. La commissione è dovuta una volta concluso il noleggio.",
+    "perk": "I Suoi clienti usufruiscono del codice {code}.",
+    "archived": "Il negozio ha sospeso questa collaborazione: le nuove prenotazioni non Le vengono più attribuite.",
+    "rule": {
+      "percent": "{value}% del noleggio",
+      "fixed": "{value} per prenotazione"
+    },
+    "overview": {
+      "toReceive": {
+        "label": "Da ricevere",
+        "hint": "Noleggi conclusi, non ancora pagati."
+      },
+      "upcoming": {
+        "label": "In arrivo",
+        "hint": "Noleggi prenotati, non ancora conclusi."
+      },
+      "received": {
+        "label": "Ricevuto",
+        "hint": "Quanto il negozio Le ha pagato."
+      }
+    },
+    "activity": {
+      "title": "Attività recente",
+      "empty": "Ancora nessuna prenotazione grazie a Lei. Condivida il Suo link o il Suo poster.",
+      "booking": "Nuova prenotazione",
+      "bookingWhen": "il {date} · noleggio fino al {end}",
+      "payout": "Pagamento per {month}",
+      "payoutWhen": "il {date}"
+    },
+    "link": {
+      "title": "Il Suo link",
+      "description": "Lo dia ai Suoi ospiti: email di benvenuto, poster alla reception, messaggio.",
+      "copy": "Copia",
+      "copied": "Link copiato",
+      "poster": "Poster QR",
+      "posterTitle": "Il Suo poster",
+      "posterDescription": "Il codice QR apre il negozio con il Suo link.",
+      "posterFileName": "poster",
+      "code": "Il Suo codice, da comunicare a voce: {code}",
+      "posterRecommended": "Consigliato da {partner}"
+    },
+    "months": {
+      "title": "Mese per mese",
+      "due": "Dovuto",
+      "paid": "Pagato",
+      "remaining": "Da pagare",
+      "upcoming": "In arrivo: {amount} per noleggi non ancora conclusi.",
+      "empty": "Nessuna prenotazione grazie a Lei questo mese.",
+      "rentalEnds": "Noleggio fino al {date}"
+    },
+    "states": {
+      "upcoming": "In arrivo",
+      "due": "Dovuta",
+      "cancelled": "Annullata",
+      "paid": "Pagata"
+    },
+    "notifications": {
+      "title": "Le mie notifiche",
+      "description": "Riceva un'email quando guadagna qualcosa.",
+      "email": "Indirizzo email",
+      "emailPlaceholder": "nome@esempio.it",
+      "bookings": {
+        "title": "Nuova prenotazione",
+        "description": "Quando un cliente prenota grazie a Lei."
+      },
+      "payouts": {
+        "title": "Pagamento ricevuto",
+        "description": "Quando il negozio registra di averLa pagata."
+      },
+      "statements": {
+        "title": "Estratto mensile",
+        "description": "All'inizio di ogni mese, il riepilogo del mese precedente."
+      },
+      "save": "Salva",
+      "saved": "Notifiche salvate",
+      "failed": "Impossibile salvare. Riprovi."
+    },
+    "rules": "La commissione riguarda le prenotazioni fatte grazie a Lei. È dovuta quando il noleggio è concluso e annullata se la prenotazione viene annullata. Questa pagina non mostra nulla sui clienti e non è una fattura.",
+    "paidBy": "{store} La paga direttamente. Louez calcola questi importi; nessun pagamento passa da Louez.",
+    "eyebrow": "Area partner · {store}",
+    "visitStore": "Vai al negozio",
+    "poweredBy": "Realizzato con",
+    "quick": {
+      "copy": "Copia il mio link",
+      "poster": "Il mio poster QR"
     }
   },
   "demo": {

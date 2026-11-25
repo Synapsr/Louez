@@ -31,6 +31,7 @@ import { ReservationItemDetailsCard } from "./reservation-item-details-card";
 import { ReservationHeader } from "./reservation-header";
 import { ReservationBillingDialog } from "./reservation-billing-dialog";
 import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes";
+import { ReservationPartnerCard } from "@/components/dashboard/partners/reservation-partner-card";
 import { SmartReservationActions } from "./smart-reservation-actions";
 import { UnifiedPaymentSection, type PaymentMethod } from "./unified-payment-section";
 import { hasMobileReservationQuickActions } from "./util.mobile-reservation-quick-actions";
@@ -103,6 +104,8 @@ interface ReservationDetailClientProps {
   /** "Détails de la location", read with the page. */
   initialItemDetails?: ReservationItemDetailsView[];
   readOnly?: boolean;
+  /** The dashboard's store: shows the reservation's partner card (Liens partenaires). */
+  storeId?: string;
   onBack?: () => void;
   onPreviewEmail?: () => void;
 }
@@ -130,6 +133,7 @@ export function ReservationDetailClient({
   canGenerateInvoice,
   initialItemDetails,
   readOnly = false,
+  storeId,
   onBack,
   onPreviewEmail,
 }: ReservationDetailClientProps) {
@@ -660,6 +664,10 @@ export function ReservationDetailClient({
           />
 
           {!readOnly && <AdvisorConversationCard reservationId={reservation.id} />}
+
+          {!readOnly && storeId && (
+            <ReservationPartnerCard storeId={storeId} reservationId={reservation.id} />
+          )}
 
           <ReservationNotes
             readOnly={readOnly}

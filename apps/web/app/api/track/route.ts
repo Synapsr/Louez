@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { getClientIp } from '@/lib/request'
 import { visitSourceSchema } from '@louez/api/contracts/visibility'
 import { aiAssistantSchema } from '@louez/api/contracts/ai-visibility'
+import { findActivePartnerByCode } from '@louez/api/services/partners'
+import { PARTNER_COOKIE, readPartnerCookie } from '@/lib/partners/partner-cookie'
 
 // Validation schemas
 const pageViewSchema = z.object({
@@ -153,6 +155,29 @@ function cleanupRateLimits() {
   }
 }
 
+// Partner id cache, per store and code: a partner's visits are counted from
+// the storefront's partner cookie, set by the proxy on the partner's link.
+const partnerIdCache = new Map<string, { id: string | null; expiresAt: number }>()
+const PARTNER_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const MAX_PARTNER_ENTRIES = 10000
+
+async function getPartnerId(
+  request: NextRequest,
+  storeId: string,
+  storeSlug: string
+): Promise<string | null> {
+  const code = readPartnerCookie(request.cookies.get(PARTNER_COOKIE)?.value, storeSlug)?.code
+  if (!code) return null
+  const key = `${storeId}.${code}`
+  const cached = partnerIdCache.get(key)
+  if (cached && Date.now() < cached.expiresAt) return cached.id
+
+  const partner = await findActivePartnerByCode(storeId, code)
+  if (partnerIdCache.size >= MAX_PARTNER_ENTRIES) partnerIdCache.clear()
+  partnerIdCache.set(key, { id: partner?.id ?? null, expiresAt: Date.now() + PARTNER_CACHE_TTL })
+  return partner?.id ?? null
+}
+
 // Store ID cache to avoid repeated lookups
 const storeIdCache = new Map<string, { id: string; expiresAt: number }>()
 const STORE_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
@@ -217,6 +242,7 @@ export async function POST(request: NextRequest) {
 
     // Insert data asynchronously (fire-and-forget for performance)
     if (data.type === 'page_view') {
+      const partnerId = await getPartnerId(request, storeId, data.storeSlug)
       // Don't await - fire and forget for performance
       db.insert(pageViews)
         .values({
@@ -229,6 +255,7 @@ export async function POST(request: NextRequest) {
           device: data.device || 'desktop',
           source: data.source,
           aiAssistant: data.aiAssistant,
+          partnerId,
         })
         .catch((err) => console.error('[Analytics] Failed to insert page view:', err))
     } else {

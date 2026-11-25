@@ -96,7 +96,7 @@ se lise d'un coup d'œil.
 | Étape (`step`)    | Ce que fait le loueur                                                                                                                                                                                | Statut                                     |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | `share_contacts`  | Envoie le lien à des gens qu'il connaît : WhatsApp, SMS, e-mail, Facebook (groupes locaux), lien à copier ; le lien de la boutique **ou d'un produit** précis                                        | il dit « C'est fait », ou « Pas pour moi » |
-| `qr_poster`       | Enregistre l'**affiche en PNG** (A4 : nom de la boutique, « Réservez en ligne », QR, adresse courte), l'imprime ou la montre sur son téléphone                                                       | idem                                       |
+| `qr_poster`       | Enregistre l'**affiche en PNG** (A4 : nom de la boutique, « Réservez en ligne », QR), l'imprime ou la montre sur son téléphone                                                                       | idem                                       |
 | `google_business` | Met le lien sur sa **fiche Google** : champ « Site web » d'abord (présent pour toutes les catégories), « Réservations » quand Google le propose ; bouton vers Google Business Profile, lien à copier | idem                                       |
 
 Chaque étape a trois états : à faire, faite, pas pour moi (« je n'ai pas de comptoir », « pas
@@ -295,6 +295,8 @@ boutique qui prend l'option voie son passé.
   mesurent la portée réelle.
 - Score SEO chiffré : un score de « visibilité » sans mesure réelle de visites serait un faux
   indicateur. On montre des actions faites, puis des visites réelles (phase 2).
+- Les commissions aux partenaires locaux (campings, hôtels) : une spec à part,
+  [liens-partenaires.md](liens-partenaires.md), troisième entrée de « Se faire connaître ».
 
 ## Événements à mesurer
 

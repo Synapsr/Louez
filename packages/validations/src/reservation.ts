@@ -165,6 +165,8 @@ export const createReservationInputSchema = z.object({
     })
     .optional(),
   promoCode: optionalReservationText(50),
+  /** A partner's code the customer typed (Liens partenaires): the booking is credited to it. */
+  partnerCode: optionalReservationText(40),
   advisorConversationId: z.string().regex(RESERVATION_ID_REGEX).optional(),
   /**
    * Pending online reservation of a previous attempt by the same customer.
