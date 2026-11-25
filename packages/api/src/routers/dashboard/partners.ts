@@ -4,6 +4,7 @@ import {
   adjustPartnerCommissionInput,
   cancelPartnerPayoutInput,
   createPartnerInput,
+  getPartnerSpaceLinkInput,
   getPartnerStatementInput,
   getPartnerStatementOutput,
   getReservationPartnerInput,
@@ -12,21 +13,23 @@ import {
   markPartnerMonthPaidInput,
   partnerOutput,
   partnerSettingsSchema,
+  partnerSpaceLinkOutput,
   partnerTotalsOutput,
   reservationPartnerSchema,
   rotatePartnerStatementTokenInput,
-  rotatePartnerStatementTokenOutput,
   setPartnerArchivedInput,
   setReservationPartnerInput,
   updatePartnerInput,
   updatePartnerSettingsInput,
 } from "../../contracts/partners";
+import { partnerSpaceUrl } from "../../contracts/partner-code";
 import { dashboardPageLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
 import {
   adjustPartnerCommission,
   cancelPartnerPayout,
   createPartner,
+  getPartnerSpaceToken,
   getPartnerStatement,
   getReservationPartner,
   listPartners,
@@ -62,6 +65,9 @@ const PARTNERS_PAGE = "/dashboard/visibility/partners" as const;
 const AMOUNTS =
   "Amounts are in `currency`, rounded to its minor unit. A commission is computed on the rental after discount, without deposit, delivery or insurance; it is `upcoming` until the rental ends, `due` once completed or past its end, `cancelled` with the reservation. The store pays its partners itself: `paid` is what it recorded.";
 
+const NO_SPACE_LINK =
+  "It never holds the link to the partner's own space: the dashboard gives that link only to a person who manages the store's partners.";
+
 const list = storeProcedure
   .meta({
     capability: "online_store.listPartners",
@@ -93,7 +99,7 @@ const getStatement = storeProcedure
     mcp: {
       name: "partners_get_statement",
       title: "Get Partner Statement",
-      description: `Get one partner's statement for a month (the current one by default; the month a rental ends in): each reservation credited to it, with its dates, the rental it is computed on, the commission, any adjustment and its state, then the month's totals and the payments the store recorded. ${AMOUNTS} Answers "how much do I owe the campsite this month?". Its \`links\` hold the partner's page of the dashboard.`,
+      description: `Get one partner's statement for a month (the current one by default; the month a rental ends in): each reservation credited to it, with its dates, the rental it is computed on, the commission, any adjustment and its state, then the month's totals and the payments the store recorded. ${AMOUNTS} Answers "how much do I owe the campsite this month?". Its \`links\` hold the partner's page of the dashboard. ${NO_SPACE_LINK}`,
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -101,7 +107,7 @@ const getStatement = storeProcedure
   .route({
     method: "GET",
     path: "/partners/{partnerId}/statement",
-    description: `Returns a partner's statement for a month (\`month\`, YYYY-MM, the current one by default): its reservations with dates, rental base, commission, adjustment and state, the month's totals and the recorded payments. ${AMOUNTS}`,
+    description: `Returns a partner's statement for a month (\`month\`, YYYY-MM, the current one by default): its reservations with dates, rental base, commission, adjustment and state, the month's totals and the recorded payments. ${AMOUNTS} ${NO_SPACE_LINK}`,
   })
   .input(getPartnerStatementInput)
   .output(getPartnerStatementOutput)
@@ -138,12 +144,33 @@ const updateSettings = write("online_store.updatePartnerSettings")
   .output(partnerSettingsSchema)
   .handler(({ context, input }) => updatePartnerSettings(context.actor.storeId, input));
 
+/**
+ * The link to a partner's space, whose holder reads the space and sets the
+ * partner's e-mails: for a person who manages partners, in a dashboard
+ * session, never for a key, an agent or the assistant. No statement read
+ * holds it.
+ */
+const getSpaceLink = partners
+  .meta({
+    capability: "online_store.getPartnerSpaceLink",
+    scope: { domain: "online_store", level: "read", role: "manage_settings" },
+  })
+  .input(getPartnerSpaceLinkInput)
+  .output(partnerSpaceLinkOutput)
+  .handler(async ({ context, input }) => ({
+    url: partnerSpaceUrl(
+      context.ports.urls.dashboard("/"),
+      await getPartnerSpaceToken(context.actor.storeId, input.partnerId),
+    ),
+  }));
+
 const rotateStatementToken = write("online_store.rotatePartnerStatementToken")
   .input(rotatePartnerStatementTokenInput)
-  .output(rotatePartnerStatementTokenOutput)
-  .handler(({ context, input }) =>
-    rotatePartnerStatementToken(context.actor.storeId, input.partnerId),
-  );
+  .output(done)
+  .handler(async ({ context, input }) => {
+    await rotatePartnerStatementToken(context.actor.storeId, input.partnerId);
+    return { ok: true as const };
+  });
 
 const markMonthPaid = write("online_store.markPartnerMonthPaid")
   .input(markPartnerMonthPaidInput)
@@ -206,6 +233,7 @@ export const dashboardPartnersRouter = {
   update,
   setArchived,
   updateSettings,
+  getSpaceLink,
   rotateStatementToken,
   markMonthPaid,
   cancelPayout,

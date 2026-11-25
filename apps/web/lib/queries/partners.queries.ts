@@ -15,6 +15,12 @@ export const partnersQueries = {
       ...orpc.dashboard.partners.getStatement.queryOptions({ input: { partnerId, month } }),
       staleTime: 30_000,
     }),
+  /** The link to a partner's space, for a person who manages partners (`manage_settings`). */
+  spaceLink: (partnerId: string) =>
+    queryOptions({
+      ...orpc.dashboard.partners.getSpaceLink.queryOptions({ input: { partnerId } }),
+      staleTime: 30_000,
+    }),
   /** The partner a reservation is attributed to, and the ones it can be. */
   forReservation: (reservationId: string) =>
     queryOptions({

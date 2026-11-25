@@ -7793,7 +7793,8 @@
         "sendEmail": "邮件",
         "emailSubject": "您在 {store} 的合作伙伴链接",
         "message": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n您的合作伙伴专区，可查看收益并选择通知：{space}\n\n感谢您的推荐！",
-        "posterRecommended": "由 {partner} 推荐"
+        "posterRecommended": "由 {partner} 推荐",
+        "messageWithoutSpace": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n感谢您的推荐！"
       },
       "statement": {
         "title": "对账单",

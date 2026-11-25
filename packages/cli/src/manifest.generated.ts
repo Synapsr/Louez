@@ -3156,7 +3156,7 @@ export const manifest: Manifest = {
       "method": "GET",
       "path": "/partners/{partnerId}/statement",
       "summary": "Get Partner Statement",
-      "description": "Returns a partner's statement for a month (`month`, YYYY-MM, the current one by default): its reservations with dates, rental base, commission, adjustment and state, the month's totals and the recorded payments. Amounts are in `currency`, rounded to its minor unit. A commission is computed on the rental after discount, without deposit, delivery or insurance; it is `upcoming` until the rental ends, `due` once completed or past its end, `cancelled` with the reservation. The store pays its partners itself: `paid` is what it recorded.",
+      "description": "Returns a partner's statement for a month (`month`, YYYY-MM, the current one by default): its reservations with dates, rental base, commission, adjustment and state, the month's totals and the recorded payments. Amounts are in `currency`, rounded to its minor unit. A commission is computed on the rental after discount, without deposit, delivery or insurance; it is `upcoming` until the rental ends, `due` once completed or past its end, `cancelled` with the reservation. The store pays its partners itself: `paid` is what it recorded. It never holds the link to the partner's own space: the dashboard gives that link only to a person who manages the store's partners.",
       "pathParams": [
         {
           "name": "partnerId",

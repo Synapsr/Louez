@@ -7793,7 +7793,8 @@
         "sendEmail": "Correo",
         "emailSubject": "Su enlace de socio de {store}",
         "message": "Hola:\n\nAquí tiene su enlace de socio de {store}: {link}\nRecibe {rule} por cada alquiler reservado con este enlace, una vez terminado el alquiler.\n\nSu espacio de socio, para seguir sus ganancias y elegir sus notificaciones: {space}\n\n¡Gracias por recomendarnos!",
-        "posterRecommended": "Recomendado por {partner}"
+        "posterRecommended": "Recomendado por {partner}",
+        "messageWithoutSpace": "Hola:\n\nAquí tiene su enlace de socio de {store}: {link}\nRecibe {rule} por cada alquiler reservado con este enlace, una vez terminado el alquiler.\n\n¡Gracias por recomendarnos!"
       },
       "statement": {
         "title": "Extracto",

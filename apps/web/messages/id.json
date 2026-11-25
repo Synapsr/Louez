@@ -7793,7 +7793,8 @@
         "sendEmail": "Email",
         "emailSubject": "Tautan mitra {store} Anda",
         "message": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nHalaman mitra Anda, untuk memantau penghasilan dan memilih notifikasi: {space}\n\nTerima kasih telah merekomendasikan kami!",
-        "posterRecommended": "Direkomendasikan oleh {partner}"
+        "posterRecommended": "Direkomendasikan oleh {partner}",
+        "messageWithoutSpace": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nTerima kasih telah merekomendasikan kami!"
       },
       "statement": {
         "title": "Rekap",

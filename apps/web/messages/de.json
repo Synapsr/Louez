@@ -7793,7 +7793,8 @@
         "sendEmail": "E-Mail",
         "emailSubject": "Ihr Partnerlink für {store}",
         "message": "Guten Tag,\n\nhier ist Ihr Partnerlink für {store}: {link}\nSie erhalten {rule} für jede über diesen Link gebuchte Miete, sobald die Miete beendet ist.\n\nIhr Partnerbereich, um Ihre Einnahmen zu verfolgen und Ihre Benachrichtigungen zu wählen: {space}\n\nVielen Dank für Ihre Empfehlung!",
-        "posterRecommended": "Empfohlen von {partner}"
+        "posterRecommended": "Empfohlen von {partner}",
+        "messageWithoutSpace": "Guten Tag,\n\nhier ist Ihr Partnerlink für {store}: {link}\nSie erhalten {rule} für jede über diesen Link gebuchte Miete, sobald die Miete beendet ist.\n\nVielen Dank für Ihre Empfehlung!"
       },
       "statement": {
         "title": "Abrechnung",

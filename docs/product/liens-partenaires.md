@@ -183,7 +183,10 @@ boutique. Pour chaque partenaire et chaque mois (les 12 derniers) :
 ### L'espace partenaire
 
 Un **lien secret** (`/partner/<secret>`, 43 caractères aléatoires), sans compte, que la boutique
-envoie avec le lien dans un message prêt (e-mail, WhatsApp). Il ouvre l'espace du partenaire :
+envoie avec le lien dans un message prêt (e-mail, WhatsApp). Seule une personne qui gère les
+partenaires (`manage_settings`) l'obtient, dans le dashboard ; aucune lecture d'un relevé (API,
+MCP, assistant) ne le contient, et les journaux du serveur le masquent. Il ouvre l'espace du
+partenaire :
 
 - **où il en est**, d'un coup d'œil : **À recevoir** (commissions dues, pas encore payées, tous
   mois confondus), **À venir** (locations réservées, pas encore terminées), **Reçu** (ce que la
@@ -243,8 +246,9 @@ Dans « Se faire connaître », une troisième entrée **« Partenaires »**
 - **Droits** : ajouter, modifier, archiver un partenaire, régler la durée d'un lien, marquer un
   mois payé ou annuler un paiement, ajuster, attribuer ou retirer une réservation, changer le
   lien d'un espace demandent le droit de gérer les réglages (`manage_settings`, propriétaire et
-  administrateurs), comme les codes promo. Un membre voit les partenaires et leurs relevés ;
-  ces boutons sont désactivés pour lui, avec la raison.
+  administrateurs), comme les codes promo, tout comme le lien de l'espace d'un partenaire. Un
+  membre voit les partenaires et leurs relevés ; ces boutons sont désactivés pour lui, avec la
+  raison, et le message prêt qu'il envoie ne contient pas le lien de l'espace.
 
 ## Phases
 
@@ -285,7 +289,8 @@ restent dans le dashboard, avec le droit `manage_settings`. 13 langues ; événe
 - Les coordonnées du partenaire (souvent une personne) sont des données de la boutique :
   effacées avec elle. Ses e-mails ne parlent que de ses gains, et se coupent depuis son espace.
 - Le lien de l'espace est un secret : page `noindex`, sans analytics, sans référent, comme les
-  pages de handoff ; en mode standalone, il ne passe pas par la vitrine.
+  pages de handoff ; en mode standalone, il ne passe pas par la vitrine ; les journaux du
+  serveur le masquent.
 
 ## Abus
 
@@ -299,6 +304,7 @@ restent dans le dashboard, avec le droit `manage_settings`. 13 langues ; événe
 | Commission sur une réservation annulée                     | Annulée avec elle ; une annulation après paiement apparaît en écart négatif                                         |
 | Deux partenaires pour une réservation                      | Un seul : le code tapé, sinon le dernier lien, ou le choix de la boutique                                           |
 | Lien de l'espace transmis à un tiers                       | Il ne montre rien du client ; il ne permet que de changer les e-mails du partenaire ; la boutique change le lien    |
+| Une clé API ou un assistant lit le lien de l'espace        | Aucune lecture ne le contient : seul le dashboard le donne, à qui gère les partenaires                              |
 | Faux code dans l'URL                                       | Un code inconnu de la boutique n'attribue rien                                                                      |
 | Faux cookie de lien pour tester des codes au paiement      | Le cookie est signé par le serveur : un cookie fabriqué ne donne ni avantage ni attribution                         |
 | Un membre de l'équipe crédite ou paie un partenaire        | Les écritures demandent `manage_settings`, comme les codes promo : un membre ne fait que lire                       |

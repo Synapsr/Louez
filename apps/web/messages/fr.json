@@ -7793,7 +7793,8 @@
         "sendEmail": "E-mail",
         "emailSubject": "Votre lien partenaire {store}",
         "message": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nVotre espace partenaire, pour suivre vos gains et choisir vos notifications : {space}\n\nMerci de nous recommander !",
-        "posterRecommended": "Recommandé par {partner}"
+        "posterRecommended": "Recommandé par {partner}",
+        "messageWithoutSpace": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nMerci de nous recommander !"
       },
       "statement": {
         "title": "Relevé",

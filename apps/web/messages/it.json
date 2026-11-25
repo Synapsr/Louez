@@ -7793,7 +7793,8 @@
         "sendEmail": "Email",
         "emailSubject": "Il Suo link partner di {store}",
         "message": "Buongiorno,\n\necco il Suo link partner per {store}: {link}\nRiceve {rule} su ogni noleggio prenotato tramite questo link, una volta concluso il noleggio.\n\nLa Sua area partner, per seguire i Suoi guadagni e scegliere le notifiche: {space}\n\nGrazie per averci consigliato!",
-        "posterRecommended": "Consigliato da {partner}"
+        "posterRecommended": "Consigliato da {partner}",
+        "messageWithoutSpace": "Buongiorno,\n\necco il Suo link partner per {store}: {link}\nRiceve {rule} su ogni noleggio prenotato tramite questo link, una volta concluso il noleggio.\n\nGrazie per averci consigliato!"
       },
       "statement": {
         "title": "Estratto",

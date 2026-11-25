@@ -1,11 +1,23 @@
 /**
  * Liens partenaires (docs/product/liens-partenaires.md): what a partner's link
- * carries and how long it holds. No import: the storefront proxy reads it on
- * every request.
+ * carries, how long it holds, and where the partner's own space lives. No
+ * import: the storefront proxy reads it on every request.
  */
 
 /** The query parameter of a partner link: `https://<store>/?partner=les-pins`. */
 export const PARTNER_LINK_PARAM = "partner";
+
+/** A partner's space, opened by its secret without an account: `/partner/<secret>`. */
+const PARTNER_SPACE_PREFIX = "/partner/";
+
+/** The partner's space, on the dashboard's address. */
+export function partnerSpaceUrl(appUrl: string, token: string): string {
+  return `${new URL(appUrl).origin}${PARTNER_SPACE_PREFIX}${token}`;
+}
+
+/** The pages and routes that answer it: `/partner/<token>`. */
+export const isPartnerSpacePath = (pathname: string): boolean =>
+  pathname.startsWith(PARTNER_SPACE_PREFIX);
 
 /** Lowercase letters, digits and inner dashes, 2 to 40 characters. */
 export const PARTNER_CODE_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])$/;

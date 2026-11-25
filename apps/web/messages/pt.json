@@ -7793,7 +7793,8 @@
         "sendEmail": "E-mail",
         "emailSubject": "O seu link de parceiro {store}",
         "message": "Olá,\n\nAqui está o seu link de parceiro para {store}: {link}\nRecebe {rule} por cada aluguer reservado através deste link, quando o aluguer terminar.\n\nA sua área de parceiro, para acompanhar os seus ganhos e escolher as suas notificações: {space}\n\nObrigado por nos recomendar!",
-        "posterRecommended": "Recomendado por {partner}"
+        "posterRecommended": "Recomendado por {partner}",
+        "messageWithoutSpace": "Olá,\n\nAqui está o seu link de parceiro para {store}: {link}\nRecebe {rule} por cada aluguer reservado através deste link, quando o aluguer terminar.\n\nObrigado por nos recomendar!"
       },
       "statement": {
         "title": "Extrato",

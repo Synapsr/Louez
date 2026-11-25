@@ -7793,7 +7793,8 @@
         "sendEmail": "メール",
         "emailSubject": "{store} のパートナーリンク",
         "message": "こんにちは。\n\n{store} のパートナーリンクをお送りします：{link}\nこのリンクから予約されたレンタルごとに、レンタル終了後に {rule} をお支払いします。\n\nパートナーページで報酬の確認や通知の設定ができます：{space}\n\nご紹介いただきありがとうございます！",
-        "posterRecommended": "{partner} のおすすめ"
+        "posterRecommended": "{partner} のおすすめ",
+        "messageWithoutSpace": "こんにちは。\n\n{store} のパートナーリンクをお送りします：{link}\nこのリンクから予約されたレンタルごとに、レンタル終了後に {rule} をお支払いします。\n\nご紹介いただきありがとうございます！"
       },
       "statement": {
         "title": "明細",

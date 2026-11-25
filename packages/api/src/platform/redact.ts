@@ -17,6 +17,31 @@ export const HANDOFF_SECRET_PATTERNS: readonly RegExp[] = [
   /(?<=%2Fhandoffs%2F)[A-Za-z0-9_%-]+/gi,
 ];
 
+/** A separator, plain or percent-encoded once or more: `/`, `%2F`, `%252F`… */
+const SLASH = String.raw`(?:\/|%(?:25)*2[Ff])`;
+/**
+ * One character of a secret, plain or percent-encoded once or more (`p`,
+ * `%70`, `%2570`…), never an encoded separator or a lone `%`.
+ */
+const SECRET_CHARACTER = String.raw`(?:[A-Za-z0-9_-]|%(?:25)*(?!25|2[Ff])[0-9A-Fa-f]{2})`;
+
+/**
+ * A partner's space (Liens partenaires) is opened by its secret alone,
+ * `/partner/<secret>`: whoever holds it reads the space and sets the
+ * partner's e-mails. The pattern matches the secret only, in a path or a URL,
+ * plain or percent-encoded, nested encodings included; what follows it
+ * (`/notifications`) stays.
+ */
+const PARTNER_SPACE_SECRET_PATTERNS: readonly RegExp[] = [
+  new RegExp(`(?<=${SLASH}partner${SLASH})${SECRET_CHARACTER}+`, "g"),
+];
+
+/** Every secret a URL may hold: what the app's logger replaces in every event. */
+export const LOG_SECRET_PATTERNS: readonly RegExp[] = [
+  ...HANDOFF_SECRET_PATTERNS,
+  ...PARTNER_SPACE_SECRET_PATTERNS,
+];
+
 export const REDACTED = "[redacted]";
 
 /** `text` with every handoff secret replaced, the ids kept. */

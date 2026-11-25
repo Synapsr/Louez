@@ -7793,7 +7793,8 @@
         "sendEmail": "이메일",
         "emailSubject": "{store} 파트너 링크 안내",
         "message": "안녕하세요.\n\n{store}의 파트너 링크를 보내 드립니다: {link}\n이 링크로 예약된 대여마다, 대여가 끝난 후 다음 수수료를 받으실 수 있습니다: {rule}.\n\n수익을 확인하고 알림을 선택할 수 있는 파트너 페이지: {space}\n\n저희를 추천해 주셔서 감사합니다!",
-        "posterRecommended": "{partner} 추천"
+        "posterRecommended": "{partner} 추천",
+        "messageWithoutSpace": "안녕하세요.\n\n{store}의 파트너 링크를 보내 드립니다: {link}\n이 링크로 예약된 대여마다, 대여가 끝난 후 다음 수수료를 받으실 수 있습니다: {rule}.\n\n저희를 추천해 주셔서 감사합니다!"
       },
       "statement": {
         "title": "정산 내역",

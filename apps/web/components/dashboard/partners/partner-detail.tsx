@@ -31,7 +31,6 @@ import {
 
 import { useStoreHasPermission } from "@/contexts/store-context";
 import { apiErrorKey } from "@/lib/orpc/errors";
-import { partnerSpaceUrl } from "@/lib/partners/partner-space-path";
 import { partnerLinkUrl } from "@/lib/partners/util.partner-link";
 import { partnersMutations, partnersQueries } from "@/lib/queries/partners.queries";
 
@@ -46,7 +45,6 @@ interface PartnerDetailProps {
   storeId: string;
   storeName: string;
   storeUrl: string;
-  appUrl: string;
   /** The store's colour and logo, for the partner's poster. */
   accentColor: string | null;
   logoUrl: string | null;
@@ -61,7 +59,6 @@ export const PartnerDetail = ({
   storeId,
   storeName,
   storeUrl,
-  appUrl,
   initialStatement,
   accentColor,
   logoUrl,
@@ -114,11 +111,16 @@ export const PartnerDetail = ({
     onError,
   });
 
+  // The space's link opens it without an account and sets the partner's
+  // e-mails: only a person who manages partners gets it.
+  const { data: space } = useQuery({ ...partnersQueries.spaceLink(partnerId), enabled: canManage });
+  const spaceUrl = space?.url ?? null;
+
   const link = partnerLinkUrl(storeUrl, partner.code);
-  const spaceUrl = partnerSpaceUrl(appUrl, view.statementToken);
   const rule = formatPartnerRule(partner.commission, currency, t);
 
   const copySpaceLink = async () => {
+    if (!spaceUrl) return;
     try {
       await navigator.clipboard.writeText(spaceUrl);
       analytics.linkShared("space_link");
@@ -162,7 +164,7 @@ export const PartnerDetail = ({
                 <Pencil className="size-4" />
                 {t("menu.edit")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void copySpaceLink()}>
+              <DropdownMenuItem onClick={() => void copySpaceLink()} disabled={!spaceUrl}>
                 <Link2 className="size-4" />
                 {t("menu.copySpace")}
               </DropdownMenuItem>
@@ -202,7 +204,11 @@ export const PartnerDetail = ({
           partner={partner}
           storeName={storeName}
           link={link}
-          message={t("link.message", { store: storeName, link, rule, space: spaceUrl })}
+          message={
+            spaceUrl
+              ? t("link.message", { store: storeName, link, rule, space: spaceUrl })
+              : t("link.messageWithoutSpace", { store: storeName, link, rule })
+          }
           onShared={analytics.linkShared}
           accentColor={accentColor}
           logoUrl={logoUrl}

@@ -15,7 +15,7 @@ import { withEffectSignal } from "@/lib/api/effect-signal";
 import { apiUrls } from "@/lib/api/urls";
 import { getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
 import { sendPartnerNotificationEmail } from "@/lib/email/send";
-import { partnerSpaceUrl } from "@/lib/partners/partner-space-path";
+import { partnerSpaceUrl } from "@louez/api/contracts/partner-code";
 
 // The senders of a partner's e-mails (Liens partenaires, packages/api
 // services/partner-space.ts). Each reads the partner and what it is about when

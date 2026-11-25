@@ -417,13 +417,13 @@ export async function partnerStatementFor(
   };
 }
 
-/** A partner's statement for a month (the current one by default), with its space's secret. */
+/** A partner's statement for a month (the current one by default), with the months to pick from. */
 export async function getPartnerStatement(
   storeId: string,
   partnerId: string,
   month?: string,
   now: Date = new Date(),
-): Promise<PartnerStatement & { months: string[]; statementToken: string }> {
+): Promise<PartnerStatement & { months: string[] }> {
   const [row, store] = await Promise.all([
     findPartner(storeId, partnerId),
     readPartnerStore(storeId),
@@ -434,8 +434,15 @@ export async function getPartnerStatement(
   return {
     ...statement,
     months: months.includes(selected) ? months : [selected, ...months],
-    statementToken: row.statementToken,
   };
+}
+
+/**
+ * The secret of a partner's space, for the dashboard's own action that hands
+ * its link to a person who manages partners; no read of a statement gives it.
+ */
+export async function getPartnerSpaceToken(storeId: string, partnerId: string): Promise<string> {
+  return (await findPartner(storeId, partnerId)).statementToken;
 }
 
 // --- Store writes -----------------------------------------------------------------
@@ -547,14 +554,12 @@ export async function setPartnerArchived(
 export async function rotatePartnerStatementToken(
   storeId: string,
   partnerId: string,
-): Promise<{ statementToken: string }> {
+): Promise<void> {
   await findPartner(storeId, partnerId);
-  const statementToken = newStatementToken();
   await db
     .update(storePartners)
-    .set({ statementToken, updatedAt: new Date() })
+    .set({ statementToken: newStatementToken(), updatedAt: new Date() })
     .where(and(eq(storePartners.storeId, storeId), eq(storePartners.id, partnerId)));
-  return { statementToken };
 }
 
 /**

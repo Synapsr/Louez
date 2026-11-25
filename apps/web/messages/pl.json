@@ -7793,7 +7793,8 @@
         "sendEmail": "E-mail",
         "emailSubject": "Państwa link partnerski do {store}",
         "message": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nPaństwa strefa partnera, w której można śledzić zarobki i wybrać powiadomienia: {space}\n\nDziękujemy za polecanie nas!",
-        "posterRecommended": "Polecane przez {partner}"
+        "posterRecommended": "Polecane przez {partner}",
+        "messageWithoutSpace": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nDziękujemy za polecanie nas!"
       },
       "statement": {
         "title": "Zestawienie",

@@ -1,6 +1,5 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
 import { HANDOFF_ROUTE_HEADER, isHandoffPath } from "@/lib/handoffs/handoff-privacy";
-import { isPartnerSpacePath } from "@/lib/partners/partner-space-path";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing-demos/policy";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -18,7 +17,7 @@ import {
   PARTNER_LINK_PARAM,
   encodePartnerCookie,
 } from "@/lib/partners/partner-cookie";
-import { parsePartnerCode } from "@louez/api/contracts/partner-code";
+import { isPartnerSpacePath, parsePartnerCode } from "@louez/api/contracts/partner-code";
 import {
   buildDemoSecurityHeaders,
   buildEmbedSecurityHeaders,

@@ -7793,7 +7793,8 @@
         "sendEmail": "Email",
         "emailSubject": "Your {store} partner link",
         "message": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nYour partner space, to follow your earnings and choose your notifications: {space}\n\nThank you for recommending us!",
-        "posterRecommended": "Recommended by {partner}"
+        "posterRecommended": "Recommended by {partner}",
+        "messageWithoutSpace": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nThank you for recommending us!"
       },
       "statement": {
         "title": "Statement",

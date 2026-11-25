@@ -51,6 +51,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   let louezDb: typeof import("@louez/db");
   let orpc: typeof import("@orpc/server");
   let service: typeof import("../../services/partners");
+  let apiKeys: typeof import("../../services/api-keys");
   let space: typeof import("../../services/partner-space");
   let router: typeof import("./partners").dashboardPartnersRouter;
 
@@ -79,6 +80,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     louezDb = await import("@louez/db");
     orpc = await import("@orpc/server");
     service = await import("../../services/partners");
+    apiKeys = await import("../../services/api-keys");
     space = await import("../../services/partner-space");
     ({ dashboardPartnersRouter: router } = await import("./partners"));
 
@@ -709,7 +711,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     ]);
     await credit("pl_resa_publ_0000001", partner.code);
     await credit("pl_resa_soon_0000001", partner.code);
-    const { statementToken } = await service.getPartnerStatement(STORE, partner.id, NOVEMBER, NOW);
+    const statementToken = await service.getPartnerSpaceToken(STORE, partner.id);
 
     const page = await space.getPartnerSpace(statementToken, NOVEMBER, NOW);
     assert.ok(page);
@@ -752,6 +754,53 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       }),
       false,
     );
+  });
+
+  test("the space's link: in no statement read, only from the dashboard's action, to a manager", async () => {
+    const partner = await campsite();
+    const token = await service.getPartnerSpaceToken(STORE, partner.id);
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Agent comptable",
+      permissions: {
+        reservations: "read",
+        products: "read",
+        customers: "read",
+        categories: "read",
+        payments: "read",
+        analytics: "read",
+        settings: "read",
+        online_store: "read",
+      },
+    });
+    const key = {
+      ...session(),
+      headers: new Headers({ authorization: `Bearer ${created.key}` }),
+      transport: "openapi" as const,
+    };
+    const input = { partnerId: partner.id, month: NOVEMBER };
+
+    // An API key reads the statement (as MCP, OAuth and the assistant do), never the secret.
+    const read = await orpc.call(router.getStatement, input, { context: key });
+    assert.equal(read.partner.id, partner.id);
+    assert.equal(JSON.stringify(read).includes(token), false);
+    const dashboardRead = await orpc.call(router.getStatement, input, { context: session() });
+    assert.equal(JSON.stringify(dashboardRead).includes(token), false);
+
+    // The dashboard's own action gives the owner the link…
+    assert.deepEqual(
+      await orpc.call(router.getSpaceLink, { partnerId: partner.id }, { context: session() }),
+      { url: `${new URL(createTestUrls().dashboard("/")).origin}/partner/${token}` },
+    );
+    // …never a key or the assistant, though it acts with the owner's session.
+    for (const context of [key, { ...session(), assistant: true }]) {
+      await assert.rejects(
+        orpc.call(router.getSpaceLink, { partnerId: partner.id }, { context }),
+        (error: { data?: { code?: string } }) => error.data?.code === "SESSION_ONLY",
+      );
+    }
   });
 
   test("a credited booking's e-mail reads the booking when it goes out", async () => {
@@ -835,7 +884,8 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   });
 
   // Every partner write needs `manage_settings`, as the store's promo codes
-  // do: a member with only `write` is refused, the owner's same call goes through.
+  // do, and so does the link to a partner's space: a member with only `write`
+  // is refused, the owner's same call goes through.
   const managerOnly: {
     write: keyof typeof router;
     input: (fixture: { partnerId: string; payoutId: string }) => unknown;
@@ -854,6 +904,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     },
     { write: "setArchived", input: ({ partnerId }) => ({ partnerId, archived: true }) },
     { write: "updateSettings", input: () => ({ attributionDays: 14 }) },
+    { write: "getSpaceLink", input: ({ partnerId }) => ({ partnerId }) },
     { write: "rotateStatementToken", input: ({ partnerId }) => ({ partnerId }) },
     { write: "markMonthPaid", input: ({ partnerId }) => ({ partnerId, month: NOVEMBER }) },
     { write: "cancelPayout", input: ({ payoutId }) => ({ payoutId }) },

@@ -7793,7 +7793,8 @@
         "sendEmail": "E-mail",
         "emailSubject": "Uw partnerlink voor {store}",
         "message": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nUw partnerpagina, om uw verdiensten te volgen en uw meldingen te kiezen: {space}\n\nBedankt dat u ons aanbeveelt!",
-        "posterRecommended": "Aanbevolen door {partner}"
+        "posterRecommended": "Aanbevolen door {partner}",
+        "messageWithoutSpace": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nBedankt dat u ons aanbeveelt!"
       },
       "statement": {
         "title": "Overzicht",

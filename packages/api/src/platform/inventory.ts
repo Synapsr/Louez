@@ -1708,6 +1708,14 @@ export const capabilities = [
     actors: ["session"],
   },
   {
+    // The partner space's link, for a person who manages partners: no statement read holds it.
+    id: "online_store.getPartnerSpaceLink",
+    sources: [procedure("partners", "getSpaceLink")],
+    kind: "read",
+    plan: { exclude: PARTNER_LINKS },
+    actors: ["session"],
+  },
+  {
     id: "online_store.rotatePartnerStatementToken",
     sources: [procedure("partners", "rotateStatementToken")],
     kind: "write",
