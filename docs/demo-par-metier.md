@@ -233,6 +233,37 @@ dans son cookie, sinon sur `demo:<id de la boutique>`. Aucun profil de personne 
 - **Purge** : la tâche cron `demo-stores-purge`, toutes les dix minutes.
 - **Pool** : la tâche cron `demo-pools-fill`, chaque minute, après la réponse du cron.
 
+### Relancer une preview
+
+Une preview tourne sur un build de production, pas sur `next dev` : derrière un tunnel,
+les chunks de dev ne sont pas hachés et un cache les garde plusieurs heures. Il faut donc
+rebuilder après chaque changement. `PREVIEW_ENV` désigne le fichier de variables de la
+preview. Il pointe `DATABASE_URL` vers une base MySQL jetable (jamais la pré-prod) et
+fixe `STOREFRONT_URL_TEMPLATE`. Il ne se commite pas.
+
+```sh
+export PREVIEW_ENV=/chemin/vers/preview.env   # exporté : le shell du serveur le relit
+cd apps/web
+localify stop web --project rental-core-preview --env feat-demo-par-metier
+
+# Build (environ 5 minutes)
+(set -a && . "$PREVIEW_ENV" && set +a && NODE_ENV=production pnpm run build)
+
+# Démarrage détaché : le serveur survit à la session qui l'a lancé
+nohup perl -MPOSIX -e 'setsid; exec @ARGV' \
+  localify dev web --project rental-core-preview --env feat-demo-par-metier --detach --replace -- \
+  sh -c 'set -a; . "$PREVIEW_ENV"; set +a; exec ./node_modules/.bin/next start --hostname 127.0.0.1 --port "${PORT:-56282}"' \
+  > /tmp/louez-demo-preview.log 2>&1 &
+```
+
+- `localify dev … --env feat-demo-par-metier` garde le domaine local de la preview. L'URL
+  publique (Localify Cloud) et son mot de passe ne changent donc pas.
+- L'avertissement « next start does not work with output: standalone » est sans effet.
+- Pour vérifier la base utilisée :
+  `lsof -nP -a -p <PID de next-server> -iTCP -sTCP:ESTABLISHED`. Il ne doit montrer que
+  l'hôte et le port de la base jetable.
+- Pour arrêter la preview : `localify stop web --project rental-core-preview --env feat-demo-par-metier`.
+
 ## Limites connues
 
 - **Packs** : Louez n'a pas de lot composé d'articles de stock. Les packs ski sont des
