@@ -164,9 +164,22 @@ Les paiements de démo sont tous enregistrés « à la main » (carte au comptoi
 virement, chèque de caution) : aucune ligne ne porte d'identifiant Stripe, donc aucun
 bouton du tableau de bord ne peut appeler Stripe.
 
-Les photos des catalogues ski et événementiel sont générées (FLUX Schnell), sans
-marque ni texte, et servies depuis `apps/web/public/demo/`. Le vélo reprend les photos
-déjà hébergées du seed « Ar Mor Location ».
+Les photos des catalogues ski et événementiel sont générées avec Gemini 3 Pro Image,
+sans marque ni texte. Elles sont servies depuis `apps/web/public/demo/` : 1024 × 1024
+pour un produit, 1536 × 640 pour une bannière, en WebP. Le vélo reprend les photos déjà
+hébergées du seed « Ar Mor Location ». Pour qu'un nouveau métier garde le même style,
+chaque photo de produit part de la même consigne, où seul le sujet change :
+
+> Professional e-commerce product photograph for a rental shop catalog. _Sujet, décrit
+> comme la fiche produit (ce qui est inclus, couleurs, pas d'accessoire vendu à part)._
+> Plain light warm-grey seamless background filling the whole frame edge to edge, no
+> studio lights, softboxes or equipment visible, soft natural shadow, even softbox
+> lighting, sharp focus, photorealistic, realistic proportions, physically correct.
+> Generic unbranded equipment: absolutely no logos, no brand names, no text, no letters,
+> no numbers anywhere.
+
+Une tente ou un barnum se photographie dehors, sur une pelouse. Une bannière est un
+panorama 21:9, sans visage reconnaissable ni texte.
 
 ### Le visiteur ne laisse aucune coordonnée réelle
 
@@ -241,19 +254,30 @@ rebuilder après chaque changement. `PREVIEW_ENV` désigne le fichier de variabl
 preview. Il pointe `DATABASE_URL` vers une base MySQL jetable (jamais la pré-prod) et
 fixe `STOREFRONT_URL_TEMPLATE`. Il ne se commite pas.
 
+Le serveur tourne sous launchd, comme la base jetable. Un serveur lancé depuis un
+terminal ou un agent, même détaché (`nohup`, `setsid`, `--detach`), s'arrête avec la
+session qui l'a lancé. Un agent launchd (`~/Library/LaunchAgents/<label>.plist`) le garde
+en vie, et `KeepAlive` le relance s'il tombe. Son programme :
+
 ```sh
-export PREVIEW_ENV=/chemin/vers/preview.env   # exporté : le shell du serveur le relit
+localify dev web --project rental-core-preview --env feat-demo-par-metier --replace -- \
+  /bin/sh -c 'set -a; . "$HOME/<chemin>/preview.env"; set +a; exec ./node_modules/.bin/next start --hostname 127.0.0.1 --port "${PORT:-56282}"'
+```
+
+Son `WorkingDirectory` est `apps/web` du worktree. Son `PATH` doit contenir `node` et
+`localify`.
+
+```sh
+export PREVIEW_ENV=/chemin/vers/preview.env
 cd apps/web
-localify stop web --project rental-core-preview --env feat-demo-par-metier
 
-# Build (environ 5 minutes)
+# Rebuild (environ 5 minutes), puis relance
+launchctl bootout gui/$(id -u)/<label>
 (set -a && . "$PREVIEW_ENV" && set +a && NODE_ENV=production pnpm run build)
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/<label>.plist
 
-# Démarrage détaché : le serveur survit à la session qui l'a lancé
-nohup perl -MPOSIX -e 'setsid; exec @ARGV' \
-  localify dev web --project rental-core-preview --env feat-demo-par-metier --detach --replace -- \
-  sh -c 'set -a; . "$PREVIEW_ENV"; set +a; exec ./node_modules/.bin/next start --hostname 127.0.0.1 --port "${PORT:-56282}"' \
-  > /tmp/louez-demo-preview.log 2>&1 &
+# Relance sans rebuild
+launchctl kickstart -k gui/$(id -u)/<label>
 ```
 
 - `localify dev … --env feat-demo-par-metier` garde le domaine local de la preview. L'URL
@@ -262,7 +286,8 @@ nohup perl -MPOSIX -e 'setsid; exec @ARGV' \
 - Pour vérifier la base utilisée :
   `lsof -nP -a -p <PID de next-server> -iTCP -sTCP:ESTABLISHED`. Il ne doit montrer que
   l'hôte et le port de la base jetable.
-- Pour arrêter la preview : `localify stop web --project rental-core-preview --env feat-demo-par-metier`.
+- Pour arrêter la preview : `launchctl bootout gui/$(id -u)/<label>`. Sinon,
+  `KeepAlive` la relance.
 
 ## Limites connues
 
