@@ -86,6 +86,8 @@ SPECIFICATIONS*.md
 !/scripts/audit-duplicates.mjs
 !/scripts/billing-marks.test.mjs
 !/scripts/billing-prices.test.mjs
+!/scripts/release-notes.mjs
+!/scripts/release-notes.test.mjs
 !/scripts/reservation-writes.test.mjs
 !/scripts/source-scan.mjs
 !/scripts/storefront-qa/
