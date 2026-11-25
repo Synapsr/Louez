@@ -72,7 +72,8 @@
     "./services/util.reservation-edit": "./src/services/util.reservation-edit.ts"
   },
   "scripts": {
-    "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --test \"src/**/*.test.{ts,mjs}\""
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --test \"src/**/*.test.{ts,mjs}\"",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@louez/auth": "workspace:*",

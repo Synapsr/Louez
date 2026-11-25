@@ -575,7 +575,8 @@ describe("the six branches a person approves, as an agent is answered (database)
           ` The user approves it in Louez, signed in, from this link: ${url}`,
         ),
       );
-      const { expiresAt, ...approval } = answer.details.approval ?? {};
+      assert.ok(answer.details.approval);
+      const { expiresAt, ...approval } = answer.details.approval;
       assert.ok(typeof expiresAt === "string");
       assert.deepEqual(approval, {
         id: answer.id,

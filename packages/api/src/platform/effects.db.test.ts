@@ -70,6 +70,19 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     "store.launchAnalytics": async () => {},
     "store.lifecycleAnalytics": async () => {},
     "store.agentSetupAction": async () => {},
+    "reservation.modifiedEmail": async () => {},
+    "reservation.quoteEmail": async () => {},
+    "reservation.confirmationEmail": async () => {},
+    "reservation.createdPlatformNotification": async () => {},
+    "billing.planOfferAnalytics": async () => {},
+    "billing.planOfferEmail": async () => {},
+    "team.invitationEmail": async () => {},
+    "sms.prepaidDebit": async () => {},
+    "deposit.holdRelease": async () => {},
+    "payment.refund": async () => {},
+    "payment.refundCreditNote": async () => {},
+    "testReservation.analytics": async () => {},
+    "testReservation.deleteFiles": async () => {},
   };
 
   before(async () => {

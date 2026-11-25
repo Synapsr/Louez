@@ -1090,7 +1090,9 @@ describe("the public reference", () => {
     );
     const key = { kind: "api_key" as const, storeId: "store_1", stores: null, scopes };
 
-    const refused = (await servedProcedures()).flatMap(({ path, meta, operation }) => {
+    type Served = Awaited<ReturnType<typeof servedProcedures>>[number];
+    type Refusal = { path: string; why: string; operation: Operation; meta?: Served["meta"] };
+    const refused = (await servedProcedures()).flatMap(({ path, meta, operation }): Refusal[] => {
       if (meta.actors && !meta.actors.includes("api_key"))
         return [{ path, why: "actors", operation }];
       if (!meta.scope) return [];

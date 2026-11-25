@@ -362,6 +362,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
         "OTHER_MEMBER, of the other store, is not there",
       );
       const owner = page.items.find((member: { userId: string }) => member.userId === OWNER);
+      assert.ok(owner);
       assert.deepEqual(Object.keys(owner).sort(), [
         "email",
         "id",
@@ -472,6 +473,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     const result = await run("invite", { email: "New.Person@TM.test" }, session());
     assert.equal(result.outcome, "invited");
     assert.equal(result.invitationEmail, "queued");
+    assert.ok(result.invitation);
     assert.equal(result.invitation.email, "new.person@tm.test");
     assert.equal(result.invitation.role, "member");
     assert.equal(result.member, null);
@@ -499,6 +501,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     const result = await run("invite", { email: "existing@tm.test" }, session());
     assert.equal(result.outcome, "added");
     assert.equal(result.invitationEmail, null);
+    assert.ok(result.member);
     assert.equal(result.member.userId, EXISTING);
     assert.equal(result.member.role, "member");
     assert.deepEqual(await memberIds(), [CO_OWNER, EXISTING, MEMBER, OWNER].sort());
@@ -531,7 +534,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .where(orm.eq(louezDb.apiHandoffs.id, token.slice(0, 21)));
     return {
       revision: row?.revision ?? 0,
-      shown: row?.payload ? invitationShown(row.payload) : "0".repeat(64),
+      shown: row?.payload && "email" in row.payload ? invitationShown(row.payload) : "0".repeat(64),
     };
   };
   const readHandoff = async (id: string, context: BaseContext) =>
@@ -867,7 +870,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
         prepare: async () => {
           entered.open();
           await gate.wait;
-          return row.payload;
+          return handoffService.invitationPayloadOf(row);
         },
       },
     );
@@ -1862,6 +1865,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     // "member", the one role it takes, is accepted.
     const result = await run("invite", { email: "new@tm.test", role: "member" }, session());
+    assert.ok(result.invitation);
     assert.equal(result.invitation.role, "member");
   });
 
@@ -1912,6 +1916,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
   test("sending again and reading the link are the dashboard's only", async () => {
     const { invitation } = await run("invite", { email: "new@tm.test" }, session());
+    assert.ok(invitation);
     const [before] = await invitations();
 
     for (const context of [(await apiKey({ confirm: false }))(), (await agent())()]) {
@@ -1941,6 +1946,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
   test("cancelling an invitation needs the owner's approval for an agent, names the person, and stops the link", async () => {
     const { invitation } = await run("invite", { email: "new@tm.test" }, session());
+    assert.ok(invitation);
     const context = await apiKey({ confirm: false });
 
     const refused = await rejects(
@@ -1969,10 +1975,12 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
   test("a session cancels at once; another store's invitation is not found", async () => {
     const { invitation } = await run("invite", { email: "new@tm.test" }, session());
+    assert.ok(invitation);
     const result = await run("cancelInvitation", { id: invitation.id }, session());
     assert.equal(result.cancelled, true);
 
     const other = await run("invite", { email: "b@tm.test" }, session(OWNER, OTHER_STORE));
+    assert.ok(other.invitation);
     await rejects(
       run("cancelInvitation", { id: other.invitation.id }, session()),
       "TEAM_INVITATION_NOT_FOUND",
