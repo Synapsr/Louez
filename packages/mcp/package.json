@@ -15,7 +15,8 @@
     "./testing/cjs-named-exports": "./src/testing/cjs-named-exports.ts"
   },
   "scripts": {
-    "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --import ./src/testing/cjs-named-exports.ts --test \"src/**/*.test.ts\""
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --import ./src/testing/cjs-named-exports.ts --test \"src/**/*.test.ts\"",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@louez/api": "workspace:*",

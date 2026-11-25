@@ -12,7 +12,8 @@
     "./sanitize-rich-text": "./src/html/sanitize-rich-text.ts"
   },
   "scripts": {
-    "test": "node --import tsx --test \"src/**/*.test.ts\""
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@louez/types": "workspace:*",
