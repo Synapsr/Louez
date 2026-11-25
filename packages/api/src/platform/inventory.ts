@@ -222,7 +222,8 @@ const UI_ONLY = "Interface preference, no business effect";
 const PASSWORD = "Password and passkeys stay with Better Auth, in the browser";
 const TEST_RESERVATION = "Dashboard onboarding, human session only";
 const VISIBILITY_GUIDE = "Dashboard guide, human session only";
-const PARTNER_LINKS = "Partner links: writes stay in a dashboard session";
+const PARTNER_LINKS =
+  "Partner links: dashboard session only; writes need manage_settings, like promo codes";
 
 // ---------------------------------------------------------------------------
 // Inventory

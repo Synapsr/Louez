@@ -7885,7 +7885,8 @@
         "title": "Partner",
         "description": "Did a partner send this customer? The booking will be credited to them.",
         "none": "No partner"
-      }
+      },
+      "readOnly": "Read-only: only the owner and administrators manage partners and their payments."
     }
   },
   "storefront": {

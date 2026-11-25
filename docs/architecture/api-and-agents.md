@@ -838,7 +838,7 @@ Revenue is the rental payments received: completed `rental` payments of every me
 
 ## Partners
 
-`partners_list` and `partners_get_statement` (`routers/dashboard/partners.ts`, `GET /partners`, `GET /partners/{partnerId}/statement`, daily bundle, online store read) let an agent answer "how much do I owe the campsite this month?": the store's partners with their commission rule and a month's figures, and one partner's statement with its reservations, commissions and the payments the store recorded ([Liens partenaires](../product/liens-partenaires.md)). The writes (adding a partner, crediting a reservation, marking a month paid) stay with a person in a dashboard session for now. When a month ends with commissions not marked paid, the inbox has a `partner_payout_due` item.
+`partners_list` and `partners_get_statement` (`routers/dashboard/partners.ts`, `GET /partners`, `GET /partners/{partnerId}/statement`, daily bundle, online store read) let an agent answer "how much do I owe the campsite this month?": the store's partners with their commission rule and a month's figures, and one partner's statement with its reservations, commissions and the payments the store recorded ([Liens partenaires](../product/liens-partenaires.md)). The writes (adding a partner, crediting a reservation, marking a month paid) stay with a person in a dashboard session, and need `manage_settings`, as the store's promo codes do. When a month ends with commissions not marked paid, the inbox has a `partner_payout_due` item.
 
 ## A new store
 

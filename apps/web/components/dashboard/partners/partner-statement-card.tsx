@@ -27,6 +27,7 @@ import {
 } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
 
+import { useStoreHasPermission } from "@/contexts/store-context";
 import { apiErrorKey } from "@/lib/orpc/errors";
 import { partnersMutations, partnersQueries } from "@/lib/queries/partners.queries";
 
@@ -56,6 +57,7 @@ export const PartnerStatementCard = ({
   const tErrors = useTranslations("errors");
   const format = useFormatter();
   const queryClient = useQueryClient();
+  const canManage = useStoreHasPermission("manage_settings");
   const [confirmPaid, setConfirmPaid] = useState(false);
   const [adjusting, setAdjusting] = useState<PartnerBooking | null>(null);
   const { totals, currency, partner } = statement;
@@ -181,7 +183,7 @@ export const PartnerStatementCard = ({
               {t("export")}
             </Button>
             {totals.remaining > 0 && (
-              <Button size="sm" onClick={() => setConfirmPaid(true)}>
+              <Button size="sm" onClick={() => setConfirmPaid(true)} disabled={!canManage}>
                 <Check />
                 {t("markPaid")}
               </Button>
@@ -200,6 +202,7 @@ export const PartnerStatementCard = ({
                 key={booking.reservationId}
                 booking={booking}
                 currency={currency}
+                canManage={canManage}
                 onAdjust={() => setAdjusting(booking)}
                 onRemove={() =>
                   removeBooking.mutate({ reservationId: booking.reservationId, partnerId: null })
@@ -222,7 +225,7 @@ export const PartnerStatementCard = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={cancelPayout.isPending}
+                  disabled={!canManage || cancelPayout.isPending}
                   onClick={() => cancelPayout.mutate({ payoutId: payout.id })}
                 >
                   {t("cancelPayout")}

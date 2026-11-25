@@ -230,6 +230,11 @@ Dans « Se faire connaître », une troisième entrée **« Partenaires »**
 - **« À regarder »** (la cloche et sa page) : « Commission à payer » pour chaque mois terminé
   qui doit encore quelque chose à un partenaire, avec le lien vers sa fiche. Elle se marque
   traitée comme les autres.
+- **Droits** : ajouter, modifier, archiver un partenaire, régler la durée d'un lien, marquer un
+  mois payé ou annuler un paiement, ajuster, attribuer ou retirer une réservation, changer le
+  lien d'un espace demandent le droit de gérer les réglages (`manage_settings`, propriétaire et
+  administrateurs), comme les codes promo. Un membre voit les partenaires et leurs relevés ;
+  ces boutons sont désactivés pour lui, avec la raison.
 
 ## Phases
 
@@ -241,7 +246,7 @@ ajustements, états, relevé mensuel, payé, CSV, espace partenaire avec ses not
 (e-mails par l'outbox : réservation, paiement, relevé du mois), rappel « Commission à payer »,
 lecture des partenaires et des relevés pour les assistants (`partners_list`,
 `partners_get_statement`, API `GET /partners` et `GET /partners/{id}/statement`). Les écritures
-restent dans le dashboard. 13 langues ; événements PostHog ; effacement avec la boutique.
+restent dans le dashboard, avec le droit `manage_settings`. 13 langues ; événements PostHog ; effacement avec la boutique.
 
 ### Phase 3 — Seulement si la demande est forte
 
@@ -285,6 +290,7 @@ restent dans le dashboard. 13 langues ; événements PostHog ; effacement avec l
 | Deux partenaires pour une réservation                      | Un seul : le code tapé, sinon le dernier lien, ou le choix de la boutique                                           |
 | Lien de l'espace transmis à un tiers                       | Il ne montre rien du client ; il ne permet que de changer les e-mails du partenaire ; la boutique change le lien    |
 | Faux code dans l'URL                                       | Un code inconnu de la boutique n'attribue rien                                                                      |
+| Un membre de l'équipe crédite ou paie un partenaire        | Les écritures demandent `manage_settings`, comme les codes promo : un membre ne fait que lire                       |
 
 ## Auto-hébergé
 

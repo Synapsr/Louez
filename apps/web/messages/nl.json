@@ -7885,7 +7885,8 @@
         "title": "Partner",
         "description": "Komt deze klant via een partner? De reservering wordt aan hem toegekend.",
         "none": "Geen partner"
-      }
+      },
+      "readOnly": "Alleen-lezen: alleen de eigenaar en beheerders beheren partners en hun betalingen."
     }
   },
   "storefront": {

@@ -7885,7 +7885,8 @@
         "title": "Partner",
         "description": "Czy tego klienta przysłał partner? Rezerwacja zostanie mu przypisana.",
         "none": "Bez partnera"
-      }
+      },
+      "readOnly": "Tylko do odczytu: partnerami i ich wypłatami zarządzają tylko właściciel i administratorzy."
     }
   },
   "storefront": {

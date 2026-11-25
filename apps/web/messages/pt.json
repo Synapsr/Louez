@@ -7885,7 +7885,8 @@
         "title": "Parceiro",
         "description": "Este cliente vem da parte de um parceiro? A reserva ser-lhe-á atribuída.",
         "none": "Nenhum parceiro"
-      }
+      },
+      "readOnly": "Apenas leitura: só o proprietário e os administradores gerem os parceiros e os seus pagamentos."
     }
   },
   "storefront": {

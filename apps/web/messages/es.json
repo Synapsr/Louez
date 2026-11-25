@@ -7885,7 +7885,8 @@
         "title": "Socio",
         "description": "¿Este cliente viene de parte de un socio? La reserva se le atribuirá.",
         "none": "Ningún socio"
-      }
+      },
+      "readOnly": "Solo lectura: solo el propietario y los administradores gestionan los socios y sus pagos."
     }
   },
   "storefront": {

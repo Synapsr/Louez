@@ -7885,7 +7885,8 @@
         "title": "Partenaire",
         "description": "Ce client vient de la part d'un partenaire ? La réservation lui sera créditée.",
         "none": "Aucun partenaire"
-      }
+      },
+      "readOnly": "Lecture seule : seuls le propriétaire et les administrateurs gèrent les partenaires et leurs paiements."
     }
   },
   "storefront": {

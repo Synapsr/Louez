@@ -7885,7 +7885,8 @@
         "title": "Mitra",
         "description": "Apakah pelanggan ini datang dari mitra? Pemesanannya akan dicatat untuk mitra tersebut.",
         "none": "Tanpa mitra"
-      }
+      },
+      "readOnly": "Hanya baca: hanya pemilik dan administrator yang mengelola mitra dan pembayarannya."
     }
   },
   "storefront": {

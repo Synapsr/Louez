@@ -7885,7 +7885,8 @@
         "title": "Partner",
         "description": "Kommt dieser Kunde über einen Partner? Die Buchung wird ihm gutgeschrieben.",
         "none": "Kein Partner"
-      }
+      },
+      "readOnly": "Nur Lesezugriff: Nur der Inhaber und Administratoren verwalten Partner und ihre Zahlungen."
     }
   },
   "storefront": {

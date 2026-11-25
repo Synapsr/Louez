@@ -41,7 +41,8 @@ import {
 /**
  * Liens partenaires (services/partners.ts), in « Se faire connaître ». The
  * partners and their statements are read by every transport, assistants
- * included; the writes stay with a person in a dashboard session for now.
+ * included; the writes stay with a person in a dashboard session, and need
+ * `manage_settings`, as the store's promo codes do.
  */
 const partners = storeProcedure.meta({
   actors: ["session"],
@@ -49,7 +50,10 @@ const partners = storeProcedure.meta({
 });
 
 const write = (capability: string) =>
-  partners.meta({ capability, scope: { domain: "online_store", level: "write" } });
+  partners.meta({
+    capability,
+    scope: { domain: "online_store", level: "write", role: "manage_settings" },
+  });
 
 const done = z.object({ ok: z.literal(true) });
 

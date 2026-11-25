@@ -7885,7 +7885,8 @@
         "title": "Partner",
         "description": "Questo cliente arriva da un partner? La prenotazione gli verrà attribuita.",
         "none": "Nessun partner"
-      }
+      },
+      "readOnly": "Sola lettura: solo il proprietario e gli amministratori gestiscono i partner e i loro pagamenti."
     }
   },
   "storefront": {

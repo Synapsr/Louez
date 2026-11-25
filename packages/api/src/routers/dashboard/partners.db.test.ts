@@ -38,6 +38,7 @@ mock.module("@louez/auth", {
 // it still owes.
 
 const OWNER = "pl_owner_user_000001";
+const MEMBER = "pl_member_user_00001";
 const STORE = "pl_store_a_000000001";
 const OTHER_STORE = "pl_store_b_000000001";
 const CUSTOMER = "pl_customer_00000001";
@@ -52,8 +53,8 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   let space: typeof import("../../services/partner-space");
   let router: typeof import("./partners").dashboardPartnersRouter;
 
-  const session = () => ({
-    headers: new Headers({ [SESSION_HEADER]: OWNER, cookie: `louez_active_store=${STORE}` }),
+  const session = (user = OWNER) => ({
+    headers: new Headers({ [SESSION_HEADER]: user, cookie: `louez_active_store=${STORE}` }),
     transport: "rpc" as const,
     ports: {
       planFeatures: async () => ({ apiAccess: true }),
@@ -76,10 +77,14 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     space = await import("../../services/partner-space");
     ({ dashboardPartnersRouter: router } = await import("./partners"));
 
-    await louezDb.db.insert(louezDb.users).values([{ id: OWNER, email: "owner@partners.test" }]);
-    await louezDb.db
-      .insert(louezDb.storeMembers)
-      .values([{ storeId: STORE, userId: OWNER, role: "owner" }]);
+    await louezDb.db.insert(louezDb.users).values([
+      { id: OWNER, email: "owner@partners.test" },
+      { id: MEMBER, email: "member@partners.test" },
+    ]);
+    await louezDb.db.insert(louezDb.storeMembers).values([
+      { storeId: STORE, userId: OWNER, role: "owner" },
+      { storeId: STORE, userId: MEMBER, role: "member" },
+    ]);
   });
 
   after(async () => {
@@ -667,6 +672,69 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
         .where(eq(louezDb.stores.id, STORE));
     }
   });
+
+  // Every partner write needs `manage_settings`, as the store's promo codes
+  // do: a member with only `write` is refused, the owner's same call goes through.
+  const managerOnly: {
+    write: keyof typeof router;
+    input: (fixture: { partnerId: string; payoutId: string }) => unknown;
+  }[] = [
+    {
+      write: "create",
+      input: () => ({ name: "Office de tourisme", commission: { type: "percent", value: 8 } }),
+    },
+    {
+      write: "update",
+      input: ({ partnerId }) => ({
+        partnerId,
+        name: "Camping Les Pins",
+        commission: { type: "percent", value: 12 },
+      }),
+    },
+    { write: "setArchived", input: ({ partnerId }) => ({ partnerId, archived: true }) },
+    { write: "updateSettings", input: () => ({ attributionDays: 14 }) },
+    { write: "rotateStatementToken", input: ({ partnerId }) => ({ partnerId }) },
+    { write: "markMonthPaid", input: ({ partnerId }) => ({ partnerId, month: NOVEMBER }) },
+    { write: "cancelPayout", input: ({ payoutId }) => ({ payoutId }) },
+    {
+      write: "adjustCommission",
+      input: () => ({ reservationId: "pl_resa_rght_0000001", amount: 5, note: "Geste" }),
+    },
+    {
+      write: "setForReservation",
+      input: () => ({ reservationId: "pl_resa_rght_0000001", partnerId: null }),
+    },
+  ];
+
+  for (const { write, input } of managerOnly) {
+    test(`${write}: a member without manage_settings is refused, the owner is not`, async () => {
+      const partner = await campsite();
+      await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_rght_0000001")]);
+      await credit("pl_resa_rght_0000001", partner.code);
+      // A month left to pay, and a payout recorded earlier to cancel.
+      await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_rgh2_0000001")]);
+      await credit("pl_resa_rgh2_0000001", partner.code);
+      const [payout] = await louezDb.db
+        .insert(louezDb.partnerPayouts)
+        .values({
+          storeId: STORE,
+          partnerId: partner.id,
+          month: NOVEMBER,
+          amount: "11.00",
+          currency: "EUR",
+          userId: OWNER,
+        })
+        .$returningId();
+      const procedure = router[write] as Parameters<typeof orpc.call>[0];
+      const args = input({ partnerId: partner.id, payoutId: payout.id });
+
+      await assert.rejects(
+        orpc.call(procedure, args, { context: session(MEMBER) }),
+        (error: { data?: { code?: string } }) => error.data?.code === "PERMISSION_DENIED",
+      );
+      await orpc.call(procedure, args, { context: session() });
+    });
+  }
 
   test("procedures stay in the session's store, and give their links", async () => {
     const created = await orpc.call(

@@ -19,9 +19,11 @@ import {
 } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
 
+import { useStoreHasPermission } from "@/contexts/store-context";
 import { apiErrorKey } from "@/lib/orpc/errors";
 import { partnersMutations, partnersQueries } from "@/lib/queries/partners.queries";
 
+import { PartnersReadOnlyNotice } from "./partners-read-only-notice";
 import { usePartnersAnalytics } from "./use-partners-analytics";
 
 interface ReservationPartnerCardProps {
@@ -40,6 +42,7 @@ export const ReservationPartnerCard = ({ storeId, reservationId }: ReservationPa
   const tErrors = useTranslations("errors");
   const queryClient = useQueryClient();
   const analytics = usePartnersAnalytics(storeId);
+  const canManage = useStoreHasPermission("manage_settings");
   const { data } = useQuery(partnersQueries.forReservation(reservationId));
   const setPartner = useMutation({
     ...partnersMutations.setForReservation(),
@@ -85,7 +88,7 @@ export const ReservationPartnerCard = ({ storeId, reservationId }: ReservationPa
               size="icon"
               className="size-8 shrink-0"
               aria-label={t("remove")}
-              disabled={setPartner.isPending}
+              disabled={!canManage || setPartner.isPending}
               onClick={() => setPartner.mutate({ reservationId, partnerId: null })}
             >
               <X className="size-4" />
@@ -102,7 +105,7 @@ export const ReservationPartnerCard = ({ storeId, reservationId }: ReservationPa
               }
             }}
           >
-            <SelectTrigger disabled={setPartner.isPending}>
+            <SelectTrigger disabled={!canManage || setPartner.isPending}>
               <SelectValue placeholder={current ? t("change") : t("attribute")} />
             </SelectTrigger>
             <SelectContent>
@@ -114,6 +117,7 @@ export const ReservationPartnerCard = ({ storeId, reservationId }: ReservationPa
             </SelectContent>
           </Select>
         )}
+        {!canManage && <PartnersReadOnlyNotice />}
       </CardContent>
     </Card>
   );
