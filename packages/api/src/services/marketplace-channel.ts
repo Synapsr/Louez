@@ -3,6 +3,8 @@ import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   categories,
   db,
+  excludeDemoStores,
+  isDemoStore,
   markStore,
   products,
   storeIntegrations,
@@ -143,6 +145,10 @@ type EnableMarketplaceChannelParams = {
 export async function enableMarketplaceChannel(
   params: EnableMarketplaceChannelParams,
 ): Promise<MarketplaceChannelState> {
+  // A demo store (packages/db demo-stores.ts) is a visitor's sandbox, never published.
+  if (await isDemoStore(db, params.storeId)) {
+    throw new ApiServiceError("FORBIDDEN", "errors.demoStoreActionDisabled");
+  }
   const existing = await db.query.storeMarketplaceChannels.findFirst({
     where: eq(storeMarketplaceChannels.storeId, params.storeId),
     columns: { termsAcceptedAt: true, consentBasis: true },
@@ -524,6 +530,7 @@ export async function listMarketplaceDefaultPublicationCandidates(): Promise<
     .leftJoin(storeMarketplaceChannels, eq(storeMarketplaceChannels.storeId, stores.id))
     .where(
       and(
+        excludeDemoStores(),
         isNull(storeMarketplaceChannels.ownerDecidedAt),
         or(
           isNull(storeMarketplaceChannels.id),

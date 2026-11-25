@@ -6,7 +6,7 @@ import { AI_ROBOTS_TOKENS } from "@louez/api/contracts/ai-visibility";
 
 import { isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { isLoopbackHost } from "@/lib/util.host";
-import { getRequestHost, isStorefrontHost } from "@/lib/util.storefront-host";
+import { getRequestHost, isStorefrontHost, resolveStoreFromHost } from "@/lib/util.storefront-host";
 
 // Paths that hold nothing indexable. Storefront funnels (customer sessions,
 // checkout, one-shot links) leak funnel URLs into search results; the
@@ -58,6 +58,11 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     return {
       rules: { userAgent: "*", allow: API_REFERENCE_PATHS, disallow: "/" },
     };
+  }
+
+  // A demo store (lib/demo): a visitor's sandbox, never crawled.
+  if ((await resolveStoreFromHost())?.demoVertical) {
+    return { rules: { userAgent: "*", disallow: "/" } };
   }
 
   const headerStore = await headers();

@@ -123,6 +123,16 @@ export {
   reservationStatusStockAction,
   toWholeSeconds,
 } from "./reservation-status";
+export {
+  claimPooledDemoStore,
+  countPooledDemoStores,
+  excludeDemoStores,
+  isDemoStore,
+  isDemoStoreRow,
+  notDemoStoreId,
+  resetDemoStoreCache,
+  type ClaimedDemoStore,
+} from "./demo-stores";
 export { lockCustomerRow } from "./customer-lock";
 export { lockProductRows, lockStoreProductRows } from "./product-lock";
 export {

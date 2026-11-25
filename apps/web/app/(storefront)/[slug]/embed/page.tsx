@@ -58,6 +58,7 @@ const EmbedPage = async ({ params }: EmbedPageProps) => {
             settings: store.settings,
             stripeAccountId: store.stripeAccountId,
             stripeChargesEnabled: store.stripeChargesEnabled,
+            demoVertical: store.demoVertical,
           })}
         />
       </Suspense>

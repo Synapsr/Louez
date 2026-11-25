@@ -1,4 +1,10 @@
-import type { AiAdvisorMode, BusinessHours, DeliverySettings, TaxSettings } from "@louez/types";
+import type {
+  AddressDetails,
+  AiAdvisorMode,
+  BusinessHours,
+  DeliverySettings,
+  TaxSettings,
+} from "@louez/types";
 import type {
   CheckoutProfileField,
   CustomerExtraLayoutItem,
@@ -96,6 +102,12 @@ export interface CheckoutFormProps {
    * owner's name and e-mail, and the e-mail cannot be changed. Null otherwise.
    */
   testMode?: CheckoutTestMode | null;
+  /**
+   * A demo store (lib/demo): the addresses its address fields suggest, and
+   * distances in a straight line, so the checkout calls no paid address or
+   * routing service. Null for any other store.
+   */
+  demoAddresses?: AddressDetails[] | null;
 }
 
 /** The owner a test checkout books for. */

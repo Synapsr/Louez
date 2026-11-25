@@ -6,15 +6,18 @@ mock.module("next/headers", {
   namedExports: { headers: async () => new Headers({ "x-forwarded-proto": "https" }) },
 });
 mock.module("next/server", { namedExports: { connection: async () => {} } });
+let hostStore: { demoVertical: string | null } | null = { demoVertical: null };
 mock.module("@/lib/util.storefront-host", {
   namedExports: {
     isStorefrontHost: async () => true,
     getRequestHost: async () => "shop.louez.io",
+    resolveStoreFromHost: async () => hostStore,
   },
 });
 
 afterEach(() => {
   delete process.env.LOUEZ_SEARCH_INDEXING;
+  hostStore = { demoVertical: null };
 });
 
 test("without the switch, a storefront's robots.txt allows crawling and names its sitemap", async () => {
@@ -32,7 +35,13 @@ test("a storefront's robots.txt names AI crawlers, allowed with the same private
   assert.ok(Array.isArray(result.rules));
   const [ai, everyone] = result.rules;
   assert.ok(Array.isArray(ai.userAgent));
-  for (const token of ["GPTBot", "OAI-SearchBot", "ClaudeBot", "PerplexityBot", "Google-Extended"]) {
+  for (const token of [
+    "GPTBot",
+    "OAI-SearchBot",
+    "ClaudeBot",
+    "PerplexityBot",
+    "Google-Extended",
+  ]) {
     assert.ok(ai.userAgent.includes(token), token);
   }
   assert.equal(ai.allow, "/");
@@ -41,6 +50,12 @@ test("a storefront's robots.txt names AI crawlers, allowed with the same private
 
 test("with LOUEZ_SEARCH_INDEXING=off, robots.txt disallows everything and names no sitemap", async () => {
   process.env.LOUEZ_SEARCH_INDEXING = "off";
+  const { default: robots } = await import("./robots");
+  assert.deepEqual(await robots(), { rules: { userAgent: "*", disallow: "/" } });
+});
+
+test("a demo store's robots.txt disallows everything and names no sitemap", async () => {
+  hostStore = { demoVertical: "ski" };
   const { default: robots } = await import("./robots");
   assert.deepEqual(await robots(), { rules: { userAgent: "*", disallow: "/" } });
 });

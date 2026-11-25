@@ -7645,7 +7645,8 @@
         "depositNote": "测试期间不收取押金。",
         "submit": "模拟付款",
         "notPending": "此预订已不再等待付款。",
-        "viewReservation": "查看预订"
+        "viewReservation": "查看预订",
+        "depositNoteDemo": "The deposit is settled when the equipment is picked up."
       }
     },
     "notFound": {
@@ -10000,7 +10001,8 @@
       "none": "此预订已没有未确认的授权。"
     },
     "planOfferUnavailable": "此优惠已不再适用于您的店铺。请在订阅页面查看套餐。",
-    "aiVisibilityNotIncluded": "你的套餐不包含 AI 助手可见性。"
+    "aiVisibilityNotIncluded": "你的套餐不包含 AI 助手可见性。",
+    "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",
@@ -10569,6 +10571,51 @@
           }
         }
       }
+    }
+  },
+  "demo": {
+    "launcher": {
+      "preparing": "Opening your sample store…",
+      "start": "Open the demo",
+      "retry": "Try again",
+      "signedInNotice": "You are signed in to your Louez account. The demo opens in a separate session: you will be signed out of your account.",
+      "errors": {
+        "rate_limited": "Several demos were already opened from your connection. Try again in an hour.",
+        "capacity": "All our demo stores are busy. Try again in a few minutes.",
+        "failed": "The demo could not open. Try again in a moment."
+      },
+      "ready": "Ready"
+    },
+    "banner": {
+      "short": "Demo store",
+      "line": "Demo store · made-up data, nothing is sent or charged",
+      "lineHours": "Demo store · made-up data, nothing is sent or charged · erased in {hours} h",
+      "lineSoon": "Demo store · made-up data, nothing is sent or charged · erased in less than an hour",
+      "openStorefront": "View the storefront",
+      "signup": "Create my free store",
+      "signupShort": "Create my store"
+    },
+    "storefrontBanner": {
+      "short": "Demo store",
+      "line": "Demo store · book as a customer would, the payment is simulated",
+      "dashboard": "See the rental side",
+      "signup": "Create my free store",
+      "signupShort": "Create my store"
+    },
+    "guide": {
+      "title": "Things to try",
+      "progress": "{done} of {total}"
+    },
+    "storefrontGuide": {
+      "title": "Choose your case",
+      "simulated": "The payment is simulated, nothing is charged.",
+      "otherScenario": "The other scenario",
+      "ownerSide": "See the rental side"
+    },
+    "ownerSide": {
+      "title": "This booking has reached the rental shop",
+      "description": "Open it on the rental side: gear to prepare, payment, deposit and contract, with what the customer entered.",
+      "cta": "See the rental side"
     }
   }
 }

@@ -4,6 +4,7 @@ import {
   categories,
   db,
   effectiveProductQuantitySql,
+  excludeDemoStores,
   marketplaceCatalogTombstones,
   productAccessories,
   productCategories,
@@ -398,6 +399,8 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
     .where(
       and(
         eq(stores.onboardingCompleted, true),
+        // A demo store (packages/db demo-stores.ts) is never on the marketplace.
+        excludeDemoStores(),
         channelStatusCondition,
         isNotNull(storeMarketplaceChannels.publishedAt),
         cursorCondition,
@@ -588,6 +591,7 @@ export async function listProductSnapshots(params: CatalogListParams): Promise<{
       and(
         eq(products.status, "active"),
         eq(stores.onboardingCompleted, true),
+        excludeDemoStores(),
         eq(storeMarketplaceChannels.status, "published"),
         cursorCondition,
       ),

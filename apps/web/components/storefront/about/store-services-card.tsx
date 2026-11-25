@@ -13,6 +13,7 @@ interface StoreServicesCardProps {
   settings: StoreSettings | null | undefined;
   stripeAccountId: string | null;
   stripeChargesEnabled: boolean | null;
+  demoVertical?: string | null;
 }
 
 interface ServiceRow {
@@ -56,9 +57,15 @@ export const StoreServicesCard = async ({
   settings,
   stripeAccountId,
   stripeChargesEnabled,
+  demoVertical,
 }: StoreServicesCardProps) => {
   const [t, locale] = await Promise.all([getTranslations("storefront.about"), getLocale()]);
-  const mode = getEffectiveReservationMode({ settings, stripeAccountId, stripeChargesEnabled });
+  const mode = getEffectiveReservationMode({
+    settings,
+    stripeAccountId,
+    stripeChargesEnabled,
+    demoVertical,
+  });
   const currency = settings?.currency ?? "EUR";
   const delivery = settings?.delivery;
 

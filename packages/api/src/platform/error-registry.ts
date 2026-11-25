@@ -215,6 +215,7 @@ export const LOUEZ_ERROR_I18N_KEYS: ReadonlySet<string> = new Set([
   "errors.conversationNotFound",
   "errors.customerNotFound",
   "errors.deliveryRequired",
+  "errors.demoStoreActionDisabled",
   "errors.depositAttempt.needsStripe",
   "errors.depositAttempt.none",
   "errors.downtimeCloseExtends",

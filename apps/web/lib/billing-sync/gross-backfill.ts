@@ -4,6 +4,7 @@ import {
   billingSyncState,
   db,
   excludeTestReservations,
+  notDemoStoreId,
   isPaymentReceiptSql,
   markReservation,
   paymentRequests,
@@ -252,6 +253,8 @@ async function loadCandidates(): Promise<Candidate[]> {
         isPaymentReceiptSql(),
         // A test reservation's payments are simulated and never billed (packages/db test-reservations.ts).
         excludeTestReservations(),
+        // Nor a demo store's (packages/db demo-stores.ts).
+        notDemoStoreId(reservations.storeId),
         or(
           isNull(payments.grossMinor),
           isNull(payments.insuranceShareMinor),

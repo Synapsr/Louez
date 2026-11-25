@@ -24,6 +24,8 @@ import { PageTracker } from "@/components/storefront/page-tracker";
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
+import { demoCheckoutCustomer } from "@/lib/demo/demo-checkout";
+import { DEMO_VERTICALS, isDemoVerticalKey } from "@/lib/demo/verticals";
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { generateStoreMetadata } from "@/lib/seo";
@@ -224,9 +226,21 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
           advanceNoticeMinutes={store.settings?.advanceNoticeMinutes ?? 0}
           minRentalMinutes={getMinRentalMinutes(store.settings)}
           timezone={store.settings?.timezone}
-          initialCustomer={session ? toCheckoutInitialCustomer(session.customer) : null}
+          initialCustomer={
+            session
+              ? toCheckoutInitialCustomer(session.customer)
+              : // A demo store (lib/demo): the visitor books as its invented customer.
+                store.demoVertical
+                ? { ...demoCheckoutCustomer }
+                : null
+          }
           initialCustomerFieldValues={savedCustomerFieldValues}
           initialCustomerProfileValues={savedCustomerProfileValues}
+          demoAddresses={
+            isDemoVerticalKey(store.demoVertical)
+              ? DEMO_VERTICALS[store.demoVertical].deliveryAddresses
+              : null
+          }
           testMode={
             testMode
               ? {

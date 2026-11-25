@@ -150,6 +150,8 @@ interface DashboardContentProps {
   visibility: VisibilityView | null;
   /** The user owns the store, so may be offered a plan (the billing pages are the owner's). */
   isStoreOwner: boolean;
+  /** A demo store (lib/demo): no marketplace seat nor agent to offer. */
+  isDemoStore: boolean;
 }
 
 async function DashboardContent({
@@ -166,6 +168,7 @@ async function DashboardContent({
   testReservation,
   visibility,
   isStoreOwner,
+  isDemoStore,
 }: DashboardContentProps) {
   // Stores that want online payments track the Stripe KYC left pending during
   // onboarding (payment mode degrades to request mode until Stripe can charge).
@@ -187,17 +190,20 @@ async function DashboardContent({
   const storeState = determineStoreState(metrics);
   const timeOfDay = getTimeOfDay();
   const billingEnabled = isBillingEnabled();
-  const assistant = shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection })
-    ? getMcpEndpoint()
-    : null;
-  const launchSeatOpen = canClaimLaunchSeat({
-    billingEnabled,
-    isFromReeent,
-    hasLifetimeFeeWaiver: Boolean(channelState.channel?.lifetimeFeeWaiverAt),
-    publishedOnReeent: Boolean(channelState.channel?.publishedAt),
-    remainingSeats: cohort.remaining,
-    dismissedNoticeIds,
-  });
+  const assistant =
+    !isDemoStore && shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection })
+      ? getMcpEndpoint()
+      : null;
+  const launchSeatOpen =
+    !isDemoStore &&
+    canClaimLaunchSeat({
+      billingEnabled,
+      isFromReeent,
+      hasLifetimeFeeWaiver: Boolean(channelState.channel?.lifetimeFeeWaiverAt),
+      publishedOnReeent: Boolean(channelState.channel?.publishedAt),
+      remainingSeats: cohort.remaining,
+      dismissedNoticeIds,
+    });
   // One guidance card at a time (docs/product/accueil-prochaine-etape.md).
   const nextStep = pickHomeNextStep({
     dismissedNoticeIds,
@@ -313,6 +319,7 @@ export default async function DashboardHomePage() {
       firstName={firstName}
       launchChecklist={launchChecklist}
       isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
+      isDemoStore={Boolean(store.demoVertical)}
       hasStripeAccount={store.stripeAccountId !== null}
       dismissedNoticeIds={dismissedNoticeIds}
       testReservation={testReservation}

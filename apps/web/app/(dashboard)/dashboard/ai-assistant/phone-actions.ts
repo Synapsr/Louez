@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -20,6 +22,9 @@ import { currentUserHasPermission, getCurrentStore } from "@/lib/store-context";
  * costing rental money, so it is never left attached to a disabled agent.
  */
 export async function updateAiPhoneSettings(data: AiPhoneSettingsInput) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore();
   if (!store || !(await currentUserHasPermission("manage_settings"))) {
     return { error: "errors.unauthorized" };

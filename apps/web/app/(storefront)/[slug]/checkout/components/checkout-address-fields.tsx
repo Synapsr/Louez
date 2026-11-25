@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Label } from "@louez/ui";
 
-import { AddressInput } from "@/components/ui/address-input";
+import { AddressInput, type AddressInputSource } from "@/components/ui/address-input";
 import { withForm } from "@/hooks/form/form";
 import { getFieldError } from "@/hooks/form/form-context";
 
@@ -21,13 +21,15 @@ interface CheckoutAddressFieldsProps {
   /** The suggestion last picked, with its coordinates; kept outside the form (not submitted). */
   pick: CustomerAddressPick | null;
   onPickChange: (pick: CustomerAddressPick | null) => void;
+  /** Where the address field looks addresses up; the platform's lookup by default. */
+  source?: AddressInputSource;
 }
 
 /** Customer address: autocomplete line, then postal code and city, filled from a picked suggestion. */
 export const CheckoutAddressFields = withForm({
   ...checkoutFormOptions,
   props: checkoutStepProps<CheckoutAddressFieldsProps>(),
-  render: ({ form, pick, onPickChange }) => {
+  render: ({ form, pick, onPickChange, source }) => {
     const t = useTranslations("storefront.checkout");
     const address = useStore(form.store, (state) => state.values.address);
     const postalCode = useStore(form.store, (state) => state.values.postalCode);
@@ -45,6 +47,7 @@ export const CheckoutAddressFields = withForm({
                   {t("address")}
                 </Label>
                 <AddressInput
+                  source={source}
                   id={field.name}
                   name={field.name}
                   value={field.state.value}

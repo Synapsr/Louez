@@ -7645,7 +7645,8 @@
         "depositNote": "La caution n'est pas prise pendant un test.",
         "submit": "Simuler le paiement",
         "notPending": "Cette réservation n'attend plus de paiement.",
-        "viewReservation": "Voir la réservation"
+        "viewReservation": "Voir la réservation",
+        "depositNoteDemo": "La caution se règle au retrait du matériel."
       }
     },
     "notFound": {
@@ -10000,7 +10001,8 @@
       "none": "Cette réservation n'a plus d'empreinte non confirmée."
     },
     "planOfferUnavailable": "Cette offre ne s'applique plus à votre boutique. Retrouvez les abonnements sur la page Abonnement.",
-    "aiVisibilityNotIncluded": "Votre offre n'inclut pas la visibilité auprès des assistants IA."
+    "aiVisibilityNotIncluded": "Votre offre n'inclut pas la visibilité auprès des assistants IA.",
+    "demoStoreActionDisabled": "Cette action est désactivée dans la boutique de démonstration."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",
@@ -10569,6 +10571,51 @@
           }
         }
       }
+    }
+  },
+  "demo": {
+    "launcher": {
+      "preparing": "Votre boutique d'exemple s'ouvre…",
+      "start": "Ouvrir la démo",
+      "retry": "Réessayer",
+      "signedInNotice": "Vous êtes connecté à votre compte Louez. La démonstration s'ouvre dans une session à part : vous serez déconnecté de votre compte.",
+      "errors": {
+        "rate_limited": "Plusieurs démos ont déjà été ouvertes depuis votre connexion. Réessayez dans une heure.",
+        "capacity": "Toutes nos boutiques de démonstration sont occupées. Réessayez dans quelques minutes.",
+        "failed": "La démo n'a pas pu s'ouvrir. Réessayez dans un instant."
+      },
+      "ready": "C'est prêt"
+    },
+    "banner": {
+      "short": "Boutique de démonstration",
+      "line": "Boutique de démonstration · données fictives, rien n'est envoyé ni facturé",
+      "lineHours": "Boutique de démonstration · données fictives, rien n'est envoyé ni facturé · supprimée dans {hours} h",
+      "lineSoon": "Boutique de démonstration · données fictives, rien n'est envoyé ni facturé · supprimée dans moins d'une heure",
+      "openStorefront": "Voir la boutique",
+      "signup": "Créer ma boutique gratuite",
+      "signupShort": "Créer ma boutique"
+    },
+    "storefrontBanner": {
+      "short": "Boutique de démonstration",
+      "line": "Boutique de démonstration · réservez comme un client, le paiement est simulé",
+      "dashboard": "Voir côté loueur",
+      "signup": "Créer ma boutique gratuite",
+      "signupShort": "Créer ma boutique"
+    },
+    "guide": {
+      "title": "À essayer",
+      "progress": "{done} sur {total}"
+    },
+    "storefrontGuide": {
+      "title": "Choisissez votre cas",
+      "simulated": "Paiement simulé, rien n’est facturé.",
+      "otherScenario": "L’autre scénario",
+      "ownerSide": "Voir côté loueur"
+    },
+    "ownerSide": {
+      "title": "Cette réservation est arrivée chez le loueur",
+      "description": "Ouvrez-la côté loueur : matériel à préparer, paiement, caution et contrat, avec ce que le client a renseigné.",
+      "cta": "Voir côté loueur"
     }
   }
 }

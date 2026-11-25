@@ -10,7 +10,7 @@ import {
  * Respects customer notification settings and uses the language saved with the reservation.
  */
 
-import { db, reservations } from "@louez/db";
+import { db, isDemoStore, reservations } from "@louez/db";
 import { and, eq } from "drizzle-orm";
 
 import { resolveReservationEmailLocale, type EmailLocale } from "@/lib/email/i18n";
@@ -213,6 +213,12 @@ export async function dispatchCustomerNotification(
     email: { sent: false },
     sms: { sent: false },
   };
+  // A demo store (lib/demo) sends nothing to anyone.
+  if (await isDemoStore(db, ctx.store.id)) {
+    result.email.skipped = true;
+    result.sms.skipped = true;
+    return result;
+  }
 
   // Preferences, with the default of an event the saved settings predate
   const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
@@ -320,6 +326,8 @@ export async function sendCustomerNotificationChannel(
    */
   deliveryKey?: string,
 ): Promise<{ skipped: string } | undefined> {
+  // A demo store (lib/demo) sends nothing to anyone.
+  if (await isDemoStore(db, ctx.store.id)) return { skipped: "demo store" };
   const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
   const locale = resolveReservationEmailLocale(
     ctx.reservation.locale ?? null,

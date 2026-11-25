@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { isStandaloneMode } from "@/lib/deployment";
-import { buildStorefrontUrl } from "@/lib/util.storefront-url";
+import { buildStorefrontUrl, toStorefrontPathSuffix } from "@/lib/util.storefront-url";
 
 import { env } from "@/env";
 
@@ -45,6 +45,12 @@ const getStorefrontProtocol = (): "http" | "https" => {
 export const getStorefrontUrl = (slug: string, path: string = "/"): string => {
   const protocol = getStorefrontProtocol();
   const standalone = isStandaloneMode();
+
+  // A preview whose storefronts sit behind another host scheme (STOREFRONT_URL_TEMPLATE).
+  const template = env.STOREFRONT_URL_TEMPLATE;
+  if (template && !standalone) {
+    return `${template.replace("{slug}", slug).replace(/\/+$/, "")}${toStorefrontPathSuffix(path)}`;
+  }
 
   return buildStorefrontUrl({
     slug,

@@ -39,6 +39,7 @@ export const RESERVED_SLUGS = [
   // (apps/web/lib/reserved-slugs.test.ts keeps this list complete).
   "account-deleted",
   "active-store",
+  "demo",
   "demos",
   "dev",
   "embed",

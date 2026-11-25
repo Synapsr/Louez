@@ -30,6 +30,8 @@ export interface ReservationPageViewProps {
   /** A test reservation (lib/test-reservations): marked "Test". */
   isTest?: boolean;
   reviewPrompt?: ReactNode;
+  /** A demo store (lib/demo): the way to the same booking on the rental side. */
+  demoPrompt?: ReactNode;
   /** Per-unit details the store asks for (sizes, levels…), next to the rented items. */
   rentalDetails?: ReactNode;
   readOnly?: boolean;
@@ -58,6 +60,7 @@ export const ReservationPageView = ({
   calendarLinks,
   isTest = false,
   reviewPrompt,
+  demoPrompt,
   rentalDetails,
   readOnly = false,
   onAcceptQuote,
@@ -94,6 +97,8 @@ export const ReservationPageView = ({
       </div>
 
       <ReservationOutcomeBanner {...outcome} />
+
+      {demoPrompt}
 
       <div className="flex flex-col gap-3 rounded-2xl bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
         <ReservationStatusCard {...statusCard} />

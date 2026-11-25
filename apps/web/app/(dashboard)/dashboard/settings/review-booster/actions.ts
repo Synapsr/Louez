@@ -1,5 +1,7 @@
 "use server";
 
+import { refuseOnDemoStore } from "@/lib/demo/refuse-on-demo-store";
+
 import { revalidatePath } from "next/cache";
 
 import { db, mergeStoreRow } from "@louez/db";
@@ -14,6 +16,9 @@ import {
 } from "@louez/validations";
 
 export async function updateReviewBoosterSettings(data: ReviewBoosterSettingsInput) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return demoRefusal;
   const store = await getCurrentStore();
   if (!store) {
     return { error: "errors.unauthorized" };
@@ -46,6 +51,9 @@ export async function updateReviewBoosterSettings(data: ReviewBoosterSettingsInp
 }
 
 export async function searchGooglePlaces(query: string) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, results: [] };
   const store = await getCurrentStore();
   if (!store) {
     return { error: "errors.unauthorized", results: [] };
@@ -61,6 +69,9 @@ export async function searchGooglePlaces(query: string) {
 }
 
 export async function fetchGooglePlaceDetails(placeId: string) {
+  // A demo store (lib/demo) never reaches a provider from here.
+  const demoRefusal = await refuseOnDemoStore();
+  if (demoRefusal) return { ...demoRefusal, details: null };
   const store = await getCurrentStore();
   if (!store) {
     return { error: "errors.unauthorized", details: null };

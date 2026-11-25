@@ -83,6 +83,17 @@ function getTransporter(): Transporter {
   return transporter;
 }
 
+/**
+ * Whether the address is in a top-level domain reserved so that no mail can be
+ * delivered there (RFC 2606): `.example` and `.invalid`. Demo stores (apps/web
+ * lib/demo) hold only such addresses, so a send that slipped past their guards
+ * still reaches nobody, and never leaves for the SMTP provider.
+ */
+export function isUndeliverableEmailAddress(address: string): boolean {
+  const domain = address.trim().toLowerCase().split("@").pop()?.replace(/[>\s]+$/, "") ?? "";
+  return /\.(example|invalid)$/.test(domain);
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -92,6 +103,10 @@ export async function sendEmail({
   fromName,
   replyTo,
 }: SendEmailOptions) {
+  if (isUndeliverableEmailAddress(to)) {
+    console.log("[email] undeliverable reserved domain: an e-mail was skipped");
+    return { messageId: `email-undeliverable-${Date.now()}`, success: true };
+  }
   // No transport configured: log-and-skip with a synthetic success so callers
   // (auth flows, notification dispatchers) degrade instead of throwing.
   // Blocking flows should pre-check isEmailConfigured() to show an honest UI.

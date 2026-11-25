@@ -1,5 +1,7 @@
 import { nanoid } from "nanoid";
 
+import { db, isDemoStore } from "@louez/db";
+
 import { log } from "@/lib/evlog";
 
 import { sendSms } from "./client";
@@ -50,6 +52,8 @@ export type SmsDeliveryResult =
 const ACCEPTANCE_TRIES = 2;
 
 export async function deliverSms(input: SmsDeliveryInput): Promise<SmsDeliveryResult> {
+  // A demo store (lib/demo) texts no one.
+  if (await isDemoStore(db, input.storeId)) return { success: false, error: "demo store" };
   const message = fitSmsSegments(input.message);
   if (input.deliveryKey && (await isSmsAccepted(input.deliveryKey))) {
     return { success: true };

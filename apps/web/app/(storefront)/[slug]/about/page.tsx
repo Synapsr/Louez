@@ -40,6 +40,7 @@ export const generateMetadata = async ({ params }: AboutPageProps): Promise<Meta
   return generateStoreMetadata(
     {
       id: store.id,
+      demoVertical: store.demoVertical,
       name: store.name,
       slug: store.slug,
       tagline: store.tagline,
@@ -96,6 +97,7 @@ const AboutPage = async ({ params }: AboutPageProps) => {
           settings={settings}
           stripeAccountId={store.stripeAccountId}
           stripeChargesEnabled={store.stripeChargesEnabled}
+          demoVertical={store.demoVertical}
         />
 
         <nav aria-label={t("moreTitle")} className="flex flex-wrap gap-x-6 gap-y-2">

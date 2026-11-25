@@ -38,6 +38,7 @@ export const generateMetadata = async ({ params }: ContactPageProps): Promise<Me
   return generateStoreMetadata(
     {
       id: store.id,
+      demoVertical: store.demoVertical,
       name: store.name,
       slug: store.slug,
       tagline: store.tagline,

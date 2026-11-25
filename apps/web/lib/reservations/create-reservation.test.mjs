@@ -29,6 +29,9 @@ for (const mode of ["request", "payment", "payment-unavailable"]) {
       customerPhone: null,
     };
     const create = runInNewContext(`${compiled}; createReservation`, {
+      // Not a demo store (lib/demo): the ordinary checkout.
+      isDemoStore: async () => false,
+      db: {},
       checkMarketplaceCapability: async () => null,
       prepareReservation: async () => ({ ok: true, prepared }),
       checkReservationGate: async () => ({ accepts: true }),
@@ -115,6 +118,9 @@ const checkoutFixture = ({
     customerPhone: null,
   };
   const create = runInNewContext(`${compiled}; createReservation`, {
+    // Not a demo store (lib/demo): the ordinary checkout.
+    isDemoStore: async () => false,
+    db: {},
     checkMarketplaceCapability: async () => null,
     prepareReservation: async () => ({ ok: true, prepared }),
     checkReservationGate: async (storeId, surface) => {
@@ -228,10 +234,13 @@ for (const source of ["online", "marketplace", "phone"]) {
     assert.equal(result.ok, false);
     // Generic, with the store's contact: renters never see a billing reason.
     assert.equal(result.error, "errors.storeNotAcceptingReservations");
-    assert.deepEqual({ ...result.params }, {
-      hasContact: "yes",
-      contact: "+33 6 12 34 56 78 · shop@example.test",
-    });
+    assert.deepEqual(
+      { ...result.params },
+      {
+        hasContact: "yes",
+        contact: "+33 6 12 34 56 78 · shop@example.test",
+      },
+    );
     assert.deepEqual(fixture.gateChecks, [{ storeId: "store", surface: source }]);
     assert.equal(fixture.writes.length, 0);
     assert.equal(fixture.notifications.length, 0);

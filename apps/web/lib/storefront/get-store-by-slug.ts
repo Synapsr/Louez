@@ -36,6 +36,8 @@ const storefrontStoreColumns = {
   aiAdvisorSettings: true,
   reviewBoosterSettings: true,
   onboardingCompleted: true,
+  // A demo store (lib/demo): the banner, noindex, simulated payment.
+  demoVertical: true,
   createdAt: true,
   updatedAt: true,
 } as const;

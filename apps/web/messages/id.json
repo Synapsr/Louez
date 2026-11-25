@@ -7645,7 +7645,8 @@
         "depositNote": "Deposit tidak diambil selama uji.",
         "submit": "Simulasikan pembayaran",
         "notPending": "Reservasi ini tidak lagi menunggu pembayaran.",
-        "viewReservation": "Lihat reservasi"
+        "viewReservation": "Lihat reservasi",
+        "depositNoteDemo": "The deposit is settled when the equipment is picked up."
       }
     },
     "notFound": {
@@ -10000,7 +10001,8 @@
       "none": "Reservasi ini tidak lagi memiliki otorisasi yang belum dikonfirmasi."
     },
     "planOfferUnavailable": "Penawaran ini tidak berlaku lagi untuk toko Anda. Paket tersedia di halaman Langganan.",
-    "aiVisibilityNotIncluded": "Paket Anda tidak mencakup visibilitas di asisten AI."
+    "aiVisibilityNotIncluded": "Paket Anda tidak mencakup visibilitas di asisten AI.",
+    "demoStoreActionDisabled": "This action is turned off in the demo store."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",
@@ -10569,6 +10571,51 @@
           }
         }
       }
+    }
+  },
+  "demo": {
+    "launcher": {
+      "preparing": "Opening your sample store…",
+      "start": "Open the demo",
+      "retry": "Try again",
+      "signedInNotice": "You are signed in to your Louez account. The demo opens in a separate session: you will be signed out of your account.",
+      "errors": {
+        "rate_limited": "Several demos were already opened from your connection. Try again in an hour.",
+        "capacity": "All our demo stores are busy. Try again in a few minutes.",
+        "failed": "The demo could not open. Try again in a moment."
+      },
+      "ready": "Ready"
+    },
+    "banner": {
+      "short": "Demo store",
+      "line": "Demo store · made-up data, nothing is sent or charged",
+      "lineHours": "Demo store · made-up data, nothing is sent or charged · erased in {hours} h",
+      "lineSoon": "Demo store · made-up data, nothing is sent or charged · erased in less than an hour",
+      "openStorefront": "View the storefront",
+      "signup": "Create my free store",
+      "signupShort": "Create my store"
+    },
+    "storefrontBanner": {
+      "short": "Demo store",
+      "line": "Demo store · book as a customer would, the payment is simulated",
+      "dashboard": "See the rental side",
+      "signup": "Create my free store",
+      "signupShort": "Create my store"
+    },
+    "guide": {
+      "title": "Things to try",
+      "progress": "{done} of {total}"
+    },
+    "storefrontGuide": {
+      "title": "Choose your case",
+      "simulated": "The payment is simulated, nothing is charged.",
+      "otherScenario": "The other scenario",
+      "ownerSide": "See the rental side"
+    },
+    "ownerSide": {
+      "title": "This booking has reached the rental shop",
+      "description": "Open it on the rental side: gear to prepare, payment, deposit and contract, with what the customer entered.",
+      "cta": "See the rental side"
     }
   }
 }

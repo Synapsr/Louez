@@ -35,6 +35,7 @@ export const generateMetadata = async ({ params }: TermsPageProps): Promise<Meta
   return generateStoreMetadata(
     {
       id: store.id,
+      demoVertical: store.demoVertical,
       name: store.name,
       slug: store.slug,
       tagline: store.tagline,

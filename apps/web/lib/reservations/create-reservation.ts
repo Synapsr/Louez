@@ -16,6 +16,7 @@ import {
   getBlockingReservationStatuses,
   findStoreTestReservation,
   insertReservation,
+  isDemoStore,
   lockReservationOnlyInTransaction,
   payments,
   productAccessories,
@@ -55,6 +56,9 @@ import {
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { checkReservationGate } from "@/lib/billing/reservation-gate";
+import { captureDemoEvent, demoAnalyticsEvents } from "@/lib/demo/demo-analytics";
+import { withDemoVisitorContact } from "@/lib/demo/demo-checkout";
+import { isDemoVerticalKey } from "@/lib/demo/verticals/types";
 import { renterGateRefusalParams } from "@/lib/billing/reservation-gate-error";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
@@ -1194,10 +1198,14 @@ export const createReservation = async (
   input: CreateReservationRequest,
 ): Promise<CreateReservationResult> => {
   // A test checkout (lib/test-reservations) books for the owner who started it:
-  // its messages go to the owner's e-mail, whatever the form sent.
+  // its messages go to the owner's e-mail, whatever the form sent. A demo
+  // store's checkout (lib/demo) books with the demo visitor's invented contact.
+  const demoStore = !input.testMode && (await isDemoStore(db, input.storeId));
   const request: CreateReservationRequest = input.testMode
     ? { ...input, customer: { ...input.customer, email: input.testMode.ownerEmail } }
-    : input;
+    : demoStore
+      ? { ...input, customer: withDemoVisitorContact(input.customer) }
+      : input;
   try {
     const capabilityFailure = await checkMarketplaceCapability(request);
     if (capabilityFailure) return capabilityFailure;
@@ -1223,7 +1231,11 @@ export const createReservation = async (
     // confirmation after payment is never refused, so the start of the booking is.
     // The renter gets the store's contact, never the reason (design §4.7). A test
     // reservation is never billed, and passes.
-    if (!request.testMode && !(await checkReservationGate(store.id, request.source)).accepts) {
+    if (
+      !request.testMode &&
+      !demoStore &&
+      !(await checkReservationGate(store.id, request.source)).accepts
+    ) {
       return failReservation(
         STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
         renterGateRefusalParams(store),
@@ -1251,7 +1263,7 @@ export const createReservation = async (
     // Only the web checkout resumes an existing pending reservation; a test one
     // never takes over another reservation.
     const resumable =
-      request.source === "online" && request.resumeReservationId && !request.testMode
+      request.source === "online" && request.resumeReservationId && !request.testMode && !demoStore
         ? await findResumableCheckout(store.id, request.resumeReservationId, request.customer.email)
         : null;
 
@@ -1322,9 +1334,20 @@ export const createReservation = async (
       });
     }
 
+    // The demo's funnel (lib/demo/demo-analytics.ts): the visitor booked on the storefront.
+    if (demoStore && !written.reused && isDemoVerticalKey(store.demoVertical)) {
+      await captureDemoEvent({
+        event: demoAnalyticsEvents.step,
+        vertical: store.demoVertical,
+        visitorId: store.id,
+        headers: new Headers(),
+        properties: { step: "booking_created" },
+      });
+    }
+
     let paymentUrl: string | null = null;
-    if (effectiveReservationMode === "payment" && request.testMode) {
-      // No Stripe for a test: the storefront's simulated payment page.
+    if (effectiveReservationMode === "payment" && (request.testMode || demoStore)) {
+      // No Stripe for a test or a demo store: the storefront's simulated payment page.
       paymentUrl = getStorefrontUrl(store.slug, testPaymentPath(written.reservationId));
     } else if (effectiveReservationMode === "payment") {
       if (written.reused) {
@@ -1380,9 +1403,10 @@ export const createReservation = async (
       });
     }
 
-    // The owner of a test request lands on it signed in, without a code.
+    // The owner of a test request lands on it signed in, without a code; so
+    // does a demo visitor, who has no inbox the code could reach.
     const instantAccessUrl =
-      request.testMode && effectiveReservationMode === "request"
+      (request.testMode || demoStore) && effectiveReservationMode === "request"
         ? await createReservationInstantAccessUrl({
             storeId: store.id,
             storeSlug: store.slug,

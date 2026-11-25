@@ -1,7 +1,8 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER } from "@/lib/landing-demos/policy";
 import { loadsClientAnalytics } from "@/lib/handoffs/handoff-privacy";
+import { isDemoRequest } from "@/lib/demo/demo-request";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import Script from "next/script";
@@ -69,7 +70,9 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   const isPublicDemo = requestHeaders.get(DEMO_ROUTE_HEADER) === "1";
   // A handoff page's URL holds a secret: no analytics, no client log may read it.
-  const withAnalytics = !isPublicDemo && loadsClientAnalytics(requestHeaders);
+  // A demo store's visitor (lib/demo) is no business metric either.
+  const inDemoStore = await isDemoRequest({ headers: requestHeaders, cookies: await cookies() });
+  const withAnalytics = !isPublicDemo && !inDemoStore && loadsClientAnalytics(requestHeaders);
   const instanceConfig = getInstanceConfig();
   const publicEnv = getPublicEnv();
   // Drives the document language for screen readers and translation tools.

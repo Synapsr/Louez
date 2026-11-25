@@ -3,7 +3,9 @@ import { and, asc, eq, exists, gt, gte, inArray, lte, or } from "drizzle-orm";
 import {
   type BillingMark,
   db,
+  excludeDemoStores,
   excludeTestReservations,
+  notDemoStoreId,
   markBillingDirty,
   newStoresCutoff,
   paymentDisputes,
@@ -65,7 +67,8 @@ export async function runSweep(now: Date = new Date()): Promise<SweepResult> {
     const page = await db
       .select({ id: stores.id, createdAt: stores.createdAt })
       .from(stores)
-      .where(gt(stores.id, storeCursor))
+      // A demo store (lib/demo) is never billed.
+      .where(and(gt(stores.id, storeCursor), excludeDemoStores()))
       .orderBy(asc(stores.id))
       .limit(BATCH);
     if (page.length === 0) break;
@@ -106,6 +109,8 @@ export async function runSweep(now: Date = new Date()): Promise<SweepResult> {
           gt(reservations.id, reservationCursor),
           // A test reservation is never billed (packages/db test-reservations.ts).
           excludeTestReservations(),
+          // Nor a demo store's (packages/db demo-stores.ts).
+          notDemoStoreId(reservations.storeId),
           or(
             inArray(reservations.status, [...OPEN_STATUSES]),
             and(gte(reservations.endDate, since), lte(reservations.endDate, now)),

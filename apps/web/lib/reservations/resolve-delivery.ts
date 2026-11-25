@@ -4,6 +4,7 @@ import { getDeliveryAvailability } from "@louez/utils";
 import type { CreateReservationDeliveryLegInput } from "@louez/validations";
 
 import { resolveReservationLocationSnapshot } from "@louez/api/services/location-snapshots";
+import { straightLineDistanceKm } from "@/lib/demo/demo-addresses";
 import {
   calculateTotalDeliveryFee,
   isDeliveryOrderAmountEligible,
@@ -25,7 +26,16 @@ interface DeliveryStore {
   latitude: string | null;
   longitude: string | null;
   settings: { country?: string } | null;
+  /** A demo store (lib/demo) is never routed: no paid call, a straight line. */
+  demoVertical?: string | null;
 }
+
+type RouteDistanceParams = Parameters<typeof getRouteDistance>[0];
+
+const straightLineDistance = async (params: RouteDistanceParams) => ({
+  distanceKm: straightLineDistanceKm(params),
+  source: "haversine" as const,
+});
 
 export interface ResolvedDelivery {
   settings: DeliverySettings | undefined;
@@ -94,6 +104,7 @@ export const resolveDelivery = async ({
 }): Promise<{ ok: true; delivery: ResolvedDelivery } | ReservationFailure> => {
   // The same reading as checkout and the store's launch checklist.
   const availability = getDeliveryAvailability(settings, store);
+  const routeDistance = store.demoVertical ? straightLineDistance : getRouteDistance;
   const isDeliveryIncluded = availability.deliveryIncluded;
   const isMultiLocationEnabled = availability.multiLocation;
 
@@ -177,7 +188,7 @@ export const resolveDelivery = async ({
     // Legs are routed one after the other: an outbound address beyond the
     // radius is reported before the return leg costs a routing call.
     if (outboundAddress) {
-      const outbound = await getRouteDistance({
+      const outbound = await routeDistance({
         originLatitude: storeLatitude,
         originLongitude: storeLongitude,
         destinationLatitude: outboundAddress.latitude,
@@ -194,7 +205,7 @@ export const resolveDelivery = async ({
     }
 
     if (returnAddress) {
-      const inbound = await getRouteDistance({
+      const inbound = await routeDistance({
         originLatitude: storeLatitude,
         originLongitude: storeLongitude,
         destinationLatitude: returnAddress.latitude,

@@ -13,6 +13,8 @@ export interface StoreReassuranceInput {
   settings: Pick<StoreSettings, "reservationMode" | "delivery"> | null | undefined;
   stripeAccountId?: string | null;
   stripeChargesEnabled?: boolean | null;
+  /** A demo store (lib/demo) takes its simulated payments online. */
+  demoVertical?: string | null;
 }
 
 /**
@@ -25,8 +27,14 @@ export const getStoreReassurance = ({
   settings,
   stripeAccountId,
   stripeChargesEnabled,
+  demoVertical,
 }: StoreReassuranceInput): StoreReassuranceKey[] => {
-  const mode = getEffectiveReservationMode({ settings, stripeAccountId, stripeChargesEnabled });
+  const mode = getEffectiveReservationMode({
+    settings,
+    stripeAccountId,
+    stripeChargesEnabled,
+    demoVertical,
+  });
   const items: StoreReassuranceKey[] =
     mode === "payment" ? ["instantConfirmation", "securePayment"] : ["requestConfirmation"];
 

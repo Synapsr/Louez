@@ -634,6 +634,9 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     const effects: unknown[] = [];
     const store = { id: STORE, slug: "checkout-status", settings: { currency: "EUR" } };
     const checkout = runInNewContext(`${compiled}; createReservation`, {
+      // Not a demo store (lib/demo): the ordinary checkout.
+      isDemoStore: async () => false,
+      db: {},
       checkMarketplaceCapability: async () => null,
       prepareReservation: async () => ({
         ok: true,
@@ -1124,6 +1127,9 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
         const runs: Runs = [];
         const store = { id: STORE, slug: "checkout-status", settings: { currency: "EUR" } };
         const checkout = runInNewContext(`${compiled}; createReservation`, {
+          // Not a demo store (lib/demo): the ordinary checkout.
+          isDemoStore: async () => false,
+          db: {},
           checkMarketplaceCapability: async () => null,
           prepareReservation: async () => ({
             ok: true,

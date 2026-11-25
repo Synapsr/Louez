@@ -10,6 +10,7 @@ import {
   ConsumableStockError,
   type DatabaseOnConnection,
   documents,
+  isDemoStore,
   payments,
   reservationActivity,
   reservations,
@@ -71,7 +72,8 @@ export const simulatedPaymentLockName = (reservationId: string): string =>
   `louez:test-payment:${reservationId}`;
 
 /**
- * The simulated payment of a test reservation (packages/db test-reservations.ts):
+ * The simulated payment of a test reservation (packages/db test-reservations.ts),
+ * or of any booking on a demo store's storefront (packages/db demo-stores.ts):
  * the confirmation a paid checkout gets, with nothing asked of Stripe and nothing
  * billed. One call at a time per reservation, under a MySQL named lock: a call that
  * waits `LOCK_WAIT_SECONDS` without it answers `busy`, and the page asks to try
@@ -127,7 +129,10 @@ async function simulateUnderLock(
       .from(reservations)
       .where(and(eq(reservations.id, input.reservationId), eq(reservations.storeId, input.storeId)))
       .for("update");
-    if (!locked?.isTest) return { error: "not_found" };
+    // A test reservation, or any booking of a demo store (lib/demo): never Stripe.
+    if (!locked || (!locked.isTest && !(await isDemoStore(tx, input.storeId)))) {
+      return { error: "not_found" };
+    }
 
     const [existing] = await tx
       .select({ id: payments.id })

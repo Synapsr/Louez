@@ -72,6 +72,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   return generateProductMetadata(
     {
       id: store.id,
+      demoVertical: store.demoVertical,
       name: store.name,
       slug: store.slug,
       settings: store.settings,

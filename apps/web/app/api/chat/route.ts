@@ -90,6 +90,10 @@ export async function POST(req: Request) {
   if (!store) {
     return new Response("No store found", { status: 403 });
   }
+  // A demo store (lib/demo) calls no paid model: its dashboard shows no assistant.
+  if (store.demoVertical) {
+    return new Response("errors.demoStoreActionDisabled", { status: 403 });
+  }
 
   const body = chatRequestSchema.safeParse(await req.json());
   if (!body.success) {

@@ -53,6 +53,7 @@ const RELEASE = [
   "0114_store_visibility",
   "0115_google_ads_conversions",
   "0116_ai_visibility",
+  "0117_demo_stores",
 ];
 
 interface Journal {

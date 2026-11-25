@@ -1,6 +1,7 @@
 import { getAddressAutocomplete, ApiServiceError } from '@louez/api/services'
 import { addressAutocompleteInputSchema } from '@louez/validations'
 import { NextRequest, NextResponse } from 'next/server'
+import { isInDemoRequest } from '@/lib/demo/demo-request'
 
 function statusFromServiceCode(code: ApiServiceError['code']) {
   switch (code) {
@@ -18,6 +19,8 @@ function statusFromServiceCode(code: ApiServiceError['code']) {
 }
 
 export async function GET(request: NextRequest) {
+  // A demo store (lib/demo) calls no paid maps API: addresses are typed in full.
+  if (await isInDemoRequest()) return NextResponse.json({ suggestions: [] })
   const query = request.nextUrl.searchParams.get('query')
   if (!query || query.length < 3) {
     return NextResponse.json({ suggestions: [] })

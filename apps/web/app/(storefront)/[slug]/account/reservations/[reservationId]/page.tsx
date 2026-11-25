@@ -36,6 +36,7 @@ import {
 
 import type { ReservationUpdateView } from "@/components/storefront/account/reservation-updates-card";
 
+import { DemoOwnerSideCard } from "@/components/storefront/account/demo-owner-side-card";
 import { ReviewPromptCard } from "@/components/storefront/review-prompt-card";
 
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
@@ -432,6 +433,9 @@ export default async function ReservationDetailPage({
         })}
         reviewPrompt={
           reviewUrl ? <ReviewPromptCard storeName={store.name} reviewUrl={reviewUrl} /> : null
+        }
+        demoPrompt={
+          store.demoVertical ? <DemoOwnerSideCard reservationId={reservation.id} /> : null
         }
         rentalDetails={
           <ReservationRentalDetails reservationId={reservationId} initialData={rentalDetails} />

@@ -6,6 +6,7 @@ import { type Locale, defaultLocale, locales } from "@/i18n/config";
 import { isStandaloneMode } from "@/lib/deployment";
 import { env } from "@/env";
 import { getStorePageRobots } from "@/lib/seo.robots";
+import { isDemoStoreRow } from "@louez/db/demo-stores";
 import { buildRentalOffers, type RentalRate } from "@/lib/util.rental-offer-schema";
 import { truncateText } from "@/lib/util.seo-text";
 import { buildStorefrontUrl } from "@/lib/util.storefront-url";
@@ -78,6 +79,8 @@ export interface StoreSeoData {
   faviconUrl?: string | null;
   settings?: StoreSettings | null;
   theme?: StoreTheme | null;
+  /** A demo store (lib/demo): none of its pages is indexed. */
+  demoVertical?: string | null;
 }
 
 export interface ProductSeoData {
@@ -203,7 +206,7 @@ export function generateStoreMetadata(
     alternates: {
       canonical: canonicalUrl,
     },
-    robots: getStorePageRobots(noIndex),
+    robots: getStorePageRobots(noIndex || isDemoStoreRow(store)),
     // The store's favicon, or its logo when it has none
     ...(iconUrl && {
       icons: {
@@ -270,7 +273,7 @@ export function generateProductMetadata(
     alternates: {
       canonical: canonicalUrl,
     },
-    robots: getStorePageRobots(false),
+    robots: getStorePageRobots(isDemoStoreRow(store)),
     openGraph: {
       type: "website",
       locale: toOpenGraphLocale(locale),

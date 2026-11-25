@@ -53,6 +53,8 @@ export type BaseStoreData = {
   logoUrl: string | null;
   stripeAccountId: string | null;
   stripeChargesEnabled: boolean | null;
+  /** A demo store's trade (packages/db demo-stores.ts), null for any other store. */
+  demoVertical?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

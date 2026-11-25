@@ -12,6 +12,8 @@ import { SidebarProvider } from "@louez/ui";
 
 import { env } from "@/env";
 
+import { DemoBanner } from "@/components/demo/demo-banner";
+import { DemoGuide } from "@/components/demo/demo-guide";
 import { DashboardBreadcrumbs } from "@/components/dashboard/dashboard-breadcrumbs";
 import { DashboardBreadcrumbsProvider } from "@/components/dashboard/dashboard-breadcrumbs-context";
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
@@ -38,6 +40,7 @@ import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { areAiCreditsEnabled } from "@/lib/plans";
 import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
+import { getDemoDashboardContext } from "@/lib/demo/demo-dashboard";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
 import { getCurrentPlanSlug } from "@/lib/stripe/subscriptions";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
@@ -118,7 +121,9 @@ export default async function DashboardMainLayout({ children }: { children: Reac
   }
 
   const settings = (store.settings as StoreSettings) || {};
-  const showAIChat = isAIChatConfigured();
+  // A demo store (lib/demo) calls no paid model: its dashboard has no assistant.
+  const demo = await getDemoDashboardContext(store);
+  const showAIChat = isAIChatConfigured() && !demo;
 
   // Get current plan for the store
   const [
@@ -164,8 +169,24 @@ export default async function DashboardMainLayout({ children }: { children: Reac
           timezone={settings.timezone}
         >
           <ReservationPollingProvider interval={30000}>
-            <div className="dashboard relative h-svh overflow-hidden">
-              <SidebarProvider className="h-full min-h-0 overflow-hidden">
+            <div
+              className={
+                demo
+                  ? // The demo bar (h-10) sits above everything: the fixed sidebar starts below it.
+                    "dashboard relative flex h-svh flex-col overflow-hidden [&_[data-slot=sidebar-container]]:top-10 [&_[data-slot=sidebar-container]]:h-[calc(100svh-2.5rem)]"
+                  : "dashboard relative h-svh overflow-hidden"
+              }
+            >
+              {demo ? (
+                <DemoBanner
+                  storefrontUrl={demo.storefrontUrl}
+                  signupUrl={demo.signupUrl}
+                  hoursLeft={demo.hoursLeft}
+                />
+              ) : null}
+              <SidebarProvider
+                className={demo ? "min-h-0 flex-1 overflow-hidden" : "h-full min-h-0 overflow-hidden"}
+              >
                 <DashboardBreadcrumbsProvider>
                   <DashboardSidebar
                     planSlug={planSlug}
@@ -206,9 +227,11 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                   </DashboardContentFrame>
                 </DashboardBreadcrumbsProvider>
               </SidebarProvider>
+              {demo ? <DemoGuide storeId={store.id} steps={demo.steps} /> : null}
               <Suspense fallback={null}>
-                <WelcomeOverlay />
-                <PasskeyEnrollment />
+                {/* A demo visitor is not welcomed as a new owner, nor asked for a passkey. */}
+                {demo ? null : <WelcomeOverlay />}
+                {demo ? null : <PasskeyEnrollment />}
                 <SettingsSearchFocus />
                 {/* Self-hosted instances only: the cloud never asks. */}
                 {isSelfHosted() && <ReviewPrompt />}

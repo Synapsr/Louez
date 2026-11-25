@@ -80,6 +80,10 @@ const handlePost = async (request: Request) => {
   if (!store || !hasPermission(store.role, "write")) {
     return NextResponse.json({ code: "forbidden" }, { status: 403 });
   }
+  // A demo store (lib/demo) calls no paid image model.
+  if (store.demoVertical) {
+    return NextResponse.json({ code: "forbidden" }, { status: 403 });
+  }
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
