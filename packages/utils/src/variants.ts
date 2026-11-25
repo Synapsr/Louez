@@ -92,6 +92,59 @@ export function buildCombinationKey(
   return tokens.join('|')
 }
 
+/** What a booked line chose, as every writer books it (`readLineChoice`). */
+export interface LineChoice {
+  /** The exact combination the line books, or null when it books none. */
+  combinationKey: string | null
+  /** Its values on the product's axes today, or null when it chose none. */
+  selectedAttributes: UnitAttributes | null
+}
+
+/**
+ * What a line chose, read against its product: its exact combination when
+ * every axis has a value, none when it left a choice open (any unit that
+ * matches what it did choose serves it, and the store picks it), the default
+ * combination for a tracked product sold without axes. The checkout, the
+ * dashboard's creation and the API book a line by this rule.
+ */
+export function readLineChoice(
+  product: {
+    trackUnits: boolean | null
+    bookingAttributeAxes: BookingAttributeAxis[] | null | undefined
+  },
+  requested: UnitAttributes | null | undefined,
+): LineChoice {
+  const axes = product.bookingAttributeAxes ?? []
+  const chosen = canonicalizeAttributes(axes, requested)
+  const combinationKey =
+    axes.length > 0
+      ? hasCompleteAttributes(axes, chosen)
+        ? buildCombinationKey(axes, chosen)
+        : null
+      : product.trackUnits
+        ? DEFAULT_COMBINATION_KEY
+        : null
+  return {
+    combinationKey,
+    selectedAttributes: Object.keys(chosen).length > 0 ? chosen : null,
+  }
+}
+
+/**
+ * Whether a line leaves a choice open on a product whose units are tracked:
+ * it books no combination, any matching unit serves it, and no value is
+ * recorded for the axes it left open.
+ */
+export function leavesChoiceOpen(
+  product: {
+    trackUnits: boolean | null
+    bookingAttributeAxes: BookingAttributeAxis[] | null | undefined
+  },
+  choice: LineChoice,
+): boolean {
+  return Boolean(product.trackUnits) && choice.combinationKey === null
+}
+
 /**
  * A line booked without a choice on a product that sells by variants: taken
  * before the product had axes, or its axes changed since. No combination can
@@ -275,40 +328,3 @@ export function resolveBestCombination<T extends CombinationLike>(
   return matching.find((combination) => combination.availableQuantity >= quantity) || null
 }
 
-export function allocateAcrossCombinations<T extends CombinationLike>(
-  axes: BookingAttributeAxis[] | null | undefined,
-  combinations: T[] | null | undefined,
-  selectedAttributes: UnitAttributes | null | undefined,
-  quantity: number,
-): Array<{ combination: T; quantity: number }> | null {
-  if (quantity < 1) {
-    return []
-  }
-
-  const matching = getMatchingCombinations(combinations, selectedAttributes).sort(
-    (a, b) => {
-      const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes)
-      const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes)
-      return sortA.localeCompare(sortB, 'en')
-    },
-  )
-
-  let remaining = quantity
-  const allocations: Array<{ combination: T; quantity: number }> = []
-
-  for (const combination of matching) {
-    if (remaining <= 0) break
-    const available = Math.max(0, combination.availableQuantity || 0)
-    if (available === 0) continue
-
-    const take = Math.min(available, remaining)
-    allocations.push({ combination, quantity: take })
-    remaining -= take
-  }
-
-  if (remaining > 0) {
-    return null
-  }
-
-  return allocations
-}

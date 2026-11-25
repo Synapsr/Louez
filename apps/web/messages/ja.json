@@ -2910,6 +2910,7 @@
         "bufferConflictConfirm": "とにかく割り当てる",
         "suggestUnits": "ユニットの提案"
       },
+      "openChoice": "未選択",
       "smartActions": {
         "paymentIncomplete": "レンタル未払い ({remaining} 残り)",
         "depositNotCollected": "保証金未受領（{amount}）",
@@ -7890,7 +7891,7 @@
       },
       "availableForSelection": "この選択で利用可能なもの: {count}",
       "quantityPerCombinationHint": "数量は選択したオプションにのみ適用されます。別のオプションを別の行として追加します。",
-      "quantityCanSplitHint": "数量は、一致するオプション間で分割し、別個の行として追加できます。",
+      "openOptionsHint": "選択しなかったオプションはレンタル店が選びます。",
       "inCartCount": "すでにカートに入っています: {count}",
       "selectionUnavailable": "この選択では組み合わせはできません。",
       "gallery": {

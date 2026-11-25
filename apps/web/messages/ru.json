@@ -2910,6 +2910,7 @@
         "bufferConflictConfirm": "Все равно назначить",
         "suggestUnits": "Предложить единицы"
       },
+      "openChoice": "не выбрано",
       "smartActions": {
         "paymentIncomplete": "Аренда неоплачена (осталось {remaining})",
         "depositNotCollected": "Залог не получен ({amount})",
@@ -7890,7 +7891,7 @@
       },
       "availableForSelection": "Доступно для этого выбора: {count}",
       "quantityPerCombinationHint": "Количество применимо только к выбранному варианту. Добавьте еще одну опцию отдельной строкой.",
-      "quantityCanSplitHint": "Количество можно разделить на соответствующие варианты и добавить отдельными строками.",
+      "openOptionsHint": "Невыбранные параметры выберет пункт проката.",
       "inCartCount": "Уже в корзине: {count}",
       "selectionUnavailable": "Для этого выбора не существует комбинации.",
       "gallery": {

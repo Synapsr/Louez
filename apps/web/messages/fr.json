@@ -2919,6 +2919,7 @@
         "bufferConflictCancel": "Conserver la sélection",
         "bufferConflictConfirm": "Assigner quand même"
       },
+      "openChoice": "à définir",
       "smartActions": {
         "paymentIncomplete": "Location non réglée ({remaining} restant)",
         "depositNotCollected": "Caution non encaissée ({amount})",
@@ -7890,7 +7891,7 @@
       },
       "availableForSelection": "Disponibles pour cette sélection : {count}",
       "quantityPerCombinationHint": "La quantité s'applique uniquement à l'option sélectionnée. Ajoutez une autre option comme ligne séparée.",
-      "quantityCanSplitHint": "La quantité peut être répartie sur les options correspondantes et ajoutée en lignes séparées.",
+      "openOptionsHint": "Les options laissées ouvertes seront choisies par le loueur.",
       "inCartCount": "Déjà dans le panier : {count}",
       "selectionUnavailable": "Aucune combinaison disponible pour cette sélection.",
       "gallery": {

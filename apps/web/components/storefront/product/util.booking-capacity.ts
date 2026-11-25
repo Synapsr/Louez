@@ -22,7 +22,7 @@ export interface BookingCapacityInput {
 export interface BookingCapacity {
   /** Highest quantity the customer may pick (`null` = unlimited). */
   maxQuantity: StockQuantityLimit;
-  /** `split` when a partial selection may spread over several combinations. */
+  /** `split` when a selection left open may be served by several combinations. */
   allocationMode: "single" | "split";
   /** True when the selection has no stock at all. */
   isSelectionUnavailable: boolean;
@@ -33,7 +33,7 @@ export interface BookingCapacity {
  * attribute axes it is the stock (period stock once known, today's before).
  * With axes, the stock is further bounded by the units matching the
  * selection: a full selection takes the best single combination, a partial
- * one adds up every matching combination (the cart then splits the lines).
+ * one adds up every matching combination (the store then picks the units).
  */
 export const resolveBookingCapacity = ({
   baseMaxQuantity,

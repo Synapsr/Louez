@@ -2910,6 +2910,7 @@
         "bufferConflictConfirm": "无论如何分配",
         "suggestUnits": "建议单位"
       },
+      "openChoice": "待定",
       "smartActions": {
         "paymentIncomplete": "租金未付（剩余{remaining}）",
         "depositNotCollected": "押金尚未收取（{amount}）",
@@ -7890,7 +7891,7 @@
       },
       "availableForSelection": "可用于此选择：{count}",
       "quantityPerCombinationHint": "数量仅适用于所选选项。添加另一个选项作为单独的行。",
-      "quantityCanSplitHint": "数量可以拆分为多个匹配选项并作为单独的行添加。",
+      "openOptionsHint": "未选择的选项将由租赁店选定。",
       "inCartCount": "已在购物车中：{count}",
       "selectionUnavailable": "此选择没有可用的组合。",
       "gallery": {

@@ -30,20 +30,16 @@ import {
 import {
   STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
   withCustomerNotificationDefaults,
-  type BookingAttributeAxis,
   type ProductSnapshot,
   type StoreSettings,
   type UnitAttributes,
 } from "@louez/types";
 import {
-  DEFAULT_COMBINATION_KEY,
   billingFromCustomer,
-  buildCombinationKey,
-  canonicalizeAttributes,
   evaluateReservationRules,
   getDeliveryAvailability,
-  hasCompleteAttributes,
   normalizeCurrency,
+  readLineChoice,
 } from "@louez/utils";
 import { isPossiblePhoneNumberInput } from "@louez/validations";
 
@@ -244,29 +240,6 @@ const MESSAGE_OF = {
     effect: "reservation.confirmationEmail",
   },
 } as const;
-
-/**
- * What a line chose, read against the product under its lock: its exact
- * combination when every axis has a value, none when it left a choice open
- * (any unit that matches what it did choose serves it). The dashboard's
- * manual creation reads it the same way.
- */
-function lineChoice(
-  product: { trackUnits: boolean | null; bookingAttributeAxes: BookingAttributeAxis[] | null },
-  requested: UnitAttributes | undefined,
-): { combinationKey: string | null; selectedAttributes: UnitAttributes | null } {
-  const axes = product.bookingAttributeAxes ?? [];
-  const chosen = canonicalizeAttributes(axes, requested);
-  const combinationKey =
-    axes.length > 0
-      ? hasCompleteAttributes(axes, chosen)
-        ? buildCombinationKey(axes, chosen)
-        : null
-      : product.trackUnits
-        ? DEFAULT_COMBINATION_KEY
-        : null;
-  return { combinationKey, selectedAttributes: Object.keys(chosen).length > 0 ? chosen : null };
-}
 
 /** The first field this version refuses, in the order of `RESERVATION_CREATE_REFUSED_OPTIONS`. */
 function refusedOption(input: CreateReservationInput) {
@@ -633,7 +606,7 @@ export async function createStoreReservation(
 
       // The stock: a confirmation's check, without the buffer then with it.
       const choices = input.lines.map((line) =>
-        lineChoice(locked.get(line.productId)!, line.selectedAttributes),
+        readLineChoice(locked.get(line.productId)!, line.selectedAttributes),
       );
       if (consumableShort(input.lines, locked)) {
         return refuse(reservationErrors.itemsUnavailable("errors.consumableInsufficientStock"));

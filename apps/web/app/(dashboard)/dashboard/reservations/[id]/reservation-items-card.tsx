@@ -20,6 +20,7 @@ import { ShieldSolidIcon } from "@louez/ui/icons";
 import type { BookingAttributeAxis } from "@louez/types";
 import { formatCurrency, formatNumber } from "@louez/utils";
 import { useFormatLocale } from "@/hooks/use-format-locale";
+import { describeLineAttributes } from "@/lib/reservations/util.line-attributes";
 import { subtotalInclTaxOf } from "@/lib/reservations/util.subtotal-incl-tax";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
@@ -30,6 +31,8 @@ export interface ReservationDisplayItem {
   unitPrice: string;
   totalPrice: string;
   selectedAttributes?: Record<string, string> | null;
+  /** The exact combination booked; null when the line left a choice open. */
+  combinationKey?: string | null;
   productSnapshot?: { name?: string; selectedAttributes?: Record<string, string> | null } | null;
   product?: {
     name: string;
@@ -116,16 +119,13 @@ export const ReservationItemsCard = ({
                 const itemProductId = typeof item.productId === "string" ? item.productId : null;
                 const isTulipInsured =
                   itemProductId !== null && insuredProductIds.has(itemProductId);
-                const displayAttributes =
-                  item.selectedAttributes || item.productSnapshot?.selectedAttributes || null;
-                const attributeLabelsByKey =
-                  item.product?.bookingAttributeAxes?.reduce(
-                    (acc: Record<string, string>, axis: BookingAttributeAxis) => {
-                      acc[axis.key] = axis.label;
-                      return acc;
-                    },
-                    {},
-                  ) || null;
+                const lineAttributes = describeLineAttributes({
+                  selectedAttributes:
+                    item.selectedAttributes || item.productSnapshot?.selectedAttributes,
+                  combinationKey: item.combinationKey,
+                  axes: item.product?.bookingAttributeAxes,
+                  trackUnits: item.product?.trackUnits,
+                });
 
                 return (
                   <TableRow key={item.id}>
@@ -151,20 +151,17 @@ export const ReservationItemsCard = ({
                               </Badge>
                             )}
                           </div>
-                          {displayAttributes && Object.keys(displayAttributes).length > 0 && (
+                          {lineAttributes.length > 0 && (
                             <div className="flex flex-wrap gap-1">
-                              {Object.entries(displayAttributes)
-                                .filter(([, value]) => Boolean(value && String(value).trim()))
-                                .sort(([a], [b]) => a.localeCompare(b, "en"))
-                                .map(([key, value]) => (
-                                  <Badge
-                                    key={`${item.id}-${key}`}
-                                    variant="expired"
-                                    className="text-xs"
-                                  >
-                                    {attributeLabelsByKey?.[key] || key}: {String(value).trim()}
-                                  </Badge>
-                                ))}
+                              {lineAttributes.map((attribute) => (
+                                <Badge
+                                  key={`${item.id}-${attribute.key}`}
+                                  variant="expired"
+                                  className="text-xs"
+                                >
+                                  {attribute.label}: {attribute.value ?? t("openChoice")}
+                                </Badge>
+                              ))}
                             </div>
                           )}
                         </div>

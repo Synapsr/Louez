@@ -95,9 +95,10 @@ export interface ReserveInventoryLine {
    */
   assignedUnitIds?: string[];
   /**
-   * Spread the line over combinations whatever its key says: for a booked
-   * line re-checked on its own that may be served by any matching unit.
-   * Checkout lines never set it, so they always resolve to one combination.
+   * Spread the line over combinations whatever its key says: for a line
+   * that books no exact combination (a choice left open, `readLineChoice`)
+   * and may be served by any matching unit. A line without it resolves to
+   * one combination.
    */
   pooled?: boolean;
 }
@@ -204,9 +205,10 @@ export type CollectedInventory = InventoryReserved & {
  * The lines of a tracked product are allocated by the rule of
  * `allocateStock` (S1): another booking that left a size or a colour open is
  * counted on every combination that can serve it, not on the product alone.
- * A line with an exact combination, or a checkout line, is placed whole on
- * the first combination of the deterministic order that fits; a line with no
- * exact combination keeps its pooled key and is served by any matching unit.
+ * A line with an exact combination, or any line not marked `pooled`, is
+ * placed whole on the first combination of the deterministic order that
+ * fits; a pooled line keeps its pooled key and is served by any matching
+ * unit.
  *
  * A line the stock cannot cover stops the check with
  * `errors.productNoLongerAvailable`. With `onShortfall: "collect"` it is
@@ -502,8 +504,8 @@ export async function reserveInventory({
               matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
           )
           .map((combination) => combination.combinationKey),
-        // A checkout line books one combination; a pooled line is served by
-        // any unit that matches what it chose, and keeps on their
+        // A line that is not pooled books one combination; a pooled line is
+        // served by any unit that matches what it chose, and keeps on their
         // combinations the units it already holds.
         single: !pooled,
         held: pooled ? heldUnits.map((unit) => unit.combinationKey) : [],

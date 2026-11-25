@@ -2871,6 +2871,7 @@
         "autofillHint": "Unità suggerite selezionate. Clicchi su Salva per confermare.",
         "suggestUnits": "Suggerisci unità"
       },
+      "openChoice": "da definire",
       "smartActions": {
         "paymentIncomplete": "Noleggio non pagato ({remaining} rimanente)",
         "depositNotCollected": "Deposito non riscosso ({amount})",
@@ -7890,7 +7891,7 @@
       "bookingAttributeNone": "Nessuno",
       "availableForSelection": "Disponibili per questa selezione: {count}",
       "quantityPerCombinationHint": "La quantità si applica solo all'opzione selezionata. Aggiunga un'altra opzione come riga separata.",
-      "quantityCanSplitHint": "La quantità può essere suddivisa tra le opzioni corrispondenti e aggiunta come righe separate.",
+      "openOptionsHint": "Le opzioni lasciate aperte saranno scelte dal noleggiatore.",
       "inCartCount": "Già nel carrello: {count}",
       "selectionUnavailable": "Nessuna combinazione disponibile per questa selezione.",
       "gallery": {

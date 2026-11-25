@@ -36,6 +36,7 @@ import { UnifiedPaymentSection, type PaymentMethod } from "./unified-payment-sec
 import { hasMobileReservationQuickActions } from "./util.mobile-reservation-quick-actions";
 import { getDepositTotals, getRentalPaid } from "@/lib/reservations/util.payment-status";
 import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
+import { describeLineAttributes } from "@/lib/reservations/util.line-attributes";
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-store-legs-summary";
 import { storeLegLocationFromSnapshot } from "@/components/dashboard/util.reservation-store-legs";
@@ -402,15 +403,13 @@ export function ReservationDetailClient({
                   initialAssignedUnitIds={
                     item.assignedUnits?.map((unit) => unit.productUnitId) || []
                   }
-                  selectedAttributes={
-                    item.selectedAttributes || item.productSnapshot?.selectedAttributes || null
-                  }
-                  attributeLabelsByKey={
-                    item.product.bookingAttributeAxes?.reduce<Record<string, string>>(
-                      (labels, axis) => ({ ...labels, [axis.key]: axis.label }),
-                      {},
-                    ) || null
-                  }
+                  lineAttributes={describeLineAttributes({
+                    selectedAttributes:
+                      item.selectedAttributes || item.productSnapshot?.selectedAttributes,
+                    combinationKey: item.combinationKey,
+                    axes: item.product.bookingAttributeAxes,
+                    trackUnits: item.product.trackUnits,
+                  })}
                 />
               ) : null
             }
