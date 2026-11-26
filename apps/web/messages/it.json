@@ -2682,14 +2682,13 @@
         "originalPrice": "Prezzo originale",
         "totalSavings": "Risparmio totale",
         "customItem": {
-          "title": "Articoli personalizzati",
-          "add": "Aggiungi",
           "button": "Personalizzato",
           "units": "unità",
           "badge": "Personalizzato",
-          "empty": "Nessun articolo personalizzato aggiunto",
           "dialogTitle": "Aggiungi un articolo personalizzato",
           "dialogDescription": "Crea un articolo eccezionale per questa prenotazione",
+          "editDialogTitle": "Modifica l'articolo personalizzato",
+          "editDialogDescription": "Modifica i dettagli di questo articolo per questa prenotazione",
           "name": "Nome articolo",
           "namePlaceholder": "Es: Console audio vintage",
           "description": "Descrizione (opzionale)",
@@ -2703,7 +2702,12 @@
           "addButton": "Aggiungi",
           "nameRequired": "Inserisci un nome per l'articolo",
           "priceRequired": "Inserisci un prezzo valido",
-          "added": "Articolo personalizzato aggiunto"
+          "added": "Articolo personalizzato aggiunto",
+          "updated": "Articolo personalizzato aggiornato",
+          "editLabel": "Modifica {name}",
+          "decreaseLabel": "Riduci la quantità di {name}",
+          "increaseLabel": "Aumenta la quantità di {name}",
+          "removeLabel": "Rimuovi {name}"
         },
         "priceOverride": {
           "dialogTitle": "Modifica prezzo",

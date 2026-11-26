@@ -204,7 +204,7 @@ export function NewReservationConfirmDrawer({
               {itemLines.map((line) => (
                 <li key={line.id} className="flex items-start justify-between gap-3 text-sm">
                   <div className="min-w-0 space-y-0.5">
-                    <p className="truncate font-medium">
+                    <p title={line.name} className="line-clamp-2 font-medium wrap-break-word">
                       <span className="text-muted-foreground tabular-nums">{line.quantity}× </span>
                       {line.name}
                     </p>

@@ -2730,14 +2730,13 @@
         "originalPrice": "Prix initial",
         "totalSavings": "Économies totales",
         "customItem": {
-          "title": "Articles personnalisés",
-          "add": "Ajouter",
           "button": "Sur mesure",
           "units": "unité(s)",
           "badge": "Personnalisé",
-          "empty": "Aucun article personnalisé ajouté",
           "dialogTitle": "Ajouter un article personnalisé",
           "dialogDescription": "Créez un article exceptionnel pour cette réservation",
+          "editDialogTitle": "Modifier l'article personnalisé",
+          "editDialogDescription": "Modifiez les détails de cet article pour cette réservation",
           "name": "Nom de l'article",
           "namePlaceholder": "Ex: Console de son vintage",
           "description": "Description (optionnelle)",
@@ -2751,7 +2750,12 @@
           "addButton": "Ajouter",
           "nameRequired": "Veuillez saisir un nom pour l'article",
           "priceRequired": "Veuillez saisir un prix valide",
-          "added": "Article personnalisé ajouté"
+          "added": "Article personnalisé ajouté",
+          "updated": "Article personnalisé mis à jour",
+          "editLabel": "Modifier {name}",
+          "decreaseLabel": "Diminuer la quantité de {name}",
+          "increaseLabel": "Augmenter la quantité de {name}",
+          "removeLabel": "Retirer {name}"
         },
         "priceOverride": {
           "dialogTitle": "Modifier le prix",

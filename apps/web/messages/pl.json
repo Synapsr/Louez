@@ -2682,14 +2682,13 @@
         "originalPrice": "Cena pierwotna",
         "totalSavings": "Całkowite oszczędności",
         "customItem": {
-          "title": "Niestandardowe przedmioty",
-          "add": "Dodaj",
           "button": "Własna pozycja",
           "units": "jednostka(i)",
           "badge": "Niestandardowy",
-          "empty": "Brak dodanych niestandardowych przedmiotów",
           "dialogTitle": "Dodaj niestandardowy przedmiot",
           "dialogDescription": "Utwórz wyjątkowy przedmiot dla tej rezerwacji",
+          "editDialogTitle": "Edytuj niestandardowy przedmiot",
+          "editDialogDescription": "Zmień szczegóły tego przedmiotu dla tej rezerwacji",
           "name": "Nazwa przedmiotu",
           "namePlaceholder": "Np. Vintage konsola dźwiękowa",
           "description": "Opis (opcjonalnie)",
@@ -2703,7 +2702,12 @@
           "addButton": "Dodaj",
           "nameRequired": "Proszę wprowadzić nazwę przedmiotu",
           "priceRequired": "Proszę wprowadzić prawidłową cenę",
-          "added": "Dodano niestandardowy przedmiot"
+          "added": "Dodano niestandardowy przedmiot",
+          "updated": "Zaktualizowano niestandardowy przedmiot",
+          "editLabel": "Edytuj: {name}",
+          "decreaseLabel": "Zmniejsz ilość: {name}",
+          "increaseLabel": "Zwiększ ilość: {name}",
+          "removeLabel": "Usuń: {name}"
         },
         "priceOverride": {
           "dialogTitle": "Edytuj cenę",
