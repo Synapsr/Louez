@@ -43,11 +43,13 @@ minimumReleaseAgeExclude:
 # these explicit until their direct dependants publish the same minimums.
 overrides:
   "@isaacs/brace-expansion@<=5.0.0": 5.0.1
+  "body-parser@>=2.0.0 <2.4.0": 2.4.0
+  "brace-expansion@>=5.0.0 <5.0.11": 5.0.11
   "defu@<=6.1.4": 6.1.5
-  "engine.io@>=4.1.0 <6.6.7": 6.6.7
-  "fast-uri@>=3.0.0 <3.1.5": 3.1.5
+  "engine.io@>=4.1.0 <6.6.10": 6.6.10
+  "fast-uri@>=3.0.0 <3.1.7": 3.1.7
   "fast-xml-parser@<5.7.0": 5.7.0
-  "hono@<4.12.34": 4.12.34
+  "hono@<4.13.16": 4.13.16
   "ip-address@<10.3.1": 10.3.1
   "linkify-it@<5.0.2": 5.0.2
   "minimatch@>=10.0.0 <10.2.3": 10.2.3
@@ -55,5 +57,7 @@ overrides:
   "picomatch@<2.3.2": 2.3.2
   "postcss@<8.5.23": 8.5.23
   "protobufjs@>=7.0.0 <7.6.5": 7.6.5
+  "proxy-addr@<2.0.8": 2.0.8
   "socket.io-parser@>=4.0.0 <4.2.7": 4.2.7
+  "source-map-js@>=1.0.0 <1.2.2": 1.2.2
   "ws@>=8.0.0 <8.21.0": 8.21.0
