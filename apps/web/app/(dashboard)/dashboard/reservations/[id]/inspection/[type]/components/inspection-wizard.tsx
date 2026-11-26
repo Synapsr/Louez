@@ -657,7 +657,6 @@ export function InspectionWizard({
         fieldValues: [],
         photos: inspection.photos.map((photo) => ({
           key: photo.key,
-          url: photo.url,
           caption: photo.caption || null,
         })),
       }));
