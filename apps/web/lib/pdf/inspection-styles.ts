@@ -228,6 +228,22 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF", locale
       objectFit: "cover",
       borderRadius: 4,
     },
+    photoUnavailable: {
+      width: 80,
+      height: 60,
+      padding: 4,
+      backgroundColor: c.block,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 4,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    photoUnavailableText: {
+      fontSize: 7,
+      color: c.muted,
+      textAlign: "center",
+    },
     photoCaption: {
       fontSize: 7,
       color: c.muted,

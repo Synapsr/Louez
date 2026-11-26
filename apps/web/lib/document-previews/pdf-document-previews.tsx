@@ -106,11 +106,11 @@ const inspectionStore = (store: DocumentPreviewStore) => ({
 
 const inspectionPhotos = (label: string) => [
   {
-    url: `https://placehold.co/600x400/jpg?text=${encodeURIComponent(`${label} 1`)}`,
+    src: `https://placehold.co/600x400/jpg?text=${encodeURIComponent(`${label} 1`)}`,
     caption: "Vue générale",
   },
   {
-    url: `https://placehold.co/600x400/jpg?text=${encodeURIComponent(`${label} 2`)}`,
+    src: `https://placehold.co/600x400/jpg?text=${encodeURIComponent(`${label} 2`)}`,
     caption: null,
   },
 ];
@@ -336,18 +336,21 @@ export const PDF_DOCUMENT_PREVIEWS: readonly PdfDocumentPreview[] = [
               condition: "excellent",
               notes: null,
               photos: inspectionPhotos("Paddle"),
+              photoCount: 2,
             },
             {
               productName: "Paddle géant — PAD-04",
               condition: "good",
               notes: "Légère rayure sur le nose, sans incidence.",
               photos: [],
+              photoCount: 0,
             },
             {
               productName: "Combinaison enfant",
               condition: "good",
               notes: null,
               photos: [],
+              photoCount: 0,
             },
           ],
         },
@@ -386,18 +389,21 @@ export const PDF_DOCUMENT_PREVIEWS: readonly PdfDocumentPreview[] = [
               condition: "damaged",
               notes: "Aileron central cassé.",
               photos: inspectionPhotos("Aileron"),
+              photoCount: 2,
             },
             {
               productName: "Paddle géant — PAD-04",
               condition: "good",
               notes: null,
               photos: [],
+              photoCount: 0,
             },
             {
               productName: "Combinaison enfant",
               condition: "fair",
               notes: "Zip un peu dur.",
               photos: [],
+              photoCount: 0,
             },
           ],
         },

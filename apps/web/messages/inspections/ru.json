@@ -31,7 +31,8 @@
     "equipment": "Оборудование",
     "condition": "Состояние",
     "photos": "Фотографии",
-    "notes": "Примечания"
+    "notes": "Примечания",
+    "photoUnavailable": "Фото недоступно"
   },
   "signature": {
     "customerSignature": "Подпись клиента",

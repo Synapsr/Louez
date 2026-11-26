@@ -31,7 +31,8 @@
     "equipment": "機材",
     "condition": "状態",
     "photos": "写真",
-    "notes": "注意事項"
+    "notes": "注意事項",
+    "photoUnavailable": "写真を表示できません"
   },
   "signature": {
     "customerSignature": "顧客の署名",

@@ -27,7 +27,7 @@ export function isDataUrl(url: string): boolean {
  * Fetches the SVG (from a remote URL or data URL),
  * converts it to PNG using sharp, and returns the raw buffer.
  *
- * Used by email (CID attachments) and PDF generation.
+ * Used by email (CID attachments).
  *
  * @param imageUrl - SVG image URL (remote or data URL)
  * @param maxSize - Maximum width/height in pixels (default: 400)
@@ -81,18 +81,4 @@ export async function convertSvgToPngBuffer(
     console.error('[Image] Error converting SVG to PNG:', error)
     return null
   }
-}
-
-/**
- * Converts an SVG image to a PNG data URL.
- * Convenience wrapper over convertSvgToPngBuffer for contexts
- * that need a data URL (e.g. PDF generation).
- */
-export async function convertSvgToPng(
-  imageUrl: string,
-  maxSize: number = 400
-): Promise<string | null> {
-  const buffer = await convertSvgToPngBuffer(imageUrl, maxSize)
-  if (!buffer) return null
-  return `data:image/png;base64,${buffer.toString('base64')}`
 }

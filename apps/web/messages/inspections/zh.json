@@ -31,7 +31,8 @@
     "equipment": "设备",
     "condition": "条件",
     "photos": "照片",
-    "notes": "注释"
+    "notes": "注释",
+    "photoUnavailable": "照片无法显示"
   },
   "signature": {
     "customerSignature": "客户签名",

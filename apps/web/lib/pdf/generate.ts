@@ -10,13 +10,13 @@ import { db } from "@louez/db";
 import { documents, reservationContractSignatures, reservations, stores } from "@louez/db";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { convertImageForPdf } from "./image-utils";
+import { readStoreLogoForPdf } from "./image-utils";
 import { getContractCustomerFieldLines } from "./util.contract-customer-fields";
 import { getContractItemDetailLines } from "./util.contract-item-details";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { getCustomerPaymentRows } from "@/lib/reservations/util.payment-status";
-import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
+import { resolveReservationBilling } from "@louez/utils";
 
 import { getContractTestWatermark, getContractTranslations } from "./contract-i18n";
 import { isLocale } from "@/lib/i18n/format-locale";
@@ -143,9 +143,7 @@ export async function generateContract({
   // Get translations for the locale
   const translations = getContractTranslations(locale);
 
-  // Convert store logo to PDF-compatible format (handles SVG conversion)
-  // Use dark logo for PDFs (light background) when store has dark theme
-  const pdfLogoUrl = await convertImageForPdf(getLogoForLightBackground(store));
+  const pdfLogoUrl = await readStoreLogoForPdf(store);
 
   const shouldIncludeFullCgv = store.includeCgvInContract;
   const isFinalContract = Boolean(reservation.signedAt || reservation.contractValidatedAt);

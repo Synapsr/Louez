@@ -14,7 +14,6 @@ import { parseCgvHtml } from "./cgv-parser";
 import { PageNumber } from "./page-number";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
-import { toAbsoluteUrl } from "@louez/utils";
 import { env } from "@/env";
 import type { ContractSignatureMethod } from "@louez/db";
 import type { ReservationLocationSnapshot } from "@louez/types";
@@ -332,12 +331,7 @@ export function ContractDocument({
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             {store.logoUrl ? (
-              // The PDF renderer fetches the logo itself: site-relative
-              // standalone asset paths must be absolutized first.
-              <Image
-                src={toAbsoluteUrl(store.logoUrl, env.NEXT_PUBLIC_APP_URL)}
-                style={styles.logo}
-              />
+              <Image src={store.logoUrl} style={styles.logo} />
             ) : (
               <Text style={styles.storeName}>{store.name}</Text>
             )}
