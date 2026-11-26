@@ -52,37 +52,29 @@ describe("isStripeRefundRow", () => {
 });
 
 describe("getReservationPaymentStatus", () => {
-  test("received beats processing beats unpaid", () => {
+  const session = "cs_test_balance";
+  const ofSession = (status: string, extra: Record<string, unknown> = {}) => ({
+    type: "rental",
+    status,
+    amount: "10",
+    stripeCheckoutSessionId: session,
+    ...extra,
+  });
+
+  test("that session's payment: received beats processing beats unpaid", () => {
     assert.equal(
-      getReservationPaymentStatus([
-        { type: "rental", status: "pending", amount: "10" },
-        { type: "rental", status: "completed", amount: "10" },
-      ]),
+      getReservationPaymentStatus([ofSession("pending"), ofSession("completed")], session),
       "received",
     );
-    assert.equal(
-      getReservationPaymentStatus([{ type: "rental", status: "pending", amount: "10" }]),
-      "processing",
-    );
-    assert.equal(
-      getReservationPaymentStatus([{ type: "rental", status: "failed", amount: "10" }]),
-      "unpaid",
-    );
+    assert.equal(getReservationPaymentStatus([ofSession("pending")], session), "processing");
+    assert.equal(getReservationPaymentStatus([ofSession("failed")], session), "unpaid");
     assert.equal(
       hasRentalPaymentInProgress([{ type: "deposit", status: "pending", amount: "1" }]),
       false,
     );
   });
 
-  test("a deposit of the rental, received, is received whatever remains", () => {
-    // 9 of 30 taken at checkout: the checkout's payment has landed.
-    assert.equal(
-      getReservationPaymentStatus([{ type: "rental", status: "completed", amount: "9" }]),
-      "received",
-    );
-  });
-
-  test("with the session a payment returns from, only that session's payment counts", () => {
+  test("only the session the landing names counts: a deposit received earlier never reads as the payment just made", () => {
     const payments = [
       { type: "rental", status: "completed", amount: "9", stripeCheckoutSessionId: "cs_deposit" },
       { type: "rental", status: "pending", amount: "21", stripeCheckoutSessionId: "cs_balance" },
@@ -90,33 +82,38 @@ describe("getReservationPaymentStatus", () => {
     // The deposit was received; the balance is still on its way.
     assert.equal(getReservationPaymentStatus(payments, "cs_balance"), "processing");
     assert.equal(getReservationPaymentStatus(payments, "cs_deposit"), "received");
-    assert.equal(
-      getReservationPaymentStatus(
-        [{ ...payments[0], stripeCheckoutSessionId: "cs_balance", status: "completed" }],
-        "cs_balance",
-      ),
-      "received",
-    );
     assert.equal(getReservationPaymentStatus(payments, "cs_unknown"), "unpaid");
+  });
+
+  test("a link that names no session, or names it badly, says nothing", () => {
+    const deposit = [ofSession("completed")];
+    for (const [name, value] of [
+      ["absent", undefined],
+      ["empty", null],
+      ["given twice", [session, session]],
+      ["malformed", "pi_not_a_session"],
+      ["with other characters", `${session}"><script>`],
+      ["oversized", `cs_${"a".repeat(253)}`],
+    ] as const) {
+      assert.equal(getReservationPaymentStatus(deposit, value), "unpaid", name);
+    }
   });
 
   test("a security deposit or a refund row is no rental payment received", () => {
     assert.equal(
-      getReservationPaymentStatus([{ type: "deposit", status: "completed", amount: "10" }]),
+      getReservationPaymentStatus([{ ...ofSession("completed"), type: "deposit" }], session),
       "unpaid",
     );
     // Fully refunded through Stripe: the charge is `refunded`, only the refund row is completed.
     assert.equal(
-      getReservationPaymentStatus([
-        { type: "rental", status: "refunded", amount: "0", stripePaymentIntentId: "pi_1" },
-        stripeRefund("100"),
-      ]),
+      getReservationPaymentStatus(
+        [ofSession("refunded", { amount: "0" }), stripeRefund("100")],
+        session,
+      ),
       "unpaid",
     );
     assert.equal(
-      getReservationPaymentStatus([
-        { type: "rental", status: "completed", amount: "10", refundOfPaymentId: "a" },
-      ]),
+      getReservationPaymentStatus([ofSession("completed", { refundOfPaymentId: "a" })], session),
       "unpaid",
     );
   });

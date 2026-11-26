@@ -72,6 +72,8 @@ let emailCalls = 0;
 let contractCalls = 0;
 let unavailable = false;
 let supplement = 20;
+/** The currency the quote states, the attempt's. */
+let quoteCurrency = "EUR";
 let failRefund = false;
 let paidSession: Stripe.Checkout.Session;
 const NO_FEE_PLAN: ApplicationFeePlan = {
@@ -171,11 +173,12 @@ const dependencies = {
   parseExtensionEnd: () => requestedEnd,
   quoteExtension: async () => {
     if (unavailable) throw new ExtensionError("unavailable");
-    return { preview: { mode: "automatic", supplement, total: 40, currency: "EUR" }, plan };
+    return {
+      preview: { mode: "automatic", supplement, total: 40, currency: quoteCurrency },
+      plan,
+    };
   },
   resolveDateChangeRequests: async () => {},
-  toStripeChargeCents: (amount: number) => Math.round(amount * 100),
-  fromStripeCents: (cents: number) => cents / 100,
   planApplicationFee: async (input: ApplicationFeeInput) => {
     feeInputs.push(input);
     return feePlan;
@@ -219,10 +222,16 @@ const dependencies = {
   },
 };
 Reflect.set(globalThis, "__louezExtensionTestDependencies", dependencies);
-// The real writer, so the session metadata can be read back.
+// The real writer, so the session metadata can be read back, and the real currency
+// conversions, so a charge's rounding is the one Stripe is sent.
 before(async () => {
   const metering = await import("@/lib/pay-as-you-go/metering");
-  Object.assign(dependencies, { buildFeeMetadata: metering.buildFeeMetadata });
+  const conversions = await import("@/lib/stripe");
+  Object.assign(dependencies, {
+    buildFeeMetadata: metering.buildFeeMetadata,
+    toStripeChargeCents: conversions.toStripeChargeCents,
+    fromStripeCents: conversions.fromStripeCents,
+  });
 });
 const intercepted = new Set([
   "@louez/db",
@@ -269,6 +278,7 @@ const reset = () => {
   refundCalls = sessionCreates = emailCalls = contractCalls = 0;
   unavailable = failRefund = false;
   supplement = 20;
+  quoteCurrency = "EUR";
   feePlan = NO_FEE_PLAN;
   feeInputs = [];
   sessionParams = [];
@@ -528,6 +538,49 @@ test("unpaid or mismatched sessions cannot extend a reservation", async () => {
   );
   assert.equal(paymentRows.length, 0);
   assert.equal(reservation.endDate.getTime(), originalEnd.getTime());
+});
+
+test("in yen, a ¥100.60 supplement is charged ¥100, checked against that charge and recorded as Stripe took it", async () => {
+  reset();
+  supplement = 100.6;
+  quoteCurrency = "JPY";
+  const service = await load();
+  await service.startExtension({ ...input, expectedSupplement: 100.6 });
+
+  const [line] = sessionParams[0]?.line_items ?? [];
+  assert.equal(line?.price_data?.unit_amount, 100);
+  assert.equal(line?.price_data?.currency, "jpy");
+  assert.equal(reservation.activity[0].metadata.sessionChargeMinor, 100);
+  const session = { ...makePaid(), currency: "jpy", amount_total: 100 } as Stripe.Checkout.Session;
+  // Another amount than the session was created to charge settles nothing.
+  await assert.rejects(
+    service.completeExtensionPayment({ ...session, amount_total: 101 }, "acct_test"),
+    /paymentMismatch/,
+  );
+  assert.equal(await service.completeExtensionPayment(session, "acct_test"), "confirmed");
+
+  assert.equal(paymentRows.length, 1);
+  assert.equal(paymentRows[0]?.amount, "100.00");
+  assert.equal(paymentRows[0]?.grossMinor, 100);
+});
+
+test("a session created before its charge was recorded, at the old rounding (¥101 for ¥100.60), still settles as Stripe took it", async () => {
+  reset();
+  supplement = 100.6;
+  quoteCurrency = "JPY";
+  const service = await load();
+  await service.startExtension({ ...input, expectedSupplement: 100.6 });
+  // The attempt as such a session left it: its session, and no charge recorded.
+  const { sessionChargeMinor: _recorded, ...attempt } = reservation.activity[0].metadata;
+  reservation.activity[0].metadata = attempt;
+  const session = { ...makePaid(), currency: "jpy", amount_total: 101 } as Stripe.Checkout.Session;
+
+  assert.equal(await service.completeExtensionPayment(session, "acct_test"), "confirmed");
+
+  assert.equal(paymentRows.length, 1);
+  assert.equal(paymentRows[0]?.amount, "101.00");
+  assert.equal(paymentRows[0]?.grossMinor, 101);
+  assert.equal(reservation.endDate.getTime(), requestedEnd.getTime());
 });
 
 test("free extensions are idempotent and do not create a Stripe session", async () => {

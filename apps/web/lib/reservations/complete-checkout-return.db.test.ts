@@ -424,7 +424,8 @@ describe(
         paymentStatus.getReservationPaymentStatus(rows, booking.sessionId),
         "processing",
       );
-      assert.equal(paymentStatus.getReservationPaymentStatus(rows), "received");
+      // A landing that names no session says nothing, the deposit received notwithstanding.
+      assert.equal(paymentStatus.getReservationPaymentStatus(rows, undefined), "unpaid");
     });
 
     /** The account's payment return, as Stripe sends the customer to it. */

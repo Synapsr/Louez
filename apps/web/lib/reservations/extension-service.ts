@@ -255,7 +255,11 @@ export const startExtension = async (input: {
     const current = await loadExtensionReservation(tx, reservation.storeId, reservation.id);
     const value = getExtensionAttempt(current.activity.find((row) => row.id === id)?.metadata);
     if (value?.status === "checkout")
-      await writeAttempt(tx, id, reservation.id, { ...value, sessionId: session.id });
+      await writeAttempt(tx, id, reservation.id, {
+        ...value,
+        sessionId: session.id,
+        sessionChargeMinor: chargeCents,
+      });
     return value?.status;
   });
   if (sessionState === "cancelled") {
@@ -299,9 +303,14 @@ export const completeExtensionPayment = async (
     );
     if (!attempt || (attempt.sessionId && attempt.sessionId !== session.id))
       throw new ExtensionError("notFound");
+    // Stripe's amount is compared with what the session was created to charge, as the
+    // attempt recorded it, never with a charge computed again: a session created under
+    // another rounding still settles, as Stripe took it.
     if (
       attempt.currency.toLowerCase() !== session.currency ||
-      toStripeChargeCents(attempt.supplement, attempt.currency) !== session.amount_total
+      session.amount_total === null ||
+      (attempt.sessionChargeMinor !== undefined &&
+        attempt.sessionChargeMinor !== session.amount_total)
     )
       throw new ExtensionError("paymentMismatch");
     if (["confirmed", "refunded", "refund_pending"].includes(attempt.status)) return attempt;
@@ -322,12 +331,11 @@ export const completeExtensionPayment = async (
         valid = false;
       }
     }
-    const grossMinor =
-      session.amount_total ?? toStripeChargeCents(attempt.supplement, attempt.currency);
+    const grossMinor = session.amount_total;
     await tx.insert(payments).values({
       id: paymentId,
       reservationId,
-      // What Stripe took: the supplement rounded down to the currency's minor unit.
+      // What Stripe took.
       amount: fromStripeCents(grossMinor, attempt.currency).toFixed(2),
       currency: normalizeCurrency(attempt.currency),
       type: "rental",

@@ -24,7 +24,8 @@ const PAID_CLAIM = {
   reservationId: "booking",
   stripeCheckoutSessionId: "cs_paid",
 };
-const RESERVATION_PAGE = "https://shop.example.test/account/reservations/booking?event=paid";
+const RESERVATION_PAGE =
+  "https://shop.example.test/account/reservations/booking?event=paid&session_id=cs_paid";
 
 /** The one cookie the return may set: the paid page's claim, for this store, reservation and session. */
 const assertPaidClaim = (result) => {

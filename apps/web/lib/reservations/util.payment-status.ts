@@ -149,22 +149,27 @@ export const refundedPaymentState = (
 export const hasRentalPaymentInProgress = (payments: readonly PaymentLike[]): boolean =>
   payments.some((payment) => payment.type === "rental" && payment.status === "pending");
 
+/** A Stripe Checkout Session id as a payment's landing names it: `cs_` and its characters, at most 255. */
+const CHECKOUT_SESSION_ID = /^cs_[A-Za-z0-9_]{1,252}$/;
+
 /**
- * What the page reached after a payment (`?event=paid`) says of it: a completed
- * rental payment, refunds left out, has landed; a pending one is on its way.
- * With `sessionId`, the Checkout Session the customer comes back from, only that
- * session's payment counts: a balance paid after a deposit is received once its
- * own row is, never because the deposit was.
+ * What the page reached after a payment (`?event=paid&session_id=`) says of it:
+ * the payment of that Checkout Session only, refunds left out, has landed
+ * (`received`) or is on its way (`processing`). A session given once, well
+ * formed, is the only one read: absent, given twice, malformed or oversized, or
+ * naming no payment of the reservation, it says nothing (`unpaid`), so a deposit
+ * received earlier never reads as the payment just made.
  */
 export const getReservationPaymentStatus = (
   payments: readonly PaymentLike[],
-  sessionId: string | null = null,
+  sessionId: string | readonly string[] | null | undefined,
 ): ReservationPaymentStatus => {
+  if (typeof sessionId !== "string" || !CHECKOUT_SESSION_ID.test(sessionId)) return "unpaid";
   const rental = payments.filter(
     (payment) =>
       payment.type === "rental" &&
       !isRefundRow(payment) &&
-      (sessionId === null || payment.stripeCheckoutSessionId === sessionId),
+      payment.stripeCheckoutSessionId === sessionId,
   );
   if (rental.some((payment) => payment.status === "completed")) return "received";
   if (hasRentalPaymentInProgress(rental)) return "processing";

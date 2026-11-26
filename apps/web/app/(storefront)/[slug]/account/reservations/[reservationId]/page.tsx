@@ -106,10 +106,6 @@ interface ReservationDetailPageProps {
   searchParams: Promise<{ event?: string | string[]; session_id?: string | string[] }>;
 }
 
-/** The Checkout Session a payment's return names (`payment-return`), when it names one. */
-const parsePaymentSessionId = (value: string | string[] | undefined): string | null =>
-  typeof value === "string" && value.length > 0 && value.length <= 255 ? value : null;
-
 /**
  * The one post-reservation destination: outcome banner (`?event=`), status,
  * actions, period and progress, items, history, deposit, payments,
@@ -252,8 +248,8 @@ export default async function ReservationDetailPage({
   const currency = reservationCurrency(reservation.currency, store.settings);
   const rentalBalance = getRentalBalance(reservation, currency);
   const damageFees = getDamageFees(reservation.payments);
-  const paymentSessionId = parsePaymentSessionId(query.session_id);
-  const paymentStatus = getReservationPaymentStatus(reservation.payments, paymentSessionId);
+  // The payment the landing names by its session; nothing for a link that names none.
+  const paymentStatus = getReservationPaymentStatus(reservation.payments, query.session_id);
   // A test reservation is never paid or held online (lib/test-reservations): no
   // payment and no deposit button.
   const actions = getReservationActions({
@@ -442,17 +438,15 @@ export default async function ReservationDetailPage({
           <ReservationRentalDetails reservationId={reservationId} initialData={rentalDetails} />
         }
         outcome={{
-          // A payment's return names its session: its banner shows whatever the
-          // rental's status, since the balance is paid until after the rental, and
-          // never for a session that is no payment of this reservation.
+          // A payment's landing names its session: its banner shows only that
+          // payment, received or on its way, whatever the rental's status, since the
+          // balance is paid until after the rental; nothing when it names none.
           event:
-            event === "paid" && paymentSessionId !== null && paymentStatus === "unpaid"
-              ? null
-              : status === "pending" ||
-                  status === "confirmed" ||
-                  (event === "paid" &&
-                    paymentSessionId !== null &&
-                    !isClosedReservationStatus(status))
+            event === "paid"
+              ? paymentStatus === "unpaid" || isClosedReservationStatus(status)
+                ? null
+                : event
+              : status === "pending" || status === "confirmed"
                 ? event
                 : null,
           paymentStatus: paymentStatus,
