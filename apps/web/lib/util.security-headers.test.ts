@@ -5,7 +5,12 @@ import {
   buildEmbedSecurityHeaders,
   buildHandoffSecurityHeaders,
   buildSecurityHeaders,
+  type SecurityHeadersOptions,
 } from "./util.security-headers";
+
+const contentSecurityPolicy = (options: SecurityHeadersOptions): string =>
+  buildSecurityHeaders(options).find((header) => header.key === "Content-Security-Policy")?.value ??
+  "";
 
 test("adds runtime deployment origins to the CSP", () => {
   const headers = buildSecurityHeaders({
@@ -19,6 +24,15 @@ test("adds runtime deployment origins to the CSP", () => {
   assert.match(csp ?? "", /script-src[^;]*https:\/\/engagement\.runtime\.example\.com/);
   assert.match(csp ?? "", /connect-src[^;]*https:\/\/replay\.runtime\.example\.com/);
   assert.match(csp ?? "", /frame-src[^;]*https:\/\/\*\.runtime\.example\.com/);
+});
+
+test("a runtime URL without an origin adds nothing to the CSP", () => {
+  const base = contentSecurityPolicy({ isDevelopment: false });
+
+  for (const url of ["not a url", "javascript:alert(1)", "data:text/javascript,1"]) {
+    assert.equal(contentSecurityPolicy({ fromHelloApiUrl: url, isDevelopment: false }), base);
+    assert.equal(contentSecurityPolicy({ isDevelopment: false, openReplayIngestPoint: url }), base);
+  }
 });
 
 test("allows OpenFreeMap assets without the retired CARTO and Leaflet origins", () => {

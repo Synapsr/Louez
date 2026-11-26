@@ -18,9 +18,11 @@ export interface SecurityHeader {
   value: string;
 }
 
+/** A URL without an origin of its own (`javascript:`, `data:`…) reads "null": no CSP source. */
 const getOrigin = (value?: string): string | null => {
   try {
-    return value ? new URL(value).origin : null;
+    const origin = value ? new URL(value).origin : null;
+    return origin === "null" ? null : origin;
   } catch {
     return null;
   }
