@@ -40,6 +40,15 @@ Le compte client est `client@example.test`, le propriétaire `owner@example.test
 
 Les liens préparés pour le suivi client ouvrent de vraies sessions sur des réservations fictives. Ils expirent après 90 jours. Les dates de disponibilité, de fermeture et de saison sont calculées à la génération ; refaire un reset lorsque ces dates sont passées.
 
+## Widget sur un autre site
+
+Le widget (`/embed`) vit dans une iframe sur le site du loueur, donc sur une autre origine que la boutique. À vérifier après un changement du widget, de ses scripts ou des en-têtes de sécurité :
+
+1. Dans le tableau de bord de la boutique (`/dashboard/settings/integrations/widget`), copier le code du widget avec redimensionnement automatique, sans le modifier.
+2. L’enregistrer dans un fichier HTML et le servir depuis une autre origine que la boutique, par exemple `python3 -m http.server 8081` dans son dossier, puis ouvrir `http://127.0.0.1:8081/<fichier>.html`.
+3. Attendu : le widget s’affiche ; la hauteur de l’iframe suit son contenu (elle grandit à l’ouverture du calendrier) ; après le choix d’une date, « Voir les disponibilités » ouvre le catalogue de la boutique avec la période dans un nouvel onglet.
+4. Erreurs visibles : dans les outils de développement, chaque script d’une autre origine de l’iframe porte `crossorigin="anonymous"`. En bloquant les cookies tiers (Chrome : Paramètres → Confidentialité → Cookies tiers), l’erreur d’un traceur s’affiche avec son message et son fichier, jamais en « Script error. ». Par exemple, le traceur de fromHello lève `SecurityError` en lisant `localStorage` dans une iframe tierce ; cela n’empêche ni le widget ni la réservation.
+
 ## Modifier le code avec le hot reload
 
 `pnpm qa:storefront dev` actualise la copie au démarrage, puis suit les fichiers du checkout courant toutes les 750 ms. Modifier et sauvegarder les fichiers habituels dans l’IDE : les composants, styles et packages partagés sont recopiés automatiquement et Next applique Fast Refresh. Aucun `sync` ni reset de la base n’est nécessaire pour ces changements.

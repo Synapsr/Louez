@@ -99,8 +99,11 @@ export default async function RootLayout({
         {withAnalytics && <UmamiAnalytics />}
 
         {withAnalytics && env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
+          // Fetched with CORS, which its server allows, so the browser hands its
+          // errors to error tracking instead of a bare "Script error.".
           <Script
             src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL.replace(/\/$/, "")}/api/t.js`}
+            crossOrigin="anonymous"
             data-key={env.NEXT_PUBLIC_FROMHELLO_KEY}
             data-cookie-domain={env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN || undefined}
             strategy="afterInteractive"
