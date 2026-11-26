@@ -92,6 +92,7 @@ function withRuntimeSecurityHeaders(
     // The same condition that renders the tag (components/klibon-tag.tsx).
     klibonEnabled: isBillingEnabled() && Boolean(readRuntimeEnv("KLIBON_PROGRAM_ID")),
     openReplayIngestPoint: publicEnv.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
+    umamiScriptUrl: publicEnv.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
   };
   const securityHeaders = isDemoPath(pathname)
     ? buildDemoSecurityHeaders(options)

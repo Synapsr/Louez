@@ -8,6 +8,8 @@ export interface SecurityHeadersOptions {
   /** Klibon's affiliate tag loads (components/klibon-tag.tsx): allow its script and pings. */
   klibonEnabled?: boolean;
   openReplayIngestPoint?: string;
+  /** The Umami script (components/umami-analytics.tsx): its origin also receives the events. */
+  umamiScriptUrl?: string;
 }
 
 /** Serves the Klibon tag, and receives its visit ping (image) and signup beacon. */
@@ -18,9 +20,11 @@ export interface SecurityHeader {
   value: string;
 }
 
+/** A URL without an origin of its own (`javascript:`, `data:`…) reads "null": no CSP source. */
 const getOrigin = (value?: string): string | null => {
   try {
-    return value ? new URL(value).origin : null;
+    const origin = value ? new URL(value).origin : null;
+    return origin === "null" ? null : origin;
   } catch {
     return null;
   }
@@ -42,11 +46,13 @@ const buildContentSecurityPolicy = ({
   isDevelopment,
   klibonEnabled = false,
   openReplayIngestPoint,
+  umamiScriptUrl,
 }: SecurityHeadersOptions): string => {
   const fromHelloOrigin = getOrigin(fromHelloApiUrl);
   const klibonOrigins = klibonEnabled ? [KLIBON_ORIGIN] : [];
   const openReplayOrigin = getOrigin(openReplayIngestPoint);
   const storefrontWildcard = getStorefrontWildcard(appDomain);
+  const umamiOrigin = getOrigin(umamiScriptUrl);
   const directives = {
     "default-src": ["'self'"],
     "script-src": [
@@ -62,6 +68,7 @@ const buildContentSecurityPolicy = ({
       "'unsafe-eval'",
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
       ...klibonOrigins,
+      ...(umamiOrigin ? [umamiOrigin] : []),
     ],
     "style-src": ["'self'", "'unsafe-inline'", "https://gleapjs.com"],
     "img-src": [
@@ -106,6 +113,7 @@ const buildContentSecurityPolicy = ({
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
       ...(openReplayOrigin ? [openReplayOrigin] : []),
       ...klibonOrigins,
+      ...(umamiOrigin ? [umamiOrigin] : []),
     ],
     "frame-src": [
       "'self'",
