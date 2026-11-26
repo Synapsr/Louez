@@ -16,6 +16,7 @@ import { TestModeBanner } from "@/components/storefront/shell/test-mode-banner";
 import { env } from "@/env";
 import { isAdvisorActiveForStore } from "@/lib/ai/advisor/eligibility";
 import { getDemoStorefrontGuide } from "@/lib/demo/demo-storefront";
+import { isEmbedRequest } from "@/lib/embed/util.embed-request";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { loadLouezCreditTarget } from "@/lib/storefront/louez-credit.queries";
 import { DEFAULT_STORE_THEME, type StoreThemeInput } from "@/lib/theme/util.store-theme";
@@ -34,7 +35,7 @@ interface StorefrontLayoutProps {
  * caller-provided header and sets these from the route, query and cookie.
  */
 const resolveShellVariant = (requestHeaders: Headers): StorefrontShellVariant => {
-  if (requestHeaders.get("x-embed-mode") === "1") {
+  if (isEmbedRequest(requestHeaders)) {
     return "bare";
   }
 

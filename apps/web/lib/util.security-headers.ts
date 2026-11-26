@@ -171,8 +171,18 @@ export const buildSecurityHeaders = (options: SecurityHeadersOptions): SecurityH
   },
 ];
 
-export const buildEmbedSecurityHeaders = (options: SecurityHeadersOptions): SecurityHeader[] =>
-  buildSecurityHeaders(options)
+/**
+ * The storefront widget, framed by any site. It loads no marketing tracker
+ * (lib/util.client-tracking.ts), and its policy allows none: built from the
+ * instance's own settings only, it lets in no tracker's origin (fromHello,
+ * OpenReplay, Klibon, or one added later), so the browser would refuse a
+ * tracker that reached the page.
+ */
+export const buildEmbedSecurityHeaders = ({
+  appDomain,
+  isDevelopment,
+}: SecurityHeadersOptions): SecurityHeader[] =>
+  buildSecurityHeaders({ appDomain, isDevelopment })
     .filter((header) => header.key !== "X-Frame-Options")
     .map((header) =>
       header.key === "Content-Security-Policy"

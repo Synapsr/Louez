@@ -8,6 +8,7 @@ import { LOUEZ_TERMS_PATH, isBillingOnlyPath } from "@/lib/billing/billing-route
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
 import { NO_INDEX_DIRECTIVE, isSearchIndexingEnabled } from "@/lib/search-indexing";
+import { EMBED_MODE_HEADER } from "@/lib/embed/util.embed-request";
 import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import { MARKETPLACE_SALES_CHANNEL, SALES_CHANNEL_COOKIE } from "@/lib/util.sales-channel";
@@ -204,7 +205,7 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
 
   // Never trust caller-provided mode headers. The proxy derives them from the
   // route, query, and cookie before forwarding the rewritten request upstream.
-  requestHeaders.delete("x-embed-mode");
+  requestHeaders.delete(EMBED_MODE_HEADER);
   requestHeaders.delete("x-sales-channel");
   requestHeaders.delete("x-storefront-path");
 
@@ -219,9 +220,10 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
     requestHeaders.set("x-sales-channel", MARKETPLACE_SALES_CHANNEL);
   }
 
-  // Embed routes drop the app chrome (used by the layout).
+  // Embed routes drop the app chrome (storefront layout) and the marketing
+  // trackers (root layout).
   if (pathname === "/embed" || pathname.startsWith("/embed/")) {
-    requestHeaders.set("x-embed-mode", "1");
+    requestHeaders.set(EMBED_MODE_HEADER, "1");
   }
 
   const response = NextResponse.rewrite(url, {

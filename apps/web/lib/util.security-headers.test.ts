@@ -117,6 +117,27 @@ test("embed headers allow framing without emitting X-Frame-Options", () => {
   assert.match(csp ?? "", /frame-ancestors \*/);
 });
 
+test("the embed's policy allows no marketing tracker, and keeps PostHog", () => {
+  const options = {
+    appDomain: "runtime.example.com",
+    fromHelloApiUrl: "https://engagement.runtime.example.com/api",
+    isDevelopment: false,
+    klibonEnabled: true,
+    openReplayIngestPoint: "https://replay.runtime.example.com/ingest",
+  };
+  const cspOf = (headers: { key: string; value: string }[]) =>
+    headers.find((header) => header.key === "Content-Security-Policy")?.value ?? "";
+  const app = cspOf(buildSecurityHeaders(options));
+  const embed = cspOf(buildEmbedSecurityHeaders(options));
+
+  for (const tracker of [/engagement\.runtime/, /replay\.runtime/, /klibon/]) {
+    assert.match(app, tracker);
+    assert.doesNotMatch(embed, tracker);
+  }
+  assert.match(embed, /script-src[^;]*https:\/\/eu-assets\.i\.posthog\.com/);
+  assert.match(embed, /connect-src[^;]*https:\/\/eu\.i\.posthog\.com/);
+});
+
 test("the handoff page may send its form to any https provider, and nothing else changes", () => {
   const options = { appDomain: "runtime.example.com", isDevelopment: false };
   const app = cspDirectives(buildSecurityHeaders(options));
