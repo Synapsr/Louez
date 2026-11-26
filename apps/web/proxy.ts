@@ -163,11 +163,18 @@ function createActiveStoreSwitch(request: NextRequest): NextResponse | null {
   const [pathname, search] = target.split("?");
   url.pathname = pathname;
   url.search = search ? `?${search}` : "";
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { request: { headers: routingHeaders(request) } });
+}
+
+/** Only a resolved storefront rewrite may identify a store by header. */
+function routingHeaders(request: NextRequest): Headers {
+  const headers = new Headers(request.headers);
+  headers.delete("x-store-slug");
+  return headers;
 }
 
 function createDashboardResponse(request: NextRequest) {
-  const requestHeaders = new Headers(request.headers);
+  const requestHeaders = routingHeaders(request);
   requestHeaders.set(
     LOGIN_CALLBACK_PATH_HEADER,
     `${request.nextUrl.pathname}${request.nextUrl.search}`,
@@ -190,13 +197,12 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
   const isMarketplaceChannel =
     requestedChannel === MARKETPLACE_SALES_CHANNEL ||
     (requestedChannel !== "direct" && hasMarketplaceCookie);
-  const requestHeaders = new Headers(request.headers);
+  const requestHeaders = routingHeaders(request);
 
   // Never trust caller-provided mode headers. The proxy derives them from the
   // route, query, and cookie before forwarding the rewritten request upstream.
   requestHeaders.delete("x-embed-mode");
   requestHeaders.delete("x-sales-channel");
-  requestHeaders.delete("x-store-slug");
   requestHeaders.delete("x-storefront-path");
 
   // The i18n request config reads the store's fallback language from this
@@ -451,7 +457,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new NextResponse(null, { status: 405, headers: { Allow: "GET, HEAD" } });
     }
-    const requestHeaders = new Headers(request.headers);
+    const requestHeaders = routingHeaders(request);
     requestHeaders.set(DEMO_ROUTE_HEADER, "1");
     const locale = request.nextUrl.searchParams.get("locale");
     requestHeaders.set(DEMO_LOCALE_HEADER, isLocale(locale) ? locale : defaultLocale);
@@ -465,7 +471,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
   // redirect of them tells another site where the user came from, and in
   // standalone mode they stay off the storefront.
   if (isHandoffPath(pathname) || isPartnerSpacePath(pathname)) {
-    const requestHeaders = new Headers(request.headers);
+    const requestHeaders = routingHeaders(request);
     requestHeaders.set(HANDOFF_ROUTE_HEADER, "1");
     const response = withRuntimeSecurityHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),
@@ -484,7 +490,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
   // /ingest must reach the next.config.ts rewrites untouched: rewriting it to
   // /{slug}/ingest on storefront subdomains 404s every PostHog capture call.
   if (pathname.startsWith("/api") || pathname.startsWith("/ingest") || isStaticAsset(pathname)) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: routingHeaders(request) } });
   }
 
   const publicEnv = getRuntimePublicEnv();
@@ -510,7 +516,8 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
   if (isStandaloneMode()) {
     if (isDashboardRoute(pathname)) {
       return withRuntimeSecurityHeaders(
-        createActiveStoreSwitch(request) ?? NextResponse.next(),
+        createActiveStoreSwitch(request) ??
+          NextResponse.next({ request: { headers: routingHeaders(request) } }),
         pathname,
         publicEnv,
       );
@@ -521,7 +528,11 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
       // Fresh install: no onboarded store yet. Fall through to the dashboard
       // root, which walks the visitor to /login and /onboarding.
       if (isAbsentLouezTerms(pathname)) return notFoundResponse(pathname, publicEnv);
-      return withRuntimeSecurityHeaders(NextResponse.next(), pathname, publicEnv);
+      return withRuntimeSecurityHeaders(
+        NextResponse.next({ request: { headers: routingHeaders(request) } }),
+        pathname,
+        publicEnv,
+      );
     }
 
     return withRuntimeSecurityHeaders(createStorefrontRewrite(request, slug), pathname, publicEnv);
@@ -582,7 +593,12 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
   // -----------------------------------------------------------------------------
   if (isAbsentLouezTerms(pathname)) return notFoundResponse(pathname, publicEnv);
   return withRuntimeSecurityHeaders(
-    captureAcquisition(request, NextResponse.next(), host, appDomain),
+    captureAcquisition(
+      request,
+      NextResponse.next({ request: { headers: routingHeaders(request) } }),
+      host,
+      appDomain,
+    ),
     pathname,
     publicEnv,
   );
