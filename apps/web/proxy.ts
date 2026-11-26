@@ -60,12 +60,32 @@ const getRuntimePublicEnv = (): PublicEnv => {
   return runtimePublicEnv;
 };
 
-function isEmbedPath(pathname: string): boolean {
-  return (
-    pathname === "/embed" ||
-    pathname.startsWith("/embed/") ||
-    /^\/[^/]+\/embed(?:\/|$)/.test(pathname)
-  );
+/** Match the widget in the route namespace selected by the proxy. */
+function isEmbedPath(pathname: string, storefrontRewrite = false): boolean {
+  // A storefront host adds its slug during rewriting: only /embed is its widget.
+  if (storefrontRewrite) return /^\/embed(?:\/|$)/.test(pathname);
+
+  // Direct URLs include the slug. Fixed app routes take precedence over [slug].
+  if (isDashboardRoute(pathname)) return false;
+  const root = pathname.split("/")[1];
+  if (
+    [
+      "api",
+      "ingest",
+      "_next",
+      "dev",
+      "demos",
+      "files",
+      "handoffs",
+      "partner",
+      "account",
+      "account-deleted",
+      "privacy",
+      "terms",
+    ].includes(root ?? "")
+  )
+    return false;
+  return /^\/[^/]+\/embed(?:\/|$)/.test(pathname);
 }
 
 /**
@@ -83,6 +103,7 @@ function withRuntimeSecurityHeaders(
   response: NextResponse,
   pathname: string,
   publicEnv: PublicEnv,
+  storefrontRewrite = false,
 ) {
   const options = {
     appDomain: publicEnv.NEXT_PUBLIC_APP_DOMAIN,
@@ -97,7 +118,7 @@ function withRuntimeSecurityHeaders(
   };
   const securityHeaders = isDemoPath(pathname)
     ? buildDemoSecurityHeaders(options)
-    : isEmbedPath(pathname)
+    : isEmbedPath(pathname, storefrontRewrite)
       ? buildEmbedSecurityHeaders(options)
       : isHandoffPagePath(pathname)
         ? buildHandoffSecurityHeaders(options)
@@ -170,10 +191,14 @@ function createActiveStoreSwitch(request: NextRequest): NextResponse | null {
   return NextResponse.rewrite(url, { request: { headers: routingHeaders(request) } });
 }
 
-/** Only a resolved storefront rewrite may identify a store by header. */
-function routingHeaders(request: NextRequest): Headers {
+/** Derive internal layout markers from routing, never from caller-supplied headers. */
+function routingHeaders(request: NextRequest, storefrontRewrite = false): Headers {
   const headers = new Headers(request.headers);
   headers.delete("x-store-slug");
+  headers.delete(EMBED_MODE_HEADER);
+  if (isEmbedPath(request.nextUrl.pathname, storefrontRewrite)) {
+    headers.set(EMBED_MODE_HEADER, "1");
+  }
   return headers;
 }
 
@@ -201,11 +226,10 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
   const isMarketplaceChannel =
     requestedChannel === MARKETPLACE_SALES_CHANNEL ||
     (requestedChannel !== "direct" && hasMarketplaceCookie);
-  const requestHeaders = routingHeaders(request);
+  const requestHeaders = routingHeaders(request, true);
 
   // Never trust caller-provided mode headers. The proxy derives them from the
   // route, query, and cookie before forwarding the rewritten request upstream.
-  requestHeaders.delete(EMBED_MODE_HEADER);
   requestHeaders.delete("x-sales-channel");
   requestHeaders.delete("x-storefront-path");
 
@@ -218,12 +242,6 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
 
   if (isMarketplaceChannel) {
     requestHeaders.set("x-sales-channel", MARKETPLACE_SALES_CHANNEL);
-  }
-
-  // Embed routes drop the app chrome (storefront layout) and the marketing
-  // trackers (root layout).
-  if (pathname === "/embed" || pathname.startsWith("/embed/")) {
-    requestHeaders.set(EMBED_MODE_HEADER, "1");
   }
 
   const response = NextResponse.rewrite(url, {
@@ -544,7 +562,12 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    return withRuntimeSecurityHeaders(createStorefrontRewrite(request, slug), pathname, publicEnv);
+    return withRuntimeSecurityHeaders(
+      createStorefrontRewrite(request, slug),
+      pathname,
+      publicEnv,
+      true,
+    );
   }
 
   // -----------------------------------------------------------------------------
@@ -564,6 +587,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
       ),
       pathname,
       publicEnv,
+      true,
     );
   }
 
@@ -594,6 +618,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
       captureAcquisition(request, createStorefrontRewrite(request, subdomain), host, appDomain),
       pathname,
       publicEnv,
+      true,
     );
   }
 

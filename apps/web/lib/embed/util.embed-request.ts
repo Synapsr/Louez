@@ -1,8 +1,9 @@
 /**
  * The storefront widget's page (`/[slug]/embed`), as the proxy marks it: it
- * removes this header from every storefront request, then sets it on an embed
- * route. The storefront layout drops its chrome for it, and the root layout
- * its marketing trackers (lib/util.client-tracking.ts).
+ * removes this header from every forwarded request, then sets it on an embed
+ * route, whether addressed directly or through a storefront rewrite. The
+ * storefront layout drops its chrome for it, and the root layout its
+ * marketing trackers (lib/util.client-tracking.ts).
  */
 export const EMBED_MODE_HEADER = "x-embed-mode";
 

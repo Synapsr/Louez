@@ -37,7 +37,10 @@ Il garde PostHog, qui remonte ses erreurs, et le journal client.
 - **Une seule règle.** `clientTrackingFor` (`apps/web/lib/util.client-tracking.ts`) décide, pour le
   layout racine, ce qui se charge : PostHog et le journal client hors handoffs et démos ; les
   traceurs marketing en plus hors widget. Le widget est reconnu à l'en-tête `x-embed-mode`, que le
-  proxy pose sur une route d'embed et retire de toute autre requête de boutique
+  proxy recalcule pour chaque requête : `/embed` sur un hôte de boutique réécrit,
+  `/<slug>/embed` sur une URL directe, jamais une route fixe de l'application. Toute valeur
+  fournie par le visiteur est retirée. Le prédicat `isEmbedPath` de `apps/web/proxy.ts`
+  décide à la fois de cet en-tête et de la CSP
   (`apps/web/lib/embed/util.embed-request.ts`).
 - **Un seul endroit.** Un traceur marketing ou un pixel publicitaire tiers s'ajoute dans
   `MarketingTrackers`, jamais ailleurs : il est alors exclu du widget sans autre changement.
@@ -52,6 +55,10 @@ Le code que les loueurs collent sur leur site ne change pas : iframe, redimensio
 le catalogue restent les mêmes.
 
 ## Tests
+
+- `apps/web/proxy.routing.test.ts` : en-têtes transmis, CSP et politique de traceurs concordent
+  sur les URLs directes, les sous-domaines de boutique, les previews et le mode standalone ;
+  les en-têtes forgés ne changent ni la boutique attribuée, ni le mode du widget.
 
 - `apps/web/app/layout.render.test.tsx` : le layout racine d'une page de boutique charge les traceurs
   marketing et PostHog ; celui du widget, PostHog seul ; handoff et boutique de démo, aucun.
