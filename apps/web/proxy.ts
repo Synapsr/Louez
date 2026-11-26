@@ -124,9 +124,12 @@ const DASHBOARD_ROUTES = [
   "/demo/", // the one-click demo stores (lib/demo), never a storefront slug
 ];
 
-/**
- * Check if the pathname is a dashboard/auth route that should not be rewritten.
- */
+/** A route owns its path and descendants, never another segment sharing its prefix. */
+function hasRouteSegmentPrefix(pathname: string, route: string): boolean {
+  return pathname === route || (route !== "/" && pathname.startsWith(`${route}/`));
+}
+
+/** Check if the pathname is a dashboard/auth route that should not be rewritten. */
 function isDashboardRoute(pathname: string): boolean {
   return DASHBOARD_ROUTES.some((route) => pathname.startsWith(route));
 }
@@ -489,7 +492,11 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
   // -----------------------------------------------------------------------------
   // /ingest must reach the next.config.ts rewrites untouched: rewriting it to
   // /{slug}/ingest on storefront subdomains 404s every PostHog capture call.
-  if (pathname.startsWith("/api") || pathname.startsWith("/ingest") || isStaticAsset(pathname)) {
+  if (
+    hasRouteSegmentPrefix(pathname, "/api") ||
+    hasRouteSegmentPrefix(pathname, "/ingest") ||
+    isStaticAsset(pathname)
+  ) {
     return NextResponse.next({ request: { headers: routingHeaders(request) } });
   }
 
@@ -613,6 +620,6 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico (favicon)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api(?:/|$)|_next/static(?:/|$)|_next/image(?:/|$)|favicon\\.ico$).*)",
   ],
 };
