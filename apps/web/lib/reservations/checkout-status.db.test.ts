@@ -1998,6 +1998,8 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     let start: typeof import("./start-checkout-payment");
     /** The account each session was created on, in order. */
     const accounts: (string | undefined)[] = [];
+    /** What each session was asked to charge, line by line, in minor units. */
+    const charged: number[][] = [];
 
     before(async () => {
       start = await import("./start-checkout-payment");
@@ -2005,8 +2007,12 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
       Reflect.set(
         getStripe().checkout.sessions,
         "create",
-        async (_params: unknown, options?: { stripeAccount?: string }) => {
+        async (
+          params: { line_items?: Array<{ price_data?: { unit_amount?: number } }> },
+          options?: { stripeAccount?: string },
+        ) => {
           accounts.push(options?.stripeAccount);
+          charged.push((params.line_items ?? []).map((line) => line.price_data?.unit_amount ?? 0));
           return {
             id: `cs_checkout_${accounts.length}`,
             url: "https://checkout.stripe.test/pay",
@@ -2088,6 +2094,60 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
           stripeAccountId: PAYING_ACCOUNT,
         },
       ]);
+    });
+
+    test("a yen checkout is charged rounded down to the yen, never above its total, and its row states that charge", async () => {
+      const id = nextId("chk");
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: PAYING_STORE,
+        customerId: "customer",
+        number: id,
+        status: "pending",
+        startDate: new Date("2026-02-01T09:00:00Z"),
+        endDate: new Date("2026-02-03T09:00:00Z"),
+        subtotalAmount: "100.60",
+        depositAmount: "0.00",
+        totalAmount: "100.60",
+        currency: "JPY",
+        source: "online",
+      });
+      type Input = Parameters<typeof start.startCheckoutPayment>[0];
+      charged.length = 0;
+
+      await start.startCheckoutPayment({
+        store: {
+          id: PAYING_STORE,
+          slug: "checkout-paying",
+          stripeAccountId: PAYING_ACCOUNT,
+          settings: { currency: "JPY" },
+        },
+        reservation: {
+          id,
+          number: id,
+          customerId: "customer",
+          customerEmail: "guest@example.test",
+          customerName: "Test Guest",
+        },
+        lines: [{ productName: "Kayak", quantity: 1, subtotal: 100.6 }] as Input["lines"],
+        totals: {
+          total: 100.6,
+          deposit: 0,
+          deliveryFee: 0,
+          discount: 0,
+          displayMode: "inclusive",
+          taxByLineId: new Map(),
+        } as unknown as Input["totals"],
+        insuranceAmount: 0,
+        locale: undefined,
+      });
+
+      assert.deepEqual(charged, [[100]]);
+      const [row] = await louezDb.db
+        .select({ amount: louezDb.payments.amount })
+        .from(louezDb.payments)
+        .where(eq(louezDb.payments.reservationId, id));
+      assert.equal(row?.amount, "100.00");
     });
   });
 });

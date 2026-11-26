@@ -19,29 +19,31 @@ export function getReservationRentalAmount(reservation: {
 }
 
 /**
- * What is still owed for the rental: its total less what settles it
- * (`getRentalPaid`, in the reservation's currency), counted in whole
- * hundredths, never below zero. The one reading of the payment request,
- * the reservation's page and payment section, the reservation list and the
- * payment recorded by hand.
+ * What can still be asked for the rental: its total less what settles it
+ * (`getRentalPaid`, in the reservation's `currency`), counted in whole
+ * hundredths, never below zero, then rounded down to the currency's minor
+ * unit (`roundDownToMinorUnit`): a leftover below it (¥0.60) is settled, and
+ * no charge of it takes more than is owed. The one reading of the customer's
+ * account and payment session, the payment request, the reservation's page
+ * and payment section, the reservation list, the edit and the payment
+ * recorded by hand; the upcoming revenue applies it in SQL.
  */
 export function getRentalRemaining(
   reservation: { readonly totalAmount: string | number | null },
   rentalPaid: number,
+  currency: string,
 ): number {
   const total = Math.max(0, toHundredths(reservation.totalAmount));
-  return Math.max(0, total - toHundredths(rentalPaid)) / 100;
+  return roundDownToMinorUnit(Math.max(0, total - toHundredths(rentalPaid)) / 100, currency);
 }
 
 /**
  * Where the customer stands on the rental, in the reservation's currency:
  * `paid`, what settles it (`getRentalPaid`), and `due`, what can still be
- * asked of them: what is owed (`getRentalRemaining`) rounded down to the
- * currency's minor unit (`roundDownToMinorUnit`), so no charge of it takes
- * more than is owed. The rental is settled when `due` is zero, overpaid
- * included. The one reading of every customer-facing "paid": the account
- * list and page, their pay button, the checkout's interrupted page, the
- * customer's payment session and the store's payment request.
+ * asked of them (`getRentalRemaining`). The rental is settled when `due` is
+ * zero, overpaid included. The one reading of every customer-facing "paid":
+ * the account list and page, their pay button, the checkout's interrupted
+ * page, the customer's payment session and the store's payment request.
  */
 export function getRentalBalance(
   reservation: {
@@ -51,7 +53,7 @@ export function getRentalBalance(
   currency: string,
 ): { paid: number; due: number } {
   const paid = getRentalPaid(reservation.payments, currency);
-  return { paid, due: roundDownToMinorUnit(getRentalRemaining(reservation, paid), currency) };
+  return { paid, due: getRentalRemaining(reservation, paid, currency) };
 }
 
 /**

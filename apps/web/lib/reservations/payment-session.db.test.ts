@@ -81,6 +81,7 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
   let rentalSessions: typeof import("@louez/api/services/rental-sessions");
   let effects: typeof import("@louez/api/platform/effects");
   let sessionSenders: typeof import("./rental-session-effects");
+  let completion: typeof import("./complete-checkout-payment");
   let counter = 0;
   const sessions: Stripe.Checkout.SessionCreateParams[] = [];
   /** The account each session was created on, in order. */
@@ -103,6 +104,8 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
    * delivered yet: Stripe no longer expires them, and reads them paid.
    */
   const paidAtStripe = new Map<string, { reservationId: string; amountMinor: number }>();
+  /** The PaymentIntent of a session found paid cannot be read: its recording fails. */
+  let paymentIntentUnreadable = false;
 
   before(async () => {
     database = await createTestDatabase("payment_session");
@@ -113,6 +116,7 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     rentalSessions = await import("@louez/api/services/rental-sessions");
     effects = await import("@louez/api/platform/effects");
     sessionSenders = await import("./rental-session-effects");
+    completion = await import("./complete-checkout-payment");
     const { getStripe } = await import("@/lib/stripe/client");
     Reflect.set(
       getStripe().checkout.sessions,
@@ -162,13 +166,10 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
       };
     });
     // The PaymentIntent of a session found paid, as its completion reads it.
-    Reflect.set(getStripe().paymentIntents, "retrieve", async (id: string) => ({
-      id,
-      customer: null,
-      payment_method: null,
-      metadata: {},
-      latest_charge: null,
-    }));
+    Reflect.set(getStripe().paymentIntents, "retrieve", async (id: string) => {
+      if (paymentIntentUnreadable) throw new Error("Stripe not reached");
+      return { id, customer: null, payment_method: null, metadata: {}, latest_charge: null };
+    });
 
     // The store has moved to dollars since its reservations were booked.
     await louezDb.db.insert(louezDb.stores).values({
@@ -203,6 +204,7 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     replacedAtStripe = "expirable";
     afterCreate = null;
     paidAtStripe.clear();
+    paymentIntentUnreadable = false;
   });
 
   /** A confirmed reservation of 100.00, with a deposit of 300.00. */
@@ -1162,6 +1164,131 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
 
       assert.deepEqual(expired, [before]);
       assert.deepEqual((await rowsBySession(id))["cs_after_the_write"], ["21.00", "pending"]);
+    });
+
+    /** The job's row as the outbox left it: its status, runs and last error. */
+    const effectRow = async (id: string) => {
+      const [row] = await louezDb.db
+        .select({
+          status: louezDb.apiEffects.status,
+          attempts: louezDb.apiEffects.attempts,
+          lastError: louezDb.apiEffects.lastError,
+        })
+        .from(louezDb.apiEffects)
+        .where(eq(louezDb.apiEffects.id, id));
+      return row;
+    };
+
+    /** The outbox's wait before the job's next run, over. */
+    const retryNow = (id: string) =>
+      louezDb.db
+        .update(louezDb.apiEffects)
+        .set({ nextAttemptAt: new Date(Date.now() - 60_000) })
+        .where(eq(louezDb.apiEffects.id, id));
+
+    test("a session Stripe took whose recording fails: the job fails and runs again until it is recorded", async () => {
+      const id = await createReservation("EUR", "30.00", "0.00");
+      await addPayment(id, "9.00");
+      const session = await balanceSession(id, "21.00");
+      const [job] = await queueExpiry(id);
+      assert.ok(job);
+      paidAtStripe.set(session, { reservationId: id, amountMinor: 2100 });
+      paymentIntentUnreadable = true;
+
+      await sendQueued([job]);
+
+      const failed = await effectRow(job);
+      assert.equal(failed?.status, "failed");
+      assert.equal(failed?.attempts, 1);
+      assert.match(String(failed?.lastError), /not recorded/);
+      assert.deepEqual((await rowsBySession(id))[session], ["21.00", "cancelled"]);
+
+      paymentIntentUnreadable = false;
+      await retryNow(job);
+      await sendQueued([job]);
+
+      assert.equal((await effectRow(job))?.status, "sent");
+      assert.deepEqual((await rowsBySession(id))[session], ["21.00", "completed"]);
+    });
+
+    test("a recording still failing on the outbox's last run: the job gives up, says so, and is abandoned", async () => {
+      const id = await createReservation("EUR", "30.00", "0.00");
+      await addPayment(id, "9.00");
+      const session = await balanceSession(id, "21.00");
+      const [job] = await queueExpiry(id);
+      assert.ok(job);
+      paidAtStripe.set(session, { reservationId: id, amountMinor: 2100 });
+      paymentIntentUnreadable = true;
+      // Every run before the last already failed.
+      await louezDb.db
+        .update(louezDb.apiEffects)
+        .set({ status: "failed", attempts: effects.EFFECT_MAX_ATTEMPTS - 1 })
+        .where(eq(louezDb.apiEffects.id, job));
+      await retryNow(job);
+
+      await sendQueued([job]);
+
+      const row = await effectRow(job);
+      assert.equal(row?.status, "abandoned");
+      assert.equal(row?.attempts, effects.EFFECT_MAX_ATTEMPTS);
+      assert.match(String(row?.lastError), new RegExp(`Gave up on the rental sessions of ${id}`));
+    });
+
+    test("a row the job cancelled is still recorded when its session is later found paid: by the return, and by the webhook", async () => {
+      const byReturn = await createReservation("EUR", "30.00", "0.00");
+      const byWebhook = await createReservation("EUR", "30.00", "0.00");
+      const sessionsOf: Record<string, string> = {};
+      replacedAtStripe = "unreachable";
+      for (const id of [byReturn, byWebhook]) {
+        await addPayment(id, "9.00");
+        sessionsOf[id] = await balanceSession(id, "21.00");
+        await sendQueued(await queueExpiry(id));
+        assert.deepEqual((await rowsBySession(id))[sessionsOf[id] ?? ""], ["21.00", "cancelled"]);
+      }
+
+      paidAtStripe.set(String(sessionsOf[byReturn]), {
+        reservationId: byReturn,
+        amountMinor: 2100,
+      });
+      const returned = await completion.completeCheckoutPayment({
+        source: "return",
+        storeId: STORE,
+        reservationId: byReturn,
+        stripeCheckoutSessionId: String(sessionsOf[byReturn]),
+      });
+      const delivered = await completion.completeCheckoutPayment({
+        source: "webhook",
+        reservationId: byWebhook,
+        stripe: {
+          sessionId: String(sessionsOf[byWebhook]),
+          amountTotalCents: 2100,
+          currency: "EUR",
+          paymentIntentId: `pi_${sessionsOf[byWebhook]}`,
+          chargeId: null,
+          chargeCreatedAt: null,
+          stripeCustomerId: null,
+          stripePaymentMethodId: null,
+          stripeAccountId: "acct_pay_session",
+          paymentIntentMetadata: null,
+          sessionMetadata: { reservationId: byWebhook },
+        },
+      });
+
+      for (const [id, result] of [
+        [byReturn, returned],
+        [byWebhook, delivered],
+      ] as const) {
+        assert.equal(result.status, "completed", id);
+        assert.deepEqual((await rowsBySession(id))[sessionsOf[id] ?? ""], ["21.00", "completed"]);
+      }
+    });
+
+    test("a leftover below the yen is settled: a ¥100.60 total with ¥100 paid asks nothing", async () => {
+      const id = await createReservation("JPY", "100.60", "0.00");
+      await addPayment(id, "100.00", { currency: "JPY" });
+
+      assert.deepEqual(await start(id), { error: "errors.alreadyPaid" });
+      assert.equal(sessions.length, 0);
     });
 
     test("no session open: a lowering write queues nothing", async () => {

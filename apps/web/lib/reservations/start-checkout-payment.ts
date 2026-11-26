@@ -11,11 +11,20 @@ import {
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
+import {
+  createCheckoutSession,
+  fromStripeCents,
+  toStripeChargeCents,
+  toStripeCents,
+} from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
-import { buildStripeLineItems, getCheckoutChargeAmount } from "./build-stripe-line-items";
+import {
+  buildStripeLineItems,
+  getCheckoutChargeAmount,
+  sumStripeLineItems,
+} from "./build-stripe-line-items";
 import { runAfterResponse } from "./post-creation-effects";
 import {
   DELIVERY_TAX_LINE_ID,
@@ -94,10 +103,14 @@ export const startCheckoutPayment = async ({
       insuranceTaxLine: totals.taxByLineId.get(INSURANCE_TAX_LINE_ID),
       deliveryFee: totals.deliveryFee,
       deliveryTaxLine: totals.taxByLineId.get(DELIVERY_TAX_LINE_ID),
-      toCents: (amount) => toStripeCents(amount, currency),
+      // Each line rounded down to the currency's minor unit: the session never
+      // charges more than the total.
+      toCents: (amount) => toStripeChargeCents(amount, currency),
     });
 
-    const chargeCents = toStripeCents(finalChargeAmount, currency);
+    // What the session charges, the sum of its lines; its pending row states it.
+    const chargeCents = sumStripeLineItems(lineItems);
+    const chargedAmount = fromStripeCents(chargeCents, currency);
     // The reservation was just written from these totals, tax included.
     const insuranceShareMinor = paymentInsuranceShareMinor("rental", chargeCents, () => ({
       insuranceMinor: toMinorOrThrow(insuranceAmount.toFixed(2), currency),
@@ -147,7 +160,7 @@ export const startCheckoutPayment = async ({
       await tx.insert(payments).values({
         id: nanoid(),
         reservationId: reservation.id,
-        amount: finalChargeAmount.toFixed(2),
+        amount: chargedAmount.toFixed(2),
         type: "rental",
         method: "stripe",
         status: "pending",
@@ -169,7 +182,7 @@ export const startCheckoutPayment = async ({
         description: null,
         metadata: {
           checkoutSessionId: sessionId,
-          amount: finalChargeAmount,
+          amount: chargedAmount,
           fullAmount: totals.total,
           depositPercentage,
           isPartialPayment,
@@ -195,7 +208,7 @@ export const startCheckoutPayment = async ({
           payment_provider: "stripe",
           payment_mode: isPartialPayment ? "partial" : "full",
           deposit_percentage: depositPercentage,
-          amount_cents: toAnalyticsAmountCents(finalChargeAmount),
+          amount_cents: toAnalyticsAmountCents(chargedAmount),
           total_amount_cents: toAnalyticsAmountCents(totals.total),
           application_fee_cents: feePlan.applicationFeeCents,
           reservation_fee_cents: feePlan.reservationFeeCents,

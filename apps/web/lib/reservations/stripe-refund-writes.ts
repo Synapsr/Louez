@@ -14,6 +14,7 @@ import {
 } from "@louez/db";
 
 import { enqueueEffects } from "@louez/api/platform/effects";
+import { enqueueRentalSessionsExpiry } from "@louez/api/services/rental-sessions";
 
 import { log } from "@/lib/evlog";
 import { grossMinorOf } from "@/lib/reservations/payment-billing-facts";
@@ -155,7 +156,11 @@ export type RecordedChargeRefunds = {
   readonly undone: readonly RecordedRefundRow[];
   /** What the store keeps of the charge. */
   readonly netMinor: number;
-  /** The credit notes owed for the rows written now: hand them to the dispatcher. */
+  /**
+   * The outbox rows this write added: the credit notes owed for the rows written
+   * now, and the expiry of the rental's open sessions when a refund undone made the
+   * customer owe less. Hand them to the dispatcher.
+   */
   readonly effectIds: readonly string[];
   /** The operations this write settled, `succeeded` or `failed`. */
   readonly settledOperationIds: readonly string[];
@@ -590,6 +595,13 @@ export async function recordChargeRefunds(
         .where(eq(payments.id, id));
     }
     await markReservationIds(tx, [input.reservationId]);
+    // A refund undone gives the money back to the store: the customer owes less, and
+    // the rental's sessions open now charge more than remains.
+    if (undone.length > 0) {
+      effectIds.push(
+        ...(await enqueueRentalSessionsExpiry(tx, reservation.storeId, input.reservationId)),
+      );
+    }
 
     return { rows, undone, netMinor, effectIds, settledOperationIds };
   }, REFUND_TRANSACTION);

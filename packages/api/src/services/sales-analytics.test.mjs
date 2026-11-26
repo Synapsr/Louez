@@ -31,6 +31,7 @@ function loadQueries(file, db, extra = {}) {
     alias,
     formatInTimeZone,
     Date,
+    currencyMinorDigits: utils.currencyMinorDigits,
     ...extra,
   });
 }
@@ -41,6 +42,7 @@ function fixture() {
     args.reduce((a, b) => (a > b ? a : b)),
   );
   sqlite.function("LEAST", { varargs: true }, (...args) => args.reduce((a, b) => (a < b ? a : b)));
+  sqlite.function("FLOOR", (value) => Math.floor(value));
   sqlite.function("minutes_between", (a, b) =>
     Math.trunc((Date.parse(b + "Z") - Date.parse(a + "Z")) / 60000),
   );
@@ -203,6 +205,26 @@ test("upcoming balances subtract payments, restore manual refunds and ignore dep
     result = await f.queries.getUpcomingRevenue(STORE, now);
     // A total never contains the deposit (migration 0108): 391 less the 200 paid.
     assert.equal(result.revenue, 191, "the total as stored, beside its 100 euro deposit");
+  } finally {
+    f.sqlite.close();
+  }
+});
+
+test("upcoming balances count a leftover below the currency's minor unit as settled", async () => {
+  const f = fixture();
+  try {
+    const YEN_STORE = { id: "store", currency: "JPY" };
+    f.sqlite.exec("UPDATE reservations SET total_amount=100.6, currency='JPY' WHERE id='r'");
+    f.pay("paid", 100, new Date("2026-09-01"));
+    let result = await f.queries.getUpcomingRevenue(YEN_STORE, now);
+    assert.equal(result.revenue, 0);
+    assert.equal(result.reservationCount, 0);
+    f.sqlite.exec("DELETE FROM payments");
+    f.pay("paid", 50, new Date("2026-09-01"));
+    result = await f.queries.getUpcomingRevenue(YEN_STORE, now);
+    // ¥50.60 left: ¥50 can still be asked.
+    assert.equal(result.revenue, 50);
+    assert.equal(result.reservationCount, 1);
   } finally {
     f.sqlite.close();
   }

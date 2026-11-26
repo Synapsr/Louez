@@ -259,7 +259,7 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
     const reservationId = await createReservation();
     const paymentId = await createPayment(reservationId, { type: "rental", method: "cash" });
 
-    await writes.deleteRecordedPayment(louezDb.db, { paymentId, reservationId, storeId: STORE });
+    await writes.deleteRecordedPayment({ paymentId, reservationId, storeId: STORE });
 
     assert.equal(await readPayment(paymentId), undefined);
     assert.equal(await readMark(reservationId), null);

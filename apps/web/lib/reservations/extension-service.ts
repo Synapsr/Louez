@@ -19,7 +19,7 @@ import { normalizeCurrency } from "@louez/utils";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { stripe } from "@/lib/stripe/client";
-import { toStripeCents } from "@/lib/stripe";
+import { fromStripeCents, toStripeChargeCents } from "@/lib/stripe";
 import { appFeeColumns, paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
@@ -199,7 +199,8 @@ export const startExtension = async (input: {
       return { status: "checkout" as const, url: session.url };
     throw new ExtensionError("expired");
   }
-  const chargeCents = toStripeCents(attempt.supplement, attempt.currency);
+  // Rounded down to the currency's minor unit, as every rental charge.
+  const chargeCents = toStripeChargeCents(attempt.supplement, attempt.currency);
   const insuranceShareMinor = extensionInsuranceShare(reservation, chargeCents) ?? 0;
   const fee = await planApplicationFee({
     storeId: reservation.storeId,
@@ -300,7 +301,7 @@ export const completeExtensionPayment = async (
       throw new ExtensionError("notFound");
     if (
       attempt.currency.toLowerCase() !== session.currency ||
-      toStripeCents(attempt.supplement, attempt.currency) !== session.amount_total
+      toStripeChargeCents(attempt.supplement, attempt.currency) !== session.amount_total
     )
       throw new ExtensionError("paymentMismatch");
     if (["confirmed", "refunded", "refund_pending"].includes(attempt.status)) return attempt;
@@ -321,11 +322,13 @@ export const completeExtensionPayment = async (
         valid = false;
       }
     }
-    const grossMinor = session.amount_total ?? toStripeCents(attempt.supplement, attempt.currency);
+    const grossMinor =
+      session.amount_total ?? toStripeChargeCents(attempt.supplement, attempt.currency);
     await tx.insert(payments).values({
       id: paymentId,
       reservationId,
-      amount: attempt.supplement.toFixed(2),
+      // What Stripe took: the supplement rounded down to the currency's minor unit.
+      amount: fromStripeCents(grossMinor, attempt.currency).toFixed(2),
       currency: normalizeCurrency(attempt.currency),
       type: "rental",
       method: "stripe",

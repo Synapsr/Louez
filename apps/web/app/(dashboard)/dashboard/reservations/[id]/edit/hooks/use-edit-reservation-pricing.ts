@@ -375,10 +375,14 @@ export interface EditSummaryFigures {
   balance: { kind: "refund" | "due"; amount: number } | null;
 }
 
-const balanceAfter = (after: number, rentalPaid: number): EditSummaryFigures["balance"] => {
+const balanceAfter = (
+  after: number,
+  rentalPaid: number,
+  currency: string,
+): EditSummaryFigures["balance"] => {
   const overpaid = getRentalOverpaid({ totalAmount: after }, rentalPaid);
   if (overpaid > 0) return { kind: "refund", amount: overpaid };
-  const due = getRentalRemaining({ totalAmount: after }, rentalPaid);
+  const due = getRentalRemaining({ totalAmount: after }, rentalPaid, currency);
   return due > 0 ? { kind: "due", amount: due } : null;
 };
 
@@ -397,7 +401,7 @@ export const editSummaryFigures = (input: {
   taxLines: input.preview.taxOnTop
     ? { subtotal: input.preview.subtotal, tax: input.preview.taxAmount ?? 0 }
     : null,
-  balance: balanceAfter(input.preview.total, input.rentalPaid),
+  balance: balanceAfter(input.preview.total, input.rentalPaid, input.currency),
 });
 
 interface UseEditReservationPricingParams {

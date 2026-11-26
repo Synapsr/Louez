@@ -174,7 +174,8 @@ const dependencies = {
     return { preview: { mode: "automatic", supplement, total: 40, currency: "EUR" }, plan };
   },
   resolveDateChangeRequests: async () => {},
-  toStripeCents: (amount: number) => Math.round(amount * 100),
+  toStripeChargeCents: (amount: number) => Math.round(amount * 100),
+  fromStripeCents: (cents: number) => cents / 100,
   planApplicationFee: async (input: ApplicationFeeInput) => {
     feeInputs.push(input);
     return feePlan;

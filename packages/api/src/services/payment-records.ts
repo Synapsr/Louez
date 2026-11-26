@@ -105,7 +105,10 @@ export interface PaymentWriteCaller<Port> {
 /** The payments recorded with the app's writer of a recorded payment. */
 export type PaymentRecordsCaller = PaymentWriteCaller<PaymentRecordsPort>;
 
-/** A payment's writer, with the outbox's dispatch: a rental payment expires the open sessions. */
+/**
+ * A payment's writer, with the outbox's dispatch: a rental payment recorded, or
+ * a refund deleted, expires the rental's open sessions.
+ */
 export interface PaymentRecordCaller extends PaymentRecordsCaller {
   /** Sends committed outbox rows (`ApiPorts.dispatchEffects`). Never throws. */
   dispatchEffects: (ids: readonly string[]) => void;
@@ -457,15 +460,17 @@ type StorePayment = NonNullable<Awaited<ReturnType<typeof storePayment>>>;
 
 /**
  * Deletes a payment recorded by hand, and marks its reservation for the
- * billing service in the same transaction. A Stripe payment is refused.
+ * billing service in the same transaction. A Stripe payment is refused. A
+ * refund deleted no longer gives its money back: the customer owes less, and
+ * the rental's open Checkout Sessions are expired (`enqueueRentalSessionsExpiry`).
  */
-export async function deletePayment(caller: PaymentRecordsCaller, input: DeletePaymentInput) {
+export async function deletePayment(caller: PaymentRecordCaller, input: DeletePaymentInput) {
   const { storeId } = caller;
   // Which reservation to lock; read again under its lock.
   const found = await storePayment(db, storeId, input.paymentId);
   if (!found) throw paymentRecordErrors.paymentNotFound(input.paymentId);
 
-  return underReservationLock(storeId, found.reservationId, async (tx) => {
+  const deleted = await underReservationLock(storeId, found.reservationId, async (tx) => {
     const payment = await storePayment(tx, storeId, input.paymentId);
     if (!payment) return refused(paymentRecordErrors.paymentNotFound(input.paymentId));
     // Refused whatever anyone answers: before asking.
@@ -502,15 +507,23 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
       .delete(payments)
       .where(and(eq(payments.id, payment.id), eq(payments.reservationId, payment.reservationId)));
     await markReservation(tx, { id: payment.reservationId, storeId });
+    const effectIds = payment.refundOfPaymentId
+      ? await enqueueRentalSessionsExpiry(tx, storeId, payment.reservationId)
+      : [];
     return {
       ok: true,
       value: {
-        paymentId: payment.id,
-        reservationId: payment.reservationId,
-        number: payment.number,
+        effectIds,
+        payment: {
+          paymentId: payment.id,
+          reservationId: payment.reservationId,
+          number: payment.number,
+        },
       },
     };
   });
+  caller.dispatchEffects(deleted.effectIds);
+  return deleted.payment;
 }
 
 // --- A refund given by hand ------------------------------------------------------

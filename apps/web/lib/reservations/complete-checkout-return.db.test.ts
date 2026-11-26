@@ -53,6 +53,9 @@ const unexpected = (name: string) => () => {
   throw new Error(`Unexpected Stripe call: ${name}`);
 };
 
+/** What Stripe answers of a session instead of the paid one below, by its id. */
+const sessionAtStripe = new Map<string, Record<string, unknown>>();
+
 const stripe = {
   checkout: {
     sessions: {
@@ -71,6 +74,7 @@ const stripe = {
           metadata: { reservationId, checkoutFlow: "storefront_checkout" },
           url: null,
           expires_at: 1_900_000_000,
+          ...sessionAtStripe.get(id),
         };
       },
       create: unexpected("checkout.sessions.create"),
@@ -208,6 +212,7 @@ describe(
 
     beforeEach(() => {
       calls.length = 0;
+      sessionAtStripe.clear();
     });
 
     const nextId = (prefix: string) =>
@@ -420,6 +425,71 @@ describe(
         "processing",
       );
       assert.equal(paymentStatus.getReservationPaymentStatus(rows), "received");
+    });
+
+    /** The account's payment return, as Stripe sends the customer to it. */
+    const paymentReturnOf = async (slug: string, reservationId: string, sessionId: string) => {
+      const { NextRequest } = await import("next/server");
+      const url = `https://checkout-return.example.test/account/reservations/${reservationId}/payment-return?session_id=${sessionId}`;
+      const response = await paymentReturn.GET(new NextRequest(url), {
+        params: Promise.resolve({ slug, reservationId }),
+      });
+      return new URL(String(response.headers.get("location")));
+    };
+
+    test("an unpaid, expired, foreign or other store's session records nothing and lands without the paid event", async () => {
+      const cases: Array<[string, Record<string, unknown>]> = [
+        ["unpaid", { status: "open", payment_status: "unpaid" }],
+        ["expired", { status: "expired", payment_status: "unpaid" }],
+        ["foreign", { metadata: { reservationId: "res_another_booking_01" } }],
+        ["other store", { metadata: { reservationId: "", storeId: "store_someone_else" } }],
+      ];
+      for (const [name, atStripe] of cases) {
+        const booking = await balancePaidAtStripe();
+        const metadata = atStripe.metadata as Record<string, string> | undefined;
+        sessionAtStripe.set(booking.sessionId, {
+          ...atStripe,
+          ...(metadata
+            ? { metadata: { ...metadata, reservationId: metadata.reservationId || booking.id } }
+            : {}),
+        });
+
+        const location = await paymentReturnOf("checkout-return", booking.id, booking.sessionId);
+
+        assert.equal(location.pathname.endsWith(`/account/reservations/${booking.id}`), true, name);
+        assert.equal(location.search, "", name);
+        const rows = await rowsOf(booking.id);
+        assert.equal(
+          rows.find((row) => row.stripeCheckoutSessionId === booking.sessionId)?.status,
+          "pending",
+          `${name}: nothing recorded`,
+        );
+      }
+    });
+
+    test("a slug that names no store, such as evil.example%23, sends to the instance's root, never elsewhere", async () => {
+      const booking = await balancePaidAtStripe();
+
+      for (const slug of ["evil.example%23", "evil.example#", "unknown-store"]) {
+        const location = await paymentReturnOf(slug, booking.id, booking.sessionId);
+        assert.equal(location.href, "https://app.louez.test/", slug);
+      }
+      assert.deepEqual(stripeReads(), [], "nothing is read for an unknown store");
+    });
+
+    test("a return without a session lands on the store's own account page", async () => {
+      const booking = await balancePaidAtStripe();
+      const { NextRequest } = await import("next/server");
+      const response = await paymentReturn.GET(
+        new NextRequest(
+          `https://checkout-return.example.test/account/reservations/${booking.id}/payment-return`,
+        ),
+        { params: Promise.resolve({ slug: "checkout-return", reservationId: booking.id }) },
+      );
+
+      const location = new URL(String(response.headers.get("location")));
+      assert.equal(location.pathname.endsWith("/account"), true);
+      assert.equal(location.hostname.endsWith("louez.test"), true);
     });
   },
 );

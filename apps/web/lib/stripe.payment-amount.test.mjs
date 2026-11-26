@@ -87,13 +87,14 @@ test("a Stripe session is expired when recording its payment fails", async () =>
       .slice(paymentSource.indexOf("export const startCheckoutPayment"))
       .replace("export ", ""),
   );
-  const { buildStripeLineItems, getCheckoutChargeAmount } = createRequire(import.meta.url)(
-    "./reservations/build-stripe-line-items.ts",
-  );
+  const { buildStripeLineItems, getCheckoutChargeAmount, sumStripeLineItems } = createRequire(
+    import.meta.url,
+  )("./reservations/build-stripe-line-items.ts");
   const expired = [];
   const start = runInNewContext(`${compiled}; startCheckoutPayment`, {
     buildStripeLineItems,
     getCheckoutChargeAmount,
+    sumStripeLineItems,
     getStorefrontUrl: () => "https://shop.example.test",
     planApplicationFee: async () => ({ applicationFeeCents: 0 }),
     buildFeeMetadata: () => ({}),
@@ -101,6 +102,8 @@ test("a Stripe session is expired when recording its payment fails", async () =>
     toMinorOrThrow: () => 0,
     markReservation: async () => {},
     toStripeCents: (amount) => Math.round(amount * 100),
+    toStripeChargeCents: (amount) => Math.round(amount * 100),
+    fromStripeCents: (cents) => cents / 100,
     createCheckoutSession: async () => ({
       url: "https://stripe.example.test/pay",
       sessionId: "created-session",

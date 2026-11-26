@@ -81,6 +81,7 @@ describe(
     let database: TestDatabase;
     let louezDb: typeof import("@louez/db");
     let record: Call;
+    let remove: Call;
     let decide: (id: string) => Promise<void>;
     let counter = 0;
     /** The outbox rows the procedure dispatched once committed. */
@@ -151,6 +152,19 @@ describe(
           },
           path: ["dashboard", "payments"],
         }).record(input as never);
+      remove = (input, confirmation) =>
+        createRouterClient(appRouter.dashboard.payments, {
+          context: {
+            headers: new Headers({
+              authorization: `Bearer ${key.key}`,
+              ...(confirmation ? { "louez-confirmation": confirmation } : {}),
+            }),
+            transport: "openapi" as const,
+            ports,
+            receipt: {},
+          },
+          path: ["dashboard", "payments"],
+        }).delete(input as never);
       const handoffs = createRouterClient(appRouter.dashboard.handoffs, {
         context: {
           headers: new Headers({ [SESSION_HEADER]: OWNER, [STORE_HEADER]: STORE }),
@@ -245,13 +259,13 @@ describe(
       method: "cash",
     });
 
-    /** Records the payment as the agent asks, through the person's approval. */
-    async function approvedRecord(input: object) {
-      const asked = await codeOf(record(input));
+    /** Carries out the agent's call through the person's approval. */
+    async function approved(call: Call, input: object) {
+      const asked = await codeOf(call(input));
       assert.equal(asked.code, "APPROVAL_REQUIRED");
       const approval = String(asked.details.confirmationToken);
       await decide(approval);
-      assert.equal(await codeOf(record(input, approval)).then((r) => r.code), "OK");
+      assert.equal(await codeOf(call(input, approval)).then((r) => r.code), "OK");
     }
 
     /** A Checkout Session of the rental, open: its payment row `pending`. */
@@ -283,8 +297,8 @@ describe(
       const open = await openRentalSession(rentalPaid);
       await openRentalSession(depositPaid);
 
-      await approvedRecord({ ...rental(rentalPaid), amount: "20.00" });
-      await approvedRecord({ ...rental(depositPaid), type: "deposit", amount: "20.00" });
+      await approved(record, { ...rental(rentalPaid), amount: "20.00" });
+      await approved(record, { ...rental(depositPaid), type: "deposit", amount: "20.00" });
 
       const queued = await sessionExpiriesOf(rentalPaid);
       assert.deepEqual(
@@ -293,6 +307,52 @@ describe(
       );
       assert.ok(dispatched.includes(String(queued[0]?.id)), "dispatched once committed");
       assert.deepEqual(await sessionExpiriesOf(depositPaid), []);
+    });
+
+    test("a refund given by hand deleted expires the rental's open sessions; a payment deleted queues none", async () => {
+      const refundDeleted = await reservation();
+      const paymentDeleted = await reservation();
+      const rows = [refundDeleted, paymentDeleted].map((reservationId) => ({
+        paid: `pay_cash_${++counter}`,
+        refund: `pay_back_${++counter}`,
+        reservationId,
+      }));
+      for (const { paid, refund, reservationId } of rows) {
+        await louezDb.db.insert(louezDb.payments).values([
+          {
+            id: paid,
+            reservationId,
+            amount: "98.00",
+            type: "rental",
+            method: "cash",
+            status: "completed",
+            currency: "EUR",
+          },
+          {
+            id: refund,
+            reservationId,
+            amount: "20.00",
+            type: "rental",
+            method: "cash",
+            status: "completed",
+            refundOfPaymentId: paid,
+            currency: "EUR",
+          },
+        ]);
+      }
+      const open = await openRentalSession(refundDeleted);
+      await openRentalSession(paymentDeleted);
+
+      await approved(remove, { paymentId: rows[0]?.refund });
+      await approved(remove, { paymentId: rows[1]?.paid });
+
+      const queued = await sessionExpiriesOf(refundDeleted);
+      assert.deepEqual(
+        queued.map((row) => row.payload),
+        [{ reservationId: refundDeleted, paymentIds: [open] }],
+      );
+      assert.ok(dispatched.includes(String(queued[0]?.id)), "dispatched once committed");
+      assert.deepEqual(await sessionExpiriesOf(paymentDeleted), []);
     });
 
     test("unchanged, the row takes the facts bound with the preview", async () => {

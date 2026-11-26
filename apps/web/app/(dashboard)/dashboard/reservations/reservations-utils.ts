@@ -87,7 +87,7 @@ export function getPaymentStatus(reservation: Reservation): {
   const totalPaid = rentalPaid;
 
   let status: PaymentStatusType = 'unpaid';
-  if (getRentalRemaining(reservation, rentalPaid) === 0) {
+  if (getRentalRemaining(reservation, rentalPaid, reservation.currency) === 0) {
     status = 'paid';
   } else if (totalPaid > 0) {
     status = 'partial';

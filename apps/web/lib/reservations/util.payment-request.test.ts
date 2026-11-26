@@ -189,7 +189,7 @@ const taxedOnTop = {
 };
 
 test("what is owed is the total less the rental paid: the tax is never taken for the deposit", () => {
-  assert.equal(getRentalRemaining(taxedOnTop, 100), 20);
+  assert.equal(getRentalRemaining(taxedOnTop, 100, "EUR"), 20);
   const terms = paymentRequestTerms({
     type: "rental",
     reservation: {

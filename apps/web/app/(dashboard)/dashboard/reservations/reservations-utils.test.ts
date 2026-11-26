@@ -34,6 +34,7 @@ const createReservation = (overrides: Partial<Reservation>): Reservation => ({
     },
   ],
   payments: [],
+  currency: 'EUR',
   ...overrides,
   // As the server reads it for the list (`getRentalPaid`), in a euro reservation.
   rentalPaid: overrides.rentalPaid ?? getRentalPaid(overrides.payments ?? [], 'EUR').toFixed(2),
@@ -194,4 +195,11 @@ test('reservation list payment status subtracts refunds and ignores Stripe refun
   );
   assert.equal(stripeRefund.totalPaid, 70);
   assert.equal(stripeRefund.status, 'partial');
+});
+
+test('a leftover below the currency minor unit is settled: a ¥100.60 total with ¥100 paid shows paid', () => {
+  const status = getPaymentStatus(
+    createReservation({ currency: 'JPY', totalAmount: '100.60', rentalPaid: '100.00' }),
+  );
+  assert.equal(status.status, 'paid');
 });

@@ -3,7 +3,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 
 import { db, reservations, stores } from "@louez/db";
-import { validateStripePaymentAmount } from "@louez/utils";
+import { roundDownToMinorUnit, validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
@@ -257,8 +257,11 @@ export async function createReservationPaymentSessionForCustomer(
         customer_id: customerId,
         source,
         payment_provider: "stripe",
+        // Full when it charges the whole total, as it can be charged.
         payment_mode:
-          chargeAmount < Number.parseFloat(reservation.totalAmount) ? "partial" : "full",
+          chargeAmount < roundDownToMinorUnit(Number.parseFloat(reservation.totalAmount), currency)
+            ? "partial"
+            : "full",
         amount_cents: toAnalyticsAmountCents(chargeAmount),
         total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
         deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),

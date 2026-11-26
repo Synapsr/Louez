@@ -561,8 +561,12 @@ export const completeCheckoutPayment = async (
 
   // The session id comes from the URL: it must be the session created for
   // THIS reservation (`createCheckoutSession` stamps the id in the metadata),
-  // otherwise a paid session could be replayed onto another pending reservation.
-  if (session.metadata?.reservationId !== input.reservationId) {
+  // and of this store when its fee metadata names one, otherwise a paid session
+  // could be replayed onto another reservation.
+  if (
+    session.metadata?.reservationId !== input.reservationId ||
+    (session.metadata?.storeId !== undefined && session.metadata.storeId !== store.id)
+  ) {
     log.warn({
       security: {
         event: "checkout_session_reservation_mismatch",

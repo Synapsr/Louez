@@ -1261,6 +1261,49 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     assert.ok(!JSON.stringify(snapshot).includes(made.id));
   });
 
+  test("a refund undone while a session for the balance is open queues that session's expiry, once", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+    await expectOk(await refund(stripe, request(paymentId, 6_000)));
+    await webhook.handleChargeRefunded(stripe.refundedEvent(chargeId), ACCOUNT, stripe.webhookPort);
+    // The customer opened a session for the €60 the refund made owed again.
+    const openId = `pay_o_${reservationId}`;
+    await louezDb.db.insert(louezDb.payments).values({
+      id: openId,
+      reservationId,
+      amount: "60.00",
+      type: "rental",
+      method: "stripe",
+      status: "pending",
+      stripeCheckoutSessionId: `cs_open_${reservationId}`,
+      origin: "customer_session",
+      currency: "EUR",
+    });
+
+    const made = stripe.charges.get(chargeId)?.refunds[0];
+    assert.ok(made);
+    made.status = "failed";
+    made.failure_reason = "expired_or_canceled_card";
+    const event = { ...made, currency: "eur", charge: chargeId };
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await webhook.handleRefundUpdated(event, ACCOUNT, stripe.webhookPort);
+    }
+
+    const queued = await louezDb.db
+      .select({ payload: louezDb.apiEffects.payload })
+      .from(louezDb.apiEffects)
+      .where(
+        and(
+          eq(louezDb.apiEffects.type, "payment.rentalSessionsExpiry"),
+          eq(louezDb.apiEffects.reservationId, reservationId),
+        ),
+      );
+    assert.deepEqual(
+      queued.map((row) => row.payload),
+      [{ reservationId, paymentIds: [openId] }],
+    );
+  });
+
   test("a refund made in Stripe's dashboard that fails is undone the same way; one of another account changes nothing", async () => {
     const stripe = fakeStripe();
     const { paymentId, chargeId } = await createPayment(stripe);

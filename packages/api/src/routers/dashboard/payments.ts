@@ -440,7 +440,10 @@ const deletePaymentProcedure = storeProcedure
       throw paymentRecordErrors.paymentNotFound(input.paymentId);
     }
     const deleted = await deletePayment(
-      paymentRecordsCaller(context, path, input, "destructive", context.ports.paymentRecords),
+      {
+        ...paymentRecordsCaller(context, path, input, "destructive", context.ports.paymentRecords),
+        dispatchEffects: context.ports.dispatchEffects,
+      },
       input,
     );
     return { ...deleted, ...reservationLinksFor(context, deleted.reservationId) };

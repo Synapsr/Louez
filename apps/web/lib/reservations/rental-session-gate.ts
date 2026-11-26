@@ -105,7 +105,8 @@ type RowSession = CheckoutSessionAtStripe & { paymentId: string };
  * Under the reservation's lock, of `rows`, its payments: the rental's open ones
  * (`pending`) cancelled, by an update conditional on `pending`, before their
  * sessions are expired at Stripe, so an expiry of one finds its row no longer
- * pending and cancels nothing. A row so cancelled stays `cancelled`. Returns the
+ * pending and cancels nothing. A row so cancelled is never `pending` again; its
+ * session found paid afterwards is still recorded, from `cancelled`. Returns the
  * unsettled sessions among `rows` (`isUnsettledCheckoutSession`), each on the
  * account its row records, the one it was created on; a row that records none,
  * on the store's.
@@ -138,23 +139,27 @@ async function cancelOpenRentalPayments(
 /**
  * Each session expired at Stripe, or read when it no longer expires: one over is
  * marked settled; one paid is recorded as Stripe took it (`recordPaidCheckoutSession`),
- * unless `record` is off. Says whether one was paid, and whether one's state is
- * unknown (still open, or Stripe not reached).
+ * unless `record` is off. Says whether one was paid, whether one's state is unknown
+ * (still open, or Stripe not reached), and which paid ones are not recorded: their
+ * recording threw (the PaymentIntent not read, the claim busy) or recorded nothing.
  */
 async function settleRentalSessions(
   sessions: readonly RowSession[],
   { storeId, reservationId, record }: { storeId: string; reservationId: string; record: boolean },
-): Promise<{ paid: boolean; unknown: boolean }> {
+): Promise<{ paid: boolean; unknown: boolean; unrecorded: string[] }> {
   const states = await readCheckoutSessionStates(sessions, { expire: true });
   for (const { paymentId, state } of states) {
     if (state === "expired") await markCheckoutSessionSettled(db, paymentId);
   }
   const paid = states.filter(({ state }) => state === "complete");
+  const unrecorded: string[] = [];
   if (record) {
     for (const { sessionId } of paid) {
       try {
-        await recordPaidCheckoutSession({ storeId, reservationId, sessionId });
+        const recorded = await recordPaidCheckoutSession({ storeId, reservationId, sessionId });
+        if (recorded.status !== "completed") unrecorded.push(sessionId);
       } catch (error) {
+        unrecorded.push(sessionId);
         log.error({
           checkout: {
             event: "paid_session_record_failed",
@@ -166,7 +171,11 @@ async function settleRentalSessions(
       }
     }
   }
-  return { paid: paid.length > 0, unknown: states.some(({ state }) => state === "unknown") };
+  return {
+    paid: paid.length > 0,
+    unknown: states.some(({ state }) => state === "unknown"),
+    unrecorded,
+  };
 }
 
 /**
@@ -175,8 +184,9 @@ async function settleRentalSessions(
  * left open, settled as the gate's first two steps settle the ones it replaces,
  * among those rows only (a session opened since charges the new balance). One
  * Stripe already took is recorded as it is: the dashboard shows what was paid
- * beyond the total. It throws while a session's state is unknown, so the outbox
- * tries again.
+ * beyond the total. It throws while a session's state is unknown, or while one
+ * Stripe took is not recorded, so the outbox tries again: a row it cancelled stays
+ * unsettled, and the next run reads its session again.
  */
 export async function expireRentalSessions(
   {
@@ -209,11 +219,14 @@ export async function expireRentalSessions(
   });
   if (sessions.length === 0) return { skipped: "sessions_settled" };
   await assertClaim();
-  const { unknown } = await settleRentalSessions(sessions, {
+  const { unknown, unrecorded } = await settleRentalSessions(sessions, {
     storeId,
     reservationId,
     record: true,
   });
+  if (unrecorded.length > 0) {
+    throw new Error(`Rental sessions paid at Stripe are not recorded: ${unrecorded.join(", ")}`);
+  }
   if (unknown) throw new Error("A rental session's state at Stripe is unknown");
   return undefined;
 }

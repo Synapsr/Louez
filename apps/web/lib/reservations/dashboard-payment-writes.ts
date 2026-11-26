@@ -1,12 +1,13 @@
 import { and, eq } from "drizzle-orm";
 
+import { enqueueRentalSessionsExpiry } from "@louez/api/services/rental-sessions";
 import {
-  type Database,
   type Transaction,
   markReservation,
   payments,
   reservationItems,
   reservations,
+  runReservationOnlyChange,
 } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 
@@ -182,17 +183,33 @@ export async function insertManualRefund(tx: Transaction, input: ManualRefundInp
   await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
 }
 
-/** Deletes a recorded payment; its lines go back to 0 in the service (fees.md §10.1). */
+/**
+ * Deletes a recorded payment, under the reservation's lock; its lines go back to 0
+ * in the service (fees.md §10.1). A refund deleted no longer gives its money back:
+ * the customer owes less, and the rental's open Checkout Sessions are expired
+ * (`enqueueRentalSessionsExpiry`). Returns the outbox rows to dispatch.
+ */
 export async function deleteRecordedPayment(
-  database: Database,
   input: ReservationRef & { readonly paymentId: string },
-): Promise<void> {
-  await database.transaction(async (tx) => {
-    await tx
-      .delete(payments)
-      .where(
-        and(eq(payments.id, input.paymentId), eq(payments.reservationId, input.reservationId)),
-      );
-    await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
-  });
+): Promise<string[]> {
+  return runReservationOnlyChange(
+    { reservationId: input.reservationId, storeId: input.storeId },
+    async (tx) => {
+      const [deleted] = await tx
+        .select({ refundOfPaymentId: payments.refundOfPaymentId })
+        .from(payments)
+        .where(
+          and(eq(payments.id, input.paymentId), eq(payments.reservationId, input.reservationId)),
+        );
+      await tx
+        .delete(payments)
+        .where(
+          and(eq(payments.id, input.paymentId), eq(payments.reservationId, input.reservationId)),
+        );
+      await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
+      return deleted?.refundOfPaymentId
+        ? enqueueRentalSessionsExpiry(tx, input.storeId, input.reservationId)
+        : [];
+    },
+  );
 }

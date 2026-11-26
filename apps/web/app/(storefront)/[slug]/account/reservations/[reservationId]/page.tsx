@@ -443,13 +443,18 @@ export default async function ReservationDetailPage({
         }
         outcome={{
           // A payment's return names its session: its banner shows whatever the
-          // rental's status, since the balance is paid until after the rental.
+          // rental's status, since the balance is paid until after the rental, and
+          // never for a session that is no payment of this reservation.
           event:
-            status === "pending" ||
-            status === "confirmed" ||
-            (event === "paid" && paymentSessionId !== null && !isClosedReservationStatus(status))
-              ? event
-              : null,
+            event === "paid" && paymentSessionId !== null && paymentStatus === "unpaid"
+              ? null
+              : status === "pending" ||
+                  status === "confirmed" ||
+                  (event === "paid" &&
+                    paymentSessionId !== null &&
+                    !isClosedReservationStatus(status))
+                ? event
+                : null,
           paymentStatus: paymentStatus,
         }}
         statusCard={{
