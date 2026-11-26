@@ -23,6 +23,7 @@ import {
   reservationItems,
   reservations,
 } from "@louez/db";
+import { currencyMinorDigits } from "@louez/utils";
 
 import {
   allocateSalesAmounts,
@@ -565,10 +566,15 @@ export async function getUpcomingRevenue(
     .as("rental_paid");
 
   // The reservation page's reading (`getRentalRemaining`): the rental costs its
-  // stored total, which never contains the deposit (migration 0108); what is
-  // still owed is that total less the rental paid, in whole hundredths, never
-  // below zero.
-  const remaining = sql`GREATEST(0, ROUND(GREATEST(0, ${reservations.totalAmount}) * 100) - ROUND(GREATEST(0, COALESCE(${paid.amount}, 0)) * 100)) / 100`;
+  // stored total, which never contains the deposit (migration 0108); what can
+  // still be asked is that total less the rental paid, in whole hundredths,
+  // never below zero, rounded down to the currency's minor unit (only the
+  // store's currency adds up, below).
+  const owedHundredths = sql`GREATEST(0, ROUND(GREATEST(0, ${reservations.totalAmount}) * 100) - ROUND(GREATEST(0, COALESCE(${paid.amount}, 0)) * 100))`;
+  const remaining =
+    currencyMinorDigits(store.currency) === 0
+      ? sql`FLOOR(${owedHundredths} / 100)`
+      : sql`${owedHundredths} / 100`;
   const [row] = await db
     .select({
       total: sql<string>`COALESCE(SUM(${remaining}), 0)`,

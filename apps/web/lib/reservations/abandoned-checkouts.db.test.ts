@@ -563,7 +563,13 @@ describe(
 
     test("the checkout's resume reads the checkout's own row, never a payment request's", async () => {
       const { resumeCheckoutPayment } = await import("./resume-checkout-payment");
-      const store = { id: STORE, slug: SLUG, stripeAccountId: ACCOUNT, stripeChargesEnabled: true };
+      const store = {
+        id: STORE,
+        slug: SLUG,
+        stripeAccountId: ACCOUNT,
+        stripeChargesEnabled: true,
+        settings: null,
+      };
       // A request-flow reservation: its only session is the store's request.
       const requestOnly = await checkout([
         { status: "pending", age: 5 * MINUTE, origin: "payment_request", amount: "4.00" },

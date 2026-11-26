@@ -373,7 +373,7 @@ export function UnifiedPaymentSection({
 
   const damagesPaid = getNetCompletedPaymentAmount(payments, "damage");
 
-  const rentalRemaining = getRentalRemaining({ totalAmount }, rentalPaid);
+  const rentalRemaining = getRentalRemaining({ totalAmount }, rentalPaid, currency);
   const depositRemaining = Math.max(0, deposit - depositCollected);
   const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100;
 

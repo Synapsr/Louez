@@ -208,6 +208,8 @@ const reservationListItemSchema = z.object({
   customer: customerSummarySchema.nullable(),
   /** What was paid toward the rental, refunds taken off. */
   rentalPaid: moneySchema,
+  /** The reservation's currency, its amounts'. */
+  currency: z.string(),
   items: z.array(
     z.object({
       id: z.string(),

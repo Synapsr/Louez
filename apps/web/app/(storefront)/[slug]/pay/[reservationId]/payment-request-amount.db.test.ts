@@ -15,6 +15,7 @@ const SESSIONS_KEY = "__louezPayRequestSessions";
 const STRIPE_SCHEME = "louez-pay-request-stripe:";
 // Stripe, as the action sees it: never the real API. A session asked for is noted.
 const STRIPE_STUB = `export function toStripeCents(amount) { return Math.round(amount * 100); }
+export function toStripeChargeCents(amount) { return Math.round(amount * 100); }
 export function fromStripeCents(cents) { return cents / 100; }
 export async function createPaymentRequestSession(params) {
   (globalThis[${JSON.stringify(SESSIONS_KEY)}] ??= []).push(params);

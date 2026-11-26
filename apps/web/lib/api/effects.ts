@@ -14,6 +14,7 @@ import { createRefundCreditNoteEffectSenders } from "@/lib/invoicing/refund-cred
 import { createDepositHoldEffectSenders } from "@/lib/reservations/deposit-hold-effects";
 import { withDemoStorePolicy } from "@/lib/demo/outbox-policy";
 import { createReservationMessageEffectSenders } from "@/lib/reservations/reservation-message-effects";
+import { createRentalSessionEffectSenders } from "@/lib/reservations/rental-session-effects";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
 import { createPartnerNotificationEffectSenders } from "@/lib/partners/partner-notification-effects";
 import { createStripeRefundEffectSenders } from "@/lib/reservations/stripe-refund";
@@ -38,6 +39,7 @@ export const apiEffectSenders: ApiEffectSenders = withDemoStorePolicy(
   ...createDepositHoldEffectSenders(),
   ...createRefundCreditNoteEffectSenders(),
   ...createReservationEffectSenders(),
+  ...createRentalSessionEffectSenders(),
   ...createStripeRefundEffectSenders(),
   ...createReservationMessageEffectSenders(),
   ...createPartnerNotificationEffectSenders(),

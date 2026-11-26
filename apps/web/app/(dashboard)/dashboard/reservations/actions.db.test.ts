@@ -10,7 +10,7 @@ import {
   type TestDatabase,
 } from "@louez/db/testing";
 
-import { OUTCOME_KEY, SENT_KEY, STORE_KEY } from "./actions-test-stubs";
+import { DISPATCHED_KEY, OUTCOME_KEY, SENT_KEY, STORE_KEY } from "./actions-test-stubs";
 
 // The dashboard's reservation actions on a migrated database: the payment rows
 // they write, with their billing facts, and the reservation's mark for the billing
@@ -168,7 +168,153 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
     return result.paymentId;
   }
 
+  describe("deletePayment", () => {
+    test("a refund given by hand deleted expires the rental's open sessions, dispatched once committed; a payment deleted queues none", async () => {
+      const dispatched: string[] = [];
+      Reflect.set(globalThis, DISPATCHED_KEY, dispatched);
+      const refundDeleted = await createReservation();
+      const paymentDeleted = await createReservation();
+      const ids = [refundDeleted, paymentDeleted].map((reservationId) => ({
+        reservationId,
+        paid: nextId("pay"),
+        refund: nextId("pay"),
+        open: nextId("pay"),
+      }));
+      for (const { reservationId, paid, refund, open } of ids) {
+        await louezDb.db.insert(louezDb.payments).values([
+          {
+            id: paid,
+            reservationId,
+            amount: "110.00",
+            type: "rental",
+            method: "cash",
+            status: "completed",
+            currency: "USD",
+          },
+          {
+            id: refund,
+            reservationId,
+            amount: "20.00",
+            type: "rental",
+            method: "cash",
+            status: "completed",
+            refundOfPaymentId: paid,
+            currency: "USD",
+          },
+          {
+            id: open,
+            reservationId,
+            amount: "20.00",
+            type: "rental",
+            method: "stripe",
+            status: "pending",
+            stripeCheckoutSessionId: `cs_${open}`,
+            origin: "customer_session",
+            currency: "USD",
+          },
+        ]);
+      }
+
+      assert.deepEqual(await actions.deletePayment(String(ids[0]?.refund)), { success: true });
+      assert.deepEqual(await actions.deletePayment(String(ids[1]?.paid)), { success: true });
+
+      const queued = await louezDb.db
+        .select({
+          id: louezDb.apiEffects.id,
+          reservationId: louezDb.apiEffects.reservationId,
+          payload: louezDb.apiEffects.payload,
+        })
+        .from(louezDb.apiEffects)
+        .where(eq(louezDb.apiEffects.type, "payment.rentalSessionsExpiry"));
+      const mine = queued.filter((row) =>
+        [refundDeleted, paymentDeleted].includes(String(row.reservationId)),
+      );
+      assert.deepEqual(
+        mine.map((row) => row.payload),
+        [{ reservationId: refundDeleted, paymentIds: [ids[0]?.open] }],
+      );
+      assert.deepEqual(dispatched, [mine[0]?.id]);
+      Reflect.deleteProperty(globalThis, DISPATCHED_KEY);
+    });
+  });
+
   describe("recordPayment", () => {
+    test("a rental payment expires the rental's open sessions, dispatched once committed; a deposit queues none", async () => {
+      const dispatched: string[] = [];
+      Reflect.set(globalThis, DISPATCHED_KEY, dispatched);
+      const rentalPaid = await createReservation();
+      const depositPaid = await createReservation();
+      const open = nextId("pay");
+      await louezDb.db.insert(louezDb.payments).values(
+        [
+          [rentalPaid, open],
+          [depositPaid, nextId("pay")],
+        ].map(([reservationId, id]) => ({
+          id,
+          reservationId,
+          amount: "110.00",
+          type: "rental" as const,
+          method: "stripe" as const,
+          status: "pending" as const,
+          stripeCheckoutSessionId: `cs_${id}`,
+          origin: "customer_session" as const,
+          currency: "USD",
+        })),
+      );
+
+      paymentIdOf(
+        await actions.recordPayment(rentalPaid, { type: "rental", amount: "20", method: "cash" }),
+      );
+      paymentIdOf(
+        await actions.recordPayment(depositPaid, { type: "deposit", amount: "20", method: "cash" }),
+      );
+
+      const queued = await louezDb.db
+        .select({
+          id: louezDb.apiEffects.id,
+          reservationId: louezDb.apiEffects.reservationId,
+          payload: louezDb.apiEffects.payload,
+        })
+        .from(louezDb.apiEffects)
+        .where(eq(louezDb.apiEffects.type, "payment.rentalSessionsExpiry"));
+      const mine = queued.filter((row) =>
+        [rentalPaid, depositPaid].includes(String(row.reservationId)),
+      );
+      assert.deepEqual(
+        mine.map((row) => row.payload),
+        [{ reservationId: rentalPaid, paymentIds: [open] }],
+      );
+      assert.deepEqual(dispatched, [mine[0]?.id]);
+      Reflect.deleteProperty(globalThis, DISPATCHED_KEY);
+    });
+
+    test("two payments recorded at once against one balance: the first is written, the second refused under the lock", async () => {
+      const reservationId = await createReservation();
+
+      // Both have read the reservation, then wait on its row: 110.00 remains, each asks it.
+      const answers = await raceOnLockedRow(
+        database,
+        { table: "reservations", id: reservationId },
+        [
+          () =>
+            actions.recordPayment(reservationId, { type: "rental", amount: "110", method: "cash" }),
+          () =>
+            actions.recordPayment(reservationId, { type: "rental", amount: "110", method: "card" }),
+        ],
+      );
+
+      assert.equal(
+        answers.filter((answer) => "success" in answer).length,
+        1,
+        JSON.stringify(answers),
+      );
+      assert.deepEqual(
+        answers.filter((answer) => "error" in answer),
+        [{ error: "errors.amountExceedsDue" }],
+      );
+      assert.equal(await countPayments(reservationId), 1);
+    });
+
     test("a rental payment carries its facts, in the store's currency, and marks the reservation", async () => {
       const reservationId = await createReservation({ withItems: true });
 

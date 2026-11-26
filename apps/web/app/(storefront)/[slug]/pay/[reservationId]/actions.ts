@@ -17,13 +17,17 @@ import {
   openRentalCheckoutSession,
   type LockedReservation,
 } from "@/lib/reservations/rental-session-gate";
-import { getRentalPaid } from "@/lib/reservations/util.payment-status";
-import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
+import { getRentalBalance } from "@/lib/reservations/util.rental-amount";
 import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { createPaymentRequestSession, fromStripeCents, toStripeCents } from "@/lib/stripe";
+import {
+  createPaymentRequestSession,
+  fromStripeCents,
+  toStripeChargeCents,
+  toStripeCents,
+} from "@/lib/stripe";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export type PaymentRequestError =
@@ -101,10 +105,11 @@ type PaymentRequestRow = typeof paymentRequests.$inferSelect;
  * A rental request never collects more than the rental still owed: a request
  * written before the total went down, or before a payment was recorded, is no
  * longer current and the store asks again. Nothing is charged and the request is
- * left as it is. What it would charge is compared, in the currency's precision
- * (a yen request of 100.60 charges 101). A request in another currency than the reservation's settles
- * none of it, and is no longer current either. A custom request asks what the
- * store chose.
+ * left as it is. What it would charge, rounded down to the currency's minor unit
+ * (`toStripeChargeCents`: a yen request of 100.60 charges 100), is compared with
+ * what can still be asked (`getRentalBalance`). A request in another currency than
+ * the reservation's settles none of it, and is no longer current either. A custom
+ * request asks what the store chose.
  */
 const requestRefusal = (
   paymentRequest: Pick<PaymentRequestRow, "type" | "currency" | "amount" | "status" | "expiresAt">,
@@ -118,13 +123,10 @@ const requestRefusal = (
   if (paymentRequest.type !== "rental") return null;
   const currency = reservationCurrency(reservation.currency, storeSettings);
   if (normalizeCurrency(paymentRequest.currency, "") !== currency) return "no_longer_current";
-  const owed = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
-  const owedHundredths = Math.round(owed * 100);
-  if (owedHundredths === 0) return "already_paid";
-  // What the session would charge, in the currency's precision: a request the
-  // rounding takes above what is owed is no longer current either.
-  const charged = fromStripeCents(toStripeCents(Number(paymentRequest.amount), currency), currency);
-  if (Math.round(charged * 100) > owedHundredths) return "no_longer_current";
+  const owed = getRentalBalance(reservation, currency).due;
+  if (owed === 0) return "already_paid";
+  const charged = toStripeChargeCents(Number(paymentRequest.amount), currency);
+  if (charged > toStripeCents(owed, currency)) return "no_longer_current";
   return null;
 };
 
@@ -276,9 +278,9 @@ export const initiatePayment = async (
   }
 
   const currency = paymentRequest.currency;
-  const chargeCents = toStripeCents(Number.parseFloat(paymentRequest.amount), currency);
+  const chargeCents = toStripeChargeCents(Number.parseFloat(paymentRequest.amount), currency);
   const paymentAmount = validateStripePaymentAmount(
-    Number.parseFloat(paymentRequest.amount),
+    fromStripeCents(chargeCents, currency),
     currency,
   );
   if (!paymentAmount.ok) {

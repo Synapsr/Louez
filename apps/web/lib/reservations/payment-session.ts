@@ -3,7 +3,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 
 import { db, reservations, stores } from "@louez/db";
-import { validateStripePaymentAmount } from "@louez/utils";
+import { roundDownToMinorUnit, validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
@@ -17,10 +17,15 @@ import {
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { openRentalCheckoutSession } from "@/lib/reservations/rental-session-gate";
-import { isRentalPaid } from "@/lib/reservations/util.payment-status";
+import { getRentalBalance, rentalChargeRefusal } from "@/lib/reservations/util.rental-amount";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { TEST_RESERVATION_REFUSED_ERROR } from "@/lib/test-reservations/refusal";
-import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
+import {
+  createCheckoutSession,
+  fromStripeCents,
+  toStripeChargeCents,
+  toStripeCents,
+} from "@/lib/stripe";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export async function createReservationPaymentSessionForCustomer(
@@ -33,7 +38,10 @@ export async function createReservationPaymentSessionForCustomer(
     successUrl?: string;
     cancelUrl?: string;
     marketplaceSecret?: string;
-    /** Trusted callers only: charge this instead of the reservation total (partial deposits). */
+    /**
+     * Trusted callers only: charge this instead of what remains of the rental. The
+     * resumed checkout's own charge (a partial deposit or the total), its first payment.
+     */
     chargeAmount?: number;
     /**
      * The verified marketplace only: its checkout holds the booking's marketplace
@@ -96,9 +104,10 @@ export async function createReservationPaymentSessionForCustomer(
       return { error: TEST_RESERVATION_REFUSED_ERROR };
     }
 
+    // A balance is paid while the rental is confirmed, runs, or after it ended.
     const allowedStatuses = allowPendingReservation
-      ? ["pending", "confirmed", "ongoing"]
-      : ["confirmed", "ongoing"];
+      ? ["pending", "confirmed", "ongoing", "completed"]
+      : ["confirmed", "ongoing", "completed"];
     if (!allowedStatuses.includes(reservation.status)) {
       return { error: "errors.invalidStatus" };
     }
@@ -106,15 +115,27 @@ export async function createReservationPaymentSessionForCustomer(
     // The reservation is paid in its own currency, whatever the store's is now, and
     // only a payment in that currency has paid it.
     const currency = reservationCurrency(reservation.currency, store.settings);
-    if (isRentalPaid(reservation.payments, currency)) {
-      return { error: "errors.alreadyPaid" };
+    const fixedCharge =
+      isTrustedCaller && options?.chargeAmount !== undefined ? options.chargeAmount : null;
+    // What remains of the rental (`getRentalBalance`), unless a trusted caller fixes it.
+    const charge = {
+      amount: fixedCharge ?? getRentalBalance(reservation, currency).due,
+      fixed: fixedCharge !== null,
+    };
+    const chargeCents = toStripeChargeCents(charge.amount, currency);
+    const chargeAmount = fromStripeCents(chargeCents, currency);
+
+    // The reservation as read takes this charge, by `rentalChargeRefusal`: read
+    // before the session is created, under the reservation's lock before it is
+    // installed, and after an earlier session was found paid.
+    const balanceRefusal = (payable: Parameters<typeof getRentalBalance>[0]) =>
+      rentalChargeRefusal(getRentalBalance(payable, currency), charge, currency);
+    const refusal = balanceRefusal(reservation);
+    if (refusal) {
+      return { error: refusal };
     }
 
-    const chargeAmount =
-      isTrustedCaller && options?.chargeAmount !== undefined
-        ? options.chargeAmount
-        : Number.parseFloat(reservation.totalAmount);
-    const chargeCents = toStripeCents(chargeAmount, currency);
+    // The checkout's minimum, with its message: a balance below it is not charged online.
     const paymentAmount = validateStripePaymentAmount(chargeAmount, currency);
     if (!paymentAmount.ok) {
       return {
@@ -152,8 +173,7 @@ export async function createReservationPaymentSessionForCustomer(
       callerHoldsMarketplaceAttempt,
       check: async (_tx, locked) => {
         if (!locked || !allowedStatuses.includes(locked.status)) return "errors.invalidStatus";
-        if (isRentalPaid(locked.payments, currency)) return "errors.alreadyPaid";
-        return null;
+        return balanceRefusal(locked);
       },
       create: async ({ idempotencyKey }) => {
         const feePlan = await planApplicationFee({
@@ -188,9 +208,10 @@ export async function createReservationPaymentSessionForCustomer(
             reservationId,
             storeId: store.id,
           }),
+          // The return verifies the session at Stripe, then lands on the reservation.
           successUrl:
             successUrl ??
-            getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=success`),
+            getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}/payment-return`),
           cancelUrl:
             cancelUrl ??
             getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),
@@ -206,15 +227,21 @@ export async function createReservationPaymentSessionForCustomer(
       },
     });
     if (!outcome.ok) {
-      // An earlier session was paid: the rental is. One that may still be paid,
-      // or another payment opened meanwhile: nothing new, the next call asks again.
+      // An earlier session was paid, and recorded when it could be: the balance
+      // says what that leaves. One that may still be paid, or another payment
+      // opened meanwhile: nothing new, the next call asks again.
+      if (outcome.refusal === "paid") {
+        const now = await db.query.reservations.findFirst({
+          columns: { totalAmount: true },
+          where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
+          with: { payments: true },
+        });
+        return {
+          error: (now && balanceRefusal(now)) || "errors.reservationChangedMeanwhile",
+        };
+      }
       return {
-        error:
-          outcome.refusal === "paid"
-            ? "errors.alreadyPaid"
-            : outcome.refusal === "busy"
-              ? "errors.paymentSessionError"
-              : outcome.refusal,
+        error: outcome.refusal === "busy" ? "errors.paymentSessionError" : outcome.refusal,
       };
     }
     const { url, sessionId, expiresAt, feePlan } = outcome.session;
@@ -230,7 +257,11 @@ export async function createReservationPaymentSessionForCustomer(
         customer_id: customerId,
         source,
         payment_provider: "stripe",
-        payment_mode: "full",
+        // Full when it charges the whole total, as it can be charged.
+        payment_mode:
+          chargeAmount < roundDownToMinorUnit(Number.parseFloat(reservation.totalAmount), currency)
+            ? "partial"
+            : "full",
         amount_cents: toAnalyticsAmountCents(chargeAmount),
         total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
         deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),

@@ -93,7 +93,7 @@ export async function GET(
 
   const { canDownloadContract } = getReservationActions({
     status: reservation.status,
-    isRentalPaid: false,
+    rentalDue: 0,
     isSigned: reservation.signedAt !== null,
     stripeAccountId: null,
     stripeChargesEnabled: false,

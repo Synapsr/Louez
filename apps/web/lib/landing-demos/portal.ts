@@ -87,10 +87,14 @@ export const acceptDemoPortalQuote = (reservation: DemoPortalReservation): DemoP
     ? { ...reservation, status: "confirmed", contractValidated: true }
     : reservation;
 
+/** The demo's rental is paid in full or not at all. */
+const balanceOf = (reservation: DemoPortalReservation) =>
+  reservation.paid ? { paid: reservation.total, due: 0 } : { paid: 0, due: reservation.total };
+
 const actionsFor = (reservation: DemoPortalReservation) =>
   getReservationActions({
     status: reservation.status,
-    isRentalPaid: reservation.paid,
+    rentalDue: balanceOf(reservation).due,
     isSigned: reservation.contractValidated,
     stripeAccountId: "demo-stripe-account",
     stripeChargesEnabled: true,
@@ -124,6 +128,7 @@ export const createDemoPortalDetail = (
   const date = (value: Date, preset: "SHORT_DATE" | "DATE_AT_TIME" = "DATE_AT_TIME") =>
     formatStoreDate(value, "Europe/Paris", preset, formatLocale);
   const actions = actionsFor(reservation);
+  const balance = balanceOf(reservation);
   const depositKind =
     reservation.status === "completed" ? "released" : reservation.paid ? "held" : "to_provide";
   const place = {
@@ -153,10 +158,12 @@ export const createDemoPortalDetail = (
       formatLocale,
     ),
     calendarLinks: { google: "#", outlook: "#", office: "#" },
-    outcome: { event: null, paymentStatus: reservation.paid ? "paid" : "unpaid" },
+    outcome: { event: null, paymentStatus: reservation.paid ? "received" : "unpaid" },
     statusCard: {
       status: reservation.status,
-      isRentalPaid: reservation.paid,
+      rentalPaid: balance.paid,
+      rentalDue: balance.due,
+      currency: "EUR",
       paymentRequired: actions.canPay,
       customerEmail: reservation.customer.email,
     },
@@ -185,9 +192,11 @@ export const createDemoPortalDetail = (
       depositLabel: null,
       damageFees: 0,
       total: reservation.total,
-      amountPaid: reservation.paid ? reservation.total : 0,
+      amountPaid: balance.paid,
+      remainingDue: balance.due,
       isUnsettled: !reservation.paid,
       notes: null,
+      currency: "EUR",
     },
     updates: {
       updates: [

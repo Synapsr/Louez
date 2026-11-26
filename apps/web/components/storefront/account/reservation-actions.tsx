@@ -15,6 +15,8 @@ interface ReservationActionsProps {
   storeSlug: string;
   reservationId: string;
   hasPayment?: boolean;
+  /** Part of the rental is paid: the pay button settles the balance. */
+  paysBalance?: boolean;
   readOnly?: boolean;
   onAcceptQuote?: () => void;
   actions: ReservationActionSet;
@@ -36,6 +38,7 @@ export const ReservationActions = ({
   actions,
   contractHref,
   hasPayment = false,
+  paysBalance = false,
   readOnly = false,
   onAcceptQuote,
 }: ReservationActionsProps) => {
@@ -109,7 +112,7 @@ export const ReservationActions = ({
             onClick={() => pay.mutate()}
           >
             <CreditCardIcon data-slot="icon" />
-            {t("payNow")}
+            {t(paysBalance ? "payBalance" : "payNow")}
           </Button>
         ) : null}
 

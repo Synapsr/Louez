@@ -33,6 +33,7 @@ import {
   type ConfirmationRefusal,
 } from "../platform/confirmation";
 import { enqueueEffects } from "../platform/effects";
+import { enqueueRentalSessionsExpiry } from "./rental-sessions";
 import type {
   PaymentRecordsPort,
   PaymentRefundsPort,
@@ -103,6 +104,15 @@ export interface PaymentWriteCaller<Port> {
 
 /** The payments recorded with the app's writer of a recorded payment. */
 export type PaymentRecordsCaller = PaymentWriteCaller<PaymentRecordsPort>;
+
+/**
+ * A payment's writer, with the outbox's dispatch: a rental payment recorded, or
+ * a refund deleted, expires the rental's open sessions.
+ */
+export interface PaymentRecordCaller extends PaymentRecordsCaller {
+  /** Sends committed outbox rows (`ApiPorts.dispatchEffects`). Never throws. */
+  dispatchEffects: (ids: readonly string[]) => void;
+}
 
 /**
  * An amount as the deletion's preview writes it: in euros, whatever the
@@ -228,11 +238,13 @@ function recordAmountRefusal(
  * Records a payment received, or paid back as a negative adjustment. Its
  * amount has at most the decimals of the reservation's currency, which the
  * app's facts read under the lock (`currencyFit`): judged once that
- * currency is known, before anything is asked.
+ * currency is known, before anything is asked. A rental payment lowers what
+ * the customer owes: the rental's open Checkout Sessions are expired
+ * (`enqueueRentalSessionsExpiry`).
  */
-export async function recordPayment(caller: PaymentRecordsCaller, input: RecordPaymentInput) {
+export async function recordPayment(caller: PaymentRecordCaller, input: RecordPaymentInput) {
   const { storeId } = caller;
-  return underReservationLock(storeId, input.reservationId, async (tx) => {
+  const recorded = await underReservationLock(storeId, input.reservationId, async (tx) => {
     const reservation = await lockedReservation(tx, storeId, input.reservationId);
     if (!reservation) {
       return refused(
@@ -280,17 +292,26 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
       notes: input.notes ?? null,
       facts,
     });
+    const effectIds =
+      input.type === "rental" && Number(verdict.amount) > 0
+        ? await enqueueRentalSessionsExpiry(tx, storeId, reservation.id)
+        : [];
     return {
       ok: true,
       value: {
-        reservationId: reservation.id,
-        number: reservation.number,
-        type: input.type,
-        amount: input.amount,
-        method: input.method,
+        effectIds,
+        payment: {
+          reservationId: reservation.id,
+          number: reservation.number,
+          type: input.type,
+          amount: input.amount,
+          method: input.method,
+        },
       },
     };
   });
+  caller.dispatchEffects(recorded.effectIds);
+  return recorded.payment;
 }
 
 /** What a return is refused for whatever the reservation's currency: its text (`refusedWhateverTheCurrency`), or zero and below. */
@@ -439,15 +460,17 @@ type StorePayment = NonNullable<Awaited<ReturnType<typeof storePayment>>>;
 
 /**
  * Deletes a payment recorded by hand, and marks its reservation for the
- * billing service in the same transaction. A Stripe payment is refused.
+ * billing service in the same transaction. A Stripe payment is refused. A
+ * refund deleted no longer gives its money back: the customer owes less, and
+ * the rental's open Checkout Sessions are expired (`enqueueRentalSessionsExpiry`).
  */
-export async function deletePayment(caller: PaymentRecordsCaller, input: DeletePaymentInput) {
+export async function deletePayment(caller: PaymentRecordCaller, input: DeletePaymentInput) {
   const { storeId } = caller;
   // Which reservation to lock; read again under its lock.
   const found = await storePayment(db, storeId, input.paymentId);
   if (!found) throw paymentRecordErrors.paymentNotFound(input.paymentId);
 
-  return underReservationLock(storeId, found.reservationId, async (tx) => {
+  const deleted = await underReservationLock(storeId, found.reservationId, async (tx) => {
     const payment = await storePayment(tx, storeId, input.paymentId);
     if (!payment) return refused(paymentRecordErrors.paymentNotFound(input.paymentId));
     // Refused whatever anyone answers: before asking.
@@ -484,15 +507,23 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
       .delete(payments)
       .where(and(eq(payments.id, payment.id), eq(payments.reservationId, payment.reservationId)));
     await markReservation(tx, { id: payment.reservationId, storeId });
+    const effectIds = payment.refundOfPaymentId
+      ? await enqueueRentalSessionsExpiry(tx, storeId, payment.reservationId)
+      : [];
     return {
       ok: true,
       value: {
-        paymentId: payment.id,
-        reservationId: payment.reservationId,
-        number: payment.number,
+        effectIds,
+        payment: {
+          paymentId: payment.id,
+          reservationId: payment.reservationId,
+          number: payment.number,
+        },
       },
     };
   });
+  caller.dispatchEffects(deleted.effectIds);
+  return deleted.payment;
 }
 
 // --- A refund given by hand ------------------------------------------------------

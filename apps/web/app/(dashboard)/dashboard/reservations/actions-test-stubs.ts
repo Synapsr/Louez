@@ -23,6 +23,8 @@ export const SENT_KEY = "__louezActionsTestSent";
  * by default), and a sender's answer by its name (`{ success: true }` by default).
  */
 export const OUTCOME_KEY = "__louezActionsTestOutcome";
+/** Where the outbox rows an action dispatched once committed are noted, never sent. */
+export const DISPATCHED_KEY = "__louezActionsTestDispatched";
 /** A module whose functions note their call (channel, name, params) and answer as the suite set. */
 const messageStub = (channel: string, names: string[]) =>
   names
@@ -38,6 +40,8 @@ const STUBS: Record<string, string> = {
   // Whether this instance sends e-mail, as the suite set it.
   "@louez/email": `export function isEmailConfigured() { return globalThis[${JSON.stringify(OUTCOME_KEY)}]?.emailConfigured ?? true; }\n`,
   "@/lib/auth": "export async function auth() { return null; }\n",
+  // The outbox rows a write dispatches once committed: noted, never sent.
+  "@/lib/api/effects": `export function dispatchApiEffects(ids) { (globalThis[${JSON.stringify(DISPATCHED_KEY)}] ??= []).push(...ids); }\n`,
   "@/lib/store-context": `export async function getCurrentStore() { return globalThis[${JSON.stringify(STORE_KEY)}] ?? null; }\n`,
   // A quote's email is sent without being awaited, and would outlive the database.
   "@/lib/notifications/customer-dispatcher":

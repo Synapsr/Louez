@@ -2,7 +2,8 @@
 
 export interface ReservationActionsInput {
   status: string;
-  isRentalPaid: boolean;
+  /** What remains to pay for the rental (`getRentalBalance`): payable while above zero. */
+  rentalDue: number;
   isSigned: boolean;
   stripeAccountId: string | null | undefined;
   stripeChargesEnabled: boolean | null | undefined;
@@ -21,7 +22,8 @@ export interface ReservationActions {
 }
 
 const CONTRACT_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing", "completed"]);
-const PAYABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing"]);
+// A balance is paid while the rental is confirmed, runs, or after it ended.
+const PAYABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing", "completed"]);
 // A finished rental is no longer signed: its contract stays as it was.
 const SIGNABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing"]);
 
@@ -31,14 +33,14 @@ export const canSignContract = (status: string, isSigned: boolean): boolean =>
 
 export const getReservationActions = ({
   status,
-  isRentalPaid,
+  rentalDue,
   isSigned,
   stripeAccountId,
   stripeChargesEnabled,
 }: ReservationActionsInput): ReservationActions => {
   const canAcceptQuote = status === "quote";
   const stripeActive = Boolean(stripeAccountId) && stripeChargesEnabled === true;
-  const canPay = PAYABLE_STATUSES.has(status) && !isRentalPaid && stripeActive;
+  const canPay = PAYABLE_STATUSES.has(status) && rentalDue > 0 && stripeActive;
   const canDownloadContract = CONTRACT_STATUSES.has(status);
   const canSign = canSignContract(status, isSigned);
 

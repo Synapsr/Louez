@@ -326,7 +326,10 @@ const record = storeProcedure
       throw paymentRecordErrors.reservationNotFound(input.reservationId);
     }
     const recorded = await recordPayment(
-      paymentRecordsCaller(context, path, input, "money", context.ports.paymentRecords),
+      {
+        ...paymentRecordsCaller(context, path, input, "money", context.ports.paymentRecords),
+        dispatchEffects: context.ports.dispatchEffects,
+      },
       input,
     );
     return { ...recorded, ...reservationLinksFor(context, recorded.reservationId) };
@@ -437,7 +440,10 @@ const deletePaymentProcedure = storeProcedure
       throw paymentRecordErrors.paymentNotFound(input.paymentId);
     }
     const deleted = await deletePayment(
-      paymentRecordsCaller(context, path, input, "destructive", context.ports.paymentRecords),
+      {
+        ...paymentRecordsCaller(context, path, input, "destructive", context.ports.paymentRecords),
+        dispatchEffects: context.ports.dispatchEffects,
+      },
       input,
     );
     return { ...deleted, ...reservationLinksFor(context, deleted.reservationId) };

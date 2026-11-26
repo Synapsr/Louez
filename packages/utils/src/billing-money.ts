@@ -68,6 +68,18 @@ export function currencyMinorDigits(currency: string): 0 | 2 | null {
 }
 
 /**
+ * An amount rounded down to its currency's minor unit (whole yen, cents):
+ * what a charge of it may take, never more (¥100.60 charges ¥100). Counted
+ * in hundredths first, so a stored 0.29 stays 0.29.
+ */
+export function roundDownToMinorUnit(amount: number, currency: string): number {
+  const hundredths = Math.round(amount * 100);
+  return ZERO_DECIMAL_CURRENCIES.has(currency.trim().toUpperCase())
+    ? Math.floor(hundredths / 100)
+    : hundredths / 100;
+}
+
+/**
  * The decimals to write a stored amount with, so that every digit its row
  * holds shows and none it does not: as many as the decimal string has
  * (`"1.49"` in yen is ¥1.49, never ¥1), except decimals that are all zeros,

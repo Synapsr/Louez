@@ -34,6 +34,12 @@ class ActionFailure extends Error {
   }
 }
 
+/** A payment refused because the balance moved: nothing left, or another amount. */
+const BALANCE_MOVED_ERRORS: ReadonlySet<string> = new Set([
+  "alreadyPaid",
+  "reservationChangedMeanwhile",
+]);
+
 /** Action error keys may still carry the legacy `errors.` prefix. */
 const toErrorKey = (value: string): string =>
   value.startsWith("errors.") ? value.slice(7) : value;
@@ -86,7 +92,13 @@ export const useReservationActions = ({
       if (paymentUrl) window.location.assign(paymentUrl);
       else refreshReservation();
     },
-    onError: (failure) => fail(failure, tErrors("paymentSessionError")),
+    onError: (failure) => {
+      fail(failure, tErrors("paymentSessionError"));
+      // The balance moved since the page was read: it reads it again.
+      if (failure instanceof ActionFailure && BALANCE_MOVED_ERRORS.has(failure.message)) {
+        refreshReservation();
+      }
+    },
   });
 
   const accept = useMutation({

@@ -241,7 +241,7 @@ export function ReservationDetailClient({
   const hasActiveDepositAuthorization =
     reservation.depositStatus === "authorized" &&
     (!depositAuthorizationExpiresAt || depositAuthorizationExpiresAt > new Date());
-  const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
+  const rentalRemaining = getRentalRemaining(reservation, rentalPaid, currency);
   const showMobileQuickActions = hasMobileReservationQuickActions({
     status,
     rentalRemaining,

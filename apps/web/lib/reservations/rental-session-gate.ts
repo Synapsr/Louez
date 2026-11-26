@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -12,6 +12,7 @@ import {
   reservationActivity,
   reservations,
   runReservationOnlyChange,
+  stores,
   type Transaction,
 } from "@louez/db";
 
@@ -45,6 +46,9 @@ import { getStripe } from "@/lib/stripe/client";
  * 4. Under the reservation's lock again, the door's check, then the attempt
  *    installed as the pending row, only when no other rental payment is open and
  *    no session may still be paid; otherwise the session just created is expired.
+ *
+ * A write that lowers what the customer owes expires, through the same first two
+ * steps, the sessions it leaves open (`expireRentalSessions`).
  *
  * Locks: the reservation's row, then its payments, as every writer of them.
  */
@@ -92,6 +96,139 @@ interface OpenRentalSessionInput<Refusal extends string, Session extends { sessi
     /** The `payment_initiated` line's own fields. */
     activity: Record<string, unknown>;
   };
+}
+
+/** A rental session to settle at Stripe: its payment row, on the account it lives on. */
+type RowSession = CheckoutSessionAtStripe & { paymentId: string };
+
+/**
+ * Under the reservation's lock, of `rows`, its payments: the rental's open ones
+ * (`pending`) cancelled, by an update conditional on `pending`, before their
+ * sessions are expired at Stripe, so an expiry of one finds its row no longer
+ * pending and cancels nothing. A row so cancelled is never `pending` again; its
+ * session found paid afterwards is still recorded, from `cancelled`. Returns the
+ * unsettled sessions among `rows` (`isUnsettledCheckoutSession`), each on the
+ * account its row records, the one it was created on; a row that records none,
+ * on the store's.
+ */
+async function cancelOpenRentalPayments(
+  tx: Transaction,
+  { reservationId, storeId }: { reservationId: string; storeId: string },
+  rows: readonly (typeof payments.$inferSelect)[],
+  storeAccountId: string | null,
+): Promise<RowSession[]> {
+  const open = rows.filter((payment) => payment.type === "rental" && payment.status === "pending");
+  for (const payment of open) {
+    await tx
+      .update(payments)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(and(eq(payments.id, payment.id), eq(payments.status, "pending")));
+  }
+  if (open.length > 0) await markReservation(tx, { id: reservationId, storeId });
+  return rows.filter(isUnsettledCheckoutSession).flatMap((payment) => {
+    const account = checkoutSessionAccount({
+      recordedAccountId: isSessionCreationRow(payment) ? payment.stripeAccountId : null,
+      storeAccountId,
+    });
+    return payment.stripeCheckoutSessionId && account
+      ? [{ paymentId: payment.id, sessionId: payment.stripeCheckoutSessionId, account }]
+      : [];
+  });
+}
+
+/**
+ * Each session expired at Stripe, or read when it no longer expires: one over is
+ * marked settled; one paid is recorded as Stripe took it (`recordPaidCheckoutSession`),
+ * unless `record` is off. Says whether one was paid, whether one's state is unknown
+ * (still open, or Stripe not reached), and which paid ones are not recorded: their
+ * recording threw (the PaymentIntent not read, the claim busy) or recorded nothing.
+ */
+async function settleRentalSessions(
+  sessions: readonly RowSession[],
+  { storeId, reservationId, record }: { storeId: string; reservationId: string; record: boolean },
+): Promise<{ paid: boolean; unknown: boolean; unrecorded: string[] }> {
+  const states = await readCheckoutSessionStates(sessions, { expire: true });
+  for (const { paymentId, state } of states) {
+    if (state === "expired") await markCheckoutSessionSettled(db, paymentId);
+  }
+  const paid = states.filter(({ state }) => state === "complete");
+  const unrecorded: string[] = [];
+  if (record) {
+    for (const { sessionId } of paid) {
+      try {
+        const recorded = await recordPaidCheckoutSession({ storeId, reservationId, sessionId });
+        if (recorded.status !== "completed") unrecorded.push(sessionId);
+      } catch (error) {
+        unrecorded.push(sessionId);
+        log.error({
+          checkout: {
+            event: "paid_session_record_failed",
+            reservationId,
+            sessionId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
+    }
+  }
+  return {
+    paid: paid.length > 0,
+    unknown: states.some(({ state }) => state === "unknown"),
+    unrecorded,
+  };
+}
+
+/**
+ * The sender of `payment.rentalSessionsExpiry` (packages/api
+ * services/rental-sessions.ts): the sessions a write that lowered the balance
+ * left open, settled as the gate's first two steps settle the ones it replaces,
+ * among those rows only (a session opened since charges the new balance). One
+ * Stripe already took is recorded as it is: the dashboard shows what was paid
+ * beyond the total. It throws while a session's state is unknown, or while one
+ * Stripe took is not recorded, so the outbox tries again: a row it cancelled stays
+ * unsettled, and the next run reads its session again.
+ */
+export async function expireRentalSessions(
+  {
+    storeId,
+    reservationId,
+    paymentIds,
+  }: {
+    storeId: string;
+    reservationId: string;
+    paymentIds: readonly string[];
+  },
+  assertClaim: () => Promise<void>,
+): Promise<{ skipped: string } | undefined> {
+  if (paymentIds.length === 0) return { skipped: "no_session" };
+  const store = await db.query.stores.findFirst({
+    columns: { stripeAccountId: true },
+    where: eq(stores.id, storeId),
+  });
+  const sessions = await runReservationOnlyChange({ reservationId, storeId }, async (tx) => {
+    const rows = await tx
+      .select()
+      .from(payments)
+      .where(and(eq(payments.reservationId, reservationId), inArray(payments.id, [...paymentIds])));
+    return cancelOpenRentalPayments(
+      tx,
+      { reservationId, storeId },
+      rows,
+      store?.stripeAccountId ?? null,
+    );
+  });
+  if (sessions.length === 0) return { skipped: "sessions_settled" };
+  await assertClaim();
+  const { unknown, unrecorded } = await settleRentalSessions(sessions, {
+    storeId,
+    reservationId,
+    record: true,
+  });
+  if (unrecorded.length > 0) {
+    throw new Error(`Rental sessions paid at Stripe are not recorded: ${unrecorded.join(", ")}`);
+  }
+  if (unknown) throw new Error("A rental session's state at Stripe is unknown");
+  return undefined;
 }
 
 /** Expires a session the gate created and will not hand out: it is open, or gone. */
@@ -144,75 +281,30 @@ export async function openRentalCheckoutSession<
     return { payable: true, locked };
   };
 
-  // 1. The rental's open payments are cancelled before their sessions are expired
-  // at Stripe: an expiry of a session replaced here finds its row no longer
-  // pending and cancels nothing. A row so cancelled stays `cancelled`.
-  const replaced = await underLock<{
-    refusal: Refusal | null;
-    sessions: Array<CheckoutSessionAtStripe & { paymentId: string }>;
-  }>(async (tx) => {
-    const read = await readLocked(tx);
-    if (!read.payable) return { refusal: read.refusal, sessions: [] };
-    const open = read.locked.payments.filter(
-      (payment) => payment.type === "rental" && payment.status === "pending",
-    );
-    for (const payment of open) {
-      await tx
-        .update(payments)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(and(eq(payments.id, payment.id), eq(payments.status, "pending")));
-    }
-    if (open.length > 0) await markReservation(tx, { id: reservationId, storeId });
-    return {
-      refusal: null,
-      // Each session on the account its row records, the one it was created on;
-      // a row that records none, on the store's.
-      sessions: read.locked.payments.filter(isUnsettledCheckoutSession).flatMap((payment) =>
-        payment.stripeCheckoutSessionId
-          ? [
-              {
-                paymentId: payment.id,
-                sessionId: payment.stripeCheckoutSessionId,
-                account: checkoutSessionAccount({
-                  recordedAccountId: isSessionCreationRow(payment) ? payment.stripeAccountId : null,
-                  storeAccountId: stripeAccountId,
-                }),
-              },
-            ]
-          : [],
-      ),
-    };
-  });
+  // 1. The door's check, then the rental's open payments cancelled
+  // (`cancelOpenRentalPayments`).
+  const replaced = await underLock<{ refusal: Refusal | null; sessions: RowSession[] }>(
+    async (tx) => {
+      const read = await readLocked(tx);
+      if (!read.payable) return { refusal: read.refusal, sessions: [] };
+      return {
+        refusal: null,
+        sessions: await cancelOpenRentalPayments(tx, scope, read.locked.payments, stripeAccountId),
+      };
+    },
+  );
   if (replaced.refusal !== null) return { ok: false, refusal: replaced.refusal };
 
-  // 2. A new session only when each of those is known to be over.
-  const states = await readCheckoutSessionStates(replaced.sessions, { expire: true });
-  for (const { paymentId, state } of states) {
-    if (state === "expired") await markCheckoutSessionSettled(db, paymentId);
-  }
-  const paid = states.filter(({ state }) => state === "complete");
-  if (paid.length > 0) {
-    // Recording takes the reservation's lock, which the marketplace's caller
-    // cannot wait for: there it is left to the session's completion.
-    if (!callerHoldsMarketplaceAttempt) {
-      for (const { sessionId } of paid) {
-        try {
-          await recordPaidCheckoutSession({ storeId, reservationId, sessionId });
-        } catch (error) {
-          log.error({
-            checkout: {
-              event: "paid_session_record_failed",
-              reservationId,
-              sessionId,
-              error: error instanceof Error ? error.message : String(error),
-            },
-          });
-        }
-      }
-    }
-    return { ok: false, refusal: "paid" };
-  }
-  if (states.some(({ state }) => state === "unknown")) return { ok: false, refusal: "busy" };
+  // 2. A new session only when each of those is known to be over. Recording one
+  // paid takes the reservation's lock, which the marketplace's caller cannot wait
+  // for: there it is left to the session's completion.
+  const settled = await settleRentalSessions(replaced.sessions, {
+    storeId,
+    reservationId,
+    record: !callerHoldsMarketplaceAttempt,
+  });
+  if (settled.paid) return { ok: false, refusal: "paid" };
+  if (settled.unknown) return { ok: false, refusal: "busy" };
 
   // 3. A fresh key for this call: the client's own retries of this one create find
   // the same session; it never ties two calls together, which the lock and the
@@ -221,8 +313,8 @@ export async function openRentalCheckoutSession<
   const session = await create({ idempotencyKey: `checkout-session:${paymentId}` });
 
   // 4. The pending payment and its activity land together, and only on a
-  // reservation still payable, with no other open or paid rental payment and no
-  // unsettled rental session (another call may have opened one meanwhile).
+  // reservation the door's check still accepts, with no other open rental payment
+  // and no unsettled rental session (another call may have opened one meanwhile).
   let refusal: Refusal | GateRefusal | null;
   try {
     refusal = await underLock(async (tx) => {

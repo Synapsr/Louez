@@ -74,6 +74,7 @@ export {
   currencyMinorDigits,
   exactMoneyDecimals,
   normalizeCurrency,
+  roundDownToMinorUnit,
   THREE_DECIMAL_CURRENCIES,
   ZERO_DECIMAL_CURRENCIES,
 } from "./billing-money";

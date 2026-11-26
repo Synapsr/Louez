@@ -1369,10 +1369,11 @@ export const createReservation = async (
           store,
           reservationId: written.reservationId,
         });
-        // Found paid: the customer goes to the reservation, as the return sends them.
+        // Found paid, or partly paid since: the customer goes to the reservation,
+        // as the return sends them, where it says what remains.
         paymentUrl = resumed.ok
           ? resumed.url
-          : resumed.error === "already_paid"
+          : resumed.error === "already_paid" || resumed.error === "reservation_changed"
             ? getStorefrontUrl(store.slug, `/account/reservations/${written.reservationId}`)
             : null;
       } else {

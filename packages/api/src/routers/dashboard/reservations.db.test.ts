@@ -983,6 +983,64 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
 
   // --- Status changes ---------------------------------------------------------
 
+  /** A Checkout Session of the rental, open: its payment row `pending`. */
+  async function openRentalSession(reservationId: string) {
+    const id = nextId("rs_pay");
+    await louezDb.db.insert(louezDb.payments).values({
+      id,
+      reservationId,
+      amount: "20.00",
+      type: "rental",
+      method: "stripe",
+      status: "pending",
+      stripeCheckoutSessionId: `cs_${id}`,
+      origin: "customer_session",
+      currency: "EUR",
+    });
+    return id;
+  }
+
+  test("a cancellation or a rejection queues the expiry of the rental's open sessions; a pick-up queues none", async () => {
+    const cancelled = await reservation("confirmed");
+    const rejected = await reservation("pending");
+    const picked = await reservation("confirmed");
+    const opens = [
+      await openRentalSession(cancelled),
+      await openRentalSession(rejected),
+      await openRentalSession(picked),
+    ];
+
+    await run("cancel", { id: cancelled }, session());
+    await run("updateStatus", { id: rejected, status: "rejected" }, session());
+    await run("updateStatus", { id: picked, status: "ongoing" }, session());
+
+    const queued = await louezDb.db
+      .select({
+        id: louezDb.apiEffects.id,
+        reservationId: louezDb.apiEffects.reservationId,
+        payload: louezDb.apiEffects.payload,
+      })
+      .from(louezDb.apiEffects)
+      .where(orm.eq(louezDb.apiEffects.type, "payment.rentalSessionsExpiry"));
+    const byReservation = new Map(queued.map((row) => [row.reservationId, row]));
+    assert.deepEqual(byReservation.get(cancelled)?.payload, {
+      reservationId: cancelled,
+      paymentIds: [opens[0]],
+    });
+    assert.deepEqual(byReservation.get(rejected)?.payload, {
+      reservationId: rejected,
+      paymentIds: [opens[1]],
+    });
+    assert.equal(byReservation.has(picked), false);
+    for (const id of [cancelled, rejected]) {
+      assert.ok(
+        dispatched.includes(String(byReservation.get(id)?.id)),
+        "dispatched once committed",
+      );
+    }
+  });
+
+
   test("a confirmation from the dashboard takes the stock, records the fee and creates the contract", async () => {
     const productId = await product(1, "consumable");
     const id = await reservation("pending", { productId });

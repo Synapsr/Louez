@@ -55,7 +55,10 @@ export const GET = async (
     );
     if (signedIn) {
       return NextResponse.redirect(
-        getStorefrontUrl(slug, `/account/reservations/${reservationId}?event=paid`),
+        getStorefrontUrl(
+          slug,
+          `/account/reservations/${reservationId}?event=paid&session_id=${encodeURIComponent(sessionId)}`,
+        ),
       );
     }
     const response = NextResponse.redirect(checkoutPaidUrl(slug));

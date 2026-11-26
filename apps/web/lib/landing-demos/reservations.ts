@@ -170,6 +170,7 @@ export function createDemoReservationPages(
           },
         })),
         rentalPaid: status === "pending" ? "0.00" : display.subtotalAmount,
+        currency: "EUR",
         payments:
           status === "pending"
             ? []

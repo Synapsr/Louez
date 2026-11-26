@@ -8,11 +8,15 @@ import { and, eq } from "drizzle-orm";
 
 import { db, reservations } from "@louez/db";
 import { Button } from "@louez/ui";
+import { formatCurrency } from "@louez/utils";
 
 import { EmptyState } from "@/components/storefront/ui/empty-state";
 import { OutcomeHeader } from "@/components/storefront/ui/outcome-header";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import { getRentalBalance } from "@/lib/reservations/util.rental-amount";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 
@@ -46,13 +50,16 @@ export const generateMetadata = async ({
  * only empties on the verified return), the reservation stays pending: the
  * customer resumes the payment or goes back to the cart. Once the payment
  * window has closed the reservation is cancelled server-side, so the page
- * only offers the cart, which rebooks the same thing in a few clicks.
+ * only offers the cart, which rebooks the same thing in a few clicks. A
+ * booking confirmed meanwhile reads its balance (`getRentalBalance`): paid, or
+ * what remains, which its page takes.
  */
 const CheckoutCancelledPage = async ({ params, searchParams }: CheckoutCancelledPageProps) => {
-  const [{ slug }, { reservation: reservationId }, t] = await Promise.all([
+  const [{ slug }, { reservation: reservationId }, t, { intl: formatLocale }] = await Promise.all([
     params,
     searchParams,
     getTranslations("storefront.checkout.cancelled"),
+    getRequestFormatLocale(),
   ]);
 
   const store = await getStoreBySlug(slug);
@@ -62,10 +69,14 @@ const CheckoutCancelledPage = async ({ params, searchParams }: CheckoutCancelled
 
   const reservation = reservationId
     ? await db.query.reservations.findFirst({
-        columns: { id: true, number: true, status: true },
+        columns: { id: true, number: true, status: true, totalAmount: true, currency: true },
         where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
+        // What settles the rental (`getRentalBalance`): a confirmed booking may still owe its balance.
+        with: { payments: true },
       })
     : null;
+  const currency = reservation ? reservationCurrency(reservation.currency, store.settings) : null;
+  const rentalDue = reservation && currency ? getRentalBalance(reservation, currency).due : 0;
 
   const backToCart = (
     <Button
@@ -91,8 +102,15 @@ const CheckoutCancelledPage = async ({ params, searchParams }: CheckoutCancelled
         <OutcomeHeader
           tone="success"
           icon={<CheckIcon />}
-          title={t("alreadyPaidTitle")}
-          description={t("alreadyPaidDescription", { number: reservation.number })}
+          title={rentalDue > 0 ? t("balanceDueTitle") : t("alreadyPaidTitle")}
+          description={
+            rentalDue > 0 && currency
+              ? t("balanceDueDescription", {
+                  number: reservation.number,
+                  amount: formatCurrency(rentalDue, currency, formatLocale),
+                })
+              : t("alreadyPaidDescription", { number: reservation.number })
+          }
         >
           <Button
             size="xl"

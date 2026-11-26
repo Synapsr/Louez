@@ -467,6 +467,7 @@ export async function listReservations(reader: ReservationReader, input: ListRes
         ...row,
         customer: reader.customers ? row.customer : null,
         rentalPaid: rentalPaidOf(row.payments, currency ?? reader.currency),
+        currency: currency ?? reader.currency,
         payments: reader.payments
           ? row.payments.map(({ currency: _currency, ...payment }) => payment)
           : [],

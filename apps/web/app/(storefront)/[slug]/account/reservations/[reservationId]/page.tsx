@@ -54,13 +54,12 @@ import {
 import {
   getCustomerPaymentRows,
   getDamageFees,
-  getRentalPaid,
   getReservationPaymentStatus,
-  isRentalPaid,
   readPaymentRow,
   refundedPaymentState,
   refundStatusByRow,
 } from "@/lib/reservations/util.payment-status";
+import { getRentalBalance } from "@/lib/reservations/util.rental-amount";
 import { getReservationActions } from "@/lib/reservations/util.reservation-actions";
 import { getReservationUpdates } from "@/lib/reservations/util.reservation-updates";
 import { getCheckoutFailure } from "@/lib/reservations/util.checkout-failure";
@@ -104,7 +103,7 @@ const getRentalDetails = async (
 
 interface ReservationDetailPageProps {
   params: Promise<{ slug: string; reservationId: string }>;
-  searchParams: Promise<{ event?: string | string[] }>;
+  searchParams: Promise<{ event?: string | string[]; session_id?: string | string[] }>;
 }
 
 /**
@@ -246,18 +245,16 @@ export default async function ReservationDetailPage({
     formatStoreDate(date, timezone, preset, formatLocale);
 
   const status = toReservationStatus(reservation.status);
-  const rentalPaid = isRentalPaid(reservation.payments);
-  const rentalPaidAmount = getRentalPaid(
-    reservation.payments,
-    reservationCurrency(reservation.currency, store.settings),
-  );
+  const currency = reservationCurrency(reservation.currency, store.settings);
+  const rentalBalance = getRentalBalance(reservation, currency);
   const damageFees = getDamageFees(reservation.payments);
-  const paymentStatus = getReservationPaymentStatus(reservation.payments);
+  // The payment the landing names by its session; nothing for a link that names none.
+  const paymentStatus = getReservationPaymentStatus(reservation.payments, query.session_id);
   // A test reservation is never paid or held online (lib/test-reservations): no
   // payment and no deposit button.
   const actions = getReservationActions({
     status: reservation.status,
-    isRentalPaid: rentalPaid,
+    rentalDue: rentalBalance.due,
     isSigned: reservation.signedAt !== null,
     stripeAccountId: reservation.isTest ? null : store.stripeAccountId,
     stripeChargesEnabled: store.stripeChargesEnabled,
@@ -441,13 +438,25 @@ export default async function ReservationDetailPage({
           <ReservationRentalDetails reservationId={reservationId} initialData={rentalDetails} />
         }
         outcome={{
-          event: status === "pending" || status === "confirmed" ? event : null,
+          // A payment's landing names its session: its banner shows only that
+          // payment, received or on its way, whatever the rental's status, since the
+          // balance is paid until after the rental; nothing when it names none.
+          event:
+            event === "paid"
+              ? paymentStatus === "unpaid" || isClosedReservationStatus(status)
+                ? null
+                : event
+              : status === "pending" || status === "confirmed"
+                ? event
+                : null,
           paymentStatus: paymentStatus,
         }}
         statusCard={{
           status: status,
           cancelledRequest: cancelledRequest,
-          isRentalPaid: rentalPaid,
+          rentalPaid: rentalBalance.paid,
+          rentalDue: rentalBalance.due,
+          currency,
           checkoutFailure: getCheckoutFailure(reservation.status, reservation.activity),
           paymentRequired: status === "confirmed" && actions.canPay,
           customerEmail: session.customer.email,
@@ -459,6 +468,7 @@ export default async function ReservationDetailPage({
           hasPayment: reservation.payments.some((payment) =>
             ["completed", "authorized"].includes(payment.status),
           ),
+          paysBalance: rentalBalance.paid > 0,
           contractHref: getStorefrontUrl(slug, `${reservationPath}/contract`),
         }}
         fulfillment={{
@@ -496,9 +506,11 @@ export default async function ReservationDetailPage({
               : t(`depositCard.states.${depositStateKey}.badge`),
           damageFees: damageFees,
           total: Number.parseFloat(reservation.totalAmount),
-          amountPaid: rentalPaidAmount,
-          isUnsettled: rentalPaidAmount === 0 && !isClosedReservationStatus(status),
+          amountPaid: rentalBalance.paid,
+          remainingDue: rentalBalance.due,
+          isUnsettled: rentalBalance.paid === 0 && !isClosedReservationStatus(status),
           notes: reservation.customerNotes,
+          currency,
         }}
         updates={{
           updates: updates,

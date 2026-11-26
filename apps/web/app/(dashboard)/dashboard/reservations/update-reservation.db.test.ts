@@ -14,7 +14,7 @@ import {
 import type { ReservationStatus } from "@louez/db";
 
 import * as badges from "./[id]/utils/capacity-verdict-badge";
-import { STORE_KEY } from "./actions-test-stubs";
+import { DISPATCHED_KEY, STORE_KEY } from "./actions-test-stubs";
 
 // An edit of a reservation on a migrated database: it is refused with its
 // shortfalls when it asks more stock than is free, written and traced when
@@ -344,6 +344,60 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     combinationKey: null,
     requested,
     available,
+  });
+
+  describe("the rental's open sessions", () => {
+    test("a lower total queues their expiry, dispatched once committed; a higher one queues none", async () => {
+      const dispatched: string[] = [];
+      Reflect.set(globalThis, DISPATCHED_KEY, dispatched);
+      const bikes = await product("Bike", 5);
+      const lowered = await reservation({ productId: bikes, quantity: 2 });
+      const raised = await reservation({ productId: bikes, quantity: 1 });
+      const open = nextId("pay");
+      await louezDb.db.insert(louezDb.payments).values(
+        [
+          [lowered.id, open],
+          [raised.id, nextId("pay")],
+        ].map(([reservationId, id]) => ({
+          id,
+          reservationId,
+          amount: "40.00",
+          type: "rental" as const,
+          method: "stripe" as const,
+          status: "pending" as const,
+          stripeCheckoutSessionId: `cs_${id}`,
+          origin: "customer_session" as const,
+          currency: "EUR",
+        })),
+      );
+
+      assert.equal(
+        (await actions.updateReservation(lowered.id, { items: [submitted(lowered, 1)] })).error,
+        undefined,
+      );
+      assert.equal(
+        (await actions.updateReservation(raised.id, { items: [submitted(raised, 2)] })).error,
+        undefined,
+      );
+
+      const queued = await louezDb.db
+        .select({
+          id: louezDb.apiEffects.id,
+          reservationId: louezDb.apiEffects.reservationId,
+          payload: louezDb.apiEffects.payload,
+        })
+        .from(louezDb.apiEffects)
+        .where(eq(louezDb.apiEffects.type, "payment.rentalSessionsExpiry"));
+      const mine = queued.filter((row) =>
+        [lowered.id, raised.id].includes(String(row.reservationId)),
+      );
+      assert.deepEqual(
+        mine.map((row) => row.payload),
+        [{ reservationId: lowered.id, paymentIds: [open] }],
+      );
+      assert.deepEqual(dispatched, [mine[0]?.id]);
+      Reflect.deleteProperty(globalThis, DISPATCHED_KEY);
+    });
   });
 
   describe("a quantity raised past the stock, on the same dates", () => {

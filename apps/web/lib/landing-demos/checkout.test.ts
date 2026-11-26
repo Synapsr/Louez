@@ -28,7 +28,7 @@ test("checkout and paid outcome keep the same two bikes, customer, period and am
     assert.equal(paidReservation.items.deposit, summary.totalDeposit);
     assert.equal(summary.totals.amountDueNow, cart.summary.subtotal);
     assert.equal(summary.totals.remainingAmount, 0);
-    assert.deepEqual(paidReservation.outcome, { event: "paid", paymentStatus: "paid" });
+    assert.deepEqual(paidReservation.outcome, { event: "paid", paymentStatus: "received" });
     assert.equal(paidReservation.statusCard.customerEmail, values.email);
     assert.equal(paidReservation.returnDateRequest.startDate, period.start.toISOString());
     assert.equal(summary.globalEndDate, period.end.toISOString());

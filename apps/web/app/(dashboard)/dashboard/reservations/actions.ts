@@ -48,6 +48,7 @@ import {
 } from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
+import { enqueueRentalSessionsExpiry } from "@louez/api/services/rental-sessions";
 import { revalidatePath } from "next/cache";
 
 import { and, eq, gte, inArray, not, sql } from "drizzle-orm";
@@ -69,6 +70,7 @@ import {
   reservationStatusConsumesStock,
   type ReservationTransaction,
   retryTransactionOnDeadlock,
+  runReservationOnlyChange,
   runReservationTransaction,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
@@ -3838,12 +3840,18 @@ export async function updateReservation(
           },
           createdAt: capacityVerdict ? await nextCapacityVerdictDate(tx, reservationId) : undefined,
         });
+        // A lower total leaves the rental's open sessions charging more than remains.
+        const effectIds =
+          priced.kind === "priced" && difference < 0
+            ? await enqueueRentalSessionsExpiry(tx, store.id, reservationId)
+            : [];
         return {
           success: true,
           reservationStatus: lockedReservation.status,
           difference,
           newTotalAmount,
           taxAdded,
+          effectIds,
         };
       },
       { isolationLevel: "read committed" },
@@ -3858,6 +3866,7 @@ export async function updateReservation(
   if ("error" in transactionResult) {
     return transactionResult;
   }
+  dispatchApiEffects(transactionResult.effectIds);
 
   const currentReservationStatus = transactionResult.reservationStatus;
 
@@ -4046,9 +4055,6 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      payments: true,
-    },
   });
 
   if (!reservation) {
@@ -4060,50 +4066,62 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   if (!verdict.ok) return { error: formAmountErrorKey(verdict.refusal) };
   // The amount the row holds, as a number for the checks and the logs below.
   const amount = Number(verdict.amount);
-
-  if (amount > 0 && data.type === "rental") {
-    const rentalPaid = getRentalPaid(
-      reservation.payments,
-      reservationCurrency(reservation.currency, store.settings),
-    );
-    const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
-
-    if (amount > rentalRemaining) {
-      return { error: "errors.amountExceedsDue" };
-    }
-  }
-
-  if (amount > 0 && data.type === "deposit") {
-    const depositCollected = reservation.payments
-      .filter((p) => p.type === "deposit" && p.status === "completed")
-      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-    const depositRemaining = roundMoney(
-      parseFloat(reservation.depositAmount || "0") - depositCollected,
-    );
-
-    if (amount > depositRemaining) {
-      return { error: "errors.amountExceedsDue" };
-    }
-  }
+  const currency = reservationCurrency(reservation.currency, store.settings);
 
   const paymentId = nanoid();
-  await db.transaction(async (tx) => {
-    await insertRecordedPayment(tx, {
-      id: paymentId,
-      reservationId,
-      storeId: store.id,
-      storeSettings: store.settings,
-      amount: verdict.amount,
-      type: data.type,
-      method: data.method,
-      origin: "manual",
-      paidAt: data.paidAt || new Date(),
-      notes: data.notes || null,
-    });
-    if (data.type === "rental" && amount > 0) {
+  // Under the reservation's lock, first: what remains to collect is read there, so
+  // two payments recorded at once never both pass against one balance. A rental
+  // payment lowers what the customer owes, and the rental's sessions open then are
+  // expired; none is installed meanwhile.
+  const written = await runReservationOnlyChange(
+    { reservationId, storeId: store.id },
+    async (tx): Promise<{ error: string } | { effectIds: string[] }> => {
+      const [locked] = await tx
+        .select({
+          totalAmount: reservations.totalAmount,
+          depositAmount: reservations.depositAmount,
+        })
+        .from(reservations)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+      if (!locked) return { error: "errors.reservationNotFound" };
+      const rows = await tx.select().from(payments).where(eq(payments.reservationId, reservationId));
+      if (amount > 0 && data.type === "rental") {
+        const rentalRemaining = getRentalRemaining(
+          locked,
+          getRentalPaid(rows, currency),
+          currency,
+        );
+        if (amount > rentalRemaining) return { error: "errors.amountExceedsDue" };
+      }
+      if (amount > 0 && data.type === "deposit") {
+        const depositCollected = rows
+          .filter((p) => p.type === "deposit" && p.status === "completed")
+          .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+        const depositRemaining = roundMoney(
+          parseFloat(locked.depositAmount || "0") - depositCollected,
+        );
+        if (amount > depositRemaining) return { error: "errors.amountExceedsDue" };
+      }
+
+      await insertRecordedPayment(tx, {
+        id: paymentId,
+        reservationId,
+        storeId: store.id,
+        storeSettings: store.settings,
+        amount: verdict.amount,
+        type: data.type,
+        method: data.method,
+        origin: "manual",
+        paidAt: data.paidAt || new Date(),
+        notes: data.notes || null,
+      });
+      if (data.type !== "rental" || amount <= 0) return { effectIds: [] };
       await validateReservationContract(tx, reservationId, store.id, "payment");
-    }
-  });
+      return { effectIds: await enqueueRentalSessionsExpiry(tx, store.id, reservationId) };
+    },
+  );
+  if ("error" in written) return { error: written.error };
+  dispatchApiEffects(written.effectIds);
 
   let invoiceNumber: string | undefined;
   if (["rental", "damage", "adjustment"].includes(data.type) && amount > 0) {
@@ -4243,11 +4261,13 @@ export async function deletePayment(paymentId: string) {
     return { error: "errors.cannotDeleteStripePayment" };
   }
 
-  await deleteRecordedPayment(db, {
-    paymentId,
-    reservationId: payment.reservationId,
-    storeId: store.id,
-  });
+  dispatchApiEffects(
+    await deleteRecordedPayment({
+      paymentId,
+      reservationId: payment.reservationId,
+      storeId: store.id,
+    }),
+  );
 
   // Log activity
   await logReservationActivity(payment.reservationId, "payment_updated", {

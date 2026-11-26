@@ -399,6 +399,20 @@ export interface ApiEffectPayloads {
     paymentIntentId: string;
   };
   /**
+   * The expiry, at the payment provider, of the rental's Checkout Sessions still
+   * open when a write lowered what the customer owes: a payment recorded, the
+   * total lowered, the reservation cancelled or rejected (services/rental-sessions.ts).
+   * Their charge was set on the balance before it: none is paid above what remains.
+   * The sender (apps/web lib/reservations/rental-session-gate.ts) cancels those rows
+   * still `pending`, expires each session, and records one Stripe already took, as it
+   * is. It sends nothing.
+   */
+  "payment.rentalSessionsExpiry": {
+    reservationId: string;
+    /** The sessions' payment rows (`payments.id`), unsettled when the write ran. */
+    paymentIds: string[];
+  };
+  /**
    * A refund of an online payment, asked of the payment provider (apps/web
    * lib/reservations/stripe-refund.ts). Added in the write that records the
    * operation (`payment_refund_operations`); the operation's row says what to send,

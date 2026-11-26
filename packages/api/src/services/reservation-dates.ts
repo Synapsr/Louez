@@ -31,6 +31,7 @@ import {
 import type { Credential, Transport } from "../platform/actor";
 import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 import { enqueueEffects } from "../platform/effects";
+import { enqueueRentalSessionsExpiry } from "./rental-sessions";
 import { sha256, stableStringify } from "../platform/hash";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import type { ApprovalPresentation } from "./approval-display";
@@ -495,6 +496,8 @@ type Outcome =
       result: DateChange;
       reservation: Reservation;
       effectIds: string[];
+      /** The expiry of the rental's open Checkout Sessions, when the total went down. */
+      sessionEffectIds: string[];
       status: ReservationStatus;
       lines: number;
     };
@@ -792,6 +795,11 @@ export async function changeReservationDates(
       });
 
       const effectIds = await enqueueDateChangeMessages(tx, caller, locked, preview);
+      // A lower total leaves the rental's open sessions charging more than remains.
+      const sessionEffectIds =
+        cents(totals.total) < cents(locked.totalAmount)
+          ? await enqueueRentalSessionsExpiry(tx, storeId, id)
+          : [];
       return {
         kind: "changed",
         // Read after the write, before the commit: this change's own result,
@@ -800,6 +808,7 @@ export async function changeReservationDates(
         status: locked.status,
         lines: locked.items.length,
         effectIds,
+        sessionEffectIds,
         result: {
           changed: true,
           ...previousResult,
@@ -839,9 +848,9 @@ export async function changeReservationDates(
     return { reservation: outcome.reservation, ...outcome.result };
   }
 
-  if (outcome.effectIds.length > 0) {
+  if (outcome.effectIds.length > 0 || outcome.sessionEffectIds.length > 0) {
     try {
-      caller.ports.dispatchEffects(outcome.effectIds);
+      caller.ports.dispatchEffects([...outcome.effectIds, ...outcome.sessionEffectIds]);
     } catch (error) {
       // The rows stay pending: the cron sends them.
       console.error("Dispatching the effects of a date change failed:", error);

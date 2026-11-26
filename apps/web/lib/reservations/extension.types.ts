@@ -26,6 +26,12 @@ export const extensionAttemptSchema = z.object({
   supplement: z.number().nonnegative(),
   currency: z.string(),
   sessionId: z.string().optional(),
+  /**
+   * What the session was created to charge, in the currency's minor units: its
+   * completion compares Stripe's amount with it. Absent on an attempt whose session
+   * was created without it, whose completion takes what Stripe charged.
+   */
+  sessionChargeMinor: z.number().int().nonnegative().optional(),
   paymentId: z.string().optional(),
   effectsDone: z.boolean().optional(),
   effectsClaimUntil: z.number().optional(),
