@@ -3059,7 +3059,7 @@
           "action": "환불",
           "actions": "결제 작업",
           "viewInStripe": "Stripe에서 보기",
-          "openStripeSpace": "내 Stripe 공간 열기",
+          "openStripeSpace": "내 Stripe 대시보드 열기",
           "openInStripe": "Stripe에서 열기",
           "blocked": {
             "disputed": "분쟁 진행 중",

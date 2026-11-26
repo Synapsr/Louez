@@ -3059,7 +3059,7 @@
           "action": "退款",
           "actions": "付款操作",
           "viewInStripe": "在 Stripe 中查看",
-          "openStripeSpace": "打开我的 Stripe 空间",
+          "openStripeSpace": "打开我的 Stripe 控制台",
           "openInStripe": "在 Stripe 中打开",
           "blocked": {
             "disputed": "争议处理中",

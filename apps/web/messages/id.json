@@ -3059,7 +3059,7 @@
           "action": "Kembalikan dana",
           "actions": "Tindakan pembayaran",
           "viewInStripe": "Lihat di Stripe",
-          "openStripeSpace": "Buka ruang Stripe saya",
+          "openStripeSpace": "Buka dasbor Stripe saya",
           "openInStripe": "Buka di Stripe",
           "blocked": {
             "disputed": "Sengketa terbuka",

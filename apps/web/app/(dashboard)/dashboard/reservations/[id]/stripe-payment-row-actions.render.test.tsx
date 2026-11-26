@@ -92,7 +92,7 @@ test("opens with the keyboard and closes with Escape", async () => {
   assert.equal(menuText(), null);
 });
 
-test("an Express account's link says it opens the Stripe space", async () => {
+test("an Express account's link says it opens the account's Stripe dashboard", async () => {
   const container = render({ dashboardKind: "express" });
   await openWithKeyboard(container);
   assert.ok(menuText()?.includes(words.openStripeSpace));

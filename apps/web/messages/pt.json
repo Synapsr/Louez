@@ -3020,7 +3020,7 @@
           "action": "Reembolsar",
           "actions": "Ações do pagamento",
           "viewInStripe": "Ver no Stripe",
-          "openStripeSpace": "Abrir o meu espaço Stripe",
+          "openStripeSpace": "Abrir o meu painel do Stripe",
           "openInStripe": "Abrir no Stripe",
           "blocked": {
             "disputed": "Disputa aberta",

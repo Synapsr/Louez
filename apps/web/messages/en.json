@@ -3059,7 +3059,7 @@
           "action": "Refund",
           "actions": "Payment actions",
           "viewInStripe": "View in Stripe",
-          "openStripeSpace": "Open my Stripe space",
+          "openStripeSpace": "Open my Stripe dashboard",
           "openInStripe": "Open in Stripe",
           "blocked": {
             "disputed": "Open dispute",

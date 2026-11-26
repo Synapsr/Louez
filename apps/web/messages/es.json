@@ -3059,7 +3059,7 @@
           "action": "Reembolsar",
           "actions": "Acciones del pago",
           "viewInStripe": "Ver en Stripe",
-          "openStripeSpace": "Abrir mi espacio de Stripe",
+          "openStripeSpace": "Abrir mi panel de Stripe",
           "openInStripe": "Abrir en Stripe",
           "blocked": {
             "disputed": "Disputa abierta",

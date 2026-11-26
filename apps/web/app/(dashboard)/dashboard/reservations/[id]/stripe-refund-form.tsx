@@ -229,7 +229,8 @@ export const StripeRefundForm = ({
 
   return (
     <form.AppForm>
-      <form.Form formName="stripe-refund" noValidate>
+      {/* A column that shrinks to the dialog's height: the panel scrolls, the footer stays. */}
+      <form.Form formName="stripe-refund" noValidate className="flex min-h-0 flex-col">
         <DialogPanel>
           <div className="space-y-4">
             {refusal?.key === "repeatUnconfirmed" && refusedRepeat ? (

@@ -3020,7 +3020,7 @@
           "action": "Rimborsa",
           "actions": "Azioni del pagamento",
           "viewInStripe": "Vedi in Stripe",
-          "openStripeSpace": "Apri il mio spazio Stripe",
+          "openStripeSpace": "Apri la mia dashboard Stripe",
           "openInStripe": "Apri in Stripe",
           "blocked": {
             "disputed": "Contestazione aperta",
