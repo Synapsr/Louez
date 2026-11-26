@@ -43,7 +43,7 @@ Il garde PostHog, qui remonte ses erreurs, et le journal client.
   `MarketingTrackers`, jamais ailleurs : il est alors exclu du widget sans autre changement.
 - **Un filet.** La CSP du widget (`buildEmbedSecurityHeaders`, `apps/web/lib/util.security-headers.ts`)
   n'est construite qu'à partir des réglages propres à l'instance (son domaine) : l'origine d'aucun
-  traceur n'y entre, ni fromHello, ni OpenReplay, ni Klibon, ni un traceur ajouté plus tard. Le
+  traceur n'y entre, ni fromHello, ni Umami (même configuré), ni OpenReplay, ni Klibon, ni un traceur ajouté plus tard. Le
   navigateur refuserait un traceur qui atteindrait la page.
 - **Dans l'iframe.** Les providers du storefront en variante `bare` n'ont ni OpenReplay, ni pages
   vues PostHog, ni statistiques de la boutique (`components/storefront/shell/storefront-providers.tsx`).

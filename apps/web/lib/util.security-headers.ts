@@ -175,7 +175,7 @@ export const buildSecurityHeaders = (options: SecurityHeadersOptions): SecurityH
  * The storefront widget, framed by any site. It loads no marketing tracker
  * (lib/util.client-tracking.ts), and its policy allows none: built from the
  * instance's own settings only, it lets in no tracker's origin (fromHello,
- * OpenReplay, Klibon, or one added later), so the browser would refuse a
+ * Umami, OpenReplay, Klibon, or one added later), so the browser would refuse a
  * tracker that reached the page.
  */
 export const buildEmbedSecurityHeaders = ({

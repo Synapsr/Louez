@@ -17,6 +17,8 @@ process.env.NEXT_PUBLIC_APP_URL = "https://app.louez.test";
 process.env.NEXT_PUBLIC_APP_DOMAIN = "louez.test";
 process.env.NEXT_PUBLIC_FROMHELLO_KEY = "fh_test";
 process.env.NEXT_PUBLIC_FROMHELLO_API_URL = "https://engagement.louez.test/";
+process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL = "https://stats.example.com/umami/script.js";
+process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID = "website_test";
 
 let requestHeaders = new Headers();
 let inDemoStore = false;
@@ -73,6 +75,21 @@ describe("root layout trackers", async () => {
     const fromHello = elements.find(({ type }) => type === Script);
     assert.equal(fromHello?.props.src, "https://engagement.louez.test/api/t.js");
     assert.equal(fromHello?.props.crossOrigin, "anonymous");
+  });
+
+  test("the configured Umami script uses CORS in production", () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    Object.assign(process.env, { NODE_ENV: "production" });
+    try {
+      const umami = UmamiAnalytics();
+      assert.equal(umami?.type, Script);
+      assert.equal(umami?.props.src, "https://stats.example.com/umami/script.js");
+      assert.equal(umami?.props.crossOrigin, "anonymous");
+      assert.equal(umami?.props["data-website-id"], "website_test");
+    } finally {
+      if (previousNodeEnv === undefined) Reflect.deleteProperty(process.env, "NODE_ENV");
+      else Object.assign(process.env, { NODE_ENV: previousNodeEnv });
+    }
   });
 
   test("a storefront page loads the marketing trackers and PostHog", async () => {
