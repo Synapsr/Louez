@@ -12,6 +12,7 @@ import {
   errorTrackingConfig,
   isFlagOn,
   parseSampleRate,
+  requestErrorContext,
   sanitizeExceptionEvent,
   type ErrorTrackingConfig,
 } from "./error-tracking";
@@ -165,6 +166,70 @@ describe("the event as sent", () => {
   test("only exceptions leave through this client", () => {
     assert.equal(sanitizeExceptionEvent({ event: "pageview", distinctId: "x" }), null);
   });
+
+  test("a store's slug leaves with a storefront's error only, in its own form", () => {
+    const sent = (properties: Record<string, unknown>) =>
+      sanitizeExceptionEvent({ event: "$exception", distinctId: "x", properties })?.properties;
+    assert.deepEqual(sent({ source: "storefront", store_slug: "velo-brest" }), {
+      source: "storefront",
+      store_slug: "velo-brest",
+    });
+    assert.deepEqual(sent({ source: "request", store_slug: "velo-brest" }), { source: "request" });
+    // A route keeps its groups, as a background revalidation names it.
+    assert.deepEqual(sent({ route: "/(storefront)/[slug]/(home)/page" }), {
+      route: "/(storefront)/[slug]/(home)/page",
+    });
+    assert.deepEqual(sent({ store_slug: "velo-brest" }), {});
+    assert.deepEqual(sent({ source: "storefront", store_slug: "jane@example.invalid" }), {
+      source: "storefront",
+    });
+  });
+});
+
+describe("the context of an error Next caught in a request", () => {
+  const about = { routePath: "/[slug]/about", routeType: "render" } as const;
+
+  test("a storefront route on a store's own host: the store the proxy names", () => {
+    const request = { path: "/about?ref=canary", headers: { "x-store-slug": "velo-brest" } };
+    assert.deepEqual(requestErrorContext(request, about), {
+      source: "storefront",
+      route: "/[slug]/about",
+      routeType: "render",
+      storeSlug: "velo-brest",
+    });
+  });
+
+  test("a storefront route by its path: its first segment, nothing else of the path", () => {
+    const pay = { routePath: "/[slug]/pay/[reservationId]", routeType: "render" } as const;
+    const request = { path: "/velo-brest/pay/res-canary?token=tok-canary", headers: {} };
+    assert.deepEqual(requestErrorContext(request, pay), {
+      source: "storefront",
+      route: "/[slug]/pay/[reservationId]",
+      routeType: "render",
+      storeSlug: "velo-brest",
+    });
+    // A background revalidation names the route with its groups.
+    const home = { routePath: "/(storefront)/[slug]/(home)/page", routeType: "action" } as const;
+    assert.equal(requestErrorContext({ path: "/velo-brest", headers: {} }, home).storeSlug, "velo-brest");
+  });
+
+  test("a store header that is not one value names no store", () => {
+    const request = { path: "/about", headers: { "x-store-slug": ["velo-brest", "ski-annecy"] } };
+    const context = requestErrorContext(request, about);
+    assert.equal(context.source, "storefront");
+    assert.equal(context.storeSlug, undefined);
+  });
+
+  test("any other route is a request, with no store", () => {
+    const request = { path: "/velo-brest/x", headers: { "x-store-slug": "velo-brest" } };
+    for (const routePath of ["/api/mcp/route", "/(dashboard)/dashboard/page", "/demo/[vertical]/page"]) {
+      assert.deepEqual(requestErrorContext(request, { routePath, routeType: "route" }), {
+        source: "request",
+        route: routePath,
+        routeType: "route",
+      });
+    }
+  });
 });
 
 describe("the client, with PostHog's network intercepted", () => {
@@ -270,6 +335,42 @@ describe("the reporter, with PostHog's network intercepted", () => {
     assert.match(sent, /"procedure":"customers\.create"/);
     assert.doesNotMatch(sent, /"error_code"/);
     assert.doesNotMatch(sent, /store_id|storeId|store-canary-V1StGXR8/);
+  });
+
+  test("a storefront's render error leaves with its store, page and time, nothing personal", async () => {
+    const { report, body } = intercepted();
+    const request = {
+      path: "/pay/res-canary?token=tok-canary&email=jane%40example.invalid",
+      headers: {
+        "x-store-slug": "velo-brest",
+        cookie: "session=cookie-canary",
+        "x-forwarded-for": "203.0.113.7",
+        "user-agent": "agent-canary",
+      },
+    };
+    const route = { routePath: "/[slug]/pay/[reservationId]", routeType: "render" } as const;
+    const before = Date.now();
+    report(
+      new TypeError("d.ranges is not iterable for jane@example.invalid"),
+      requestErrorContext(request, route),
+    );
+    const sent = await body;
+    const payload: unknown = JSON.parse(sent);
+    const batch = typeof payload === "object" && payload ? Reflect.get(payload, "batch") : [];
+    const event: unknown = Array.isArray(batch) ? batch[0] : undefined;
+    assert.ok(typeof event === "object" && event);
+    assert.equal(Reflect.get(event, "event"), "$exception");
+    const properties: unknown = Reflect.get(event, "properties");
+    assert.ok(typeof properties === "object" && properties);
+    assert.equal(Reflect.get(properties, "source"), "storefront");
+    assert.equal(Reflect.get(properties, "store_slug"), "velo-brest");
+    assert.equal(Reflect.get(properties, "route"), "/[slug]/pay/[reservationId]");
+    assert.equal(Reflect.get(properties, "route_type"), "render");
+    assert.ok(Date.parse(String(Reflect.get(event, "timestamp"))) >= before - 1000);
+    assert.doesNotMatch(
+      sent,
+      /jane|res-canary|tok-canary|cookie-canary|203\.0\.113\.7|agent-canary|store_id|storeId/,
+    );
   });
 
   test("nothing listens for the process to stop: events leave as they are captured", () => {

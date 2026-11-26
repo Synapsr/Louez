@@ -294,6 +294,44 @@ describe("the reporter", () => {
     });
   });
 
+  test("a storefront's fault names its store by slug; no other source does", () => {
+    const { sent, send } = recorder();
+    const report = createServerErrorReporter({ send, throttle: createErrorThrottle() });
+    const route = { route: "/[slug]/about", routeType: "render" };
+    report(errorAt("boom", HERE, 10), { source: "storefront", ...route, storeSlug: "velo-brest" });
+    report(errorAt("boom", HERE, 20), { source: "request", ...route, storeSlug: "velo-brest" });
+    report(errorAt("boom", HERE, 30), { source: "storefront", ...route, storeSlug: "Not a slug!" });
+    assert.equal(sent[0]?.properties.source, "storefront");
+    assert.equal(sent[0]?.properties.store_slug, "velo-brest");
+    assert.equal(sent[0]?.properties.route, "/[slug]/about");
+    assert.equal(sent[1]?.properties.store_slug, undefined);
+    assert.equal(sent[2]?.properties.store_slug, undefined);
+    assert.equal(sent.length, 3);
+  });
+
+  test("a storefront's fault is counted per store, as one issue", () => {
+    let now = 0;
+    const { sent, send } = recorder();
+    const report = createServerErrorReporter({
+      send,
+      throttle: createErrorThrottle({ now: () => now }),
+    });
+    const at = (storeSlug: string) =>
+      report(errorAt("boom"), { source: "storefront", route: "/[slug]", storeSlug });
+    at("velo-brest");
+    at("ski-annecy");
+    now += 1000;
+    at("velo-brest");
+    assert.deepEqual(
+      sent.map(({ properties }) => properties.store_slug),
+      ["velo-brest", "ski-annecy"],
+    );
+    assert.equal(sent[0]?.properties.$exception_fingerprint, sent[1]?.properties.$exception_fingerprint);
+    now = ERROR_REPEAT_WINDOW_MS;
+    at("velo-brest");
+    assert.equal(sent[2]?.properties.repeats_suppressed, 1);
+  });
+
   test("a failing sender or throttle never throws", () => {
     const report = createServerErrorReporter({
       send: () => {
