@@ -67,6 +67,7 @@
     "./services/unit-availability": "./src/services/unit-availability.ts",
     "./services/unit-conflicts": "./src/services/unit-conflicts.ts",
     "./services/unit-mutations": "./src/services/unit-mutations.ts",
+    "./services/uploads": "./src/services/uploads.ts",
     "./services/util.reservation-edit": "./src/services/util.reservation-edit.ts"
   },
   "scripts": {

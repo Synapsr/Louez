@@ -61,7 +61,8 @@ import { runIsolatedTasks } from "./isolated-tasks";
  *   jobs the first dispatch left, such as AI photos, run in the background, never in
  *   this request. Retention, each bounded per run: inbox acknowledgements, handoffs and
  *   jobs after 90 days, write records after 12 months, OAuth tokens 7 days after they
- *   expire or are revoked
+ *   expire or are revoked; hourly at :40, the API's image uploads left in staging a
+ *   day after they were sent
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
  * - Google Ads "account created" conversions: hourly at :20, only when
  *   GOOGLE_ADS_CONVERSIONS_ENABLED is "true". Uploads those whose ad click is 6 hours old
@@ -154,7 +155,7 @@ async function handleCron(request: Request) {
   // customer messages, notifications and analytics events it retries. The
   // background jobs and the purges past their retention go with it, each on
   // its own (api-tasks.ts).
-  const apiEffects = runIsolatedTasks(apiTasks(), taskLogs);
+  const apiEffects = runIsolatedTasks(apiTasks(now), taskLogs);
 
   try {
     // Legacy fee report and billable_at check: daily at 4:45 AM UTC, only on an

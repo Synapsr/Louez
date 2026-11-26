@@ -23,8 +23,7 @@ let storageAdapter: ReturnType<typeof createS3Adapter> | undefined;
  * bucket (absolute S3_PUBLIC_URL) uses presigned direct uploads, ACLs, and
  * serves reads from the bucket. Works the same in standalone and platform.
  */
-export const isProxiedStorage = (): boolean =>
-  (env.S3_PUBLIC_URL ?? "").startsWith("/");
+export const isProxiedStorage = (): boolean => (env.S3_PUBLIC_URL ?? "").startsWith("/");
 
 const createS3Adapter = () => {
   const adapter = s3({
@@ -96,7 +95,8 @@ export const getImageFiles = () => {
  * The bucket adapter without the instance's plugins, for presigned uploads:
  * the content-type and validation plugins refuse to presign, as the bytes
  * never pass through them. Whoever presigns checks the object afterwards
- * (packages/api services/uploads.ts reads its first bytes).
+ * (packages/api services/uploads.ts reads it back from a staging key, checks
+ * those bytes and stores them again under the image's key).
  */
 export const getImageStorageAdapter = () => {
   getImageFiles();

@@ -11,6 +11,7 @@ import {
   isProxiedStorage,
   setPublicReadAcl,
 } from "@/lib/storage/files";
+import { readAtMost } from "@/lib/storage/read-at-most";
 
 const isNotFound = (error: unknown) => error instanceof FilesError && error.code === "NotFound";
 
@@ -50,13 +51,31 @@ export const apiStorage: StoragePort = {
       throw error;
     }
   },
-  readStart: async (key, length) => {
-    const file = await getImageFiles().download(key, { range: { start: 0, end: length - 1 } });
-    return new Uint8Array(await file.arrayBuffer());
+  read: async (key, maxBytes) => {
+    try {
+      const file = await getImageFiles().download(key, {
+        range: { start: 0, end: maxBytes - 1 },
+        as: "stream",
+      });
+      return await readAtMost(file.stream(), maxBytes, file.size);
+    } catch (error) {
+      if (isNotFound(error)) return null;
+      throw error;
+    }
   },
   publish: async (key) => {
     await setPublicReadAcl(key);
     return getImageFiles().url(key);
+  },
+  list: async (prefix, cursor) => {
+    const page = await getImageFiles().list({ prefix, cursor });
+    return {
+      items: page.items.map((file) => ({
+        key: file.key,
+        lastModified: file.lastModified === undefined ? null : new Date(file.lastModified),
+      })),
+      cursor: page.cursor ?? null,
+    };
   },
   delete: async (key) => {
     await getImageFiles().delete(key);

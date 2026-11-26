@@ -1349,7 +1349,11 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       // Asserted once the call has ended, so a failing run leaves none running.
       assert.deepEqual(waiter?.waitsFor, [{ table: "products", id: high }]);
       const held = waiter?.holds.filter((lock) => lock.table === "products").map((lock) => lock.id);
-      assert.deepEqual([...new Set(held)], [low], "the lower id is held while the higher is awaited");
+      assert.deepEqual(
+        [...new Set(held)],
+        [low],
+        "the lower id is held while the higher is awaited",
+      );
     } finally {
       await holder.end();
     }
@@ -1359,9 +1363,10 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     for (const name of ["Aa", "Bb", "Cc"]) await run("create", { name, price: "1" }, session());
     const holder = await database.connect();
     try {
-      const [sorted] = await holder.query("SELECT id FROM products WHERE store_id = ? ORDER BY id", [
-        STORE,
-      ]);
+      const [sorted] = await holder.query(
+        "SELECT id FROM products WHERE store_id = ? ORDER BY id",
+        [STORE],
+      );
       const [low, middle, high] = (sorted as Array<{ id: string }>).map((row) => row.id);
       assert.ok(low && middle && high);
       const accessory = (accessoryId: string) => ({ accessoryId, required: false, quantity: 1 });
@@ -1560,6 +1565,51 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
   const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 1]);
   const WEBP = new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 ");
   const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
+
+  test("on RPC, an upload waits in staging; completion publishes the bytes it checked, once", async () => {
+    const started = await run(
+      "createImageUpload",
+      { contentType: "image/png", size: PNG.byteLength },
+      session(),
+    );
+    assert.match(started.key, new RegExp(`^uploads-staging/${STORE}/products/[\\w-]{21}\\.png$`));
+    await rejects(
+      run(
+        "create",
+        { name: "Staged", price: "3", images: [`https://files.louez.test/${started.key}`] },
+        session(),
+      ),
+      "PRODUCT_IMAGE_INVALID",
+    );
+
+    await ports.storage.put(started.key, PNG, "image/png");
+    const image = started.key.slice("uploads-staging/".length).replace(/\.png$/, "-product.png");
+    const completed = await run("completeImageUpload", { key: started.key }, session());
+    assert.deepEqual(completed, {
+      key: image,
+      url: `https://files.louez.test/${image}`,
+      contentType: "image/png",
+      size: PNG.byteLength,
+    });
+    assert.deepEqual(ports.storage.content(image), {
+      bytes: PNG,
+      contentType: "image/png",
+      public: true,
+    });
+    assert.equal(ports.storage.objects.has(started.key), false, "the staging file went");
+
+    // Sent again through the upload URL: completing again answers the same image.
+    await ports.storage.put(started.key, WEBP, "image/png");
+    assert.deepEqual(await run("completeImageUpload", { key: started.key }, session()), completed);
+    assert.deepEqual(ports.storage.objects.get(image)?.bytes, PNG);
+
+    const product = await run(
+      "create",
+      { name: "Pictured", price: "3", images: [completed.url] },
+      session(),
+    );
+    assert.deepEqual(product.images, [completed.url]);
+  });
 
   test("an agent sends a product image in the call or by URL, then adds it to a product", async () => {
     const context = await apiKey();

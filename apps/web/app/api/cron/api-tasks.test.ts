@@ -50,10 +50,18 @@ mock.module("@louez/api/platform/operations", {
 mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
+mock.module("@louez/api/services/uploads", {
+  namedExports: { purgeStagedUploads: fake("purgeStagedUploads") },
+});
+mock.module("@/lib/storage/api-storage", { namedExports: { apiStorage: {} } });
+mock.module("@/lib/evlog", { namedExports: { log: { error() {} } } });
+
+/** A cron call at :12, when the hourly purge of the uploads' staging does not run. */
+const AT_12 = new Date("2027-01-10T12:12:00Z");
 
 test("every cron call requeues the deposit releases owed and the refunds still requested, queues the partners' statements, runs the outbox, each purge of the agent-ready API, its background jobs, then settles the abandoned checkouts", async () => {
   const { apiTasks } = await import("./api-tasks");
-  const tasks = apiTasks();
+  const tasks = apiTasks(AT_12);
   const results = [];
   for (const { task, key, run } of tasks) results.push({ task, key, runs: await run() });
   assert.deepEqual(results, [
@@ -91,6 +99,24 @@ test("every cron call requeues the deposit releases owed and the refunds still r
   assert.equal(called.length, tasks.length);
 });
 
+test("once an hour, at :40, the purges include the image uploads left in staging, before the background jobs", async () => {
+  const { apiTasks } = await import("./api-tasks");
+  const names = (minute: number) =>
+    apiTasks(new Date(Date.UTC(2027, 0, 10, 12, minute))).map(({ task }) => task);
+  for (let minute = 0; minute < 60; minute++) {
+    assert.equal(names(minute).includes("upload-staging"), minute === 40, String(minute));
+  }
+  const tasks = apiTasks(new Date(Date.UTC(2027, 0, 10, 12, 40)));
+  const staging = tasks.find(({ task }) => task === "upload-staging");
+  assert.equal(staging?.key, "uploadStaging");
+  assert.equal(await staging?.run(), "purgeStagedUploads");
+  assert.deepEqual(names(40).slice(names(40).indexOf("oauth-tokens"), -1), [
+    "oauth-tokens",
+    "upload-staging",
+    "api-jobs",
+  ]);
+});
+
 test("a pass over abandoned checkouts that hangs on its provider holds no other task back: each has run before it", async () => {
   const { apiTasks } = await import("./api-tasks");
   const { runIsolatedTasks } = await import("./isolated-tasks");
@@ -99,7 +125,7 @@ test("a pass over abandoned checkouts that hangs on its provider holds no other 
   const quiet = { error() {} };
 
   // Never awaited: the pass never ends.
-  void runIsolatedTasks(apiTasks(), { request: quiet, event: quiet });
+  void runIsolatedTasks(apiTasks(AT_12), { request: quiet, event: quiet });
   while (!called.includes("settleAbandonedCheckouts")) {
     await new Promise((resolve) => setImmediate(resolve));
   }

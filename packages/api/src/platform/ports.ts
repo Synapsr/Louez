@@ -797,13 +797,21 @@ export interface StoragePort {
   ) => Promise<UploadTarget | null>;
   /** Absolute URL of the app's upload endpoint for an upload token. */
   uploadUrl: (token: string) => string;
-  /** Stores bytes received by the app's upload endpoint. */
+  /** Stores bytes under a key, with their type. */
   put: (key: string, body: Uint8Array, contentType: string) => Promise<void>;
   /** Size and type of a stored object, or null when there is none. */
   head: (key: string) => Promise<{ size: number; contentType: string } | null>;
-  /** The first `length` bytes of a stored object. */
-  readStart: (key: string, length: number) => Promise<Uint8Array>;
+  /**
+   * A stored object's bytes, reading at most `maxBytes` of them (a larger
+   * object gives its first `maxBytes`); null when there is none.
+   */
+  read: (key: string, maxBytes: number) => Promise<Uint8Array | null>;
   /** Makes a stored object publicly readable; returns its public URL. */
   publish: (key: string) => Promise<string>;
+  /** One page of the objects whose key starts with `prefix`, with when each was written. */
+  list: (
+    prefix: string,
+    cursor?: string,
+  ) => Promise<{ items: { key: string; lastModified: Date | null }[]; cursor: string | null }>;
   delete: (key: string) => Promise<void>;
 }

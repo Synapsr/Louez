@@ -493,7 +493,7 @@ describe("online store procedures (database)", { skip: skipWithoutTestDatabase()
       { kind: "logo", contentType: "image/png", size: PNG.byteLength },
       key(),
     );
-    assert.match(logo.key, new RegExp(`^${STORE}/logo/`));
+    assert.match(logo.key, new RegExp(`^uploads-staging/${STORE}/logo/`));
     await storage.put(logo.key, PNG, "image/png");
     const logoDone = await run("completeImageUpload", { kind: "logo", key: logo.key }, key());
 
@@ -533,6 +533,51 @@ describe("online store procedures (database)", { skip: skipWithoutTestDatabase()
       run("completeImageUpload", { kind: "logo", key: logo.key }, other()),
       "UPLOAD_NOT_OWNED",
     );
+  });
+
+  test("on RPC, a storefront upload waits in staging; completion publishes the bytes it checked, once", async () => {
+    const started = await run(
+      "createImageUpload",
+      { kind: "hero", contentType: "image/png", size: PNG.byteLength },
+      session(),
+    );
+    assert.match(started.key, new RegExp(`^uploads-staging/${STORE}/logo/[\\w-]{21}\\.png$`));
+    await rejects(
+      run(
+        "updateAppearance",
+        { heroImages: [`https://files.louez.test/${started.key}`] },
+        session(),
+      ),
+      "IMAGE_NOT_OWNED",
+    );
+
+    await storage.put(started.key, PNG, "image/png");
+    const image = started.key.slice("uploads-staging/".length).replace(/\.png$/, "-hero.png");
+    const completed = await run(
+      "completeImageUpload",
+      { kind: "hero", key: started.key },
+      session(),
+    );
+    assert.deepEqual(completed, {
+      key: image,
+      url: `https://files.louez.test/${image}`,
+      contentType: "image/png",
+      size: PNG.byteLength,
+    });
+    assert.deepEqual(storage.content(image), {
+      bytes: PNG,
+      contentType: "image/png",
+      public: true,
+    });
+    assert.equal(storage.objects.has(started.key), false, "the staging file went");
+
+    // Sent again through the upload URL: completing again answers the same image.
+    await storage.put(started.key, new TextEncoder().encode("<html></html>"), "image/png");
+    assert.deepEqual(
+      await run("completeImageUpload", { kind: "hero", key: started.key }, session()),
+      completed,
+    );
+    assert.deepEqual(storage.objects.get(image)?.bytes, PNG);
   });
 
   const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");

@@ -65,10 +65,16 @@ const createImageFilesRouter = (kind: ImageUploadKind) => {
     allowedOrigins,
     maxUploadSize: IMAGE_UPLOAD_CONFIG[kind].maxSize,
     secret: `louez-image-upload:${authEnv.AUTH_SECRET}`,
-    authorize: async () => ({
-      keyPrefix: await getKeyPrefix(kind),
-      disposition: "inline",
-    }),
+    authorize: async ({ operation, key }) => {
+      // The dashboard uploads under keys the router mints (`presign`), never
+      // under one the caller names: a named key could take a name only API
+      // completion writes, from bytes it checked (packages/api
+      // services/uploads.ts).
+      if (operation === "upload" && key !== undefined) {
+        throw new FilesError("Unauthorized", "Uploads take the key the server mints");
+      }
+      return { keyPrefix: await getKeyPrefix(kind), disposition: "inline" };
+    },
   });
 
   return {
