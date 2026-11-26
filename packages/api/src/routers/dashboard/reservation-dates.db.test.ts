@@ -442,6 +442,35 @@ describe(
       };
     }
 
+    /** A Checkout Session of the rental, open: its payment row `pending`. */
+    async function openRentalSession(reservationId: string) {
+      const id = nextId("rd_pay");
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId,
+        amount: "10.00",
+        type: "rental",
+        method: "stripe",
+        status: "pending",
+        stripeCheckoutSessionId: `cs_${id}`,
+        origin: "customer_session",
+        currency: "EUR",
+      });
+      return id;
+    }
+
+    /** The expiries of the reservation's open sessions the outbox holds. */
+    const sessionExpiriesOf = (reservationId: string) =>
+      louezDb.db
+        .select({ id: louezDb.apiEffects.id, payload: louezDb.apiEffects.payload })
+        .from(louezDb.apiEffects)
+        .where(
+          orm.and(
+            orm.eq(louezDb.apiEffects.type, "payment.rentalSessionsExpiry"),
+            orm.eq(louezDb.apiEffects.reservationId, reservationId),
+          ),
+        );
+
     type Line = { productId: string; quantity?: number; unitId?: string; combinationKey?: string };
 
     /**
@@ -674,6 +703,26 @@ describe(
         assert.ok(answer.links.dashboard.includes(id));
         const row = await reservationRow(id);
         assert.ok(row.scheduleChangedAt, "the inbox dates a late return from the change");
+      });
+
+      test("a lower total queues the expiry of the rental's open sessions, dispatched once committed; a higher one queues none", async () => {
+        const kayak = await product({ quantity: 3 });
+        const lines = [{ productId: kayak, quantity: 1 }];
+        const shorter = await book(lines);
+        const longer = await book(lines);
+        const open = await openRentalSession(shorter.id);
+        await openRentalSession(longer.id);
+
+        await update(move(shorter.id, day(START, 1)), session());
+        await update(move(longer.id, day(END, 1)), session());
+
+        const queued = await sessionExpiriesOf(shorter.id);
+        assert.deepEqual(
+          queued.map((row) => row.payload),
+          [{ reservationId: shorter.id, paymentIds: [open] }],
+        );
+        assert.ok(dispatched.includes(String(queued[0]?.id)), "dispatched once committed");
+        assert.deepEqual(await sessionExpiriesOf(longer.id), []);
       });
 
       test("prices before tax, with an exempt line: the tax comes on top, the exempt line has none", async () => {

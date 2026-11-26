@@ -1,4 +1,4 @@
-import { getRentalPaid, type SettledPaymentRow } from "@louez/utils";
+import { getRentalPaid, roundDownToMinorUnit, type SettledPaymentRow } from "@louez/utils";
 
 /** An amount in whole hundredths; a value that is not a finite number reads as nothing. */
 const toHundredths = (value: string | number | null | undefined): number => {
@@ -35,11 +35,13 @@ export function getRentalRemaining(
 
 /**
  * Where the customer stands on the rental, in the reservation's currency:
- * `paid`, what settles it (`getRentalPaid`), and `due`, what is still owed
- * (`getRentalRemaining`). The rental is settled when `due` is zero, overpaid
+ * `paid`, what settles it (`getRentalPaid`), and `due`, what can still be
+ * asked of them: what is owed (`getRentalRemaining`) rounded down to the
+ * currency's minor unit (`roundDownToMinorUnit`), so no charge of it takes
+ * more than is owed. The rental is settled when `due` is zero, overpaid
  * included. The one reading of every customer-facing "paid": the account
- * list and page, their pay button, the customer's payment session and the
- * store's payment request.
+ * list and page, their pay button, the checkout's interrupted page, the
+ * customer's payment session and the store's payment request.
  */
 export function getRentalBalance(
   reservation: {
@@ -49,7 +51,30 @@ export function getRentalBalance(
   currency: string,
 ): { paid: number; due: number } {
   const paid = getRentalPaid(reservation.payments, currency);
-  return { paid, due: getRentalRemaining(reservation, paid) };
+  return { paid, due: roundDownToMinorUnit(getRentalRemaining(reservation, paid), currency) };
+}
+
+/**
+ * Why a rental session charging `charge.amount` cannot be opened on this
+ * balance (`getRentalBalance`); null when it can. Nothing remains:
+ * `errors.alreadyPaid`, and only then. A charge of what remains must be
+ * exactly what remains; a checkout's own charge (`fixed`: a partial deposit or
+ * the total, the rental's first payment) never more than remains, and only
+ * while nothing is paid. Otherwise the reservation changed since the charge
+ * was set (a payment landed, its total moved): nothing is charged, and a
+ * reload reads the balance again. Amounts are compared in the currency's
+ * minor unit, the charge rounded down to it as Stripe takes it.
+ */
+export function rentalChargeRefusal(
+  balance: { readonly paid: number; readonly due: number },
+  charge: { readonly amount: number; readonly fixed: boolean },
+  currency: string,
+): "errors.alreadyPaid" | "errors.reservationChangedMeanwhile" | null {
+  if (balance.due === 0) return "errors.alreadyPaid";
+  const charged = toHundredths(roundDownToMinorUnit(charge.amount, currency));
+  const due = toHundredths(balance.due);
+  const changed = charge.fixed ? balance.paid > 0 || charged > due : charged !== due;
+  return changed ? "errors.reservationChangedMeanwhile" : null;
 }
 
 /**

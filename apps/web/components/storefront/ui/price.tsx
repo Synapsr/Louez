@@ -22,6 +22,8 @@ interface PriceProps {
   size?: PriceSize;
   /** `primary` is for the one total that matters on the screen. */
   tone?: PriceTone;
+  /** An amount held in another currency than the store's (`useFormatMoney`). */
+  currency?: string;
   className?: string;
 }
 
@@ -51,6 +53,7 @@ export const Price = ({
   label,
   size = "md",
   tone = "default",
+  currency,
   className,
 }: PriceProps) => {
   const formatMoney = useFormatMoney();
@@ -67,11 +70,11 @@ export const Price = ({
     >
       {compareAt != null && compareAt > amount ? (
         <s className={cn("font-normal text-muted-foreground", SUFFIX_CLASS_NAMES[size])}>
-          {formatMoney(compareAt)}
+          {formatMoney(compareAt, { currency })}
         </s>
       ) : null}
       <data value={amount} className={cn("font-semibold tracking-tight", AMOUNT_CLASS_NAMES[size])}>
-        {formatMoney(amount)}
+        {formatMoney(amount, { currency })}
       </data>
       {suffix ? (
         <span className={cn("font-normal text-muted-foreground", SUFFIX_CLASS_NAMES[size])}>

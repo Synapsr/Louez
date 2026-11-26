@@ -17,10 +17,15 @@ import {
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { openRentalCheckoutSession } from "@/lib/reservations/rental-session-gate";
-import { getRentalBalance } from "@/lib/reservations/util.rental-amount";
+import { getRentalBalance, rentalChargeRefusal } from "@/lib/reservations/util.rental-amount";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { TEST_RESERVATION_REFUSED_ERROR } from "@/lib/test-reservations/refusal";
-import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
+import {
+  createCheckoutSession,
+  fromStripeCents,
+  toStripeChargeCents,
+  toStripeCents,
+} from "@/lib/stripe";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export async function createReservationPaymentSessionForCustomer(
@@ -99,9 +104,10 @@ export async function createReservationPaymentSessionForCustomer(
       return { error: TEST_RESERVATION_REFUSED_ERROR };
     }
 
+    // A balance is paid while the rental is confirmed, runs, or after it ended.
     const allowedStatuses = allowPendingReservation
-      ? ["pending", "confirmed", "ongoing"]
-      : ["confirmed", "ongoing"];
+      ? ["pending", "confirmed", "ongoing", "completed"]
+      : ["confirmed", "ongoing", "completed"];
     if (!allowedStatuses.includes(reservation.status)) {
       return { error: "errors.invalidStatus" };
     }
@@ -112,27 +118,18 @@ export async function createReservationPaymentSessionForCustomer(
     const fixedCharge =
       isTrustedCaller && options?.chargeAmount !== undefined ? options.chargeAmount : null;
     // What remains of the rental (`getRentalBalance`), unless a trusted caller fixes it.
-    const chargeAmount = fixedCharge ?? getRentalBalance(reservation, currency).due;
-    const chargeCents = toStripeCents(chargeAmount, currency);
-
-    /**
-     * Why the reservation, as read, takes no session of `chargeCents`; null when it
-     * does. Read before the session is created, under the reservation's lock before
-     * it is installed, and after an earlier session was found paid. Nothing remains
-     * of the rental: `errors.alreadyPaid`, and only then. The customer's own payment
-     * charges exactly what remains; a resumed checkout charges its own amount, the
-     * rental's first payment, never more than remains. Otherwise the reservation has
-     * changed since the charge was set (a payment landed, its total moved): nothing
-     * is charged, and a reload reads the balance again.
-     */
-    const balanceRefusal = (payable: Parameters<typeof getRentalBalance>[0]) => {
-      const { paid, due } = getRentalBalance(payable, currency);
-      if (due === 0) return "errors.alreadyPaid";
-      const dueCents = toStripeCents(due, currency);
-      const changed =
-        fixedCharge === null ? chargeCents !== dueCents : paid > 0 || chargeCents > dueCents;
-      return changed ? "errors.reservationChangedMeanwhile" : null;
+    const charge = {
+      amount: fixedCharge ?? getRentalBalance(reservation, currency).due,
+      fixed: fixedCharge !== null,
     };
+    const chargeCents = toStripeChargeCents(charge.amount, currency);
+    const chargeAmount = fromStripeCents(chargeCents, currency);
+
+    // The reservation as read takes this charge, by `rentalChargeRefusal`: read
+    // before the session is created, under the reservation's lock before it is
+    // installed, and after an earlier session was found paid.
+    const balanceRefusal = (payable: Parameters<typeof getRentalBalance>[0]) =>
+      rentalChargeRefusal(getRentalBalance(payable, currency), charge, currency);
     const refusal = balanceRefusal(reservation);
     if (refusal) {
       return { error: refusal };
@@ -211,9 +208,10 @@ export async function createReservationPaymentSessionForCustomer(
             reservationId,
             storeId: store.id,
           }),
+          // The return verifies the session at Stripe, then lands on the reservation.
           successUrl:
             successUrl ??
-            getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=success`),
+            getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}/payment-return`),
           cancelUrl:
             cancelUrl ??
             getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),

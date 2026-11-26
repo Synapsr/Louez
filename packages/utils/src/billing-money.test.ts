@@ -6,6 +6,7 @@ import {
   currencyMinorDigits,
   exactMoneyDecimals,
   normalizeCurrency,
+  roundDownToMinorUnit,
 } from "./billing-money";
 
 describe("beforeTaxRateBps", () => {
@@ -34,6 +35,20 @@ describe("currencyMinorDigits", () => {
     assert.equal(currencyMinorDigits("EUR"), 2);
     assert.equal(currencyMinorDigits("CHF"), 2);
     assert.equal(currencyMinorDigits("KWD"), null);
+  });
+});
+
+describe("roundDownToMinorUnit", () => {
+  test("rounds down to whole units in a zero-decimal currency, never up", () => {
+    assert.equal(roundDownToMinorUnit(100.6, "JPY"), 100);
+    assert.equal(roundDownToMinorUnit(100.99, "jpy"), 100);
+    assert.equal(roundDownToMinorUnit(7000, "JPY"), 7000);
+  });
+
+  test("keeps the cents of a two-decimal currency, counted in hundredths", () => {
+    assert.equal(roundDownToMinorUnit(0.29, "EUR"), 0.29);
+    assert.equal(roundDownToMinorUnit(21, "EUR"), 21);
+    assert.equal(roundDownToMinorUnit(0.1 + 0.2, "USD"), 0.3);
   });
 });
 

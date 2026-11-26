@@ -7,6 +7,7 @@ import {
   readReservationStockDemand,
   reservationStatusStockAction,
   getAllowedReservationStatusTransitions,
+  isFeeVoidingReservationStatus,
   isReservationChangeBusyError,
   isStoreNotAcceptingReservationsError,
   payments,
@@ -44,6 +45,7 @@ import type { Credential, Transport } from "../platform/actor";
 import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 import { sha256, stableStringify } from "../platform/hash";
 import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platform/effects";
+import { enqueueRentalSessionsExpiry } from "./rental-sessions";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import type { ApprovalPresentation } from "./approval-display";
 import { confirmOverridePresentation } from "./approval-presentations";
@@ -582,6 +584,8 @@ type TransactionOutcome =
       warnings: StatusChangeOutput["warnings"];
       /** The outbox rows of the change; the last is its analytics event. */
       effectIds: string[];
+      /** The expiry of the rental's open Checkout Sessions, when it withdraws the rental. */
+      sessionEffectIds: string[];
       messagesNotSent: StatusChangeOutput["messagesNotSent"];
     };
 
@@ -748,6 +752,10 @@ export async function changeStoreReservationStatus(
             messages: [...preview.messages, ...(preview.messagesNotSent ?? [])],
           }),
         );
+        // A rental withdrawn owes nothing more: its open sessions are expired.
+        const sessionEffectIds = isFeeVoidingReservationStatus(change.to)
+          ? await enqueueRentalSessionsExpiry(tx, storeId, id)
+          : [];
         return {
           kind: "changed",
           locked,
@@ -756,6 +764,7 @@ export async function changeStoreReservationStatus(
           effects: change.effects,
           warnings: warnings.map(({ key, params }) => ({ key, ...(params ? { params } : {}) })),
           effectIds,
+          sessionEffectIds,
           messagesNotSent: preview.messagesNotSent ?? [],
         };
       },
@@ -819,7 +828,11 @@ export async function changeStoreReservationStatus(
         )
       : [];
   try {
-    caller.ports.dispatchEffects([...outcome.effectIds, ...testEffectIds]);
+    caller.ports.dispatchEffects([
+      ...outcome.effectIds,
+      ...outcome.sessionEffectIds,
+      ...testEffectIds,
+    ]);
   } catch (error) {
     // The rows stay pending: the cron sends them.
     console.error("Dispatching the effects of a status change failed:", error);

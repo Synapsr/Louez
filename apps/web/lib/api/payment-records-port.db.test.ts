@@ -83,6 +83,8 @@ describe(
     let record: Call;
     let decide: (id: string) => Promise<void>;
     let counter = 0;
+    /** The outbox rows the procedure dispatched once committed. */
+    const dispatched: string[] = [];
 
     before(async () => {
       database = await createTestDatabase("payment_records_port");
@@ -100,7 +102,9 @@ describe(
         runReservationEffects: async () => {},
         insurance: { createContract: async () => null, cancelContract: async () => {} },
         newStores: createTestNewStores(),
-        dispatchEffects: () => {},
+        dispatchEffects: (ids: readonly string[]) => {
+          dispatched.push(...ids);
+        },
         storage: createMemoryStorage(),
         urls: createTestUrls(),
         afterCommit: () => {},
@@ -239,6 +243,56 @@ describe(
       type: "rental",
       amount: "120.00",
       method: "cash",
+    });
+
+    /** Records the payment as the agent asks, through the person's approval. */
+    async function approvedRecord(input: object) {
+      const asked = await codeOf(record(input));
+      assert.equal(asked.code, "APPROVAL_REQUIRED");
+      const approval = String(asked.details.confirmationToken);
+      await decide(approval);
+      assert.equal(await codeOf(record(input, approval)).then((r) => r.code), "OK");
+    }
+
+    /** A Checkout Session of the rental, open: its payment row `pending`. */
+    async function openRentalSession(reservationId: string) {
+      const id = `pay_open_${++counter}`;
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId,
+        amount: "98.00",
+        type: "rental",
+        method: "stripe",
+        status: "pending",
+        stripeCheckoutSessionId: `cs_${id}`,
+        origin: "customer_session",
+        currency: "EUR",
+      });
+      return id;
+    }
+
+    const sessionExpiriesOf = (reservationId: string) =>
+      louezDb.db
+        .select({ id: louezDb.apiEffects.id, payload: louezDb.apiEffects.payload })
+        .from(louezDb.apiEffects)
+        .where(eq(louezDb.apiEffects.reservationId, reservationId));
+
+    test("a rental payment recorded expires the rental's open sessions, dispatched once committed; a deposit queues none", async () => {
+      const rentalPaid = await reservation();
+      const depositPaid = await reservation();
+      const open = await openRentalSession(rentalPaid);
+      await openRentalSession(depositPaid);
+
+      await approvedRecord({ ...rental(rentalPaid), amount: "20.00" });
+      await approvedRecord({ ...rental(depositPaid), type: "deposit", amount: "20.00" });
+
+      const queued = await sessionExpiriesOf(rentalPaid);
+      assert.deepEqual(
+        queued.map((row) => row.payload),
+        [{ reservationId: rentalPaid, paymentIds: [open] }],
+      );
+      assert.ok(dispatched.includes(String(queued[0]?.id)), "dispatched once committed");
+      assert.deepEqual(await sessionExpiriesOf(depositPaid), []);
     });
 
     test("unchanged, the row takes the facts bound with the preview", async () => {

@@ -8605,6 +8605,8 @@
         "redirecting": "正在重定向...",
         "alreadyPaidTitle": "预订已付款",
         "alreadyPaidDescription": "您的预订 {number} 已确认。无需进一步付款。",
+        "balanceDueTitle": "预订已确认",
+        "balanceDueDescription": "您的预订 {number} 已确认，还需支付 {amount}，您可以在预订页面完成支付。",
         "viewReservation": "查看我的预订",
         "errors": {
           "notFound": "无法找到此预订。",

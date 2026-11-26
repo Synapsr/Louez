@@ -163,6 +163,7 @@ export const createDemoPortalDetail = (
       status: reservation.status,
       rentalPaid: balance.paid,
       rentalDue: balance.due,
+      currency: "EUR",
       paymentRequired: actions.canPay,
       customerEmail: reservation.customer.email,
     },
@@ -195,6 +196,7 @@ export const createDemoPortalDetail = (
       remainingDue: balance.due,
       isUnsettled: !reservation.paid,
       notes: null,
+      currency: "EUR",
     },
     updates: {
       updates: [

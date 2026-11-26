@@ -103,8 +103,12 @@ const getRentalDetails = async (
 
 interface ReservationDetailPageProps {
   params: Promise<{ slug: string; reservationId: string }>;
-  searchParams: Promise<{ event?: string | string[] }>;
+  searchParams: Promise<{ event?: string | string[]; session_id?: string | string[] }>;
 }
+
+/** The Checkout Session a payment's return names (`payment-return`), when it names one. */
+const parsePaymentSessionId = (value: string | string[] | undefined): string | null =>
+  typeof value === "string" && value.length > 0 && value.length <= 255 ? value : null;
 
 /**
  * The one post-reservation destination: outcome banner (`?event=`), status,
@@ -245,12 +249,11 @@ export default async function ReservationDetailPage({
     formatStoreDate(date, timezone, preset, formatLocale);
 
   const status = toReservationStatus(reservation.status);
-  const rentalBalance = getRentalBalance(
-    reservation,
-    reservationCurrency(reservation.currency, store.settings),
-  );
+  const currency = reservationCurrency(reservation.currency, store.settings);
+  const rentalBalance = getRentalBalance(reservation, currency);
   const damageFees = getDamageFees(reservation.payments);
-  const paymentStatus = getReservationPaymentStatus(reservation.payments);
+  const paymentSessionId = parsePaymentSessionId(query.session_id);
+  const paymentStatus = getReservationPaymentStatus(reservation.payments, paymentSessionId);
   // A test reservation is never paid or held online (lib/test-reservations): no
   // payment and no deposit button.
   const actions = getReservationActions({
@@ -439,7 +442,14 @@ export default async function ReservationDetailPage({
           <ReservationRentalDetails reservationId={reservationId} initialData={rentalDetails} />
         }
         outcome={{
-          event: status === "pending" || status === "confirmed" ? event : null,
+          // A payment's return names its session: its banner shows whatever the
+          // rental's status, since the balance is paid until after the rental.
+          event:
+            status === "pending" ||
+            status === "confirmed" ||
+            (event === "paid" && paymentSessionId !== null && !isClosedReservationStatus(status))
+              ? event
+              : null,
           paymentStatus: paymentStatus,
         }}
         statusCard={{
@@ -447,6 +457,7 @@ export default async function ReservationDetailPage({
           cancelledRequest: cancelledRequest,
           rentalPaid: rentalBalance.paid,
           rentalDue: rentalBalance.due,
+          currency,
           checkoutFailure: getCheckoutFailure(reservation.status, reservation.activity),
           paymentRequired: status === "confirmed" && actions.canPay,
           customerEmail: session.customer.email,
@@ -500,6 +511,7 @@ export default async function ReservationDetailPage({
           remainingDue: rentalBalance.due,
           isUnsettled: rentalBalance.paid === 0 && !isClosedReservationStatus(status),
           notes: reservation.customerNotes,
+          currency,
         }}
         updates={{
           updates: updates,

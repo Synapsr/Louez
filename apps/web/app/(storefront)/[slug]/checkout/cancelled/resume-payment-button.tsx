@@ -14,9 +14,10 @@ interface ResumePaymentButtonProps {
   reservationId: string;
 }
 
+type ResumeFailure = Extract<ResumeCheckoutPaymentResult, { ok: false }>;
 type ResumeError = Exclude<
-  Extract<ResumeCheckoutPaymentResult, { ok: false }>["error"],
-  "already_paid"
+  ResumeFailure["error"],
+  "already_paid" | "reservation_changed" | "amount_too_small"
 >;
 
 const ERROR_MESSAGE_KEYS: Record<
@@ -32,26 +33,36 @@ const ERROR_MESSAGE_KEYS: Record<
 /** Primary action of the cancelled page: back to Stripe, same reservation. */
 export const ResumePaymentButton = ({ slug, reservationId }: ResumePaymentButtonProps) => {
   const t = useTranslations("storefront.checkout.cancelled");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
   const resume = useMutation({
     mutationFn: () => resumeCheckoutPayment({ slug, reservationId }),
     onSuccess: (result) => {
       if (result.ok) {
         window.location.assign(result.url);
-      } else if (result.error === "already_paid") {
-        // The page shows a booking whose payment is recorded as paid.
+      } else if (result.error === "already_paid" || result.error === "reservation_changed") {
+        // The page reads the booking again: paid, or what remains of it.
         router.refresh();
       }
     },
   });
 
-  const paid = resume.data && !resume.data.ok && resume.data.error === "already_paid";
-  const failure =
-    resume.data && !resume.data.ok && resume.data.error !== "already_paid"
-      ? t(`errors.${ERROR_MESSAGE_KEYS[resume.data.error]}`)
-      : resume.isError
-        ? t("errors.sessionFailed")
-        : null;
+  const failed: ResumeFailure | null = resume.data && !resume.data.ok ? resume.data : null;
+  const paid = failed?.error === "already_paid";
+  const failure = !failed
+    ? resume.isError
+      ? t("errors.sessionFailed")
+      : null
+    : failed.error === "already_paid"
+      ? null
+      : failed.error === "reservation_changed"
+        ? tErrors("reservationChangedMeanwhile")
+        : failed.error === "amount_too_small"
+          ? tErrors("paymentAmountTooSmall", {
+              minimumAmount: failed.minimumAmount,
+              currency: failed.currency,
+            })
+          : t(`errors.${ERROR_MESSAGE_KEYS[failed.error]}`);
 
   return (
     <div className="flex w-full flex-col gap-2 sm:w-auto">

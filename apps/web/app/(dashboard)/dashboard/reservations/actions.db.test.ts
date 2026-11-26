@@ -10,7 +10,7 @@ import {
   type TestDatabase,
 } from "@louez/db/testing";
 
-import { OUTCOME_KEY, SENT_KEY, STORE_KEY } from "./actions-test-stubs";
+import { DISPATCHED_KEY, OUTCOME_KEY, SENT_KEY, STORE_KEY } from "./actions-test-stubs";
 
 // The dashboard's reservation actions on a migrated database: the payment rows
 // they write, with their billing facts, and the reservation's mark for the billing
@@ -169,6 +169,55 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
   }
 
   describe("recordPayment", () => {
+    test("a rental payment expires the rental's open sessions, dispatched once committed; a deposit queues none", async () => {
+      const dispatched: string[] = [];
+      Reflect.set(globalThis, DISPATCHED_KEY, dispatched);
+      const rentalPaid = await createReservation();
+      const depositPaid = await createReservation();
+      const open = nextId("pay");
+      await louezDb.db.insert(louezDb.payments).values(
+        [
+          [rentalPaid, open],
+          [depositPaid, nextId("pay")],
+        ].map(([reservationId, id]) => ({
+          id,
+          reservationId,
+          amount: "110.00",
+          type: "rental" as const,
+          method: "stripe" as const,
+          status: "pending" as const,
+          stripeCheckoutSessionId: `cs_${id}`,
+          origin: "customer_session" as const,
+          currency: "USD",
+        })),
+      );
+
+      paymentIdOf(
+        await actions.recordPayment(rentalPaid, { type: "rental", amount: "20", method: "cash" }),
+      );
+      paymentIdOf(
+        await actions.recordPayment(depositPaid, { type: "deposit", amount: "20", method: "cash" }),
+      );
+
+      const queued = await louezDb.db
+        .select({
+          id: louezDb.apiEffects.id,
+          reservationId: louezDb.apiEffects.reservationId,
+          payload: louezDb.apiEffects.payload,
+        })
+        .from(louezDb.apiEffects)
+        .where(eq(louezDb.apiEffects.type, "payment.rentalSessionsExpiry"));
+      const mine = queued.filter((row) =>
+        [rentalPaid, depositPaid].includes(String(row.reservationId)),
+      );
+      assert.deepEqual(
+        mine.map((row) => row.payload),
+        [{ reservationId: rentalPaid, paymentIds: [open] }],
+      );
+      assert.deepEqual(dispatched, [mine[0]?.id]);
+      Reflect.deleteProperty(globalThis, DISPATCHED_KEY);
+    });
+
     test("a rental payment carries its facts, in the store's currency, and marks the reservation", async () => {
       const reservationId = await createReservation({ withItems: true });
 

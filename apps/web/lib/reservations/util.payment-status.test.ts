@@ -82,6 +82,24 @@ describe("getReservationPaymentStatus", () => {
     );
   });
 
+  test("with the session a payment returns from, only that session's payment counts", () => {
+    const payments = [
+      { type: "rental", status: "completed", amount: "9", stripeCheckoutSessionId: "cs_deposit" },
+      { type: "rental", status: "pending", amount: "21", stripeCheckoutSessionId: "cs_balance" },
+    ];
+    // The deposit was received; the balance is still on its way.
+    assert.equal(getReservationPaymentStatus(payments, "cs_balance"), "processing");
+    assert.equal(getReservationPaymentStatus(payments, "cs_deposit"), "received");
+    assert.equal(
+      getReservationPaymentStatus(
+        [{ ...payments[0], stripeCheckoutSessionId: "cs_balance", status: "completed" }],
+        "cs_balance",
+      ),
+      "received",
+    );
+    assert.equal(getReservationPaymentStatus(payments, "cs_unknown"), "unpaid");
+  });
+
   test("a security deposit or a refund row is no rental payment received", () => {
     assert.equal(
       getReservationPaymentStatus([{ type: "deposit", status: "completed", amount: "10" }]),

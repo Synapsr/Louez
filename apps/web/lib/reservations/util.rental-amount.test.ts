@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { getRentalBalance } from "./util.rental-amount";
+import { getRentalBalance, rentalChargeRefusal } from "./util.rental-amount";
 
 // Where the customer stands on the rental: what settles it, and what is still
 // owed, in the reservation's currency. The account, its pay button and the
@@ -96,5 +96,63 @@ describe("getRentalBalance", () => {
   test("a total lowered after payment owes nothing, never a negative balance", () => {
     assert.deepEqual(balance("20.00", [rental("30.00")]), { paid: 30, due: 0 });
     assert.deepEqual(balance("0.00", []), { paid: 0, due: 0 });
+  });
+
+  test("what remains is rounded down to the currency's minor unit, never up", () => {
+    // ¥100.60 owed: ¥100 can be asked, never ¥101.
+    assert.deepEqual(balance("100.60", [], "JPY"), { paid: 0, due: 100 });
+    // Once ¥100 is paid, the ¥0.60 left is below the yen: nothing more is asked.
+    assert.deepEqual(balance("100.60", [rental("100.00", { currency: "JPY" })], "JPY"), {
+      paid: 100,
+      due: 0,
+    });
+    assert.deepEqual(balance("30.29", [rental("9.00")]), { paid: 9, due: 21.29 });
+  });
+});
+
+describe("rentalChargeRefusal", () => {
+  const remains = { paid: 9, due: 21 };
+
+  test("nothing remains: errors.alreadyPaid, and only then", () => {
+    for (const fixed of [false, true]) {
+      assert.equal(
+        rentalChargeRefusal({ paid: 30, due: 0 }, { amount: 21, fixed }, "EUR"),
+        "errors.alreadyPaid",
+      );
+    }
+    assert.equal(rentalChargeRefusal(remains, { amount: 21, fixed: false }, "EUR"), null);
+  });
+
+  test("a charge of what remains must be exactly what remains", () => {
+    assert.equal(
+      rentalChargeRefusal(remains, { amount: 30, fixed: false }, "EUR"),
+      "errors.reservationChangedMeanwhile",
+    );
+    assert.equal(
+      rentalChargeRefusal(remains, { amount: 16, fixed: false }, "EUR"),
+      "errors.reservationChangedMeanwhile",
+    );
+  });
+
+  test("a checkout's own charge: never above what remains, never once part of it is paid", () => {
+    const unpaid = { paid: 0, due: 100 };
+    assert.equal(rentalChargeRefusal(unpaid, { amount: 30, fixed: true }, "EUR"), null);
+    assert.equal(rentalChargeRefusal(unpaid, { amount: 100, fixed: true }, "EUR"), null);
+    assert.equal(
+      rentalChargeRefusal({ paid: 0, due: 80 }, { amount: 100, fixed: true }, "EUR"),
+      "errors.reservationChangedMeanwhile",
+    );
+    assert.equal(
+      rentalChargeRefusal({ paid: 30, due: 70 }, { amount: 30, fixed: true }, "EUR"),
+      "errors.reservationChangedMeanwhile",
+    );
+  });
+
+  test("the charge is compared as Stripe takes it, rounded down to the minor unit", () => {
+    // A yen charge of 100.60 takes ¥100: it fits ¥100 owed.
+    assert.equal(
+      rentalChargeRefusal({ paid: 0, due: 100 }, { amount: 100.6, fixed: true }, "JPY"),
+      null,
+    );
   });
 });

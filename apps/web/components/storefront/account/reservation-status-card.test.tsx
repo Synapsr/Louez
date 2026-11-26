@@ -28,6 +28,7 @@ const render = (
           status="confirmed"
           rentalPaid={0}
           rentalDue={30}
+          currency="EUR"
           paymentRequired={false}
           customerEmail="guest@example.test"
           {...props}
@@ -58,6 +59,12 @@ test("a deposit paid: confirmed with the balance due, never all set", () => {
   assert.match(html, /€21\.00 remains to be paid/);
   assert.doesNotMatch(html, /All set/);
   assert.doesNotMatch(html, /confirmed and paid/);
+});
+
+test("the balance is written in the reservation's currency, not the store's", () => {
+  const html = render({ rentalPaid: 9, rentalDue: 21, currency: "USD" }, "en");
+  assert.match(html, /US\$21\.00 remains to be paid|\$21\.00 remains to be paid/);
+  assert.doesNotMatch(html, /€21/);
 });
 
 test("a balance due without online payment still states its amount", () => {

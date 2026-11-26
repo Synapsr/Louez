@@ -22,7 +22,8 @@ export interface ReservationActions {
 }
 
 const CONTRACT_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing", "completed"]);
-const PAYABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing"]);
+// A balance is paid while the rental is confirmed, runs, or after it ended.
+const PAYABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing", "completed"]);
 // A finished rental is no longer signed: its contract stays as it was.
 const SIGNABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing"]);
 

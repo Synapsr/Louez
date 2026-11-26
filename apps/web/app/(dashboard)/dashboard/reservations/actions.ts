@@ -48,6 +48,7 @@ import {
 } from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
+import { enqueueRentalSessionsExpiry } from "@louez/api/services/rental-sessions";
 import { revalidatePath } from "next/cache";
 
 import { and, eq, gte, inArray, not, sql } from "drizzle-orm";
@@ -69,6 +70,7 @@ import {
   reservationStatusConsumesStock,
   type ReservationTransaction,
   retryTransactionOnDeadlock,
+  runReservationOnlyChange,
   runReservationTransaction,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
@@ -3838,12 +3840,18 @@ export async function updateReservation(
           },
           createdAt: capacityVerdict ? await nextCapacityVerdictDate(tx, reservationId) : undefined,
         });
+        // A lower total leaves the rental's open sessions charging more than remains.
+        const effectIds =
+          priced.kind === "priced" && difference < 0
+            ? await enqueueRentalSessionsExpiry(tx, store.id, reservationId)
+            : [];
         return {
           success: true,
           reservationStatus: lockedReservation.status,
           difference,
           newTotalAmount,
           taxAdded,
+          effectIds,
         };
       },
       { isolationLevel: "read committed" },
@@ -3858,6 +3866,7 @@ export async function updateReservation(
   if ("error" in transactionResult) {
     return transactionResult;
   }
+  dispatchApiEffects(transactionResult.effectIds);
 
   const currentReservationStatus = transactionResult.reservationStatus;
 
@@ -4087,23 +4096,29 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   }
 
   const paymentId = nanoid();
-  await db.transaction(async (tx) => {
-    await insertRecordedPayment(tx, {
-      id: paymentId,
-      reservationId,
-      storeId: store.id,
-      storeSettings: store.settings,
-      amount: verdict.amount,
-      type: data.type,
-      method: data.method,
-      origin: "manual",
-      paidAt: data.paidAt || new Date(),
-      notes: data.notes || null,
-    });
-    if (data.type === "rental" && amount > 0) {
+  // Under the reservation's lock, first: a rental payment lowers what the customer
+  // owes, and the rental's sessions open then are expired; none is installed meanwhile.
+  const effectIds = await runReservationOnlyChange(
+    { reservationId, storeId: store.id },
+    async (tx) => {
+      await insertRecordedPayment(tx, {
+        id: paymentId,
+        reservationId,
+        storeId: store.id,
+        storeSettings: store.settings,
+        amount: verdict.amount,
+        type: data.type,
+        method: data.method,
+        origin: "manual",
+        paidAt: data.paidAt || new Date(),
+        notes: data.notes || null,
+      });
+      if (data.type !== "rental" || amount <= 0) return [];
       await validateReservationContract(tx, reservationId, store.id, "payment");
-    }
-  });
+      return enqueueRentalSessionsExpiry(tx, store.id, reservationId);
+    },
+  );
+  dispatchApiEffects(effectIds);
 
   let invoiceNumber: string | undefined;
   if (["rental", "damage", "adjustment"].includes(data.type) && amount > 0) {

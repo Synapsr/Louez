@@ -57,7 +57,7 @@ describe("getReservationActions", () => {
   });
 
   test("a balance left after a deposit is still to pay, until nothing remains", () => {
-    for (const status of ["confirmed", "ongoing"]) {
+    for (const status of ["confirmed", "ongoing", "completed"]) {
       const balance = getReservationActions({ ...base, status, rentalDue: 21 });
       assert.equal(balance.required, "payment", status);
       assert.equal(balance.canPay, true, status);
@@ -89,7 +89,7 @@ describe("getReservationActions", () => {
   });
 
   test("completed: contract stays downloadable without a signature step", () => {
-    const actions = getReservationActions({ ...base, status: "completed" });
+    const actions = getReservationActions({ ...base, status: "completed", rentalDue: 0 });
     assert.equal(actions.required, null);
     assert.equal(actions.canDownloadContract, true);
     assert.equal(actions.canSign, false);

@@ -150,19 +150,24 @@ export const hasRentalPaymentInProgress = (payments: readonly PaymentLike[]): bo
   payments.some((payment) => payment.type === "rental" && payment.status === "pending");
 
 /**
- * What the page reached after a checkout (`?event=paid`) says of its payment: a
- * completed rental payment, refunds left out, has landed; a pending one is on
- * its way.
+ * What the page reached after a payment (`?event=paid`) says of it: a completed
+ * rental payment, refunds left out, has landed; a pending one is on its way.
+ * With `sessionId`, the Checkout Session the customer comes back from, only that
+ * session's payment counts: a balance paid after a deposit is received once its
+ * own row is, never because the deposit was.
  */
 export const getReservationPaymentStatus = (
   payments: readonly PaymentLike[],
+  sessionId: string | null = null,
 ): ReservationPaymentStatus => {
-  const received = payments.some(
+  const rental = payments.filter(
     (payment) =>
-      payment.type === "rental" && payment.status === "completed" && !isRefundRow(payment),
+      payment.type === "rental" &&
+      !isRefundRow(payment) &&
+      (sessionId === null || payment.stripeCheckoutSessionId === sessionId),
   );
-  if (received) return "received";
-  if (hasRentalPaymentInProgress(payments)) return "processing";
+  if (rental.some((payment) => payment.status === "completed")) return "received";
+  if (hasRentalPaymentInProgress(rental)) return "processing";
   return "unpaid";
 };
 

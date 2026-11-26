@@ -8605,6 +8605,8 @@
         "redirecting": "Przekierowanie…",
         "alreadyPaidTitle": "Rezerwacja już opłacona",
         "alreadyPaidDescription": "Twoja rezerwacja {number} jest potwierdzona. Dalsza płatność nie jest potrzebna.",
+        "balanceDueTitle": "Rezerwacja potwierdzona",
+        "balanceDueDescription": "Twoja rezerwacja {number} jest potwierdzona. Pozostało do zapłaty {amount}: możesz to zrobić na stronie rezerwacji.",
         "viewReservation": "Zobacz rezerwację",
         "errors": {
           "notFound": "Nie znaleziono tej rezerwacji.",

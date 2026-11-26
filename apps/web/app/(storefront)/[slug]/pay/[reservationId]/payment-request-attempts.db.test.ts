@@ -604,7 +604,7 @@ describe(
       return rows.map(({ session, amount, status }) => [session, amount, status]);
     }
 
-    test("a request's session and its payment state what the session charges: a yen request of 100.60 charges and records 101", async () => {
+    test("a request's session and its payment state what the session charges: a yen request of 100.60 charges and records 100, rounded down", async () => {
       const link = await request(await reservation("confirmed", "101.00", "JPY"), {
         amount: "100.60",
         currency: "JPY",
@@ -612,24 +612,35 @@ describe(
 
       assert.ok((await open(link)).ok);
 
-      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 101);
+      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 100);
       assert.equal(created[0]?.params.line_items?.[0]?.price_data?.currency, "jpy");
-      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "101.00", "pending"]]);
+      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "100.00", "pending"]]);
 
       await paid(link.id, "cs_attempt_1", link.requestId, {
-        amount: 101,
+        amount: 100,
         currency: "JPY",
-        grossMinor: 101,
+        grossMinor: 100,
       });
 
-      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "101.00", "completed"]]);
+      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "100.00", "completed"]]);
       assert.equal(await requestStatus(link.requestId), "completed");
     });
 
-    test("a rental request that its currency's precision takes above what is owed is no longer current", async () => {
-      // 100.50 owed in yen, a currency without decimals: the session would charge 101.
-      const link = await request(await reservation("confirmed", "100.50", "JPY"), {
-        amount: "100.50",
+    test("a ¥100.60 balance is asked as ¥100: the request charges it, never ¥101", async () => {
+      const link = await request(await reservation("confirmed", "100.60", "JPY"), {
+        amount: "100.60",
+        currency: "JPY",
+      });
+
+      assert.ok((await load(link)).ok);
+      assert.ok((await open(link)).ok);
+      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 100);
+    });
+
+    test("a rental request above what can still be asked, in its currency's precision, is no longer current", async () => {
+      // ¥99.50 owed asks ¥99: a request of ¥100 would take more.
+      const link = await request(await reservation("confirmed", "99.50", "JPY"), {
+        amount: "100.00",
         currency: "JPY",
       });
 
@@ -650,14 +661,14 @@ describe(
       assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "80.25", "completed"]]);
     });
 
-    test("the customer's own session states what it charges too", async () => {
+    test("the customer's own session charges a ¥100.60 balance as ¥100, rounded down as the request is, and states it", async () => {
       const reservationId = await reservation("confirmed", "100.60", "JPY");
 
       const account = await fromAccount(reservationId);
 
       assert.ok("sessionId" in account, JSON.stringify(account));
-      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 101);
-      assert.deepEqual(await statedAmounts(reservationId), [["cs_attempt_1", "101.00", "pending"]]);
+      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 100);
+      assert.deepEqual(await statedAmounts(reservationId), [["cs_attempt_1", "100.00", "pending"]]);
     });
 
     test("the completion writes on the row it claims the amount Stripe took", async () => {

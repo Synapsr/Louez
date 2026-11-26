@@ -58,6 +58,7 @@
     "./services/reservation-refunds": "./src/services/reservation-refunds.ts",
     "./services/reservation-status": "./src/services/reservation-status.ts",
     "./services/reservation-totals": "./src/services/reservation-totals.ts",
+    "./services/rental-sessions": "./src/services/rental-sessions.ts",
     "./services/sales-analytics": "./src/services/sales-analytics.ts",
     "./services/sales-window": "./src/services/sales-window.ts",
     "./services/store-creation": "./src/services/store-creation.ts",

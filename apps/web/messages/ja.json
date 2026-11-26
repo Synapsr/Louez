@@ -8605,6 +8605,8 @@
         "redirecting": "リダイレクト中…",
         "alreadyPaidTitle": "予約はすでに支払い済みです",
         "alreadyPaidDescription": "{number} のご予約が確認されました。それ以上の支払いは必要ありません。",
+        "balanceDueTitle": "予約が確定しました",
+        "balanceDueDescription": "ご予約 {number} は確定しました。残り{amount}のお支払いが必要です。予約ページからお支払いいただけます。",
         "viewReservation": "私の予約を見る",
         "errors": {
           "notFound": "この予約は見つかりませんでした。",

@@ -26,6 +26,8 @@ interface ReservationStatusCardProps {
   rentalPaid: number;
   /** What remains to pay for the rental (`getRentalBalance`): settled at zero. */
   rentalDue: number;
+  /** The reservation's currency, the balance's. */
+  currency: string;
   /** Payment is the next step (confirmed, a balance due, Stripe active). */
   paymentRequired: boolean;
   /** Where the store's answer will land. Named in the pending copy. */
@@ -55,6 +57,7 @@ export const ReservationStatusCard = ({
   cancelledRequest = false,
   rentalPaid,
   rentalDue,
+  currency,
   paymentRequired,
   customerEmail,
   checkoutFailure,
@@ -95,7 +98,7 @@ export const ReservationStatusCard = ({
         })
       : t("status.checkoutFailedDescription")
     : balanceDue
-      ? t("status.balanceDueDescription", { amount: formatMoney(rentalDue) })
+      ? t("status.balanceDueDescription", { amount: formatMoney(rentalDue, { currency }) })
       : paymentRequired
         ? t("confirmedAwaitingPayment")
         : allSet

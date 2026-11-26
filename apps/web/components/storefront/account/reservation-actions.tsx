@@ -135,12 +135,7 @@ export const ReservationActions = ({
             variant={actions.canPay ? "ghost" : "outline"}
             className="w-full sm:h-10 sm:w-auto"
             data-demo-target="portal-contract"
-            render={
-              <a
-                href={contractHref}
-                onClick={readOnly ? (event) => event.preventDefault() : undefined}
-              />
-            }
+            render={<a href={contractHref} onClick={readOnly ? (event) => event.preventDefault() : undefined} />}
           >
             <DownloadIcon data-slot="icon" />
             {t("downloadContract")}

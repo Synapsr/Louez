@@ -137,6 +137,10 @@ Reflect.get(
 });
 
 /** A store that left PREVIOUS_ACCOUNT for TODAY_ACCOUNT. */
+// The storefront's address, which the account's payment return lands on.
+process.env.NEXT_PUBLIC_APP_URL = "https://app.louez.test";
+process.env.NEXT_PUBLIC_APP_DOMAIN = "louez.test";
+
 const STORE = "store_chk_return";
 const UNCONNECTED_STORE = "store_chk_return_none";
 const PREVIOUS_ACCOUNT = "acct_checkout_return_previous";
@@ -149,12 +153,17 @@ describe(
     let database: TestDatabase;
     let louezDb: typeof import("@louez/db");
     let completion: typeof import("./complete-checkout-payment");
+    let paymentReturn: typeof import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/payment-return/route");
+    let paymentStatus: typeof import("./util.payment-status");
     let counter = 0;
 
     before(async () => {
       database = await createTestDatabase("checkout_return");
       louezDb = await import("@louez/db");
       completion = await import("./complete-checkout-payment");
+      paymentReturn =
+        await import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/payment-return/route");
+      paymentStatus = await import("./util.payment-status");
 
       const settings = {
         reservationMode: "payment" as const,
@@ -170,6 +179,8 @@ describe(
           email: "shop@return.test",
           stripeAccountId: TODAY_ACCOUNT,
           stripeChargesEnabled: true,
+          // Online: the storefront's routes find it by its slug.
+          onboardingCompleted: true,
           settings,
         },
         {
@@ -313,6 +324,102 @@ describe(
         status: "pending",
         payments: [{ status: "pending", stripeAccountId: PREVIOUS_ACCOUNT }],
       });
+    });
+
+    /**
+     * A confirmed booking whose €9 deposit is paid, and whose €10 balance the
+     * customer paid from their account: its session's row `pending`, the webhook
+     * not delivered yet.
+     */
+    async function balancePaidAtStripe() {
+      const id = nextId("res");
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId: "cus_return",
+        number: id,
+        status: "confirmed",
+        startDate: new Date("2030-06-01T09:00:00Z"),
+        endDate: new Date("2030-06-03T09:00:00Z"),
+        subtotalAmount: "19.00",
+        depositAmount: "0.00",
+        totalAmount: "19.00",
+        currency: "EUR",
+        source: "online",
+      });
+      const sessionId = `cs_${id}`;
+      await louezDb.db.insert(louezDb.payments).values([
+        {
+          id: nextId("pay"),
+          reservationId: id,
+          amount: "9.00",
+          type: "rental",
+          method: "stripe",
+          status: "completed",
+          stripePaymentIntentId: `pi_deposit_${id}`,
+          currency: "EUR",
+        },
+        {
+          id: nextId("pay"),
+          reservationId: id,
+          amount: "10.00",
+          type: "rental",
+          method: "stripe",
+          status: "pending",
+          stripeCheckoutSessionId: sessionId,
+          origin: "customer_session",
+          currency: "EUR",
+          stripeAccountId: TODAY_ACCOUNT,
+        },
+      ]);
+      return { id, sessionId };
+    }
+
+    const rowsOf = (id: string) =>
+      louezDb.db
+        .select({
+          type: louezDb.payments.type,
+          status: louezDb.payments.status,
+          amount: louezDb.payments.amount,
+          stripeCheckoutSessionId: louezDb.payments.stripeCheckoutSessionId,
+        })
+        .from(louezDb.payments)
+        .where(eq(louezDb.payments.reservationId, id));
+
+    test("the account's payment return verifies the session at Stripe, records it, and lands on the reservation with that session", async () => {
+      const { NextRequest } = await import("next/server");
+      const booking = await balancePaidAtStripe();
+      const url = `https://checkout-return.example.test/account/reservations/${booking.id}/payment-return?session_id=${booking.sessionId}`;
+
+      const response = await paymentReturn.GET(new NextRequest(url), {
+        params: Promise.resolve({ slug: "checkout-return", reservationId: booking.id }),
+      });
+
+      assert.equal(response.status, 307);
+      const location = new URL(String(response.headers.get("location")));
+      assert.equal(location.pathname.endsWith(`/account/reservations/${booking.id}`), true);
+      assert.equal(location.searchParams.get("event"), "paid");
+      assert.equal(location.searchParams.get("session_id"), booking.sessionId);
+      assert.deepEqual(stripeReads()[0], [
+        "stripe.checkout.sessions.retrieve",
+        booking.sessionId,
+        TODAY_ACCOUNT,
+      ]);
+      // The banner reads that session's payment: received, not because of the deposit.
+      const rows = await rowsOf(booking.id);
+      assert.equal(paymentStatus.getReservationPaymentStatus(rows, booking.sessionId), "received");
+    });
+
+    test("before the return is verified, the balance's session reads as being verified, the deposit received notwithstanding", async () => {
+      const booking = await balancePaidAtStripe();
+
+      const rows = await rowsOf(booking.id);
+
+      assert.equal(
+        paymentStatus.getReservationPaymentStatus(rows, booking.sessionId),
+        "processing",
+      );
+      assert.equal(paymentStatus.getReservationPaymentStatus(rows), "received");
     });
   },
 );

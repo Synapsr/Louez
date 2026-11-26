@@ -33,6 +33,7 @@ import {
   type ConfirmationRefusal,
 } from "../platform/confirmation";
 import { enqueueEffects } from "../platform/effects";
+import { enqueueRentalSessionsExpiry } from "./rental-sessions";
 import type {
   PaymentRecordsPort,
   PaymentRefundsPort,
@@ -103,6 +104,12 @@ export interface PaymentWriteCaller<Port> {
 
 /** The payments recorded with the app's writer of a recorded payment. */
 export type PaymentRecordsCaller = PaymentWriteCaller<PaymentRecordsPort>;
+
+/** A payment's writer, with the outbox's dispatch: a rental payment expires the open sessions. */
+export interface PaymentRecordCaller extends PaymentRecordsCaller {
+  /** Sends committed outbox rows (`ApiPorts.dispatchEffects`). Never throws. */
+  dispatchEffects: (ids: readonly string[]) => void;
+}
 
 /**
  * An amount as the deletion's preview writes it: in euros, whatever the
@@ -228,11 +235,13 @@ function recordAmountRefusal(
  * Records a payment received, or paid back as a negative adjustment. Its
  * amount has at most the decimals of the reservation's currency, which the
  * app's facts read under the lock (`currencyFit`): judged once that
- * currency is known, before anything is asked.
+ * currency is known, before anything is asked. A rental payment lowers what
+ * the customer owes: the rental's open Checkout Sessions are expired
+ * (`enqueueRentalSessionsExpiry`).
  */
-export async function recordPayment(caller: PaymentRecordsCaller, input: RecordPaymentInput) {
+export async function recordPayment(caller: PaymentRecordCaller, input: RecordPaymentInput) {
   const { storeId } = caller;
-  return underReservationLock(storeId, input.reservationId, async (tx) => {
+  const recorded = await underReservationLock(storeId, input.reservationId, async (tx) => {
     const reservation = await lockedReservation(tx, storeId, input.reservationId);
     if (!reservation) {
       return refused(
@@ -280,17 +289,26 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
       notes: input.notes ?? null,
       facts,
     });
+    const effectIds =
+      input.type === "rental" && Number(verdict.amount) > 0
+        ? await enqueueRentalSessionsExpiry(tx, storeId, reservation.id)
+        : [];
     return {
       ok: true,
       value: {
-        reservationId: reservation.id,
-        number: reservation.number,
-        type: input.type,
-        amount: input.amount,
-        method: input.method,
+        effectIds,
+        payment: {
+          reservationId: reservation.id,
+          number: reservation.number,
+          type: input.type,
+          amount: input.amount,
+          method: input.method,
+        },
       },
     };
   });
+  caller.dispatchEffects(recorded.effectIds);
+  return recorded.payment;
 }
 
 /** What a return is refused for whatever the reservation's currency: its text (`refusedWhateverTheCurrency`), or zero and below. */

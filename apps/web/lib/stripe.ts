@@ -1,5 +1,9 @@
 import Stripe from "stripe";
-import { validateStripePaymentAmount, ZERO_DECIMAL_CURRENCIES } from "@louez/utils";
+import {
+  roundDownToMinorUnit,
+  validateStripePaymentAmount,
+  ZERO_DECIMAL_CURRENCIES,
+} from "@louez/utils";
 import { stripe, getStripe } from "./stripe/client";
 
 /**
@@ -398,6 +402,15 @@ export function toStripeCents(amount: number, currency: string): number {
     return Math.round(amount);
   }
   return Math.round(amount * 100);
+}
+
+/**
+ * What a charge of `amount` takes at Stripe, in the currency's minor units,
+ * rounded down to them (`roundDownToMinorUnit`): a rental charge never takes
+ * more than it was asked.
+ */
+export function toStripeChargeCents(amount: number, currency: string): number {
+  return toStripeCents(roundDownToMinorUnit(amount, currency), currency);
 }
 
 export function fromStripeCents(cents: number, currency: string): number {

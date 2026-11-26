@@ -8605,6 +8605,8 @@
         "redirecting": "Weiterleitung…",
         "alreadyPaidTitle": "Buchung bereits bezahlt",
         "alreadyPaidDescription": "Ihre Buchung {number} ist bestätigt. Eine weitere Zahlung ist nicht nötig.",
+        "balanceDueTitle": "Buchung bestätigt",
+        "balanceDueDescription": "Ihre Buchung {number} ist bestätigt. Es sind noch {amount} zu zahlen: Sie können dies über Ihre Buchung erledigen.",
         "viewReservation": "Buchung ansehen",
         "errors": {
           "notFound": "Diese Buchung wurde nicht gefunden.",

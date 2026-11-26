@@ -8605,6 +8605,8 @@
         "redirecting": "Doorsturen…",
         "alreadyPaidTitle": "Reservering al betaald",
         "alreadyPaidDescription": "Uw reservering {number} is bevestigd. Een verdere betaling is niet nodig.",
+        "balanceDueTitle": "Boeking bevestigd",
+        "balanceDueDescription": "Uw boeking {number} is bevestigd. Er moet nog {amount} worden betaald: dat kan via uw boeking.",
         "viewReservation": "Mijn reservering bekijken",
         "errors": {
           "notFound": "Deze reservering is niet gevonden.",

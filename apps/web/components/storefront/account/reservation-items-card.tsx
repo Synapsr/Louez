@@ -36,6 +36,8 @@ interface ReservationItemsCardProps {
   isUnsettled: boolean;
   /** Customer notes typed at checkout, if any. */
   notes: string | null;
+  /** The reservation's currency, its amounts'. */
+  currency: string;
 }
 
 /**
@@ -53,6 +55,7 @@ export const ReservationItemsCard = ({
   remainingDue,
   isUnsettled,
   notes,
+  currency,
 }: ReservationItemsCardProps) => {
   const t = useTranslations("storefront.account");
 
@@ -76,7 +79,7 @@ export const ReservationItemsCard = ({
                 {t("quantityLabel")}: {item.quantity}
               </p>
             </div>
-            <Price amount={item.totalPrice} size="sm" />
+            <Price currency={currency} amount={item.totalPrice} size="sm" />
           </li>
         ))}
       </ul>
@@ -85,7 +88,7 @@ export const ReservationItemsCard = ({
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground">{t("subtotalRental")}</dt>
           <dd>
-            <Price amount={subtotal} size="sm" />
+            <Price currency={currency} amount={subtotal} size="sm" />
           </dd>
         </div>
         {deposit > 0 ? (
@@ -100,7 +103,7 @@ export const ReservationItemsCard = ({
               ) : null}
             </dt>
             <dd>
-              <Price amount={deposit} size="sm" />
+              <Price currency={currency} amount={deposit} size="sm" />
             </dd>
           </div>
         ) : null}
@@ -108,21 +111,26 @@ export const ReservationItemsCard = ({
           <div className="flex justify-between gap-4 text-destructive">
             <dt>{t("damageFees")}</dt>
             <dd>
-              <Price amount={damageFees} size="sm" className="text-destructive" />
+              <Price
+                currency={currency}
+                amount={damageFees}
+                size="sm"
+                className="text-destructive"
+              />
             </dd>
           </div>
         ) : null}
         <div className="flex items-baseline justify-between gap-4 border-t pt-2">
           <dt className="text-base font-medium">{t("total")}</dt>
           <dd>
-            <Price amount={total} size="lg" tone="primary" />
+            <Price currency={currency} amount={total} size="lg" tone="primary" />
           </dd>
         </div>
         {amountPaid > 0 ? (
           <div className="flex justify-between gap-4 text-success">
             <dt>{t("amountPaid")}</dt>
             <dd>
-              <Price amount={amountPaid} size="sm" className="text-success" />
+              <Price currency={currency} amount={amountPaid} size="sm" className="text-success" />
             </dd>
           </div>
         ) : null}
@@ -130,7 +138,7 @@ export const ReservationItemsCard = ({
           <div className="flex justify-between gap-4 text-warning">
             <dt>{t("remainingDue")}</dt>
             <dd>
-              <Price amount={remainingDue} size="sm" className="text-warning" />
+              <Price currency={currency} amount={remainingDue} size="sm" className="text-warning" />
             </dd>
           </div>
         ) : null}
