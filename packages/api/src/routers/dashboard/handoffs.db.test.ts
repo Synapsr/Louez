@@ -75,6 +75,9 @@ function fakeStripe() {
     links: [] as Array<{ account: string; return_url: string; refresh_url: string }>,
     loginLinks: 0,
     failLinks: false,
+    /** The payments read for the dashboard link, as `<object>:<id>@<account>`. */
+    reads: [] as string[],
+    livemode: true,
   };
   let account: StripeAccountLike = {
     type: "standard",
@@ -94,6 +97,18 @@ function fakeStripe() {
       createLoginLink: async () => {
         calls.loginLinks += 1;
         return { url: "https://connect.stripe.test/express/login" };
+      },
+    },
+    paymentIntents: {
+      retrieve: async (id, _params, { stripeAccount }) => {
+        calls.reads.push(`payment_intent:${id}@${stripeAccount}`);
+        return { id, livemode: calls.livemode };
+      },
+    },
+    charges: {
+      retrieve: async (id, _params, { stripeAccount }) => {
+        calls.reads.push(`charge:${id}@${stripeAccount}`);
+        return { id, livemode: calls.livemode };
       },
     },
     accountLinks: {
@@ -1331,6 +1346,173 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       ok: true,
       redirect: "https://connect.stripe.test/express/login",
     });
+  });
+
+  test("the Stripe dashboard opens on a payment: its page on a Standard account, test mode's for a test payment, an Express account's login link made on the click; each payment its own step", async () => {
+    const { db } = louezDb;
+    await db
+      .update(louezDb.stores)
+      .set({ stripeAccountId: "acct_existing", stripeChargesEnabled: true })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const CUSTOMER = "ho_customer_00000001";
+    const RESERVATION = "ho_reservation_00001";
+    const pay = (n: number) => `ho_payment_00000000${n}`;
+    await db.insert(louezDb.customers).values({
+      id: CUSTOMER,
+      storeId: STORE,
+      email: "ada@ho.test",
+      firstName: "Ada",
+      lastName: "Lovelace",
+    });
+    await db.insert(louezDb.reservations).values({
+      id: RESERVATION,
+      storeId: STORE,
+      customerId: CUSTOMER,
+      number: "2031-0001",
+      status: "confirmed",
+      startDate: new Date("2031-06-01T09:00:00Z"),
+      endDate: new Date("2031-06-03T09:00:00Z"),
+      subtotalAmount: "120.00",
+      depositAmount: "0.00",
+      totalAmount: "120.00",
+    });
+    const row = { reservationId: RESERVATION, amount: "60.00", type: "rental" as const };
+    await db.insert(louezDb.payments).values([
+      // Taken on the account it names, by a PaymentIntent.
+      {
+        ...row,
+        id: pay(1),
+        method: "stripe",
+        status: "completed",
+        stripePaymentIntentId: "pi_ho_1",
+        stripeChargeId: "ch_ho_1",
+        stripeAccountId: "acct_payment",
+      },
+      // A charge alone, on the store's account.
+      {
+        ...row,
+        id: pay(2),
+        method: "stripe",
+        status: "completed",
+        stripeChargeId: "ch_ho_2",
+        stripeAccountId: "acct_existing",
+      },
+      { ...row, id: pay(3), method: "cash", status: "completed" },
+      // A checkout never paid: nothing at Stripe to open.
+      { ...row, id: pay(4), method: "stripe", status: "pending" },
+      // A row that records no account: no link to a payment on a guessed account.
+      {
+        ...row,
+        id: pay(5),
+        method: "stripe",
+        status: "completed",
+        stripePaymentIntentId: "pi_ho_5",
+        stripeChargeId: "ch_ho_5",
+      },
+    ]);
+    try {
+      const launched = async (input: { paymentId?: string }) => {
+        const started = await client(session()).payments.openStripeDashboard(input);
+        const continued = await continueAs(tokenOf(started.url), OWNER);
+        assert.ok(continued.ok && continued.state);
+        return handoffs.launchHandoff({
+          row: continued.row,
+          state: continued.state,
+          userId: OWNER,
+          locale: "en",
+          ports,
+        });
+      };
+
+      assert.deepEqual(await launched({ paymentId: pay(1) }), {
+        ok: true,
+        redirect: "https://dashboard.stripe.com/acct_payment/payments/pi_ho_1",
+      });
+      // Its mode is Stripe's word on the object read, at the click.
+      stripe.calls.livemode = false;
+      assert.deepEqual(await launched({ paymentId: pay(2) }), {
+        ok: true,
+        redirect: "https://dashboard.stripe.com/acct_existing/test/payments/ch_ho_2",
+      });
+      assert.deepEqual(stripe.calls.reads, [
+        "payment_intent:pi_ho_1@acct_payment",
+        "charge:ch_ho_2@acct_existing",
+      ]);
+      // Without a payment, or with one whose account is not recorded: the store's home.
+      assert.deepEqual(await launched({}), { ok: true, redirect: "https://dashboard.stripe.com" });
+      assert.deepEqual(await launched({ paymentId: pay(5) }), {
+        ok: true,
+        redirect: "https://dashboard.stripe.com",
+      });
+      assert.equal(stripe.calls.reads.length, 2, "nothing read for the home");
+      assert.equal(stripe.calls.loginLinks, 0);
+
+      // Two payments opened one after the other: two steps, each tab on its own payment.
+      stripe.calls.livemode = true;
+      const first = await client(session()).payments.openStripeDashboard({ paymentId: pay(1) });
+      const second = await client(session()).payments.openStripeDashboard({ paymentId: pay(2) });
+      assert.notEqual(first.handoff.id, second.handoff.id);
+      const go = async (link: string) => {
+        const continued = await continueAs(tokenOf(link), OWNER);
+        assert.ok(continued.ok && continued.state);
+        return handoffs.launchHandoff({
+          row: continued.row,
+          state: continued.state,
+          userId: OWNER,
+          locale: "en",
+          ports,
+        });
+      };
+      assert.deepEqual(await go(first.url), {
+        ok: true,
+        redirect: "https://dashboard.stripe.com/acct_payment/payments/pi_ho_1",
+      });
+      assert.deepEqual(await go(second.url), {
+        ok: true,
+        redirect: "https://dashboard.stripe.com/acct_existing/payments/ch_ho_2",
+      });
+
+      // An Express account: its login link, made when the person goes, never before.
+      stripe.set({ type: "express" });
+      const started = await client(session()).payments.openStripeDashboard({ paymentId: pay(1) });
+      assert.equal(stripe.calls.loginLinks, 0);
+      const continued = await continueAs(tokenOf(started.url), OWNER);
+      assert.ok(continued.ok && continued.state);
+      assert.deepEqual(
+        await handoffs.launchHandoff({
+          row: continued.row,
+          state: continued.state,
+          userId: OWNER,
+          locale: "en",
+          ports,
+        }),
+        { ok: true, redirect: "https://connect.stripe.test/express/login" },
+      );
+      assert.equal(stripe.calls.loginLinks, 1);
+      assert.equal(stripe.calls.reads.length, 4, "no payment read for an Express account");
+
+      // Refused: by hand, never at Stripe, not the store's; and a member, as for the home.
+      await rejects(
+        client(session()).payments.openStripeDashboard({ paymentId: pay(3) }),
+        "PAYMENT_NOT_IN_STRIPE",
+      );
+      await rejects(
+        client(session()).payments.openStripeDashboard({ paymentId: pay(4) }),
+        "PAYMENT_NOT_IN_STRIPE",
+      );
+      await rejects(
+        client(session()).payments.openStripeDashboard({ paymentId: "ho_payment_unknown01" }),
+        "PAYMENT_NOT_FOUND",
+      );
+      await rejects(
+        client(session(MEMBER)).payments.openStripeDashboard({ paymentId: pay(1) }),
+        "PERMISSION_DENIED",
+      );
+    } finally {
+      await db.delete(louezDb.payments).where(orm.eq(louezDb.payments.reservationId, RESERVATION));
+      await db.delete(louezDb.reservations).where(orm.eq(louezDb.reservations.id, RESERVATION));
+      await db.delete(louezDb.customers).where(orm.eq(louezDb.customers.id, CUSTOMER));
+    }
   });
 
   // --- Billing ------------------------------------------------------------------

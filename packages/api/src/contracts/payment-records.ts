@@ -190,7 +190,8 @@ export const paymentRecordErrors = {
     }),
   stripePaymentNotDeletable: () =>
     apiError("CONFLICT", "PAYMENT_STRIPE_NOT_DELETABLE", {
-      message: "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+      message:
+        "Cannot delete a Stripe payment. Refund it instead, from the reservation's payment history in Louez or with refund_payment.",
     }),
   /** Not a plain decimal of at most 8 digits before the point and 2 after, or zero and below (`paymentAmount`). */
   depositReturnAmountInvalid: () =>

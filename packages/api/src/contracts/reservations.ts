@@ -480,10 +480,37 @@ export const reservationSchema = z.object({
         .describe(
           "`pending` until Stripe gives the final outcome (its row may already be among the payments: the customer has not received it yet, and it may still fail); `succeeded`; `failed`, its row then failed.",
         ),
+      amount: z.string().describe("The amount given back, in the payment's currency."),
+      currency: z.string(),
+      createdAt: z.date().describe("When it was asked."),
+      failure: z
+        .object({ code: z.string(), message: z.string().nullable() })
+        .nullable()
+        .describe("Why Stripe made no refund, or why its refund failed; null unless failed."),
+      requestedBy: z
+        .object({ name: z.string().nullable(), email: z.string(), image: z.string().nullable() })
+        .nullable()
+        .describe(
+          "The person who refunded it from the dashboard; null when an agent asked it (see `approvedBy`).",
+        ),
       approvedBy: z
         .object({ name: z.string().nullable(), email: z.string(), image: z.string().nullable() })
         .nullable()
         .describe("The person who approved it, when one did."),
+    }),
+  ),
+  /**
+   * The disputes opened on its online payments, oldest first; empty when the caller may
+   * not read payments. An open one stops any refund of its payment.
+   */
+  disputes: z.array(
+    z.object({
+      paymentId: z.string().describe("The payment disputed."),
+      status: z
+        .enum(["open", "won", "lost"])
+        .describe(
+          "`open` while the customer's bank holds the money: the payment cannot be refunded until it ends.",
+        ),
     }),
   ),
   documents: z.array(

@@ -22,6 +22,7 @@ import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
+import { getPaymentInvoiceGenerationEligibility } from "./eligibility";
 import { isElectronicInvoicingEnabled } from "./feature";
 import { claimInvoiceNumber } from "./sequence";
 import { tryTransmitInvoiceNow } from "./superpdp-transmission";
@@ -53,10 +54,6 @@ function skipped(reason: InvoiceGenerationSkipReason): InvoiceGenerationResult {
   return { status: "skipped", reason };
 }
 
-type PaymentInvoiceGenerationEligibility =
-  | { enabled: true }
-  | { enabled: false; reason: "invoicing_disabled" | "feature_disabled" };
-
 /**
  * Whether the store's documents go out with its reservations: its invoicing on and
  * electronic invoicing open to it. Where they do, a test reservation's confirmation
@@ -71,29 +68,6 @@ export async function isStoreInvoiceGenerationEnabled(storeId: string): Promise<
     )
     .limit(1);
   return Boolean(profile) && (await isElectronicInvoicingEnabled(storeId));
-}
-
-async function getPaymentInvoiceGenerationEligibility(
-  paymentId: string,
-): Promise<PaymentInvoiceGenerationEligibility> {
-  const [profile] = await db
-    .select({ storeId: reservations.storeId })
-    .from(payments)
-    .innerJoin(reservations, eq(payments.reservationId, reservations.id))
-    .innerJoin(
-      storeLegalProfiles,
-      and(
-        eq(storeLegalProfiles.storeId, reservations.storeId),
-        eq(storeLegalProfiles.invoicingEnabled, true),
-      ),
-    )
-    .where(eq(payments.id, paymentId))
-    .limit(1);
-  if (!profile) return { enabled: false, reason: "invoicing_disabled" };
-  if (!(await isElectronicInvoicingEnabled(profile.storeId))) {
-    return { enabled: false, reason: "feature_disabled" };
-  }
-  return { enabled: true };
 }
 
 export async function generateInvoiceForPayment(

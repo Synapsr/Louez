@@ -460,41 +460,14 @@ export async function checkStripeRefund(
   }
 
   // Every payment row of the charge shares one ceiling: the money is the charge's.
-  const siblings = await tx
-    .select({ id: payments.id, reservationId: payments.reservationId })
-    .from(payments)
-    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
-    .innerJoin(stores, eq(stores.id, reservations.storeId))
-    .where(
-      and(
-        eq(payments.stripeChargeId, charge.chargeId),
-        eq(payments.method, "stripe"),
-        sql`${payments.type} <> 'deposit_hold'`,
-        isPaymentReceiptSql(),
-        sql`COALESCE(${payments.stripeAccountId}, ${stores.stripeAccountId}) = ${charge.accountId}`,
-      ),
-    )
-    .orderBy(asc(payments.id));
+  const siblings = await chargeRows(tx, charge);
   // A charge whose rows span reservations is refused: their locks would be taken across
   // reservations, in no order every other writer follows.
   if (siblings.some((row) => row.reservationId !== charge.reservationId)) {
-    return refused({
-      code: "PAYMENT_CHARGE_SHARED",
-      message:
-        "This Stripe charge is recorded on payments of several reservations, so Louez cannot tell how much of it each may give back. Refund it from the Stripe dashboard; Louez records the refund when Stripe reports it.",
-    });
+    return refused(CHARGE_SHARED);
   }
   const chargePaymentIds = [...new Set([input.paymentId, ...siblings.map((row) => row.id)])].sort();
-  const operations = await tx
-    .select({
-      id: paymentRefundOperations.id,
-      amountMinor: paymentRefundOperations.amountMinor,
-      status: paymentRefundOperations.status,
-    })
-    .from(paymentRefundOperations)
-    .where(inArray(paymentRefundOperations.paymentId, chargePaymentIds))
-    .orderBy(asc(paymentRefundOperations.id))
-    .for("update");
+  const operations = await chargeOperations(tx, chargePaymentIds).for("update");
   await tx
     .select({ id: payments.id })
     .from(payments)
@@ -522,11 +495,7 @@ export async function checkStripeRefund(
 
   // Read committed, unlocked: the dispute webhook takes no lock of the reservation's, so
   // one may land between two reads of one transaction (an approval binds their ids).
-  const disputes = await tx
-    .select({ id: paymentDisputes.id, status: paymentDisputes.status })
-    .from(paymentDisputes)
-    .where(eq(paymentDisputes.paymentId, input.paymentId))
-    .orderBy(asc(paymentDisputes.id));
+  const disputes = await paymentDisputesOf(tx, input.paymentId);
   if (disputes.some((dispute) => dispute.status === "open")) {
     return refused({ code: "PAYMENT_DISPUTED" });
   }
@@ -573,9 +542,122 @@ export async function checkStripeRefund(
   };
 }
 
+/** The refusal of a charge recorded on payments of several reservations. */
+const CHARGE_SHARED = {
+  code: "PAYMENT_CHARGE_SHARED",
+  message:
+    "This Stripe charge is recorded on payments of several reservations, so Louez cannot tell how much of it each may give back. Refund it from the Stripe dashboard; Louez records the refund when Stripe reports it.",
+} as const;
+
+/** Every payment row of the charge that took money, on the account the charge is on. */
+const chargeRows = (executor: Database | Transaction, charge: RefundableCharge) =>
+  executor
+    .select({ id: payments.id, reservationId: payments.reservationId })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .innerJoin(stores, eq(stores.id, reservations.storeId))
+    .where(
+      and(
+        eq(payments.stripeChargeId, charge.chargeId),
+        eq(payments.method, "stripe"),
+        sql`${payments.type} <> 'deposit_hold'`,
+        isPaymentReceiptSql(),
+        sql`COALESCE(${payments.stripeAccountId}, ${stores.stripeAccountId}) = ${charge.accountId}`,
+      ),
+    )
+    .orderBy(asc(payments.id));
+
+/** The operations on the charge's payment rows: a request locks them, a preview reads them. */
+const chargeOperations = (executor: Database | Transaction, paymentIds: readonly string[]) =>
+  executor
+    .select({
+      id: paymentRefundOperations.id,
+      amountMinor: paymentRefundOperations.amountMinor,
+      status: paymentRefundOperations.status,
+    })
+    .from(paymentRefundOperations)
+    .where(inArray(paymentRefundOperations.paymentId, [...paymentIds]))
+    .orderBy(asc(paymentRefundOperations.id));
+
+/** Every dispute ever opened on the payment. */
+const paymentDisputesOf = (executor: Database | Transaction, paymentId: string) =>
+  executor
+    .select({ id: paymentDisputes.id, status: paymentDisputes.status })
+    .from(paymentDisputes)
+    .where(eq(paymentDisputes.paymentId, paymentId))
+    .orderBy(asc(paymentDisputes.id));
+
+/** What a payment could give back now, read without a lock (minor units). */
+export type StripeRefundPreview = {
+  readonly ok: true;
+  readonly currency: string;
+  readonly ceiling: {
+    readonly paidMinor: number;
+    readonly refundedMinor: number;
+    readonly inFlightMinor: number;
+    readonly refundableMinor: number;
+  };
+};
+
+/**
+ * What the payment could give back now, with the refusals `checkStripeRefund` would
+ * answer whatever the amount: the same reads and the same ceiling, taking no lock and
+ * writing nothing. It informs a person before they choose an amount; the request
+ * checks everything again under its locks.
+ */
+export async function previewStripeRefund(
+  database: Database,
+  input: { readonly storeId: string; readonly charge: RefundableCharge },
+): Promise<RefundRefusal | StripeRefundPreview> {
+  const { charge } = input;
+  const siblings = await chargeRows(database, charge);
+  if (siblings.some((row) => row.reservationId !== charge.reservationId)) {
+    return refused(CHARGE_SHARED);
+  }
+  const chargePaymentIds = [
+    ...new Set([charge.paymentId, ...siblings.map((row) => row.id)]),
+  ].sort();
+  const operations = await chargeOperations(database, chargePaymentIds);
+  const [payment] = await paymentFacts(database, charge.paymentId);
+  const checked = checkPayment(payment, input.storeId);
+  if ("ok" in checked) return checked;
+  if (!payment || checked.reservationId !== charge.reservationId) {
+    return refused({ code: "PAYMENT_NOT_FOUND" });
+  }
+  if (checked.chargeId !== charge.chargeId || checked.accountId !== charge.accountId) {
+    return refused({ code: "PAYMENT_NOT_REFUNDABLE", reason: "charge_changed" });
+  }
+  const currency = charge.currency.toUpperCase();
+  if (currencyMinorDigits(currency) === null) {
+    return refused({ code: "REFUND_CURRENCY_NOT_SUPPORTED", currency });
+  }
+  const disputes = await paymentDisputesOf(database, charge.paymentId);
+  if (disputes.some((dispute) => dispute.status === "open")) {
+    return refused({ code: "PAYMENT_DISPUTED" });
+  }
+  const { paidMinor, refundedMinor, inFlightMinor, refundableMinor } = await refundCeiling(
+    database,
+    {
+      paymentIds: chargePaymentIds,
+      reservationId: payment.reservationId,
+      chargeId: checked.chargeId,
+      grossMinor: chargePaymentIds.length > 1 ? null : payment.grossMinor,
+      charge,
+      openMinor: operations
+        .filter((operation) => isOpenRefundStatus(operation.status))
+        .reduce((sum, operation) => sum + operation.amountMinor, 0),
+    },
+  );
+  return {
+    ok: true,
+    currency,
+    ceiling: { paidMinor, refundedMinor, inFlightMinor, refundableMinor },
+  };
+}
+
 /** What a payment can still give back, and the figures it comes from (minor units). */
 async function refundCeiling(
-  tx: Transaction,
+  tx: Database | Transaction,
   input: {
     /** Every payment row of the charge. */
     readonly paymentIds: readonly string[];

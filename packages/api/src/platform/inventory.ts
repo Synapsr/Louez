@@ -519,9 +519,13 @@ export const capabilities = [
     plan: { lot: "2c" },
   },
   {
-    // An agent, with a person's approval; no dashboard screen yet (a session is refused).
+    // The dashboard's payment history, and an agent with a person's approval.
     id: "reservations.refundStripePayment",
-    sources: [procedure("payments", "refund"), procedure("payments", "getRefund")],
+    sources: [
+      procedure("payments", "refund"),
+      procedure("payments", "getRefund"),
+      procedure("payments", "previewRefund"),
+    ],
     kind: "write",
     sensitive: "money",
     plan: { lot: "2c" },

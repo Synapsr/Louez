@@ -6,12 +6,20 @@ import {
   refundStatusByRow,
 } from "@/lib/reservations/util.payment-status";
 
+/** A person of the store, as the reservation names them. */
+interface RefundPersonLike {
+  name: string | null;
+  email: string;
+  image: string | null;
+}
+
 /** A refund asked through Louez, as the reservation states it (`reservation.refunds`). */
 interface RefundOperationLike {
   id: string;
   refundPaymentId: string | null;
   status: "pending" | "succeeded" | "failed";
-  approvedBy: { name: string | null; email: string; image: string | null } | null;
+  requestedBy: RefundPersonLike | null;
+  approvedBy: RefundPersonLike | null;
 }
 
 export interface RefundActivityContext {
@@ -22,7 +30,7 @@ export interface RefundActivityContext {
 /**
  * What a history line about a refund says. `refund`: a refund of `amount`, in the state the
  * one reader gives it (`readPaymentRow`: made, issued at Stripe, in progress or failed), with
- * the person who approved it when one did. `to_check`: a refund Louez holds failed that
+ * the person who refunded it from the dashboard, or who approved an agent's. `to_check`: a refund Louez holds failed that
  * Stripe later listed as made. `stripe_count`: what Stripe counted as refunded on the payment
  * when it told Louez, pending refunds included: a record of that moment, never a settlement.
  */
@@ -32,6 +40,7 @@ export type RefundActivityView =
       state: RefundState;
       amount: number | null;
       currency: string | null;
+      requestedBy: RefundOperationLike["requestedBy"];
       approvedBy: RefundOperationLike["approvedBy"];
     }
   | { kind: "to_check" }
@@ -97,6 +106,7 @@ export function refundActivityView(
       state,
       amount: number(metadata.amount),
       currency: text(metadata.currency) ?? row?.currency ?? null,
+      requestedBy: operation?.requestedBy ?? null,
       approvedBy: operation?.approvedBy ?? null,
     };
   };

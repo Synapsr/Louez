@@ -9,16 +9,19 @@ import {
   type StripeRefundDeps,
   checkStripeRefund,
   getRefundOperation,
+  previewStripeRefund,
   readChargeForRefund,
   reconcileRefundOperation,
   requestStripeRefund,
 } from "@/lib/reservations/stripe-refund";
+import { paymentRefundGetsCreditNote } from "@/lib/invoicing/eligibility";
 import { stripeRefunds } from "@/lib/reservations/stripe-refund-stripe";
 
 /**
  * The app's refund of a payment taken online, lent to the API's procedure
- * (packages/api services/stripe-refunds.ts): the charge read at Stripe, the checks and
- * the operation recorded in the procedure's transaction, the one attempt after its
+ * (packages/api services/stripe-refunds.ts): the charge read at Stripe, what it could
+ * give back read without a lock for the dashboard's dialog, the checks and the operation
+ * recorded in the procedure's transaction, the one attempt after its
  * commit through the outbox's sender, and the operation as its caller reads it.
  */
 export function createStripeRefundsPort(
@@ -36,6 +39,24 @@ export function createStripeRefundsPort(
       const read = await readChargeForRefund(deps, input);
       if (!read.ok) return { ok: false, refusal: { ...read, ok: undefined } };
       return { ok: true, charge: read.charge };
+    },
+    preview: async (input) => {
+      const read = await readChargeForRefund(deps, input);
+      if (!read.ok) return { ok: false, refusal: { ...read, ok: undefined } };
+      const previewed = await previewStripeRefund(deps.database, {
+        storeId: input.storeId,
+        charge: read.charge,
+      });
+      if (!previewed.ok) return { ok: false, refusal: { ...previewed, ok: undefined } };
+      return {
+        ok: true,
+        preview: {
+          currency: previewed.currency,
+          card: read.charge.card ?? null,
+          ceiling: previewed.ceiling,
+          creditNote: await paymentRefundGetsCreditNote(input.paymentId),
+        },
+      };
     },
     check: async (tx, request) => {
       const checked = await checkStripeRefund(tx, { ...request, requestedBy: noRequester });

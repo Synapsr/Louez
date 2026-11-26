@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { type ComponentProps, useEffect, useRef, useState } from "react";
 import { Building2, ExternalLink, MapPin, Pencil, Store, Truck, Shield, User } from "lucide-react";
 
 import type { ReservationItemDetailsView } from "@louez/api/services/customer-fields-online";
@@ -103,12 +103,16 @@ interface ReservationDetailClientProps {
   canGenerateInvoice: boolean;
   /** "Détails de la location", read with the page. */
   initialItemDetails?: ReservationItemDetailsView[];
+  /** What the member may do with a payment taken online; nothing when not given. */
+  stripeAccess?: ComponentProps<typeof UnifiedPaymentSection>["stripeAccess"];
   readOnly?: boolean;
   /** The dashboard's store: shows the reservation's partner card (Liens partenaires). */
   storeId?: string;
   onBack?: () => void;
   onPreviewEmail?: () => void;
 }
+
+const NO_STRIPE_ACCESS = { canRefund: false, canOpenStripe: false, dashboardKind: null } as const;
 
 function toDate(value: Date | string | null | undefined) {
   if (!value) return null;
@@ -132,6 +136,7 @@ export function ReservationDetailClient({
   invoices,
   canGenerateInvoice,
   initialItemDetails,
+  stripeAccess = NO_STRIPE_ACCESS,
   readOnly = false,
   storeId,
   onBack,
@@ -647,6 +652,8 @@ export function ReservationDetailClient({
             totalAmount={reservation.totalAmount}
             payments={reservation.payments}
             refunds={reservation.refunds}
+            disputes={reservation.disputes}
+            stripeAccess={stripeAccess}
             status={status}
             currency={currency}
             depositStatus={reservation.depositStatus as DepositStatus | null}
@@ -654,6 +661,7 @@ export function ReservationDetailClient({
             stripePaymentMethodId={reservation.stripePaymentMethodId}
             customer={{
               firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
               email: reservation.customer.email,
               phone: reservation.customer.phone,
             }}

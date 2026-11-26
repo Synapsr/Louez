@@ -3054,7 +3054,100 @@
         "requestPayment": "Zahlung anfordern",
         "invoiceGenerated": "Rechnung {number} erstellt",
         "refundProcessing": "Rückerstattung läuft",
-        "refundIssued": "Rückerstattung bei Stripe ausgestellt"
+        "refundIssued": "Rückerstattung bei Stripe ausgestellt",
+        "stripeRefund": {
+          "action": "Erstatten",
+          "actions": "Zahlungsaktionen",
+          "viewInStripe": "In Stripe ansehen",
+          "openStripeSpace": "Meinen Stripe-Bereich öffnen",
+          "openInStripe": "In Stripe öffnen",
+          "blocked": {
+            "disputed": "Offene Anfechtung",
+            "notSettled": "Noch nicht abgewickelt",
+            "noPermission": "Für Ihre Rolle nicht erlaubt"
+          },
+          "blockedHint": {
+            "disputed": "Diese Zahlung wird angefochten: Sie kann erstattet werden, sobald die Anfechtung abgeschlossen ist.",
+            "notSettled": "Stripe hat diese Zahlung noch nicht abgewickelt: Sie kann danach erstattet werden.",
+            "noPermission": "Ihre Rolle erlaubt keine Erstattungen.",
+            "stripePermission": "Nur ein Mitglied, das die Shop-Einstellungen verwaltet, kann Stripe öffnen."
+          },
+          "title": "Eine Online-Zahlung erstatten",
+          "description": "Das Geld geht an die Karte oder das Zahlungsmittel zurück, mit dem bezahlt wurde.",
+          "loading": "Zahlung wird bei Stripe gelesen…",
+          "amount": "Zu erstattender Betrag",
+          "amountHint": "Bis zu {amount}",
+          "amountInvalid": "Geben Sie einen Betrag über null ein.",
+          "amountExceeds": "Höchstens {amount} kann erstattet werden.",
+          "reason": "Grund",
+          "reasons": {
+            "requested_by_customer": "Vom Kunden angefragt",
+            "duplicate": "Doppelte Zahlung"
+          },
+          "note": "Notiz (optional)",
+          "notePlaceholder": "Wird mit der Erstattung gespeichert, für Ihr Team",
+          "noteTooLong": "Höchstens {max} Zeichen.",
+          "summary": {
+            "title": "Zusammenfassung",
+            "amount": "Erstattung",
+            "to": "An",
+            "card": "{brand}-Karte mit Endziffern {last4}",
+            "payer": "Das Zahlungsmittel, mit dem bezahlt wurde",
+            "payment": "Zahlung",
+            "paymentValue": "{type}, {amount} am {date}",
+            "reservation": "Reservierung",
+            "reservationValue": "Nr. {number} · {customer}",
+            "alreadyRefunded": "Bereits erstattet",
+            "inFlight": "Wird erstattet",
+            "remainingAfter": "Nach dieser Erstattung noch erstattbar",
+            "balance": "Der Betrag verlässt Ihr Stripe-Guthaben. Eine auf diesen Teil erhobene Plattformgebühr erhalten Sie zurück.",
+            "noMessage": "Der Kunde erhält keine Nachricht.",
+            "final": "Eine Erstattung kann nicht rückgängig gemacht werden.",
+            "creditNote": "Eine Gutschrift wird ausgestellt."
+          },
+          "confirm": "{amount} erstatten",
+          "confirmNoAmount": "Erstatten",
+          "toast": {
+            "succeeded": "Erstattung erfolgreich",
+            "pending": "Erstattung läuft",
+            "pendingDescription": "Stripe bearbeitet sie. Diese Seite aktualisiert sich von selbst.",
+            "failed": "Stripe konnte die Erstattung nicht durchführen",
+            "alreadyInProgress": "Eine Erstattung dieser Zahlung wird bearbeitet",
+            "alreadyInProgressDescription": "Ihr Ergebnis erscheint im Zahlungsverlauf."
+          },
+          "failedRow": "Erstattung fehlgeschlagen. {reason}",
+          "failures": {
+            "disputed": "Die Zahlung wird angefochten.",
+            "balance": "Ihr Stripe-Guthaben reicht nicht aus.",
+            "card": "Die Karte, mit der bezahlt wurde, kann sie nicht mehr empfangen.",
+            "alreadyRefunded": "Stripe hatte diese Zahlung bereits erstattet.",
+            "notMade": "Stripe hat keine Erstattung durchgeführt.",
+            "canceled": "Die Erstattung wurde bei Stripe storniert.",
+            "generic": "Prüfen Sie die Zahlung in Stripe."
+          },
+          "errors": {
+            "exceedsRefundable": "Auf diese Zahlung können höchstens noch {amount} erstattet werden.",
+            "currencyNotSupported": "Zahlungen in {currency} können nicht über Louez erstattet werden.",
+            "disputed": "Diese Zahlung wird angefochten: Sie kann erstattet werden, sobald die Anfechtung abgeschlossen ist.",
+            "notSettled": "Stripe hat diese Zahlung noch nicht abgewickelt: Bis dahin gibt es nichts zu erstatten.",
+            "notRefundable": "Diese Zahlung kann nicht online erstattet werden.",
+            "chargeShared": "Diese Stripe-Zahlung gehört zu mehreren Reservierungen: Erstatten Sie sie im Stripe-Dashboard.",
+            "noStripeAccount": "Der Shop hat kein Stripe-Konto, von dem erstattet werden kann.",
+            "amountInvalid": "Geben Sie einen Betrag über null ein, mit nicht mehr Nachkommastellen, als die Währung erlaubt.",
+            "takenByHand": "Diese Zahlung wurde manuell erfasst: Erfassen Sie stattdessen die Erstattung, die Sie geleistet haben.",
+            "notFound": "Diese Zahlung existiert nicht mehr. Laden Sie die Seite neu.",
+            "stripeUnavailable": "Stripe hat nicht geantwortet: Nichts wurde erstattet. Versuchen Sie es gleich noch einmal.",
+            "notInStripe": "Stripe hat für diese Zeile noch keine Zahlung.",
+            "inProgress": "Diese Erstattung wird noch gesendet. Warten Sie einen Moment und senden Sie sie dann erneut: Sie wird nicht doppelt durchgeführt.",
+            "outcomeUnknown": "Louez konnte nicht bestätigen, ob diese Erstattung durchgeführt wurde. Prüfen Sie den Zahlungsverlauf, bevor Sie erneut erstatten.",
+            "alreadyInProgress": "Eine Erstattung dieser Zahlung wird bearbeitet: Ihr Ergebnis erscheint im Zahlungsverlauf."
+          },
+          "repeat": {
+            "question": "Eine Erstattung von {amount} wurde um {time} von {name} durchgeführt. Denselben Betrag erneut erstatten?",
+            "questionNoName": "Eine Erstattung von {amount} wurde um {time} durchgeführt. Denselben Betrag erneut erstatten?",
+            "confirm": "{amount} erneut erstatten"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "Zahlung anfordern",
@@ -10451,7 +10544,7 @@
       },
       "stripe_dashboard": {
         "title": "Ihr Stripe-Dashboard öffnen",
-        "description": "Ihr KI-Agent bittet Sie, das Stripe-Dashboard von „{store}“ zu öffnen.",
+        "description": "Weiter zum Stripe-Dashboard von „{store}“, wo Sie sich bei Stripe anmelden.",
         "continue": "Stripe öffnen"
       },
       "billing_card_setup": {

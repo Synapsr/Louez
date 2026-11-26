@@ -9,6 +9,7 @@ import {
   raceOnLockedRow,
   skipWithoutTestDatabase,
   type TestDatabase,
+  waitForLockWaits,
 } from "@louez/db/testing";
 
 import type {
@@ -540,14 +541,18 @@ describe(
       assert.deepEqual(stripe.creates, []);
     });
 
-    test("a dashboard session is refused; the assistant acting for one is asked a person's approval", async () => {
+    /** An RPC error's code, as the dashboard reads it. */
+    const rpcCode = (error: unknown) =>
+      (error as { data?: { code?: string } } | undefined)?.data?.code;
+    const rpcRefusal = (code: string) => (error: unknown) => rpcCode(error) === code;
+    type RefundAnswer = {
+      refund: { id: string; status: string; amount: string };
+      paymentId: string;
+    };
+
+    test("a session refunds without an approval; the assistant acting for it and a key are asked one", async () => {
       const paid = await onlinePayment();
-      await assert.rejects(
-        rpc(OWNER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount: "10.00" }),
-        (error: { code?: string; data?: { code?: string } }) =>
-          error.data?.code === "REFUND_NOT_FROM_DASHBOARD" ||
-          error.code === "REFUND_NOT_FROM_DASHBOARD",
-      );
+      const before = await approvalsCount();
       await assert.rejects(
         rpc(
           OWNER,
@@ -555,10 +560,448 @@ describe(
           { paymentId: paid.paymentId, amount: "10.00" },
           { [ASSISTANT_HEADER]: "1" },
         ),
-        (error: { data?: { code?: string } }) => error.data?.code === "APPROVAL_REQUIRED",
+        rpcRefusal("APPROVAL_REQUIRED"),
+      );
+      approvalOf(
+        await mcpCall(await key(), "refund_payment", {
+          paymentId: paid.paymentId,
+          amount: "10.00",
+        }),
       );
       assert.deepEqual(stripe.creates, []);
+      assert.equal(await approvalsCount(), before + 2);
+
+      const done = (await rpc(OWNER, "dashboard.payments.refund", {
+        paymentId: paid.paymentId,
+        amount: "10.00",
+        reason: "duplicate",
+        notes: "Paid twice at the counter",
+      })) as RefundAnswer;
+      assert.equal(done.refund.status, "succeeded");
+      assert.equal(done.refund.amount, "10.00");
+      // No approval asked or used: the person's click is their consent.
+      assert.equal(await approvalsCount(), before + 2);
+      const [operation] = await louezDb.db
+        .select({
+          approvalId: louezDb.paymentRefundOperations.approvalId,
+          requestedBy: louezDb.paymentRefundOperations.requestedByUserId,
+          reason: louezDb.paymentRefundOperations.reason,
+          notes: louezDb.paymentRefundOperations.notes,
+        })
+        .from(louezDb.paymentRefundOperations)
+        .where(orm.eq(louezDb.paymentRefundOperations.paymentId, paid.paymentId));
+      assert.deepEqual(operation, {
+        approvalId: null,
+        requestedBy: OWNER,
+        reason: "duplicate",
+        notes: "Paid twice at the counter",
+      });
+      assert.equal(stripe.creates.length, 1);
+    });
+
+    test("the same attempt sent twice from the dashboard gives one refund", async () => {
+      const paid = await onlinePayment();
+      const input = { paymentId: paid.paymentId, amount: "30.00" };
+      const attempt = { "idempotency-key": `attempt-${paid.paymentId}` };
+      const first = (await rpc(OWNER, "dashboard.payments.refund", input, attempt)) as RefundAnswer;
+      const again = (await rpc(OWNER, "dashboard.payments.refund", input, attempt)) as RefundAnswer;
+      assert.equal(again.refund.id, first.refund.id);
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+      assert.equal(stripe.creates.length, 1);
+
+      // The same key with other values is refused; another key is another request.
+      await assert.rejects(
+        rpc(OWNER, "dashboard.payments.refund", { ...input, amount: "31.00" }, attempt),
+        rpcRefusal("IDEMPOTENCY_KEY_REUSED"),
+      );
+      await assert.rejects(
+        rpc(OWNER, "dashboard.payments.refund", input, { "idempotency-key": "another" }),
+        rpcRefusal("REFUND_REPEAT_UNCONFIRMED"),
+      );
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+    });
+
+    test("from the dashboard, a refund with no known outcome stops any other on the payment; one Stripe holds pending does not", async () => {
+      const paid = await onlinePayment();
+      const refund = (amount: string, extra: object = {}) =>
+        rpc(OWNER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount, ...extra });
+      // Stripe does not answer: the refund is asked, not known.
+      stripe.behaviours.push("timeout_before");
+      const first = (await refund("10.00")) as RefundAnswer;
+      assert.equal(first.refund.status, "pending");
+      assert.deepEqual(
+        (await operationsOf(paid.paymentId)).map((operation) => operation.status),
+        ["requested"],
+      );
+      // Any other refund of the payment, from any session, confirmed or not.
+      await assert.rejects(refund("20.00"), rpcRefusal("REFUND_ALREADY_IN_PROGRESS"));
+      await assert.rejects(
+        refund("10.00", { confirmRepeat: true }),
+        rpcRefusal("REFUND_ALREADY_IN_PROGRESS"),
+      );
+      // A key keeps its own flow: a person's approval, as before.
+      approvalOf(
+        await mcpCall(await key(), "refund_payment", { paymentId: paid.paymentId, amount: "5.00" }),
+      );
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+
+      // Stripe makes it and holds it pending: made, for Louez.
+      stripe.makes.status = "pending";
+      await waitPassed(first.refund.id);
+      const read = (await rpc(OWNER, "dashboard.payments.getRefund", {
+        paymentId: paid.paymentId,
+        refundId: first.refund.id,
+      })) as RefundAnswer & { refund: { detail: string | null } };
+      assert.equal(read.refund.detail, "processing");
+      const other = (await refund("20.00")) as RefundAnswer;
+      assert.equal(other.refund.amount, "20.00");
+    });
+
+    test("from the dashboard, the same amount again within 10 minutes is refused until confirmed; another amount, or after a failure, is not", async () => {
+      const paid = await onlinePayment();
+      const refund = (amount: string, extra: object = {}) =>
+        rpc(OWNER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount, ...extra });
+      const first = (await refund("10.00")) as RefundAnswer;
+      assert.equal(first.refund.status, "succeeded");
+
+      // A lost answer followed by a retry, from any tab or person: asked first.
+      let refusal: unknown;
+      await refund("10.00").catch((error: unknown) => {
+        refusal = error;
+      });
+      assert.equal(rpcCode(refusal), "REFUND_REPEAT_UNCONFIRMED");
+      const details = (refusal as { data?: { details?: Record<string, unknown> } }).data?.details;
+      assert.equal(details?.amount, "10.00");
+      assert.equal(details?.currency, "EUR");
+      assert.equal(details?.by, "owner@srf.test");
+      assert.ok(Date.now() - Date.parse(String(details?.refundedAt)) < 10 * 60_000);
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+
+      // A key and the assistant are asked a person's approval, confirmRepeat or not.
+      approvalOf(
+        await mcpCall(await key(), "refund_payment", {
+          paymentId: paid.paymentId,
+          amount: "10.00",
+          confirmRepeat: true,
+        }),
+      );
+      await assert.rejects(
+        rpc(
+          OWNER,
+          "dashboard.payments.refund",
+          { paymentId: paid.paymentId, amount: "10.00", confirmRepeat: true },
+          { [ASSISTANT_HEADER]: "1" },
+        ),
+        rpcRefusal("APPROVAL_REQUIRED"),
+      );
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+
+      // Confirmed from the dashboard: refunded again.
+      const again = (await refund("10.00", { confirmRepeat: true })) as RefundAnswer;
+      assert.equal(again.refund.status, "succeeded");
+      // Another amount is another refund.
+      assert.equal(((await refund("15.00")) as RefundAnswer).refund.status, "succeeded");
+      assert.equal((await operationsOf(paid.paymentId)).length, 3);
+
+      // A refund that failed gave nothing back: the same amount is not asked again.
+      const other = await onlinePayment();
+      stripe.behaviours.push({ refuse: "balance_insufficient" });
+      const failed = (await rpc(OWNER, "dashboard.payments.refund", {
+        paymentId: other.paymentId,
+        amount: "10.00",
+      })) as RefundAnswer;
+      assert.equal(failed.refund.status, "failed");
+      const retried = (await rpc(OWNER, "dashboard.payments.refund", {
+        paymentId: other.paymentId,
+        amount: "10.00",
+      })) as RefundAnswer;
+      assert.equal(retried.refund.status, "succeeded");
+
+      // A refund of the same amount older than 10 minutes asks nothing.
+      await louezDb.db
+        .update(louezDb.paymentRefundOperations)
+        .set({ createdAt: new Date(Date.now() - 11 * 60_000) })
+        .where(orm.eq(louezDb.paymentRefundOperations.paymentId, paid.paymentId));
+      assert.equal(((await refund("10.00")) as RefundAnswer).refund.status, "succeeded");
+    });
+
+    test("two sessions refunding the same payment at once: the second waits for the first's lock, then is refused; one refund", async () => {
+      // A payment with no refund yet: nothing for the guard to lock but the reservation.
+      const paid = await onlinePayment();
       assert.deepEqual(await operationsOf(paid.paymentId), []);
+      const MEMBER = "srf_member_race_0001";
+      await louezDb.db.insert(louezDb.users).values({ id: MEMBER, email: "racer@srf.test" });
+      await louezDb.db
+        .insert(louezDb.storeMembers)
+        .values({ storeId: STORE, userId: MEMBER, role: "member" });
+      const input = { paymentId: paid.paymentId, amount: "40.00" };
+
+      // The first is held inside the reservation's lock, past the guard and the checks.
+      let release = () => {};
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let entered = () => {};
+      const inside = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      hooks.beforeRequest = async () => {
+        hooks.beforeRequest = undefined;
+        entered();
+        await released;
+      };
+      const first = rpc(OWNER, "dashboard.payments.refund", input);
+      await inside;
+      // The second starts and waits on that lock, before its own guard.
+      const second = rpc(MEMBER, "dashboard.payments.refund", input);
+      const watcher = await database.connect();
+      try {
+        await waitForLockWaits(watcher, database.name, 1);
+      } finally {
+        await watcher.end();
+      }
+      release();
+
+      const [done, refused] = await Promise.allSettled([first, second]);
+      assert.equal(done?.status, "fulfilled");
+      assert.equal(refused?.status, "rejected");
+      const code = refused?.status === "rejected" ? rpcCode(refused.reason) : null;
+      assert.ok(
+        code === "REFUND_ALREADY_IN_PROGRESS" || code === "REFUND_REPEAT_UNCONFIRMED",
+        String(code),
+      );
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+      assert.equal(stripe.creates.length, 1);
+    });
+
+    test("a key's refund keeps its approval, whatever the dashboard refunded just before", async () => {
+      const paid = await onlinePayment();
+      await rpc(OWNER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount: "10.00" });
+      const { result } = await refunded(await key(), {
+        paymentId: paid.paymentId,
+        amount: "10.00",
+      });
+      assert.equal(answer(result).refund.status, "succeeded");
+      assert.equal((await operationsOf(paid.paymentId)).length, 2);
+    });
+
+    test("from the dashboard, a member who records refunds may refund; anyone else is refused", async () => {
+      const paid = await onlinePayment();
+      const MEMBER = "srf_member_user_0001";
+      const STRANGER = "srf_other_user_00001";
+      await louezDb.db.insert(louezDb.users).values([
+        { id: MEMBER, email: "member@srf.test" },
+        { id: STRANGER, email: "stranger@srf.test" },
+      ]);
+      await louezDb.db.insert(louezDb.storeMembers).values({
+        storeId: STORE,
+        userId: MEMBER,
+        role: "member",
+      });
+      const { appRouter } = await import("@louez/api/router");
+      const scopeOf = (procedure: { "~orpc": { meta: { scope?: unknown } } }) =>
+        procedure["~orpc"].meta.scope;
+      // The right of a refund given by hand, whatever the roles become.
+      assert.deepEqual(
+        scopeOf(appRouter.dashboard.payments.refund),
+        scopeOf(appRouter.dashboard.payments.recordRefund),
+      );
+
+      const done = (await rpc(MEMBER, "dashboard.payments.refund", {
+        paymentId: paid.paymentId,
+        amount: "5.00",
+      })) as RefundAnswer;
+      assert.equal(done.refund.status, "succeeded");
+      await assert.rejects(
+        rpc(STRANGER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount: "5.00" }),
+        rpcRefusal("NO_STORE_ACCESS"),
+      );
+      await assert.rejects(
+        rpc(STRANGER, "dashboard.payments.previewRefund", { paymentId: paid.paymentId }),
+        rpcRefusal("NO_STORE_ACCESS"),
+      );
+      const readOnly = await key({ ...WRITE, payments: "read" });
+      const refused = await mcpCall(readOnly, "refund_payment", {
+        paymentId: paid.paymentId,
+        amount: "5.00",
+      });
+      assert.equal(errorOf(refused)?.code, "PERMISSION_DENIED");
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+    });
+
+    test("a demo store refuses the refund and its preview, from its own visitor's session too", async () => {
+      const DEMO = "srf_store_demo_00001";
+      await louezDb.db.insert(louezDb.stores).values({
+        id: DEMO,
+        userId: OWNER,
+        name: "Demo store",
+        slug: "srf-store-demo",
+        settings: SETTINGS,
+        stripeAccountId: ACCOUNT,
+        demoVertical: "ski",
+      });
+      await louezDb.db
+        .insert(louezDb.storeMembers)
+        .values({ storeId: DEMO, userId: OWNER, role: "owner" });
+      const paid = await onlinePayment({ storeId: DEMO });
+      const onDemo = { "louez-store": DEMO };
+      await assert.rejects(
+        rpc(
+          OWNER,
+          "dashboard.payments.refund",
+          { paymentId: paid.paymentId, amount: "5.00" },
+          onDemo,
+        ),
+        rpcRefusal("DEMO_STORE_REFUSED"),
+      );
+      await assert.rejects(
+        rpc(OWNER, "dashboard.payments.previewRefund", { paymentId: paid.paymentId }, onDemo),
+        rpcRefusal("DEMO_STORE_REFUSED"),
+      );
+      assert.deepEqual(await operationsOf(paid.paymentId), []);
+      assert.deepEqual(stripe.creates, []);
+    });
+
+    test("the dialog's preview: what was paid and refunded, the card, without the reservation's lock", async () => {
+      const paid = await onlinePayment();
+      type Preview = {
+        currency: string;
+        paid: string;
+        refunded: string;
+        inFlight: string;
+        refundable: string;
+        number: string;
+        type: string;
+        card: { brand: string; last4: string } | null;
+        creditNote: boolean;
+      };
+      const preview = (headers: Record<string, string> = {}) =>
+        rpc(
+          OWNER,
+          "dashboard.payments.previewRefund",
+          { paymentId: paid.paymentId },
+          headers,
+        ) as Promise<Preview>;
+      const first = await preview();
+      assert.match(first.number, /^2031-\d{4}$/);
+      assert.deepEqual(
+        { ...first, number: "" },
+        {
+          paymentId: paid.paymentId,
+          reservationId: paid.reservationId,
+          number: "",
+          type: "rental",
+          paidAt: "2031-05-20T10:00:00.000Z",
+          currency: "EUR",
+          paid: "120.00",
+          refunded: "0.00",
+          inFlight: "0.00",
+          refundable: "120.00",
+          card: { brand: "visa", last4: "4242" },
+          // The store issues no invoices here.
+          creditNote: false,
+        },
+      );
+      await rpc(OWNER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount: "45.00" });
+      const after = await preview();
+      assert.equal(after.paid, "120.00", "what the payment took, not what it keeps");
+      assert.equal(after.refunded, "45.00");
+      assert.equal(after.refundable, "75.00");
+
+      // Read without a lock: it answers while another transaction holds the reservation.
+      const holder = await database.connect();
+      try {
+        await holder.beginTransaction();
+        await holder.query("SELECT id FROM `reservations` WHERE id = ? FOR UPDATE", [
+          paid.reservationId,
+        ]);
+        const timeout = new Promise<"waited">((resolve) =>
+          setTimeout(() => resolve("waited"), 5_000),
+        );
+        const raced = await Promise.race([preview().then(() => "answered" as const), timeout]);
+        assert.equal(raced, "answered");
+      } finally {
+        await holder.rollback();
+        await holder.end();
+      }
+
+      // Refused as the refund would be, by the refund's own codes.
+      await louezDb.db.insert(louezDb.paymentDisputes).values({
+        id: `dp_srf_${paid.paymentId}`,
+        paymentId: paid.paymentId,
+        reservationId: paid.reservationId,
+        amountMinor: 7_500,
+        currency: "EUR",
+        status: "open",
+        stripeStatus: "needs_response",
+      });
+      await assert.rejects(preview(), rpcRefusal("PAYMENT_DISPUTED"));
+      const byHand = await onlinePayment({ method: "cash" });
+      await assert.rejects(
+        rpc(OWNER, "dashboard.payments.previewRefund", { paymentId: byHand.paymentId }),
+        rpcRefusal("REFUND_PAYMENT_TAKEN_BY_HAND"),
+      );
+    });
+
+    test("the reservation names who refunded from the dashboard, the amount, and the disputes", async () => {
+      const paid = await onlinePayment();
+      await rpc(OWNER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount: "20.00" });
+      stripe.behaviours.push({ refuse: "balance_insufficient" });
+      await rpc(OWNER, "dashboard.payments.refund", { paymentId: paid.paymentId, amount: "15.00" });
+      await louezDb.db.insert(louezDb.paymentDisputes).values({
+        id: `dp_srf_won_${paid.paymentId}`,
+        paymentId: paid.paymentId,
+        reservationId: paid.reservationId,
+        amountMinor: 1_000,
+        currency: "EUR",
+        status: "won",
+        stripeStatus: "won",
+      });
+      const reservation = (await rpc(OWNER, "dashboard.reservations.get", {
+        id: paid.reservationId,
+      })) as {
+        refunds: Array<{
+          status: string;
+          amount: string;
+          currency: string;
+          failure: { code: string } | null;
+          requestedBy: { email: string } | null;
+          approvedBy: unknown;
+        }>;
+        disputes: Array<{ paymentId: string; status: string }>;
+      };
+      assert.deepEqual(
+        reservation.refunds
+          // Asked in the same second: their order between them is not the point here.
+          .toSorted((a, b) => Number(b.amount) - Number(a.amount))
+          .map(({ status, amount, currency, failure, requestedBy, approvedBy }) => ({
+            status,
+            amount,
+            currency,
+            failure: failure?.code ?? null,
+            requestedBy: requestedBy?.email ?? null,
+            approvedBy,
+          })),
+        [
+          {
+            status: "succeeded",
+            amount: "20.00",
+            currency: "EUR",
+            failure: null,
+            requestedBy: "owner@srf.test",
+            approvedBy: null,
+          },
+          {
+            status: "failed",
+            amount: "15.00",
+            currency: "EUR",
+            failure: "balance_insufficient",
+            requestedBy: "owner@srf.test",
+            approvedBy: null,
+          },
+        ],
+      );
+      assert.deepEqual(reservation.disputes, [{ paymentId: paid.paymentId, status: "won" }]);
     });
 
     test("an approval for 45.00 is carried out once: one operation with its id, one request to Stripe", async () => {

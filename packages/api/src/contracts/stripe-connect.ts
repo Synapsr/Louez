@@ -30,7 +30,14 @@ export type StripeStatus = z.infer<typeof stripeStatusSchema>;
 
 export const startStripeOnboardingInput = z.object({});
 export const startStripeOnboardingOutput = handoffLinkSchema;
-export const openStripeDashboardInput = z.object({});
+export const openStripeDashboardInput = z.object({
+  paymentId: z
+    .string()
+    .optional()
+    .describe(
+      "A payment taken online, by its ID among the reservation's payments: the dashboard opens on it where the account it was taken on has its own Stripe dashboard",
+    ),
+});
 export const openStripeDashboardOutput = handoffLinkSchema;
 export const syncStripeStatusInput = z.object({});
 export const syncStripeStatusOutput = stripeStatusSchema;

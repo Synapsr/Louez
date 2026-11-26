@@ -33,6 +33,8 @@ const stripe: StripeConnectClient = {
     retrieve: async () => ({ type: "standard", country: "FR", charges_enabled: false }),
     createLoginLink: async () => ({ url: "https://connect.stripe.test/login" }),
   },
+  paymentIntents: { retrieve: async (id) => ({ id, livemode: false }) },
+  charges: { retrieve: async (id) => ({ id, livemode: false }) },
   accountLinks: { create: async () => ({ url: "https://connect.stripe.test/setup" }) },
 };
 

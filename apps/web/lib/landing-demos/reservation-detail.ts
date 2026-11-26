@@ -35,9 +35,21 @@ export const createDemoReservationDetail = (
     Number(items.depositAmount),
     locale,
   );
+  // Shaped as `reservations.get` gives a row, the fields a demo does not use left empty.
+  const unset = {
+    currency: null,
+    capturedAmount: null,
+    authorizationExpiresAt: null,
+    releaseOwedAt: null,
+    stripeRefundId: null,
+    stripePaymentIntentId: null,
+    stripeCheckoutSessionId: null,
+    sessionSettledAt: null,
+  };
   const payments: ComponentProps<typeof UnifiedPaymentSection>["payments"] = paid
     ? [
         {
+          ...unset,
           id: `demo-payment-${index}`,
           amount: items.subtotalAmount,
           type: "rental",
@@ -49,6 +61,7 @@ export const createDemoReservationDetail = (
           refundOfPaymentId: null,
         },
         {
+          ...unset,
           id: `demo-hold-${index}`,
           amount: items.depositAmount,
           type: "deposit_hold",
@@ -91,6 +104,7 @@ export const createDemoReservationDetail = (
       customer: { ...getDemoCustomer(index), phone: null },
       payments,
       refunds: [],
+      disputes: [],
       activity: paid ? activity : activity.slice(-1),
       depositStatus: paid ? "authorized" : "pending",
       depositAuthorizationExpiresAt: paid ? new Date(period.end.getTime() + 86_400_000) : null,

@@ -3054,7 +3054,100 @@
         "requestPayment": "请求付款",
         "invoiceGenerated": "生成发票 {number}",
         "refundProcessing": "退款处理中",
-        "refundIssued": "已在 Stripe 发起退款"
+        "refundIssued": "已在 Stripe 发起退款",
+        "stripeRefund": {
+          "action": "退款",
+          "actions": "付款操作",
+          "viewInStripe": "在 Stripe 中查看",
+          "openStripeSpace": "打开我的 Stripe 控制台",
+          "openInStripe": "在 Stripe 中打开",
+          "blocked": {
+            "disputed": "争议处理中",
+            "notSettled": "尚未结算",
+            "noPermission": "您的角色无权操作"
+          },
+          "blockedHint": {
+            "disputed": "这笔付款有未结束的争议：争议结束后才能退款。",
+            "notSettled": "Stripe 尚未结算这笔付款：结算后才能退款。",
+            "noPermission": "您的角色不允许退款。",
+            "stripePermission": "只有管理店铺设置的成员才能打开 Stripe。"
+          },
+          "title": "退还在线付款",
+          "description": "款项将退回到付款时使用的银行卡或方式。",
+          "loading": "正在从 Stripe 读取付款…",
+          "amount": "退款金额",
+          "amountHint": "最多 {amount}",
+          "amountInvalid": "请输入大于零的金额。",
+          "amountExceeds": "最多可退款 {amount}。",
+          "reason": "原因",
+          "reasons": {
+            "requested_by_customer": "客户要求",
+            "duplicate": "重复付款"
+          },
+          "note": "备注（可选）",
+          "notePlaceholder": "与退款一起保存，供您的团队查看",
+          "noteTooLong": "最多 {max} 个字符。",
+          "summary": {
+            "title": "摘要",
+            "amount": "退款",
+            "to": "退回至",
+            "card": "尾号 {last4} 的 {brand} 卡",
+            "payer": "付款时使用的方式",
+            "payment": "付款",
+            "paymentValue": "{type}，{amount}，{date}",
+            "reservation": "预订",
+            "reservationValue": "#{number} · {customer}",
+            "alreadyRefunded": "已退款",
+            "inFlight": "退款处理中",
+            "remainingAfter": "本次退款后仍可退款",
+            "balance": "该金额将从您的 Stripe 余额中扣除。若这部分曾收取平台费用，将退还给您。",
+            "noMessage": "不会向客户发送任何消息。",
+            "final": "退款无法撤销。",
+            "creditNote": "将开具贷记单。"
+          },
+          "confirm": "退款 {amount}",
+          "confirmNoAmount": "退款",
+          "toast": {
+            "succeeded": "退款成功",
+            "pending": "退款处理中",
+            "pendingDescription": "Stripe 正在处理。本页面会自动更新。",
+            "failed": "Stripe 无法完成退款",
+            "alreadyInProgress": "这笔付款的一笔退款正在处理中",
+            "alreadyInProgressDescription": "结果将显示在付款记录中。"
+          },
+          "failedRow": "退款失败。{reason}",
+          "failures": {
+            "disputed": "该付款存在争议。",
+            "balance": "您的 Stripe 余额不足。",
+            "card": "付款所用的银行卡已无法接收退款。",
+            "alreadyRefunded": "Stripe 已经退还过这笔付款。",
+            "notMade": "Stripe 未进行任何退款。",
+            "canceled": "退款已在 Stripe 中取消。",
+            "generic": "请在 Stripe 中检查这笔付款。"
+          },
+          "errors": {
+            "exceedsRefundable": "这笔付款最多还能退款 {amount}。",
+            "currencyNotSupported": "{currency} 付款无法通过 Louez 退款。",
+            "disputed": "这笔付款有未结束的争议：争议结束后才能退款。",
+            "notSettled": "Stripe 尚未结算这笔付款：结算前没有可退款的金额。",
+            "notRefundable": "这笔付款无法在线退款。",
+            "chargeShared": "这笔 Stripe 付款与另一个预订共用：请在 Stripe 控制台中退款。",
+            "noStripeAccount": "店铺没有可用于退款的 Stripe 账户。",
+            "amountInvalid": "请输入大于零的金额，小数位数不能超过该货币允许的位数。",
+            "takenByHand": "这笔付款是手动收取的：请改为记录您已完成的退款。",
+            "notFound": "这笔付款已不存在。请刷新页面。",
+            "stripeUnavailable": "Stripe 没有响应：未退款。请稍后再试。",
+            "notInStripe": "Stripe 中还没有这一行的付款。",
+            "inProgress": "这笔退款仍在发送中。请稍候再发送一次：不会重复退款。",
+            "outcomeUnknown": "Louez 无法确认这笔退款是否已完成。再次退款前，请先查看付款记录。",
+            "alreadyInProgress": "这笔付款的一笔退款正在处理中：结果将显示在付款记录中。"
+          },
+          "repeat": {
+            "question": "{name} 于 {time} 退款了 {amount}。要再次退款相同金额吗？",
+            "questionNoName": "已于 {time} 退款 {amount}。要再次退款相同金额吗？",
+            "confirm": "再次退款 {amount}"
+          }
+        }
       },
       "requestPaymentModal": {
         "title": "请求付款",
@@ -10451,7 +10544,7 @@
       },
       "stripe_dashboard": {
         "title": "打开您的 Stripe 控制台",
-        "description": "您的 AI 代理请您打开“{store}”的 Stripe 控制台。",
+        "description": "前往“{store}”的 Stripe 控制台，并在那里登录 Stripe。",
         "continue": "打开 Stripe"
       },
       "billing_card_setup": {

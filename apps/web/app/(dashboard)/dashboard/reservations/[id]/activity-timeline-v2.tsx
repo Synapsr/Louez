@@ -507,6 +507,10 @@ export function ActivityTimelineV2({
     // A refund of an online payment, told as one, by the shape its writer gave the line.
     const refundView = refundActivityView(activity, { payments, refunds })
     const refundApprover = refundView?.kind === 'refund' ? refundView.approvedBy : null
+    // Refunded from the dashboard: the person who did it, as a line by a user is signed.
+    const refundRequester =
+      refundView?.kind === 'refund' && !refundApprover ? refundView.requestedBy : null
+    const signedBy = activity.user ?? refundRequester
     // A refund's amount, as a badge; Stripe's count is written in its title, as information.
     const refundLine = refundView?.kind === 'refund' ? refundView : null
     const stripeCount =
@@ -682,21 +686,21 @@ export function ActivityTimelineV2({
           </div>
 
           {/* User info */}
-          {activity.user && (
+          {signedBy && (
             <div className="flex items-center gap-2 mt-1">
               <Avatar className="h-4 w-4">
                 <AvatarImage
-                  src={activity.user.image || undefined}
-                  alt={activity.user.name || activity.user.email}
+                  src={signedBy.image || undefined}
+                  alt={signedBy.name || signedBy.email}
                 />
                 <AvatarFallback className="text-[8px] bg-muted">
-                  {getUserInitials(activity.user.name, activity.user.email)}
+                  {getUserInitials(signedBy.name, signedBy.email)}
                 </AvatarFallback>
               </Avatar>
               <span className="text-xs text-muted-foreground">
                 {t('activityBy')}{' '}
                 <span className="font-medium text-foreground">
-                  {activity.user.name || activity.user.email}
+                  {signedBy.name || signedBy.email}
                 </span>
               </span>
             </div>
@@ -731,7 +735,7 @@ export function ActivityTimelineV2({
           )}
 
           {/* Show "by customer" for online reservations/payments */}
-          {!activity.user &&
+          {!signedBy &&
             (activitySource === 'online' || CUSTOMER_ACTIVITY_TYPES.has(activity.activityType)) && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted">
@@ -742,7 +746,7 @@ export function ActivityTimelineV2({
             )}
 
           {/* Show "system" for other cases without user */}
-          {!activity.user &&
+          {!signedBy &&
             !refundApprover &&
             activitySource !== 'online' &&
             !activitySource &&

@@ -60,16 +60,29 @@ const getRpcUrl = (): string => {
  */
 const STORE_HEADER = "louez-store";
 
+/** The header of a write's idempotency key (`IDEMPOTENCY_HEADER`, `@louez/api/platform/operations`). */
+const IDEMPOTENCY_HEADER = "idempotency-key";
+
+/**
+ * What one call may add: the idempotency key of a write a retry must not do twice
+ * (`client.payments.refund(input, { context: { idempotencyKey } })`). A repeat with
+ * the same key answers what the first call did.
+ */
+export interface RpcClientContext {
+  idempotencyKey?: string;
+}
+
 const rpcLink = (storeId?: string) =>
-  new RPCLink({
+  new RPCLink<RpcClientContext>({
     // The header `/api/rpc` requires of every call (./csrf.ts).
     plugins: [rpcCsrfLinkPlugin()],
     // Resolve lazily: PublicEnvProvider installs the validated runtime config
     // before any child query can execute.
     url: getRpcUrl,
-    headers: (_options, path) => {
+    headers: ({ context }, path) => {
       const headers: Record<string, string> = {};
       if (storeId) headers[STORE_HEADER] = storeId;
+      if (context.idempotencyKey) headers[IDEMPOTENCY_HEADER] = context.idempotencyKey;
       // Store header for storefront procedures: the provider's slug first, the
       // host as a fallback for calls issued outside a StoreProvider.
       const storeSlug = storefrontSlug ?? getStoreSlugFromHost();
@@ -102,9 +115,9 @@ const rpcLink = (storeId?: string) =>
  * const { data } = useQuery(orpc.dashboard.ping.queryOptions({ input: { message: 'hello' } }))
  * ```
  */
-export const orpcClient: RouterClient<AppRouter> = createORPCClient(rpcLink());
+export const orpcClient: RouterClient<AppRouter, RpcClientContext> = createORPCClient(rpcLink());
 
-const storeClients = new Map<string, RouterClient<AppRouter>>();
+const storeClients = new Map<string, RouterClient<AppRouter, RpcClientContext>>();
 
 /**
  * The client whose calls name their store: for what a page keeps showing after
@@ -113,7 +126,7 @@ const storeClients = new Map<string, RouterClient<AppRouter>>();
  * Only procedures that select their store through the API platform
  * (`storeProcedure`) read the header.
  */
-export const orpcClientForStore = (storeId: string): RouterClient<AppRouter> => {
+export const orpcClientForStore = (storeId: string): RouterClient<AppRouter, RpcClientContext> => {
   let client = storeClients.get(storeId);
   if (!client) {
     client = createORPCClient(rpcLink(storeId));
