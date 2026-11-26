@@ -14,7 +14,9 @@ import {
   createErrorThrottle,
   createServerErrorReporter,
   reportableCode,
+  reportableStoreSlug,
   type ReportServerError,
+  type ServerErrorContext,
 } from "@louez/api/platform/error-reporting";
 
 import { env } from "@/env";
@@ -121,8 +123,12 @@ function safeException(exception: unknown): Record<string, unknown> | null {
 
 /** The reporter's fingerprint (`prepareServerError`): 32 hex characters, nothing else. */
 const FINGERPRINT = /^[0-9a-f]{32}$/;
-/** Names, ids, paths and versions the reporter sets: no space, nothing a caller wrote. */
-const TOKEN = /^[\w.\-/[\]@:+]{1,200}$/;
+/**
+ * Names, ids, paths and versions the reporter sets: no space, nothing a caller
+ * wrote. A route keeps its groups' parentheses, as Next names it on a
+ * background revalidation (`/(storefront)/[slug]/about/page`).
+ */
+const TOKEN = /^[\w.\-/[\]()@:+]{1,200}$/;
 
 /** The properties an event may carry, each with the only form it may take. */
 const PROPERTIES: Readonly<Record<string, (value: unknown) => unknown>> = {
@@ -131,6 +137,7 @@ const PROPERTIES: Readonly<Record<string, (value: unknown) => unknown>> = {
   $exception_level: (value) => (value === "error" ? value : undefined),
   $process_person_profile: (value) => (value === false ? value : undefined),
   error_code: (value) => reportableCode(value),
+  store_slug: (value) => reportableStoreSlug(value),
   http_status: (value) => (typeof value === "number" && Number.isSafeInteger(value) ? value : undefined),
   repeats_suppressed: (value) =>
     typeof value === "number" && Number.isSafeInteger(value) ? value : undefined,
@@ -177,7 +184,49 @@ export function sanitizeExceptionEvent(event: EventMessage | null): EventMessage
     const safe = Object.hasOwn(PROPERTIES, key) ? PROPERTIES[key]?.(value) : undefined;
     if (safe !== undefined) properties[key] = safe;
   }
+  // A store's slug goes with a storefront's error, never with another source's.
+  if (properties.source !== "storefront") delete properties.store_slug;
   return { ...event, properties };
+}
+
+/** What is read of the request and context Next hands `onRequestError`. */
+interface ErrorRequest {
+  path: string;
+  headers: Readonly<Record<string, string | string[] | undefined>>;
+}
+interface ErrorRequestContext {
+  routePath: string;
+  routeType: string;
+}
+
+/**
+ * A storefront route: `[slug]` first (`/[slug]/about`), after any route group
+ * when Next names the route with them (`/(storefront)/[slug]/about/page`).
+ */
+const STOREFRONT_ROUTE = /^(?:\/\([^/]+\))*\/\[slug\](?:\/|$)/;
+
+/** The header the proxy names the store in, on a store's own host (proxy.ts). */
+const STORE_SLUG_HEADER = "x-store-slug";
+
+/**
+ * The context of an error Next caught in a request (`onRequestError`): the
+ * route as declared, never the requested path (it may hold a secret). On a
+ * storefront route, the store's slug, which the reporter checks: Next hands
+ * over the URL as requested, before the proxy's rewrite, so on a store's own
+ * host the slug is the proxy's `x-store-slug`; on a `/{slug}/…` path without
+ * it, the path's first segment. Nothing else is read from the path.
+ */
+export function requestErrorContext(
+  request: ErrorRequest,
+  context: ErrorRequestContext,
+): ServerErrorContext {
+  const route = { route: context.routePath, routeType: context.routeType };
+  if (!STOREFRONT_ROUTE.test(context.routePath)) return { source: "request", ...route };
+  const header = request.headers[STORE_SLUG_HEADER];
+  let storeSlug: string | undefined;
+  if (header === undefined) storeSlug = request.path.split(/[/?#]/)[1];
+  else if (typeof header === "string") storeSlug = header;
+  return { source: "storefront", ...route, ...(storeSlug ? { storeSlug } : {}) };
 }
 
 /** The PostHog client of error tracking. `overrides` are for tests (a fake `fetch`). */

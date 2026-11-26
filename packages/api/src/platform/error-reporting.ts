@@ -23,6 +23,7 @@ export type ServerErrorSource =
   | "procedure"
   | "mcp_tool"
   | "request"
+  | "storefront"
   | "cron"
   | "job"
   | "effects"
@@ -61,6 +62,12 @@ export interface ServerErrorContext extends ErrorScope {
   job?: string;
   /** An outbox effect's type (`reservation.customerMessage`…). */
   effect?: string;
+  /**
+   * The store whose storefront failed, by its slug: its public address, which
+   * the storefront already shows. Sent with a `storefront` error only; never
+   * the store's id, which would link the event to the store's owner.
+   */
+  storeSlug?: string;
 }
 
 /** Sends an unexpected error with its context; ignores any other. Never throws. */
@@ -133,6 +140,14 @@ export function reportableCode(value: unknown): string | undefined {
   if (typeof value === "string" && LOUEZ_ERROR_CODES.has(value)) return value;
   const code = sanitizeCode(value);
   return code === undefined || code === UNKNOWN_CODE ? undefined : code;
+}
+
+/** A store's slug as onboarding accepts it and the `stores.slug` column holds it. */
+const STORE_SLUG = /^[a-z0-9-]{1,100}$/;
+
+/** A store's slug as error tracking may send it; anything else is undefined. */
+export function reportableStoreSlug(value: unknown): string | undefined {
+  return typeof value === "string" && STORE_SLUG.test(value) ? value : undefined;
 }
 
 /** The code a report names: Louez's own (`apiCode`) first, else the error's. */
@@ -297,7 +312,13 @@ export function createServerErrorReporter(options: {
     try {
       if (!isUnexpectedServerError(error)) return;
       const prepared = prepareServerError(error);
-      const decision = options.throttle.admit(prepared.fingerprint);
+      const storeSlug =
+        context.source === "storefront" ? reportableStoreSlug(context.storeSlug) : undefined;
+      // A storefront's fault is counted per store: one store's repeats never
+      // hide another store hitting the same fault. The issue stays one.
+      const decision = options.throttle.admit(
+        storeSlug ? `${prepared.fingerprint}|${storeSlug}` : prepared.fingerprint,
+      );
       if (!decision.admitted) {
         if (decision.reason === "capped" && Date.now() - capNoticeAt >= HOUR_MS) {
           capNoticeAt = Date.now();
@@ -312,6 +333,7 @@ export function createServerErrorReporter(options: {
         repeats_suppressed: decision.repeatsSuppressed,
       };
       if (prepared.code) properties.error_code = prepared.code;
+      if (storeSlug) properties.store_slug = storeSlug;
       const fields = [
         "transport",
         "procedure",

@@ -57,11 +57,6 @@ export const onRequestError: typeof evlogInstrumentation.onRequestError = async 
 ) => {
   await evlogInstrumentation.onRequestError(error, request, context);
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
-  // The route as declared, never the requested path (it may hold a secret).
-  const { reportServerError } = await import('./lib/error-tracking');
-  reportServerError(error, {
-    source: 'request',
-    route: context.routePath,
-    routeType: context.routeType,
-  });
+  const { reportServerError, requestErrorContext } = await import('./lib/error-tracking');
+  reportServerError(error, requestErrorContext(request, context));
 };
