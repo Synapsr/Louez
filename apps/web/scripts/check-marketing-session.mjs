@@ -28,7 +28,9 @@ for (const method of ["OPTIONS", "GET"]) {
   assert.match(response.headers.get("cache-control") ?? "", /private.*no-store/);
   assert.match(response.headers.get("vary") ?? "", /Origin/i);
   assert.equal(response.headers.get("set-cookie"), null);
-  if (method === "GET") assert.deepEqual(await response.json(), { authenticated: false });
+  if (method === "GET") {
+    assert.deepEqual(await response.json(), { authenticated: false, hasAccount: false });
+  }
 }
 for (const method of ["OPTIONS", "GET"]) {
   const response = await request(method, "https://untrusted.invalid");

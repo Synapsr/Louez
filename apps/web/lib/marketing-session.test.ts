@@ -20,16 +20,21 @@ test("production and preproduction session origins remain separate", () => {
   );
 });
 
-for (const authenticated of [true, false]) {
-  test(`session status ${authenticated} exposes only a boolean with private CORS`, async () => {
+for (const session of [
+  { authenticated: true, hasAccount: true },
+  { authenticated: true, hasAccount: false },
+  { authenticated: false, hasAccount: true },
+  { authenticated: false, hasAccount: false },
+]) {
+  test(`session status ${JSON.stringify(session)} exposes only booleans with private CORS`, async () => {
     const response = await marketingSessionResponse(
       request(),
       origins,
-      async () => authenticated,
+      async () => session,
       noError,
     );
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { authenticated });
+    assert.deepEqual(await response.json(), session);
     assert.equal(response.headers.get("cache-control"), "private, no-store");
     assert.equal(response.headers.get("access-control-allow-origin"), "https://louez.io");
     assert.equal(response.headers.get("access-control-allow-credentials"), "true");
@@ -37,6 +42,20 @@ for (const authenticated of [true, false]) {
     assert.equal(response.headers.get("set-cookie"), null);
   });
 }
+
+test("nothing but the two booleans leaves, whatever the reader holds", async () => {
+  const response = await marketingSessionResponse(
+    request(),
+    origins,
+    async () =>
+      Object.assign(
+        { authenticated: true, hasAccount: true },
+        { userId: "user_marketing_01", email: "owner@shop.test" },
+      ),
+    noError,
+  );
+  assert.deepEqual(await response.json(), { authenticated: true, hasAccount: true });
+});
 
 test("untrusted, missing, malformed and other-environment origins never read a session", async () => {
   for (const origin of [

@@ -1,9 +1,14 @@
 import { env as authEnv } from "@louez/auth/env";
+import { db } from "@louez/db";
 
 import { env } from "@/env";
 import { authInstance } from "@/lib/auth";
 import { log } from "@/lib/evlog";
-import { marketingOrigins, marketingSessionResponse } from "@/lib/marketing-session";
+import {
+  marketingOrigins,
+  marketingSessionResponse,
+  readMarketingSession,
+} from "@/lib/marketing-session";
 
 // Public endpoint: only allowlisted marketing origins can read the session status.
 function handleSession(request: Request): Promise<Response> {
@@ -15,7 +20,7 @@ function handleSession(request: Request): Promise<Response> {
         headers: request.headers,
         query: { disableCookieCache: true, disableRefresh: true },
       });
-      return Boolean(session);
+      return readMarketingSession(db, session, request.headers.get("cookie"));
     },
     () => log.error({ action: "marketing_session_check", message: "Session lookup failed" }),
   );
