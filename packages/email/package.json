@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
+    "@types/node": "^20.19.27",
     "@types/react": "^19",
     "react": "19.2.6",
     "react-dom": "19.2.6",

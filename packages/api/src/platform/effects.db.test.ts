@@ -83,6 +83,10 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     "payment.refundCreditNote": async () => {},
     "testReservation.analytics": async () => {},
     "testReservation.deleteFiles": async () => {},
+    "partner.bookingEmail": async () => {},
+    "partner.payoutEmail": async () => {},
+    "partner.statementEmail": async () => {},
+    "payment.rentalSessionsExpiry": async () => {},
   };
 
   before(async () => {
