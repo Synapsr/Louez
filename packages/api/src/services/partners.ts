@@ -10,6 +10,7 @@ import {
   storePartnerSettings,
   storePartners,
   stores,
+  type Transaction,
 } from "@louez/db";
 import { and, asc, eq, gt, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 
@@ -52,6 +53,9 @@ import { resolveTimezone } from "./sales-window";
  */
 
 type PartnerRow = typeof storePartners.$inferSelect;
+
+/** Where a read runs: the database, or the transaction of a write that reads under its lock. */
+type Executor = typeof db | Transaction;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -132,10 +136,14 @@ async function findPartner(storeId: string, partnerId: string): Promise<PartnerR
 }
 
 /** The codes of some of the store's promo codes, by id. */
-async function readPromoCodes(storeId: string, ids: readonly (string | null)[]) {
+async function readPromoCodes(
+  storeId: string,
+  ids: readonly (string | null)[],
+  executor: Executor = db,
+) {
   const wanted = [...new Set(ids.filter((id): id is string => id !== null))];
   if (wanted.length === 0) return new Map<string, string>();
-  const rows = await db
+  const rows = await executor
     .select({ id: promoCodes.id, code: promoCodes.code })
     .from(promoCodes)
     .where(and(eq(promoCodes.storeId, storeId), inArray(promoCodes.id, wanted)));
@@ -166,9 +174,10 @@ export async function readPartnerBookings(input: {
   range?: { start: Date; end: Date };
   currency: string;
   now: Date;
+  executor?: Executor;
 }): Promise<(PartnerBooking & { partnerId: string; creditedAt: Date })[]> {
   if (input.partnerIds.length === 0) return [];
-  const rows = await db
+  const rows = await (input.executor ?? db)
     .select({
       partnerId: partnerBookings.partnerId,
       reservationId: reservations.id,
@@ -235,9 +244,10 @@ export async function readPartnerPayouts(
   storeId: string,
   partnerIds: readonly string[],
   month?: string,
+  executor: Executor = db,
 ) {
   if (partnerIds.length === 0) return [];
-  const rows = await db
+  const rows = await executor
     .select({
       id: partnerPayouts.id,
       partnerId: partnerPayouts.partnerId,
@@ -262,8 +272,9 @@ export async function readPartnerVisits(
   storeId: string,
   start: Date,
   end: Date,
+  executor: Executor = db,
 ): Promise<Map<string, number>> {
-  const rows = await db
+  const rows = await executor
     .select({
       partnerId: pageViews.partnerId,
       visits: sql<number>`COUNT(DISTINCT ${pageViews.sessionId})`,
@@ -369,13 +380,21 @@ export async function partnerStatementFor(
   store: PartnerStore,
   month: string,
   now: Date,
+  executor: Executor = db,
 ): Promise<PartnerStatement> {
   const range = monthRange(month, store.timezone);
   const [bookings, payouts, visits, perks] = await Promise.all([
-    readPartnerBookings({ storeId, partnerIds: [row.id], range, currency: store.currency, now }),
-    readPartnerPayouts(storeId, [row.id], month),
-    readPartnerVisits(storeId, range.start, range.end),
-    readPromoCodes(storeId, [row.promoCodeId]),
+    readPartnerBookings({
+      storeId,
+      partnerIds: [row.id],
+      range,
+      currency: store.currency,
+      now,
+      executor,
+    }),
+    readPartnerPayouts(storeId, [row.id], month, executor),
+    readPartnerVisits(storeId, range.start, range.end, executor),
+    readPromoCodes(storeId, [row.promoCodeId], executor),
   ]);
   const paid = payouts.reduce((sum, payout) => sum + payout.amount, 0);
   return {
@@ -535,9 +554,23 @@ export async function rotatePartnerStatementToken(
 }
 
 /**
+ * A payout reads what is left to pay after it holds the partner's lock: under
+ * READ COMMITTED each read sees the payouts committed before it, never a
+ * snapshot taken earlier in the transaction.
+ */
+const PAYOUT_TRANSACTION = { isolationLevel: "read committed" } as const;
+
+/**
  * Records that the store paid what is left of a month's due commissions, and
  * tells the partner. The money moves outside Louez; this is the store's own
  * note, so the statement shows what remains when a rental changes afterwards.
+ *
+ * One payout per intent: the partner's row is locked first, then what is left
+ * is computed, checked and paid in the same transaction. A second tab, member
+ * or retry waits for the lock, then finds the month settled
+ * (`PARTNER_NOTHING_TO_PAY`) and queues no e-mail. A retry of the same attempt
+ * sends the same idempotency key and gets the first answer back
+ * (platform/operations.ts).
  */
 export async function markPartnerMonthPaid(input: {
   storeId: string;
@@ -546,41 +579,40 @@ export async function markPartnerMonthPaid(input: {
   month: string;
   now?: Date;
 }): Promise<{ totals: PartnerMonthTotals; effectIds: string[] }> {
-  const [row, store] = await Promise.all([
-    findPartner(input.storeId, input.partnerId),
-    readPartnerStore(input.storeId),
-  ]);
-  const statement = await partnerStatementFor(
-    input.storeId,
-    row,
-    store,
-    input.month,
-    input.now ?? new Date(),
-  );
-  if (statement.totals.remaining <= 0) throw partnerErrors.nothingToPay();
-  const effectIds = await db.transaction(async (tx) => {
+  const store = await readPartnerStore(input.storeId);
+  const now = input.now ?? new Date();
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(storePartners)
+      .where(and(eq(storePartners.storeId, input.storeId), eq(storePartners.id, input.partnerId)))
+      .for("update");
+    if (!row) throw partnerErrors.notFound();
+    const { totals } = await partnerStatementFor(input.storeId, row, store, input.month, now, tx);
+    if (totals.remaining <= 0) throw partnerErrors.nothingToPay();
     const [payout] = await tx
       .insert(partnerPayouts)
       .values({
         storeId: input.storeId,
         partnerId: input.partnerId,
         month: input.month,
-        amount: statement.totals.remaining.toFixed(2),
+        amount: totals.remaining.toFixed(2),
         currency: store.currency,
         userId: input.userId,
       })
       .$returningId();
-    if (!payout) return [];
-    return enqueueEffects(tx, input.storeId, [
+    const effectIds = await enqueueEffects(tx, input.storeId, [
       {
         type: "partner.payoutEmail",
         payload: { partnerId: input.partnerId, payoutId: payout.id },
         orderingKey: `partner:${input.partnerId}:email`,
       },
     ]);
-  });
-  const paid = statement.totals.paid + statement.totals.remaining;
-  return { totals: { ...statement.totals, paid, remaining: 0 }, effectIds };
+    return {
+      totals: { ...totals, paid: totals.paid + totals.remaining, remaining: 0 },
+      effectIds,
+    };
+  }, PAYOUT_TRANSACTION);
 }
 
 /** Removes a payment the store recorded by mistake. */

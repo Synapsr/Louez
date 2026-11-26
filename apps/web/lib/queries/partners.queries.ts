@@ -31,7 +31,9 @@ export const partnersMutations = {
   setArchived: () => orpc.dashboard.partners.setArchived.mutationOptions(),
   updateSettings: () => orpc.dashboard.partners.updateSettings.mutationOptions(),
   rotateStatementToken: () => orpc.dashboard.partners.rotateStatementToken.mutationOptions(),
-  markMonthPaid: () => orpc.dashboard.partners.markMonthPaid.mutationOptions(),
+  /** With the attempt's idempotency key: a retry of the same attempt records nothing more. */
+  markMonthPaid: (idempotencyKey: string | undefined) =>
+    orpc.dashboard.partners.markMonthPaid.mutationOptions({ context: { idempotencyKey } }),
   cancelPayout: () => orpc.dashboard.partners.cancelPayout.mutationOptions(),
   adjustCommission: () => orpc.dashboard.partners.adjustCommission.mutationOptions(),
   setForReservation: () => orpc.dashboard.partners.setForReservation.mutationOptions(),

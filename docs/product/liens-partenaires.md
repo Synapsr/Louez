@@ -166,7 +166,9 @@ boutique. Pour chaque partenaire et chaque mois (les 12 derniers) :
 - dû, payé, reste à payer, à venir, visites par son lien ;
 - **« Marquer comme payé »** : la boutique note qu'elle a réglé le reste de ce mois (montant,
   date). Si une réservation du mois change ensuite, le reste à payer montre l'écart (positif
-  ou négatif) ; un paiement noté par erreur s'annule ;
+  ou négatif) ; un paiement noté par erreur s'annule. Un mois n'est noté payé qu'une fois par
+  intention : le reste est recalculé sous un verrou du partenaire, et chaque essai porte sa clé
+  d'idempotence ;
 - **export CSV** pour la comptabilité de la boutique (cellules neutralisées contre les
   formules).
 
@@ -291,6 +293,7 @@ restent dans le dashboard, avec le droit `manage_settings`. 13 langues ; événe
 | Lien de l'espace transmis à un tiers                       | Il ne montre rien du client ; il ne permet que de changer les e-mails du partenaire ; la boutique change le lien    |
 | Faux code dans l'URL                                       | Un code inconnu de la boutique n'attribue rien                                                                      |
 | Un membre de l'équipe crédite ou paie un partenaire        | Les écritures demandent `manage_settings`, comme les codes promo : un membre ne fait que lire                       |
+| Un mois noté payé deux fois (deux onglets, nouvel essai)   | Recalculé sous un verrou : le second trouve « rien à payer », sans e-mail ; un même essai, même réponse             |
 
 ## Auto-hébergé
 

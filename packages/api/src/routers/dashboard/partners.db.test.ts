@@ -5,6 +5,7 @@ import { after, before, beforeEach, describe, mock, test } from "node:test";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 import { eq } from "drizzle-orm";
 
+import { lockWaitsOn } from "../../platform/test-lock-waits";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
 
@@ -53,8 +54,12 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   let space: typeof import("../../services/partner-space");
   let router: typeof import("./partners").dashboardPartnersRouter;
 
-  const session = (user = OWNER) => ({
-    headers: new Headers({ [SESSION_HEADER]: user, cookie: `louez_active_store=${STORE}` }),
+  const session = (user = OWNER, extraHeaders: Record<string, string> = {}) => ({
+    headers: new Headers({
+      [SESSION_HEADER]: user,
+      cookie: `louez_active_store=${STORE}`,
+      ...extraHeaders,
+    }),
     transport: "rpc" as const,
     ports: {
       planFeatures: async () => ({ apiAccess: true }),
@@ -66,7 +71,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       urls: createTestUrls(),
       afterCommit: () => {},
     },
-    receipt: {},
+    receipt: {} as { replayed?: boolean },
   });
 
   before(async () => {
@@ -473,6 +478,98 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.deepEqual(await space.readPartnerPayoutNotice(partner.id, statement.payouts[0].id), {
       skipped: "payout_cancelled",
     });
+  });
+
+  /** A barrier: `wait` resolves once `open` is called. */
+  function barrier() {
+    let open: () => void = () => {};
+    const wait = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    return { wait, open };
+  }
+
+  const payouts = () =>
+    louezDb.db
+      .select({ amount: louezDb.partnerPayouts.amount })
+      .from(louezDb.partnerPayouts)
+      .where(eq(louezDb.partnerPayouts.storeId, STORE));
+
+  test("two payouts of one month at once: one is recorded and told, the other finds nothing to pay", async () => {
+    const partner = await campsite();
+    await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_race_0000001")]);
+    await credit("pl_resa_race_0000001", partner.code);
+    await louezDb.db.delete(louezDb.apiEffects);
+
+    // The test holds the partner's lock, so both calls reach it before either
+    // reads what is left; a real lock wait, read from InnoDB, then it lets go.
+    const held = barrier();
+    const release = barrier();
+    const holder = louezDb.db.transaction(async (tx) => {
+      await tx
+        .select({ id: louezDb.storePartners.id })
+        .from(louezDb.storePartners)
+        .where(eq(louezDb.storePartners.id, partner.id))
+        .for("update");
+      held.open();
+      await release.wait;
+    });
+    await held.wait;
+    const pay = () =>
+      service
+        .markPartnerMonthPaid({
+          storeId: STORE,
+          userId: OWNER,
+          partnerId: partner.id,
+          month: NOVEMBER,
+          now: NOW,
+        })
+        .then(
+          (paid) => paid.totals.remaining,
+          (error: { data?: { code?: string } }) => error.data?.code,
+        );
+    const calls = [pay(), pay()];
+    try {
+      await lockWaitsOn(louezDb.db, "store_partners", { count: 2 });
+    } finally {
+      release.open();
+    }
+    await holder;
+
+    assert.deepEqual((await Promise.all(calls)).sort(), [0, "PARTNER_NOTHING_TO_PAY"].sort());
+    assert.deepEqual(
+      (await payouts()).map((row) => row.amount),
+      ["11.00"],
+    );
+    assert.deepEqual(
+      (await effects()).map((row) => row.type),
+      ["partner.payoutEmail"],
+    );
+  });
+
+  test("the same attempt sent again answers the first one, and records nothing more", async () => {
+    const partner = await campsite();
+    await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_rtry_0000001")]);
+    await credit("pl_resa_rtry_0000001", partner.code);
+    await louezDb.db.delete(louezDb.apiEffects);
+    const input = { partnerId: partner.id, month: NOVEMBER };
+    const attempt = (key: string) => session(OWNER, { "idempotency-key": key });
+
+    const first = await orpc.call(router.markMonthPaid, input, { context: attempt("pay-nov-1") });
+    const retry = attempt("pay-nov-1");
+    const again = await orpc.call(router.markMonthPaid, input, { context: retry });
+    assert.deepEqual(again, first);
+    assert.equal(retry.receipt.replayed, true);
+    assert.deepEqual([first.due, first.paid, first.remaining], [11, 11, 0]);
+    assert.equal((await payouts()).length, 1);
+    assert.equal((await effects()).length, 1);
+
+    // A new attempt finds the month settled.
+    await assert.rejects(
+      orpc.call(router.markMonthPaid, input, { context: attempt("pay-nov-2") }),
+      (error: { data?: { code?: string } }) => error.data?.code === "PARTNER_NOTHING_TO_PAY",
+    );
+    assert.equal((await payouts()).length, 1);
   });
 
   test("by hand: attribute (the partner is told), change partner (the new rule is copied), remove", async () => {

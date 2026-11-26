@@ -59,6 +59,10 @@ export const PartnerStatementCard = ({
   const queryClient = useQueryClient();
   const canManage = useStoreHasPermission("manage_settings");
   const [confirmPaid, setConfirmPaid] = useState(false);
+  // One key per attempt at marking the month paid, made when its confirmation
+  // opens: a retry of that attempt (a lost answer, a second click) sends it
+  // again and records nothing more.
+  const [paidAttempt, setPaidAttempt] = useState<string>();
   const [adjusting, setAdjusting] = useState<PartnerBooking | null>(null);
   const { totals, currency, partner } = statement;
   const money = (amount: number) => formatCurrency(amount, currency);
@@ -78,13 +82,17 @@ export const PartnerStatementCard = ({
   const refresh = () => queryClient.invalidateQueries({ queryKey: partnersQueries.key() });
 
   const markPaid = useMutation({
-    ...partnersMutations.markMonthPaid(),
+    ...partnersMutations.markMonthPaid(paidAttempt),
     onSuccess: () => {
       analytics.monthPaid(totals.bookings);
       setConfirmPaid(false);
       void refresh();
     },
-    onError,
+    onError: (error) => {
+      onError(error);
+      // Another tab or member settled the month meanwhile: show it as it is.
+      void refresh();
+    },
   });
   const cancelPayout = useMutation({
     ...partnersMutations.cancelPayout(),
@@ -183,7 +191,14 @@ export const PartnerStatementCard = ({
               {t("export")}
             </Button>
             {totals.remaining > 0 && (
-              <Button size="sm" onClick={() => setConfirmPaid(true)} disabled={!canManage}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setPaidAttempt(crypto.randomUUID());
+                  setConfirmPaid(true);
+                }}
+                disabled={!canManage}
+              >
                 <Check />
                 {t("markPaid")}
               </Button>
