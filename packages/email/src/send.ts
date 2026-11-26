@@ -102,6 +102,7 @@ export async function sendEmail({
   devPreviewUrl,
   fromName,
   replyTo,
+  redactLog,
 }: SendEmailOptions) {
   if (isUndeliverableEmailAddress(to)) {
     console.log("[email] undeliverable reserved domain: an e-mail was skipped");
@@ -138,7 +139,7 @@ export async function sendEmail({
     if (!isAllowedDevRecipient(to)) {
       const previewUrl = getDevPreviewUrl(html, devPreviewUrl);
       if (previewUrl) {
-        console.log('[DEV] Email link:', previewUrl);
+        console.log('[DEV] Email link:', redactLog ? redactLog(previewUrl) : previewUrl);
       }
       console.log('[DEV] Email skipped: recipient not in DEV_EMAIL_ALLOWLIST');
 

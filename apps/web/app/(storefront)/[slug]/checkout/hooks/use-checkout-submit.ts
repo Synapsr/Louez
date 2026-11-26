@@ -37,6 +37,7 @@ import {
 } from "@/lib/storefront/util.pending-checkout-storage";
 
 const ADVANCE_NOTICE_ERROR = "errors.advanceNoticeViolation";
+const PARTNER_PERK_UNAVAILABLE_ERROR = "errors.partnerPerkUnavailable";
 
 interface CheckoutDeliverySelection {
   outboundMethod: LegMethod;
@@ -67,6 +68,8 @@ interface UseCheckoutSubmitParams {
   promoCode?: string;
   /** A partner's code the customer typed and the store recognised. */
   partnerCode?: string;
+  /** The customer kept the partner's perk the checkout showed; the server applies it. */
+  partnerPerk: boolean;
   advisorConversationId?: string;
   blockedReason: CheckoutBlockedReason | null;
   /** Custom fields asked for the buyer's type; lines in the order of `items`. */
@@ -79,6 +82,11 @@ interface UseCheckoutSubmitParams {
   }) => void;
   /** The server refused custom field values: every issue, to mark the exact fields. */
   onCheckoutFieldIssues: (issues: CheckoutFieldIssue[]) => void;
+  /**
+   * The server refused the partner's perk, which can no longer be used: the
+   * checkout drops it, so the customer sees the total without it and books again.
+   */
+  onPartnerPerkUnavailable: () => void;
 }
 
 class SubmitError extends Error {
@@ -118,12 +126,14 @@ export const useCheckoutSubmit = ({
   tulipInsuranceMode,
   promoCode,
   partnerCode,
+  partnerPerk,
   advisorConversationId,
   blockedReason,
   checkoutFields,
   hasDetailsStep,
   onAdvanceNoticeRejected,
   onCheckoutFieldIssues,
+  onPartnerPerkUnavailable,
 }: UseCheckoutSubmitParams) => {
   const posthog = usePostHog();
   const { trackEvent } = useAnalytics();
@@ -161,6 +171,7 @@ export const useCheckoutSubmit = ({
         tulipInsuranceMode,
         promoCode,
         partnerCode,
+        partnerPerk,
         advisorConversationId,
         resumeReservationId: readPendingCheckout(storeId),
         checkoutFields,
@@ -239,6 +250,8 @@ export const useCheckoutSubmit = ({
       if (error instanceof SubmitError && error.fieldIssues.length > 0) {
         onCheckoutFieldIssues(error.fieldIssues);
       }
+
+      if (message === PARTNER_PERK_UNAVAILABLE_ERROR) onPartnerPerkUnavailable();
 
       if (message === ADVANCE_NOTICE_ERROR) {
         onAdvanceNoticeRejected({

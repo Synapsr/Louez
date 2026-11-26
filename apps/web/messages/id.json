@@ -7793,7 +7793,8 @@
         "sendEmail": "Email",
         "emailSubject": "Tautan mitra {store} Anda",
         "message": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nHalaman mitra Anda, untuk memantau penghasilan dan memilih notifikasi: {space}\n\nTerima kasih telah merekomendasikan kami!",
-        "posterRecommended": "Direkomendasikan oleh {partner}"
+        "posterRecommended": "Direkomendasikan oleh {partner}",
+        "messageWithoutSpace": "Halo,\n\nBerikut tautan mitra Anda untuk {store}: {link}\nAnda mendapatkan {rule} untuk setiap sewa yang dipesan lewat tautan ini, setelah sewanya selesai.\n\nTerima kasih telah merekomendasikan kami!"
       },
       "statement": {
         "title": "Rekap",
@@ -7885,7 +7886,8 @@
         "title": "Mitra",
         "description": "Apakah pelanggan ini datang dari mitra? Pemesanannya akan dicatat untuk mitra tersebut.",
         "none": "Tanpa mitra"
-      }
+      },
+      "readOnly": "Hanya baca: hanya pemilik dan administrator yang mengelola mitra dan pembayarannya."
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "Masukkan kode Anda",
         "apply": "Terapkan",
         "discount": "Diskon ({code})",
-        "remove": "Hapus kode promo"
+        "remove": "Hapus kode promo",
+        "partnerPerk": "Keuntungan mitra",
+        "removePartnerPerk": "Hapus keuntungan mitra"
       },
       "lineNeedsUpdate": "Beberapa jalur tidak lagi tersedia. Perbarui keranjang Anda sebelum mengirimkan.",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "Terapkan",
         "notFound": "Kode ini tidak cocok dengan mitra mana pun.",
         "credited": "Direkomendasikan oleh {partner}",
-        "remove": "Hapus mitra"
+        "remove": "Hapus mitra",
+        "rateLimited": "Terlalu banyak percobaan: coba lagi dalam beberapa menit. Anda bisa langsung memesan."
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "Tidak ada lagi yang harus dibayar kepada mitra ini untuk bulan ini.",
     "partnerReservationNotAttributed": "Pemesanan ini tidak dicatat untuk mitra mana pun.",
     "partnerPerkNotFound": "Kode promo ini tidak ada di toko Anda.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Keuntungan mitra sudah tidak tersedia, jadi kami menghapusnya. Periksa totalnya, lalu pesan lagi."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

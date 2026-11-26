@@ -9,8 +9,9 @@ import {
   getCustomerFieldValues,
   listCustomerFieldDefinitions,
 } from "@louez/api/services/customer-fields";
+import { env as authEnv } from "@louez/auth/env";
 import { db, promoCodes, storeLocations, storePartners } from "@louez/db";
-import { findCheckoutPartner } from "@louez/api/services/partners";
+import { checkoutPerkView, findCheckoutPartner } from "@louez/api/services/partners";
 import {
   listAskedProfileFields,
   pickCustomerProfileValues,
@@ -38,7 +39,7 @@ import { getMinRentalMinutes } from "@louez/utils";
 
 import { getCustomerSession } from "../account/actions";
 import { CheckoutForm } from "./checkout-form";
-import type { CheckoutLocationOption } from "./checkout.types";
+import type { CheckoutLinkPartner, CheckoutLocationOption } from "./checkout.types";
 import { toCheckoutInitialCustomer } from "./util.checkout-customer";
 
 interface CheckoutPageProps {
@@ -176,12 +177,21 @@ const hasActivePartners = async (storeId: string): Promise<boolean> => {
   return Boolean(row);
 };
 
-/** The partner whose link brought the visitor, within the store's window (Liens partenaires). */
-const getLinkPartner = async (store: StorefrontStore) => {
-  const link = readPartnerCookie((await cookies()).get(PARTNER_COOKIE)?.value, store.slug);
+/**
+ * The partner whose link brought the visitor, within the store's window
+ * (Liens partenaires): only what the customer sees of its perk. Neither its
+ * name nor the perk's promo code reaches the page; the server applies the
+ * perk at booking.
+ */
+const getLinkPartner = async (store: StorefrontStore): Promise<CheckoutLinkPartner | null> => {
+  const link = readPartnerCookie(
+    (await cookies()).get(PARTNER_COOKIE)?.value,
+    store.slug,
+    authEnv.AUTH_SECRET,
+  );
   if (!link) return null;
   const partner = await findCheckoutPartner({ storeId: store.id, ...link });
-  return partner ? { name: partner.name, perkCode: partner.perkCode } : null;
+  return partner ? { perk: checkoutPerkView(partner.perk) } : null;
 };
 
 const CheckoutPage = async ({ params }: CheckoutPageProps) => {

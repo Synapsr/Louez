@@ -5,6 +5,7 @@ import { after, before, beforeEach, describe, mock, test } from "node:test";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 import { eq } from "drizzle-orm";
 
+import { lockWaitsOn } from "../../platform/test-lock-waits";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
 
@@ -38,6 +39,7 @@ mock.module("@louez/auth", {
 // it still owes.
 
 const OWNER = "pl_owner_user_000001";
+const MEMBER = "pl_member_user_00001";
 const STORE = "pl_store_a_000000001";
 const OTHER_STORE = "pl_store_b_000000001";
 const CUSTOMER = "pl_customer_00000001";
@@ -49,11 +51,16 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   let louezDb: typeof import("@louez/db");
   let orpc: typeof import("@orpc/server");
   let service: typeof import("../../services/partners");
+  let apiKeys: typeof import("../../services/api-keys");
   let space: typeof import("../../services/partner-space");
   let router: typeof import("./partners").dashboardPartnersRouter;
 
-  const session = () => ({
-    headers: new Headers({ [SESSION_HEADER]: OWNER, cookie: `louez_active_store=${STORE}` }),
+  const session = (user = OWNER, extraHeaders: Record<string, string> = {}) => ({
+    headers: new Headers({
+      [SESSION_HEADER]: user,
+      cookie: `louez_active_store=${STORE}`,
+      ...extraHeaders,
+    }),
     transport: "rpc" as const,
     ports: {
       planFeatures: async () => ({ apiAccess: true }),
@@ -65,7 +72,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       urls: createTestUrls(),
       afterCommit: () => {},
     },
-    receipt: {},
+    receipt: {} as { replayed?: boolean },
   });
 
   before(async () => {
@@ -73,13 +80,18 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     louezDb = await import("@louez/db");
     orpc = await import("@orpc/server");
     service = await import("../../services/partners");
+    apiKeys = await import("../../services/api-keys");
     space = await import("../../services/partner-space");
     ({ dashboardPartnersRouter: router } = await import("./partners"));
 
-    await louezDb.db.insert(louezDb.users).values([{ id: OWNER, email: "owner@partners.test" }]);
-    await louezDb.db
-      .insert(louezDb.storeMembers)
-      .values([{ storeId: STORE, userId: OWNER, role: "owner" }]);
+    await louezDb.db.insert(louezDb.users).values([
+      { id: OWNER, email: "owner@partners.test" },
+      { id: MEMBER, email: "member@partners.test" },
+    ]);
+    await louezDb.db.insert(louezDb.storeMembers).values([
+      { storeId: STORE, userId: OWNER, role: "owner" },
+      { storeId: STORE, userId: MEMBER, role: "member" },
+    ]);
   });
 
   after(async () => {
@@ -90,6 +102,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
   beforeEach(async () => {
     const { db } = louezDb;
     await db.delete(louezDb.apiEffects);
+    await db.delete(louezDb.apiRateLimits);
     await db.delete(louezDb.promoCodes);
     await db.delete(louezDb.storePartnerSettings);
     await db.delete(louezDb.partnerPayouts);
@@ -309,7 +322,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       {
         code: "camping-les-pins",
         name: "Camping Les Pins",
-        perkCode: "PINS5",
+        perk: { promoCode: "PINS5", type: "percentage", value: 5, minimumAmount: 0 },
       },
     );
 
@@ -318,10 +331,73 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       .set({ isActive: false })
       .where(eq(louezDb.promoCodes.id, "pl_promo_pins_000001"));
     assert.equal(
-      (await service.findCheckoutPartner({ storeId: STORE, code: partner.code, now: NOW }))
-        ?.perkCode,
+      (await service.findCheckoutPartner({ storeId: STORE, code: partner.code, now: NOW }))?.perk,
       null,
     );
+  });
+
+  test("the public code check: the perk as the customer sees it, never its promo code; an unknown store answers as an unknown code", async () => {
+    await promo("pl_promo_pins_000001", "PINS5");
+    const partner = await service.createPartner(STORE, {
+      name: "Camping Les Pins",
+      commission: { type: "percent", value: 10 },
+      promoCodeId: "pl_promo_pins_000001",
+    });
+    const check = (storeId: string, code: string, ip: string) =>
+      service.checkStorefrontPartnerCode({ storeId, code, ip, now: NOW });
+
+    const found = await check(STORE, partner.code.toUpperCase(), "198.51.100.1");
+    assert.deepEqual(found, {
+      status: "found",
+      partner: {
+        name: "Camping Les Pins",
+        perk: { type: "percentage", value: 5, minimumAmount: 0 },
+      },
+    });
+    assert.doesNotMatch(JSON.stringify(found), /PINS5/);
+
+    const unknownCode = await check(STORE, "les-sapins", "198.51.100.2");
+    const unknownStore = await check("pl_store_none_000001", partner.code, "198.51.100.3");
+    const notACode = await check(STORE, "?!", "198.51.100.4");
+    assert.deepEqual(unknownCode, { status: "not_found" });
+    assert.deepEqual(unknownStore, unknownCode);
+    assert.deepEqual(notACode, unknownCode);
+  });
+
+  test("the public code check is limited per IP, then per store, whatever the answer", async () => {
+    const partner = await campsite();
+    const { perIp, perStore } = service.PARTNER_CODE_CHECK_LIMITS;
+    assert.deepEqual(
+      [perIp.max, perIp.windowMs, perStore.max, perStore.windowMs],
+      [10, 15 * 60 * 1000, 120, 60 * 60 * 1000],
+    );
+    const check = (storeId: string, ip: string, code = partner.code, now = NOW) =>
+      service.checkStorefrontPartnerCode({ storeId, code, ip, now });
+
+    // One address: its tenth try answers, the eleventh is refused, a known code too.
+    for (let attempt = 1; attempt < perIp.max; attempt += 1) {
+      assert.equal((await check(STORE, "203.0.113.7", "nobody")).status, "not_found");
+    }
+    assert.equal((await check(STORE, "203.0.113.7")).status, "found");
+    const limited = await check(STORE, "203.0.113.7");
+    assert.equal(limited.status, "rate_limited");
+    assert.ok(limited.status === "rate_limited" && limited.retryAfterSeconds > 0);
+    // Another address still checks; the first one again once its window is over.
+    assert.equal((await check(STORE, "203.0.113.8")).status, "found");
+    const later = new Date(NOW.getTime() + perIp.windowMs);
+    assert.equal((await check(STORE, "203.0.113.7", partner.code, later)).status, "found");
+
+    // Many addresses on one store: its 120 tries an hour answer, then none.
+    const other = await service.createPartner(OTHER_STORE, {
+      name: "Hôtel du Port",
+      commission: { type: "percent", value: 10 },
+    });
+    for (let attempt = 0; attempt < perStore.max; attempt += 1) {
+      assert.equal((await check(OTHER_STORE, `192.0.2.${attempt}`, "nobody")).status, "not_found");
+    }
+    assert.equal((await check(OTHER_STORE, "192.0.2.200", other.code)).status, "rate_limited");
+    // The other store's customers are not touched.
+    assert.equal((await check(STORE, "192.0.2.201")).status, "found");
   });
 
   test("the statement: base without insurance or discount, due, upcoming and cancelled, by month of the rental's end", async () => {
@@ -470,6 +546,98 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     });
   });
 
+  /** A barrier: `wait` resolves once `open` is called. */
+  function barrier() {
+    let open: () => void = () => {};
+    const wait = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    return { wait, open };
+  }
+
+  const payouts = () =>
+    louezDb.db
+      .select({ amount: louezDb.partnerPayouts.amount })
+      .from(louezDb.partnerPayouts)
+      .where(eq(louezDb.partnerPayouts.storeId, STORE));
+
+  test("two payouts of one month at once: one is recorded and told, the other finds nothing to pay", async () => {
+    const partner = await campsite();
+    await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_race_0000001")]);
+    await credit("pl_resa_race_0000001", partner.code);
+    await louezDb.db.delete(louezDb.apiEffects);
+
+    // The test holds the partner's lock, so both calls reach it before either
+    // reads what is left; a real lock wait, read from InnoDB, then it lets go.
+    const held = barrier();
+    const release = barrier();
+    const holder = louezDb.db.transaction(async (tx) => {
+      await tx
+        .select({ id: louezDb.storePartners.id })
+        .from(louezDb.storePartners)
+        .where(eq(louezDb.storePartners.id, partner.id))
+        .for("update");
+      held.open();
+      await release.wait;
+    });
+    await held.wait;
+    const pay = () =>
+      service
+        .markPartnerMonthPaid({
+          storeId: STORE,
+          userId: OWNER,
+          partnerId: partner.id,
+          month: NOVEMBER,
+          now: NOW,
+        })
+        .then(
+          (paid) => paid.totals.remaining,
+          (error: { data?: { code?: string } }) => error.data?.code,
+        );
+    const calls = [pay(), pay()];
+    try {
+      await lockWaitsOn(louezDb.db, "store_partners", { count: 2 });
+    } finally {
+      release.open();
+    }
+    await holder;
+
+    assert.deepEqual((await Promise.all(calls)).sort(), [0, "PARTNER_NOTHING_TO_PAY"].sort());
+    assert.deepEqual(
+      (await payouts()).map((row) => row.amount),
+      ["11.00"],
+    );
+    assert.deepEqual(
+      (await effects()).map((row) => row.type),
+      ["partner.payoutEmail"],
+    );
+  });
+
+  test("the same attempt sent again answers the first one, and records nothing more", async () => {
+    const partner = await campsite();
+    await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_rtry_0000001")]);
+    await credit("pl_resa_rtry_0000001", partner.code);
+    await louezDb.db.delete(louezDb.apiEffects);
+    const input = { partnerId: partner.id, month: NOVEMBER };
+    const attempt = (key: string) => session(OWNER, { "idempotency-key": key });
+
+    const first = await orpc.call(router.markMonthPaid, input, { context: attempt("pay-nov-1") });
+    const retry = attempt("pay-nov-1");
+    const again = await orpc.call(router.markMonthPaid, input, { context: retry });
+    assert.deepEqual(again, first);
+    assert.equal(retry.receipt.replayed, true);
+    assert.deepEqual([first.due, first.paid, first.remaining], [11, 11, 0]);
+    assert.equal((await payouts()).length, 1);
+    assert.equal((await effects()).length, 1);
+
+    // A new attempt finds the month settled.
+    await assert.rejects(
+      orpc.call(router.markMonthPaid, input, { context: attempt("pay-nov-2") }),
+      (error: { data?: { code?: string } }) => error.data?.code === "PARTNER_NOTHING_TO_PAY",
+    );
+    assert.equal((await payouts()).length, 1);
+  });
+
   test("by hand: attribute (the partner is told), change partner (the new rule is copied), remove", async () => {
     const partner = await campsite();
     const hotel = await service.createPartner(STORE, {
@@ -543,7 +711,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
     ]);
     await credit("pl_resa_publ_0000001", partner.code);
     await credit("pl_resa_soon_0000001", partner.code);
-    const { statementToken } = await service.getPartnerStatement(STORE, partner.id, NOVEMBER, NOW);
+    const statementToken = await service.getPartnerSpaceToken(STORE, partner.id);
 
     const page = await space.getPartnerSpace(statementToken, NOVEMBER, NOW);
     assert.ok(page);
@@ -586,6 +754,53 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       }),
       false,
     );
+  });
+
+  test("the space's link: in no statement read, only from the dashboard's action, to a manager", async () => {
+    const partner = await campsite();
+    const token = await service.getPartnerSpaceToken(STORE, partner.id);
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Agent comptable",
+      permissions: {
+        reservations: "read",
+        products: "read",
+        customers: "read",
+        categories: "read",
+        payments: "read",
+        analytics: "read",
+        settings: "read",
+        online_store: "read",
+      },
+    });
+    const key = {
+      ...session(),
+      headers: new Headers({ authorization: `Bearer ${created.key}` }),
+      transport: "openapi" as const,
+    };
+    const input = { partnerId: partner.id, month: NOVEMBER };
+
+    // An API key reads the statement (as MCP, OAuth and the assistant do), never the secret.
+    const read = await orpc.call(router.getStatement, input, { context: key });
+    assert.equal(read.partner.id, partner.id);
+    assert.equal(JSON.stringify(read).includes(token), false);
+    const dashboardRead = await orpc.call(router.getStatement, input, { context: session() });
+    assert.equal(JSON.stringify(dashboardRead).includes(token), false);
+
+    // The dashboard's own action gives the owner the link…
+    assert.deepEqual(
+      await orpc.call(router.getSpaceLink, { partnerId: partner.id }, { context: session() }),
+      { url: `${new URL(createTestUrls().dashboard("/")).origin}/partner/${token}` },
+    );
+    // …never a key or the assistant, though it acts with the owner's session.
+    for (const context of [key, { ...session(), assistant: true }]) {
+      await assert.rejects(
+        orpc.call(router.getSpaceLink, { partnerId: partner.id }, { context }),
+        (error: { data?: { code?: string } }) => error.data?.code === "SESSION_ONLY",
+      );
+    }
   });
 
   test("a credited booking's e-mail reads the booking when it goes out", async () => {
@@ -667,6 +882,71 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
         .where(eq(louezDb.stores.id, STORE));
     }
   });
+
+  // Every partner write needs `manage_settings`, as the store's promo codes
+  // do, and so does the link to a partner's space: a member with only `write`
+  // is refused, the owner's same call goes through.
+  const managerOnly: {
+    write: keyof typeof router;
+    input: (fixture: { partnerId: string; payoutId: string }) => unknown;
+  }[] = [
+    {
+      write: "create",
+      input: () => ({ name: "Office de tourisme", commission: { type: "percent", value: 8 } }),
+    },
+    {
+      write: "update",
+      input: ({ partnerId }) => ({
+        partnerId,
+        name: "Camping Les Pins",
+        commission: { type: "percent", value: 12 },
+      }),
+    },
+    { write: "setArchived", input: ({ partnerId }) => ({ partnerId, archived: true }) },
+    { write: "updateSettings", input: () => ({ attributionDays: 14 }) },
+    { write: "getSpaceLink", input: ({ partnerId }) => ({ partnerId }) },
+    { write: "rotateStatementToken", input: ({ partnerId }) => ({ partnerId }) },
+    { write: "markMonthPaid", input: ({ partnerId }) => ({ partnerId, month: NOVEMBER }) },
+    { write: "cancelPayout", input: ({ payoutId }) => ({ payoutId }) },
+    {
+      write: "adjustCommission",
+      input: () => ({ reservationId: "pl_resa_rght_0000001", amount: 5, note: "Geste" }),
+    },
+    {
+      write: "setForReservation",
+      input: () => ({ reservationId: "pl_resa_rght_0000001", partnerId: null }),
+    },
+  ];
+
+  for (const { write, input } of managerOnly) {
+    test(`${write}: a member without manage_settings is refused, the owner is not`, async () => {
+      const partner = await campsite();
+      await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_rght_0000001")]);
+      await credit("pl_resa_rght_0000001", partner.code);
+      // A month left to pay, and a payout recorded earlier to cancel.
+      await louezDb.db.insert(louezDb.reservations).values([reservation("pl_resa_rgh2_0000001")]);
+      await credit("pl_resa_rgh2_0000001", partner.code);
+      const [payout] = await louezDb.db
+        .insert(louezDb.partnerPayouts)
+        .values({
+          storeId: STORE,
+          partnerId: partner.id,
+          month: NOVEMBER,
+          amount: "11.00",
+          currency: "EUR",
+          userId: OWNER,
+        })
+        .$returningId();
+      const procedure = router[write] as Parameters<typeof orpc.call>[0];
+      const args = input({ partnerId: partner.id, payoutId: payout.id });
+
+      await assert.rejects(
+        orpc.call(procedure, args, { context: session(MEMBER) }),
+        (error: { data?: { code?: string } }) => error.data?.code === "PERMISSION_DENIED",
+      );
+      await orpc.call(procedure, args, { context: session() });
+    });
+  }
 
   test("procedures stay in the session's store, and give their links", async () => {
     const created = await orpc.call(

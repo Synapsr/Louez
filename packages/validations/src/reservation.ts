@@ -167,6 +167,12 @@ export const createReservationInputSchema = z.object({
   promoCode: optionalReservationText(50),
   /** A partner's code the customer typed (Liens partenaires): the booking is credited to it. */
   partnerCode: optionalReservationText(40),
+  /**
+   * The customer kept the perk the checkout showed for the partner it credits
+   * (Liens partenaires): the server applies that perk's promo code, which the
+   * storefront never sees, in place of `promoCode`.
+   */
+  partnerPerk: z.boolean().optional(),
   advisorConversationId: z.string().regex(RESERVATION_ID_REGEX).optional(),
   /**
    * Pending online reservation of a previous attempt by the same customer.

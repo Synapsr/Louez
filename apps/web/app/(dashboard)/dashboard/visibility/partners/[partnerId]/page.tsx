@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
 import { PartnerDetail } from "@/components/dashboard/partners/partner-detail";
-import { env } from "@/env";
 import { serverApi } from "@/lib/api/server-api";
 import { getCurrentStore } from "@/lib/store-context";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -25,7 +24,6 @@ export default async function PartnerPage({ params }: { params: Promise<{ partne
       storeId={store.id}
       storeName={store.name}
       storeUrl={getStorefrontUrl(store.slug, "/")}
-      appUrl={env.NEXT_PUBLIC_APP_URL}
       initialStatement={statement}
       accentColor={store.theme?.primaryColor ?? null}
       logoUrl={store.logoUrl}

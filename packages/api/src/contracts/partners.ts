@@ -191,8 +191,6 @@ export const getPartnerStatementInput = z.object({
 export const getPartnerStatementOutput = partnerStatementSchema.extend({
   /** The months the picker offers, most recent first (`PARTNER_STATEMENT_MONTHS`). */
   months: z.array(partnerMonthSchema),
-  /** The secret of the partner's own space (`/partner/<token>`). */
-  statementToken: z.string(),
   /** The partner's page of the dashboard. */
   links: resourceLinksSchema,
 });
@@ -221,7 +219,12 @@ export const updatePartnerSettingsInput = z.object({
 export const rotatePartnerStatementTokenInput = z.object({
   partnerId: z.string().min(1).max(21),
 });
-export const rotatePartnerStatementTokenOutput = z.object({ statementToken: z.string() });
+
+export const getPartnerSpaceLinkInput = z.object({
+  partnerId: z.string().min(1).max(21),
+});
+/** The partner's own space (`/partner/<secret>`): whoever holds it reads the space and sets its e-mails. */
+export const partnerSpaceLinkOutput = z.object({ url: z.string() });
 
 export const markPartnerMonthPaidInput = z.object({
   partnerId: z.string().min(1).max(21),
@@ -276,6 +279,26 @@ export const partnerNotificationsSchema = z.object({
   statements: z.boolean(),
 });
 export type PartnerNotifications = z.infer<typeof partnerNotificationsSchema>;
+
+// --- Storefront ---------------------------------------------------------------
+
+/**
+ * What a customer sees of a partner's perk at checkout: the discount, never
+ * the promo code behind it, which the server applies at booking.
+ */
+export interface PartnerPerkView {
+  type: "percentage" | "fixed";
+  value: number;
+  /** The rental subtotal the discount needs; 0 for none. */
+  minimumAmount: number;
+}
+
+/** A partner's code checked at checkout, as the storefront may see the answer. */
+export type PartnerCodeCheck =
+  | { status: "found"; partner: { name: string; perk: PartnerPerkView | null } }
+  /** The same for an unknown store and an unknown code. */
+  | { status: "not_found" }
+  | { status: "rate_limited"; retryAfterSeconds: number };
 
 export const partnerErrors = {
   notFound: () =>

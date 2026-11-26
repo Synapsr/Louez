@@ -7793,7 +7793,8 @@
         "sendEmail": "邮件",
         "emailSubject": "您在 {store} 的合作伙伴链接",
         "message": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n您的合作伙伴专区，可查看收益并选择通知：{space}\n\n感谢您的推荐！",
-        "posterRecommended": "由 {partner} 推荐"
+        "posterRecommended": "由 {partner} 推荐",
+        "messageWithoutSpace": "您好：\n\n这是您在 {store} 的合作伙伴链接：{link}\n通过此链接预订的每笔租赁，在租赁结束后，您都可获得 {rule}。\n\n感谢您的推荐！"
       },
       "statement": {
         "title": "对账单",
@@ -7885,7 +7886,8 @@
         "title": "合作伙伴",
         "description": "这位客户是合作伙伴介绍来的吗？预订将计入该合作伙伴。",
         "none": "无合作伙伴"
-      }
+      },
+      "readOnly": "只读：只有所有者和管理员才能管理合作伙伴及其付款。"
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "输入您的代码",
         "apply": "申请",
         "discount": "折扣 ({code})",
-        "remove": "删除促销代码"
+        "remove": "删除促销代码",
+        "partnerPerk": "合作伙伴优惠",
+        "removePartnerPerk": "删除合作伙伴优惠"
       },
       "lineNeedsUpdate": "有些线路不再可用。提交前更新您的购物车。",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "使用",
         "notFound": "此代码不对应任何合作伙伴。",
         "credited": "由 {partner} 推荐",
-        "remove": "移除合作伙伴"
+        "remove": "移除合作伙伴",
+        "rateLimited": "尝试次数过多：请几分钟后再试。您可以立即预订。"
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "本月已无需再向该合作伙伴付款。",
     "partnerReservationNotAttributed": "该预订未计入任何合作伙伴。",
     "partnerPerkNotFound": "您的店铺中不存在此促销代码。",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "合作伙伴优惠已不可用，我们已将其移除。请核对总额后重新预订。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

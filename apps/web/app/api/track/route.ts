@@ -7,6 +7,7 @@ import { getClientIp } from '@/lib/request'
 import { visitSourceSchema } from '@louez/api/contracts/visibility'
 import { aiAssistantSchema } from '@louez/api/contracts/ai-visibility'
 import { findActivePartnerByCode } from '@louez/api/services/partners'
+import { env as authEnv } from '@louez/auth/env'
 import { PARTNER_COOKIE, readPartnerCookie } from '@/lib/partners/partner-cookie'
 
 // Validation schemas
@@ -166,7 +167,11 @@ async function getPartnerId(
   storeId: string,
   storeSlug: string
 ): Promise<string | null> {
-  const code = readPartnerCookie(request.cookies.get(PARTNER_COOKIE)?.value, storeSlug)?.code
+  const code = readPartnerCookie(
+    request.cookies.get(PARTNER_COOKIE)?.value,
+    storeSlug,
+    authEnv.AUTH_SECRET
+  )?.code
   if (!code) return null
   const key = `${storeId}.${code}`
   const cached = partnerIdCache.get(key)

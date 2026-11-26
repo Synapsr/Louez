@@ -15,6 +15,12 @@ export const partnersQueries = {
       ...orpc.dashboard.partners.getStatement.queryOptions({ input: { partnerId, month } }),
       staleTime: 30_000,
     }),
+  /** The link to a partner's space, for a person who manages partners (`manage_settings`). */
+  spaceLink: (partnerId: string) =>
+    queryOptions({
+      ...orpc.dashboard.partners.getSpaceLink.queryOptions({ input: { partnerId } }),
+      staleTime: 30_000,
+    }),
   /** The partner a reservation is attributed to, and the ones it can be. */
   forReservation: (reservationId: string) =>
     queryOptions({
@@ -31,7 +37,9 @@ export const partnersMutations = {
   setArchived: () => orpc.dashboard.partners.setArchived.mutationOptions(),
   updateSettings: () => orpc.dashboard.partners.updateSettings.mutationOptions(),
   rotateStatementToken: () => orpc.dashboard.partners.rotateStatementToken.mutationOptions(),
-  markMonthPaid: () => orpc.dashboard.partners.markMonthPaid.mutationOptions(),
+  /** With the attempt's idempotency key: a retry of the same attempt records nothing more. */
+  markMonthPaid: (idempotencyKey: string | undefined) =>
+    orpc.dashboard.partners.markMonthPaid.mutationOptions({ context: { idempotencyKey } }),
   cancelPayout: () => orpc.dashboard.partners.cancelPayout.mutationOptions(),
   adjustCommission: () => orpc.dashboard.partners.adjustCommission.mutationOptions(),
   setForReservation: () => orpc.dashboard.partners.setForReservation.mutationOptions(),

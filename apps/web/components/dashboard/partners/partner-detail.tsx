@@ -29,14 +29,15 @@ import {
   toastManager,
 } from "@louez/ui";
 
+import { useStoreHasPermission } from "@/contexts/store-context";
 import { apiErrorKey } from "@/lib/orpc/errors";
-import { partnerSpaceUrl } from "@/lib/partners/partner-space-path";
 import { partnerLinkUrl } from "@/lib/partners/util.partner-link";
 import { partnersMutations, partnersQueries } from "@/lib/queries/partners.queries";
 
 import { PartnerFormDialog } from "./partner-form-dialog";
 import { PartnerLinkCard } from "./partner-link-card";
 import { PartnerStatementCard } from "./partner-statement-card";
+import { PartnersReadOnlyNotice } from "./partners-read-only-notice";
 import { usePartnersAnalytics } from "./use-partners-analytics";
 import { formatPartnerRule } from "./util.partner-rule";
 
@@ -44,7 +45,6 @@ interface PartnerDetailProps {
   storeId: string;
   storeName: string;
   storeUrl: string;
-  appUrl: string;
   /** The store's colour and logo, for the partner's poster. */
   accentColor: string | null;
   logoUrl: string | null;
@@ -59,7 +59,6 @@ export const PartnerDetail = ({
   storeId,
   storeName,
   storeUrl,
-  appUrl,
   initialStatement,
   accentColor,
   logoUrl,
@@ -68,6 +67,7 @@ export const PartnerDetail = ({
   const tErrors = useTranslations("errors");
   const queryClient = useQueryClient();
   const analytics = usePartnersAnalytics(storeId);
+  const canManage = useStoreHasPermission("manage_settings");
   const partnerId = initialStatement.partner.id;
   const [month, setMonth] = useState(initialStatement.month);
   const [editing, setEditing] = useState(false);
@@ -111,11 +111,16 @@ export const PartnerDetail = ({
     onError,
   });
 
+  // The space's link opens it without an account and sets the partner's
+  // e-mails: only a person who manages partners gets it.
+  const { data: space } = useQuery({ ...partnersQueries.spaceLink(partnerId), enabled: canManage });
+  const spaceUrl = space?.url ?? null;
+
   const link = partnerLinkUrl(storeUrl, partner.code);
-  const spaceUrl = partnerSpaceUrl(appUrl, view.statementToken);
   const rule = formatPartnerRule(partner.commission, currency, t);
 
   const copySpaceLink = async () => {
+    if (!spaceUrl) return;
     try {
       await navigator.clipboard.writeText(spaceUrl);
       analytics.linkShared("space_link");
@@ -155,20 +160,21 @@ export const PartnerDetail = ({
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEditing(true)}>
+              <DropdownMenuItem onClick={() => setEditing(true)} disabled={!canManage}>
                 <Pencil className="size-4" />
                 {t("menu.edit")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void copySpaceLink()}>
+              <DropdownMenuItem onClick={() => void copySpaceLink()} disabled={!spaceUrl}>
                 <Link2 className="size-4" />
                 {t("menu.copySpace")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rotate.mutate({ partnerId })}>
+              <DropdownMenuItem onClick={() => rotate.mutate({ partnerId })} disabled={!canManage}>
                 <RefreshCw className="size-4" />
                 {t("menu.rotateSpace")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setArchived.mutate({ partnerId, archived: !partner.archived })}
+                disabled={!canManage}
               >
                 {partner.archived ? (
                   <ArchiveRestore className="size-4" />
@@ -180,6 +186,11 @@ export const PartnerDetail = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        {!canManage && (
+          <div className="mt-3">
+            <PartnersReadOnlyNotice />
+          </div>
+        )}
       </div>
 
       {partner.archived && (
@@ -193,7 +204,11 @@ export const PartnerDetail = ({
           partner={partner}
           storeName={storeName}
           link={link}
-          message={t("link.message", { store: storeName, link, rule, space: spaceUrl })}
+          message={
+            spaceUrl
+              ? t("link.message", { store: storeName, link, rule, space: spaceUrl })
+              : t("link.messageWithoutSpace", { store: storeName, link, rule })
+          }
           onShared={analytics.linkShared}
           accentColor={accentColor}
           logoUrl={logoUrl}

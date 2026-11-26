@@ -1,6 +1,5 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
 import { HANDOFF_ROUTE_HEADER, isHandoffPath } from "@/lib/handoffs/handoff-privacy";
-import { isPartnerSpacePath } from "@/lib/partners/partner-space-path";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing-demos/policy";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -18,7 +17,7 @@ import {
   PARTNER_LINK_PARAM,
   encodePartnerCookie,
 } from "@/lib/partners/partner-cookie";
-import { parsePartnerCode } from "@louez/api/contracts/partner-code";
+import { isPartnerSpacePath, parsePartnerCode } from "@louez/api/contracts/partner-code";
 import {
   buildDemoSecurityHeaders,
   buildEmbedSecurityHeaders,
@@ -234,10 +233,13 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
 
   // A partner's link (Liens partenaires): last click wins, for the longest
   // window a store may choose; the checkout checks the store's own window and
-  // whether the code names one of its partners.
+  // whether the code names one of its partners. Signed with the server's
+  // secret, read at runtime like the rest of this file's configuration.
   const partnerCode = parsePartnerCode(request.nextUrl.searchParams.get(PARTNER_LINK_PARAM));
-  if (partnerCode) {
-    response.cookies.set(PARTNER_COOKIE, encodePartnerCookie(slug, partnerCode, new Date()), {
+  const partnerSecret = readRuntimeEnv("AUTH_SECRET");
+  if (partnerCode && partnerSecret) {
+    const value = encodePartnerCookie(slug, partnerCode, new Date(), partnerSecret);
+    response.cookies.set(PARTNER_COOKIE, value, {
       maxAge: PARTNER_COOKIE_MAX_AGE,
       path: "/",
       sameSite: "lax",

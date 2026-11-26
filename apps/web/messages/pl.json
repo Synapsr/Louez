@@ -7793,7 +7793,8 @@
         "sendEmail": "E-mail",
         "emailSubject": "Państwa link partnerski do {store}",
         "message": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nPaństwa strefa partnera, w której można śledzić zarobki i wybrać powiadomienia: {space}\n\nDziękujemy za polecanie nas!",
-        "posterRecommended": "Polecane przez {partner}"
+        "posterRecommended": "Polecane przez {partner}",
+        "messageWithoutSpace": "Dzień dobry,\n\noto Państwa link partnerski do {store}: {link}\nOtrzymują Państwo {rule} za każdy wynajem zarezerwowany przez ten link, po zakończeniu wynajmu.\n\nDziękujemy za polecanie nas!"
       },
       "statement": {
         "title": "Zestawienie",
@@ -7885,7 +7886,8 @@
         "title": "Partner",
         "description": "Czy tego klienta przysłał partner? Rezerwacja zostanie mu przypisana.",
         "none": "Bez partnera"
-      }
+      },
+      "readOnly": "Tylko do odczytu: partnerami i ich wypłatami zarządzają tylko właściciel i administratorzy."
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "Wprowadź swój kod",
         "apply": "Zastosuj",
         "discount": "Zniżka ({code})",
-        "remove": "Usuń kod promocyjny"
+        "remove": "Usuń kod promocyjny",
+        "partnerPerk": "Korzyść partnera",
+        "removePartnerPerk": "Usuń korzyść partnera"
       },
       "lineNeedsUpdate": "Niektóre linie nie są już dostępne. Zaktualizuj koszyk przed wysłaniem.",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "Zastosuj",
         "notFound": "Ten kod nie pasuje do żadnego partnera.",
         "credited": "Polecane przez: {partner}",
-        "remove": "Usuń partnera"
+        "remove": "Usuń partnera",
+        "rateLimited": "Zbyt wiele prób: spróbuj ponownie za kilka minut. Możesz zarezerwować od razu."
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "Za ten miesiąc nie ma już nic do zapłaty temu partnerowi.",
     "partnerReservationNotAttributed": "Ta rezerwacja nie jest przypisana do żadnego partnera.",
     "partnerPerkNotFound": "Ten kod promocyjny nie istnieje w twoim sklepie.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Korzyść partnera nie jest już dostępna, więc ją usunęliśmy. Sprawdź sumę i zarezerwuj ponownie."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

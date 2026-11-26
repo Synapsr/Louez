@@ -16,7 +16,10 @@ import {
   SelectValue,
 } from "@louez/ui";
 
+import { useStoreHasPermission } from "@/contexts/store-context";
 import { partnersQueries } from "@/lib/queries/partners.queries";
+
+import { PartnersReadOnlyNotice } from "./partners-read-only-notice";
 
 const NO_PARTNER = "none";
 
@@ -35,6 +38,7 @@ export const NewReservationPartnerCard = ({
   onChange,
 }: NewReservationPartnerCardProps) => {
   const t = useTranslations("dashboard.partners.newReservation");
+  const canManage = useStoreHasPermission("manage_settings");
   const { data } = useQuery(partnersQueries.list());
   const options = (data?.partners ?? []).filter((partner) => !partner.archived);
   if (options.length === 0) return null;
@@ -50,13 +54,13 @@ export const NewReservationPartnerCard = ({
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         <Select
           items={items}
           value={partnerId ?? NO_PARTNER}
           onValueChange={(value) => onChange(!value || value === NO_PARTNER ? null : value)}
         >
-          <SelectTrigger className="w-full sm:w-72">
+          <SelectTrigger className="w-full sm:w-72" disabled={!canManage}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -68,6 +72,7 @@ export const NewReservationPartnerCard = ({
             ))}
           </SelectContent>
         </Select>
+        {!canManage && <PartnersReadOnlyNotice />}
       </CardContent>
     </Card>
   );

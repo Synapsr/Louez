@@ -214,7 +214,8 @@ export const CheckoutConfirmStep = withForm({
             </form.Field>
           )}
 
-          {hasActivePromoCodes && (
+          {/* A partner's perk shows, and can be removed, whatever the store's codes. */}
+          {(hasActivePromoCodes || promo.promo) && (
             <CheckoutPromoCode
               promo={promo.promo}
               discountAmount={promo.discountAmount}

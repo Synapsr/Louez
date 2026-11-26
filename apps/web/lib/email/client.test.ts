@@ -8,7 +8,8 @@ import { after, afterEach, before, describe, test } from "node:test";
 
 // An outbox sender that timed out while its email was being prepared must not
 // start SMTP: the transport cannot be aborted, and the row may already be a
-// retry's.
+// retry's. The transport prints an e-mail's link in development through the
+// logger's own redaction.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-email-client-"));
 const transportPath = join(directory, "email.cjs");
@@ -19,6 +20,7 @@ writeFileSync(
     "  isEmailConfigured: () => true,",
     "  sendEmail: async (options) => {",
     "    globalThis.__louezSentEmails.push(options.subject);",
+    "    globalThis.__louezSentRedactLog = options.redactLog;",
     "    return { messageId: 'id' };",
     "  },",
     "};",
@@ -79,5 +81,16 @@ describe("app email client inside an outbox sender", () => {
   test("outside a sender, the email goes as before", async () => {
     await client.sendEmail(options);
     assert.deepEqual(sent, ["Accepted"]);
+  });
+
+  test("the transport gets the logger's redaction for the link it prints", async () => {
+    await client.sendEmail(options);
+    const redactLog: unknown = Reflect.get(globalThis, "__louezSentRedactLog");
+    assert.equal(typeof redactLog, "function");
+    const token = `p${"x".repeat(42)}`;
+    assert.equal(
+      (redactLog as (text: string) => string)(`https://app.louez.test/partner/${token}`),
+      "https://app.louez.test/partner/[redacted]",
+    );
   });
 });

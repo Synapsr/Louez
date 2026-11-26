@@ -7793,7 +7793,8 @@
         "sendEmail": "E-Mail",
         "emailSubject": "Ihr Partnerlink für {store}",
         "message": "Guten Tag,\n\nhier ist Ihr Partnerlink für {store}: {link}\nSie erhalten {rule} für jede über diesen Link gebuchte Miete, sobald die Miete beendet ist.\n\nIhr Partnerbereich, um Ihre Einnahmen zu verfolgen und Ihre Benachrichtigungen zu wählen: {space}\n\nVielen Dank für Ihre Empfehlung!",
-        "posterRecommended": "Empfohlen von {partner}"
+        "posterRecommended": "Empfohlen von {partner}",
+        "messageWithoutSpace": "Guten Tag,\n\nhier ist Ihr Partnerlink für {store}: {link}\nSie erhalten {rule} für jede über diesen Link gebuchte Miete, sobald die Miete beendet ist.\n\nVielen Dank für Ihre Empfehlung!"
       },
       "statement": {
         "title": "Abrechnung",
@@ -7885,7 +7886,8 @@
         "title": "Partner",
         "description": "Kommt dieser Kunde über einen Partner? Die Buchung wird ihm gutgeschrieben.",
         "none": "Kein Partner"
-      }
+      },
+      "readOnly": "Nur Lesezugriff: Nur der Inhaber und Administratoren verwalten Partner und ihre Zahlungen."
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "Code eingeben",
         "apply": "Anwenden",
         "discount": "Rabatt ({code})",
-        "remove": "Gutscheincode entfernen"
+        "remove": "Gutscheincode entfernen",
+        "partnerPerk": "Partnervorteil",
+        "removePartnerPerk": "Partnervorteil entfernen"
       },
       "lineNeedsUpdate": "Einige Zeilen sind nicht mehr verfügbar. Aktualisieren Sie Ihren Warenkorb vor dem Absenden.",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "Anwenden",
         "notFound": "Dieser Code gehört zu keinem Partner.",
         "credited": "Empfohlen von {partner}",
-        "remove": "Partner entfernen"
+        "remove": "Partner entfernen",
+        "rateLimited": "Zu viele Versuche: Versuchen Sie es in ein paar Minuten erneut. Sie können sofort buchen."
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "An diesen Partner ist für diesen Monat nichts mehr zu zahlen.",
     "partnerReservationNotAttributed": "Diese Buchung ist keinem Partner gutgeschrieben.",
     "partnerPerkNotFound": "Dieser Aktionscode existiert in Ihrem Shop nicht.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Der Partnervorteil ist nicht mehr verfügbar, wir haben ihn entfernt. Prüfen Sie den Gesamtbetrag und buchen Sie erneut."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

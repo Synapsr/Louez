@@ -25,6 +25,8 @@ const STATE_BADGE = {
 interface PartnerBookingRowProps {
   booking: PartnerBooking;
   currency: string;
+  /** The member may change partners (`manage_settings`); else its actions are disabled. */
+  canManage: boolean;
   onAdjust: () => void;
   onRemove: () => void;
 }
@@ -33,6 +35,7 @@ interface PartnerBookingRowProps {
 export const PartnerBookingRow = ({
   booking,
   currency,
+  canManage,
   onAdjust,
   onRemove,
 }: PartnerBookingRowProps) => {
@@ -86,11 +89,11 @@ export const PartnerBookingRow = ({
           <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onAdjust}>
+          <DropdownMenuItem onClick={onAdjust} disabled={!canManage}>
             <Pencil className="size-4" />
             {t("adjust")}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onRemove}>
+          <DropdownMenuItem onClick={onRemove} disabled={!canManage}>
             <Unlink className="size-4" />
             {t("remove")}
           </DropdownMenuItem>

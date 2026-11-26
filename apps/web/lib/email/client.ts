@@ -5,6 +5,7 @@ import {
 import type { SendEmailOptions } from '@louez/email';
 
 import { throwIfEffectAborted } from '@/lib/api/effect-signal';
+import { redactLogText } from '@/lib/evlog';
 import { markTestReservationEmail } from '@/lib/test-reservations/email-mark';
 
 /**
@@ -39,8 +40,10 @@ export const sendEmail = async (options: SendEmailOptions) => {
   // An outbox sender may have timed out while the email was prepared (logo,
   // rendering); SMTP cannot be aborted once started, so check last.
   throwIfEffectAborted();
-  // A test reservation's e-mail says so in its subject and body (lib/test-reservations).
-  return transportSendEmail(markTestReservationEmail(options));
+  // A test reservation's e-mail says so in its subject and body
+  // (lib/test-reservations). In development, the link the transport prints
+  // goes through the logger's redaction (a partner space's secret).
+  return transportSendEmail({ ...markTestReservationEmail(options), redactLog: redactLogText });
 };
 
 export type { EmailAttachment, SendEmailOptions } from '@louez/email';

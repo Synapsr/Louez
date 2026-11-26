@@ -3,7 +3,7 @@ import { createFsDrain } from 'evlog/fs';
 import { createEvlog } from 'evlog/next';
 import { createInstrumentation } from 'evlog/next/instrumentation';
 
-import { HANDOFF_SECRET_PATTERNS, REDACTED } from '@louez/api/platform/redact';
+import { LOG_SECRET_PATTERNS, REDACTED } from '@louez/api/platform/redact';
 
 const drain = createFsDrain({
   dir: '.evlog/logs',
@@ -21,15 +21,25 @@ const evlogOptions = {
 };
 
 /**
- * Applied to every event before it is printed or drained: a handoff's
- * secrets (packages/api platform/redact.ts), and in production evlog's own
- * personal-data maskers, as without this option.
+ * Applied to every event before it is printed or drained: the secrets of a
+ * handoff's URLs and of a partner's space (packages/api platform/redact.ts),
+ * and in production evlog's own personal-data maskers, as without this option.
  */
 export const evlogRedact: RedactConfig = {
-  patterns: [...HANDOFF_SECRET_PATTERNS],
+  patterns: [...LOG_SECRET_PATTERNS],
   replacement: REDACTED,
   ...(process.env.NODE_ENV === 'production' ? {} : { builtins: false }),
 };
+
+/**
+ * `text` with the secrets `evlogRedact` replaces in every event, for a line
+ * printed outside the logger: the e-mail transport's development log.
+ */
+export const redactLogText = (text: string): string =>
+  LOG_SECRET_PATTERNS.reduce((result, pattern) => {
+    pattern.lastIndex = 0;
+    return result.replace(pattern, REDACTED);
+  }, text);
 
 export const { withEvlog, useLogger, log, createError, createEvlogError } =
   createEvlog(evlogOptions);

@@ -7793,7 +7793,8 @@
         "sendEmail": "Email",
         "emailSubject": "Il Suo link partner di {store}",
         "message": "Buongiorno,\n\necco il Suo link partner per {store}: {link}\nRiceve {rule} su ogni noleggio prenotato tramite questo link, una volta concluso il noleggio.\n\nLa Sua area partner, per seguire i Suoi guadagni e scegliere le notifiche: {space}\n\nGrazie per averci consigliato!",
-        "posterRecommended": "Consigliato da {partner}"
+        "posterRecommended": "Consigliato da {partner}",
+        "messageWithoutSpace": "Buongiorno,\n\necco il Suo link partner per {store}: {link}\nRiceve {rule} su ogni noleggio prenotato tramite questo link, una volta concluso il noleggio.\n\nGrazie per averci consigliato!"
       },
       "statement": {
         "title": "Estratto",
@@ -7885,7 +7886,8 @@
         "title": "Partner",
         "description": "Questo cliente arriva da un partner? La prenotazione gli verrà attribuita.",
         "none": "Nessun partner"
-      }
+      },
+      "readOnly": "Sola lettura: solo il proprietario e gli amministratori gestiscono i partner e i loro pagamenti."
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "Inserisci il tuo codice",
         "apply": "Applica",
         "discount": "Sconto ({code})",
-        "remove": "Rimuovi il codice promozionale"
+        "remove": "Rimuovi il codice promozionale",
+        "partnerPerk": "Vantaggio partner",
+        "removePartnerPerk": "Rimuovi il vantaggio partner"
       },
       "lineNeedsUpdate": "Alcune righe non sono più disponibili. Aggiorni il carrello prima di inviare.",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "Applica",
         "notFound": "Questo codice non corrisponde a nessun partner.",
         "credited": "Consigliato da {partner}",
-        "remove": "Rimuovi il partner"
+        "remove": "Rimuovi il partner",
+        "rateLimited": "Troppi tentativi: riprova tra qualche minuto. Puoi prenotare subito."
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "Non resta nulla da pagare a questo partner per questo mese.",
     "partnerReservationNotAttributed": "Questa prenotazione non è attribuita a nessun partner.",
     "partnerPerkNotFound": "Questo codice promozionale non esiste nel tuo negozio.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Il vantaggio partner non è più disponibile: lo abbiamo rimosso. Controlla il totale, poi prenota di nuovo."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

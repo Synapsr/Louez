@@ -13,10 +13,12 @@ import { Badge, Button, Card, CardPanel } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
 
 import { DashboardEmptyState } from "@/components/dashboard/shared/dashboard-empty-state";
+import { useStoreHasPermission } from "@/contexts/store-context";
 import { partnersQueries } from "@/lib/queries/partners.queries";
 
 import { PartnerFormDialog } from "./partner-form-dialog";
 import { PartnerSettingsDialog } from "./partner-settings-dialog";
+import { PartnersReadOnlyNotice } from "./partners-read-only-notice";
 import { usePartnersAnalytics } from "./use-partners-analytics";
 import { formatPartnerRule } from "./util.partner-rule";
 
@@ -33,6 +35,7 @@ export const PartnersOverview = ({ storeId, initialList }: PartnersOverviewProps
   const t = useTranslations("dashboard.partners");
   const format = useFormatter();
   const analytics = usePartnersAnalytics(storeId);
+  const canManage = useStoreHasPermission("manage_settings");
   const { data: list } = useQuery({ ...partnersQueries.list(), initialData: initialList });
   const [adding, setAdding] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -62,12 +65,14 @@ export const PartnersOverview = ({ storeId, initialList }: PartnersOverviewProps
           <p className="text-muted-foreground mt-1">{t("description")}</p>
         </div>
         {list.partners.length > 0 && (
-          <Button onClick={() => setAdding(true)}>
+          <Button onClick={() => setAdding(true)} disabled={!canManage}>
             <Plus />
             {t("add")}
           </Button>
         )}
       </div>
+
+      {!canManage && <PartnersReadOnlyNotice />}
 
       {list.partners.length === 0 ? (
         <Card className="items-center pb-8">
@@ -81,7 +86,7 @@ export const PartnersOverview = ({ storeId, initialList }: PartnersOverviewProps
             <li>{t("empty.steps.share")}</li>
             <li>{t("empty.steps.pay")}</li>
           </ol>
-          <Button className="mt-2" onClick={() => setAdding(true)}>
+          <Button className="mt-2" onClick={() => setAdding(true)} disabled={!canManage}>
             <Plus />
             {t("add")}
           </Button>
@@ -142,8 +147,9 @@ export const PartnersOverview = ({ storeId, initialList }: PartnersOverviewProps
           {t("window", { count: list.settings.attributionDays })}{" "}
           <button
             type="button"
-            className="text-foreground underline underline-offset-4"
+            className="text-foreground underline underline-offset-4 disabled:no-underline disabled:opacity-60"
             onClick={() => setSettingsOpen(true)}
+            disabled={!canManage}
           >
             {t("changeWindow")}
           </button>

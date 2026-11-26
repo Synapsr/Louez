@@ -8,7 +8,9 @@ import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import type { CartItem } from "@/contexts/cart-context";
 import { checkoutMutations } from "@/lib/queries/checkout.queries";
 
-import type { ValidatedPromo } from "../checkout.types";
+import type { PartnerPerkView } from "@louez/api/contracts/partners";
+
+import type { CheckoutPromo } from "../checkout.types";
 
 interface UseCheckoutPromoParams {
   items: CartItem[];
@@ -23,16 +25,19 @@ export interface PromoValidationError {
 }
 
 /**
- * Promo code state for the checkout. The server reprices the cart and caps
- * the discount; the client only re-derives the amount from the promo type
- * when the subtotal moves, and drops a promo whose minimum is no longer met.
+ * Promo state for the checkout: a code the customer typed, or the perk of the
+ * partner the booking credits. The server reprices the cart and caps the
+ * discount; the client only re-derives the amount from the promo type when
+ * the subtotal moves, and drops a promo whose minimum is no longer met. A
+ * perk is never validated here: its promo code stays on the server, which
+ * applies it at booking.
  */
 export const useCheckoutPromo = ({ items, subtotal }: UseCheckoutPromoParams) => {
   const discountableSubtotal = items.reduce((sum, item) => {
     const price = calculateCartItemPrice(item, null, null);
     return sum + (price.promotion ? 0 : price.subtotal);
   }, 0);
-  const [appliedPromo, setAppliedPromo] = useState<ValidatedPromo | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<CheckoutPromo | null>(null);
   const [validationError, setValidationError] = useState<PromoValidationError | null>(null);
 
   const validateMutation = useMutation({
@@ -43,7 +48,8 @@ export const useCheckoutPromo = ({ items, subtotal }: UseCheckoutPromoParams) =>
         return;
       }
       setValidationError(null);
-      setAppliedPromo(result.promo);
+      const { code, type, value, minimumAmount } = result.promo;
+      setAppliedPromo({ source: "code", code, type, value, minimumAmount });
     },
     onError: () => {
       setValidationError({ key: "errors.promoCodeInvalid" });
@@ -68,9 +74,19 @@ export const useCheckoutPromo = ({ items, subtotal }: UseCheckoutPromoParams) =>
     [items, validateMutation],
   );
 
+  /** The partner's perk, unless the customer already applied a promo. */
+  const applyPartnerPerk = useCallback((perk: PartnerPerkView) => {
+    setAppliedPromo((current) => current ?? { source: "partner", ...perk });
+  }, []);
+
   const remove = useCallback(() => {
     setAppliedPromo(null);
     setValidationError(null);
+  }, []);
+
+  /** Drops the partner's perk, leaving a code the customer typed. */
+  const removePartnerPerk = useCallback(() => {
+    setAppliedPromo((current) => (current?.source === "partner" ? null : current));
   }, []);
 
   const clearError = useCallback(() => setValidationError(null), []);
@@ -98,7 +114,9 @@ export const useCheckoutPromo = ({ items, subtotal }: UseCheckoutPromoParams) =>
     promo,
     discountAmount,
     validate,
+    applyPartnerPerk,
     remove,
+    removePartnerPerk,
     clearError,
     isValidating: validateMutation.isPending,
     validationError,

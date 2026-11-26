@@ -7793,7 +7793,8 @@
         "sendEmail": "Email",
         "emailSubject": "Your {store} partner link",
         "message": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nYour partner space, to follow your earnings and choose your notifications: {space}\n\nThank you for recommending us!",
-        "posterRecommended": "Recommended by {partner}"
+        "posterRecommended": "Recommended by {partner}",
+        "messageWithoutSpace": "Hello,\n\nHere is your partner link for {store}: {link}\nYou earn {rule} on every rental booked through this link, once the rental is over.\n\nThank you for recommending us!"
       },
       "statement": {
         "title": "Statement",
@@ -7885,7 +7886,8 @@
         "title": "Partner",
         "description": "Did a partner send this customer? The booking will be credited to them.",
         "none": "No partner"
-      }
+      },
+      "readOnly": "Read-only: only the owner and administrators manage partners and their payments."
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "Enter your code",
         "apply": "Apply",
         "discount": "Discount ({code})",
-        "remove": "Remove the promo code"
+        "remove": "Remove the promo code",
+        "partnerPerk": "Partner offer",
+        "removePartnerPerk": "Remove the partner offer"
       },
       "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting.",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "Apply",
         "notFound": "This code matches no partner.",
         "credited": "Recommended by {partner}",
-        "remove": "Remove the partner"
+        "remove": "Remove the partner",
+        "rateLimited": "Too many tries: try again in a few minutes. You can book right away."
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "Nothing is left to pay this partner for this month.",
     "partnerReservationNotAttributed": "This booking is not credited to any partner.",
     "partnerPerkNotFound": "This promo code does not exist in your store.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "The partner offer is no longer available, so we removed it. Check the total, then book again."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

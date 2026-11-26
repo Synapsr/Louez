@@ -7793,7 +7793,8 @@
         "sendEmail": "E-mail",
         "emailSubject": "Uw partnerlink voor {store}",
         "message": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nUw partnerpagina, om uw verdiensten te volgen en uw meldingen te kiezen: {space}\n\nBedankt dat u ons aanbeveelt!",
-        "posterRecommended": "Aanbevolen door {partner}"
+        "posterRecommended": "Aanbevolen door {partner}",
+        "messageWithoutSpace": "Goedendag,\n\nHier is uw partnerlink voor {store}: {link}\nU ontvangt {rule} op elke huur die via deze link is geboekt, zodra de huur is afgelopen.\n\nBedankt dat u ons aanbeveelt!"
       },
       "statement": {
         "title": "Overzicht",
@@ -7885,7 +7886,8 @@
         "title": "Partner",
         "description": "Komt deze klant via een partner? De reservering wordt aan hem toegekend.",
         "none": "Geen partner"
-      }
+      },
+      "readOnly": "Alleen-lezen: alleen de eigenaar en beheerders beheren partners en hun betalingen."
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "Voer uw code in",
         "apply": "Toepassen",
         "discount": "Korting ({code})",
-        "remove": "Kortingscode verwijderen"
+        "remove": "Kortingscode verwijderen",
+        "partnerPerk": "Partnervoordeel",
+        "removePartnerPerk": "Partnervoordeel verwijderen"
       },
       "lineNeedsUpdate": "Sommige regels zijn niet meer beschikbaar. Pas uw winkelwagen aan voordat u verstuurt.",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "Toepassen",
         "notFound": "Deze code hoort bij geen enkele partner.",
         "credited": "Aanbevolen door {partner}",
-        "remove": "Partner verwijderen"
+        "remove": "Partner verwijderen",
+        "rateLimited": "Te veel pogingen: probeer het over een paar minuten opnieuw. U kunt meteen reserveren."
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "Er staat voor deze maand niets meer open voor deze partner.",
     "partnerReservationNotAttributed": "Deze reservering is aan geen enkele partner toegekend.",
     "partnerPerkNotFound": "Deze actiecode bestaat niet in je winkel.",
-    "demoStoreActionDisabled": "This action is turned off in the demo store."
+    "demoStoreActionDisabled": "This action is turned off in the demo store.",
+    "partnerPerkUnavailable": "Het partnervoordeel is niet meer beschikbaar, dus we hebben het verwijderd. Controleer het totaal en reserveer opnieuw."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

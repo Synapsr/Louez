@@ -60,7 +60,7 @@ export const CheckoutPartnerCode = ({ partner }: CheckoutPartnerCodeProps) => {
               aria-label={t("placeholder")}
               onChange={(event) => {
                 setCode(event.target.value);
-                if (partner.notFound) partner.clearNotFound();
+                if (partner.issue) partner.clearIssue();
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -82,7 +82,7 @@ export const CheckoutPartnerCode = ({ partner }: CheckoutPartnerCodeProps) => {
               {t("apply")}
             </Button>
           </div>
-          {partner.notFound && <p className="text-destructive text-xs">{t("notFound")}</p>}
+          {partner.issue && <p className="text-destructive text-xs">{t(partner.issue)}</p>}
         </div>
       </CollapsiblePanel>
     </Collapsible>

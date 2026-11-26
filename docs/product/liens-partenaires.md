@@ -113,20 +113,28 @@ réservation au moment de l'attribution).
   `louez_partner` sur le domaine de la boutique (le slug de la boutique, le code, l'heure du
   clic), sans rien demander au client : **décision de Téo du 19 novembre 2026**, en
   connaissance de la position de la CNIL (voir « Vie privée »). **Dernier lien cliqué** : un
-  autre lien partenaire le remplace ; les liens `via` de la boutique ne le touchent pas.
+  autre lien partenaire le remplace ; les liens `via` de la boutique ne le touchent pas. Le
+  cookie est signé avec le secret du serveur (`AUTH_SECRET`) : un cookie que le proxy n'a pas
+  posé, un ancien cookie non signé compris, n'attribue rien et ne donne aucun avantage.
 - **Durée** : réglable par boutique (7, 14, 30, 60 ou 90 jours ; 30 par défaut). Le cookie vit
   90 jours ; la durée de la boutique est vérifiée à la réservation.
 - **Code partenaire** au paiement : « Un partenaire vous a recommandé ? » (replié), pour le
   client recommandé de vive voix ou passé d'un appareil à l'autre. Un code tapé compte toujours,
   sans durée, et passe avant le lien. Le champ n'apparaît que si la boutique a des partenaires,
-  et pas quand le client est déjà arrivé par un lien.
+  et pas quand le client est déjà arrivé par un lien. La vérification du code est limitée : 10
+  essais par adresse IP en 15 minutes, 120 par boutique en une heure ; au-delà, le champ le
+  dit, et la réservation reste possible. Elle donne le nom du partenaire et la réduction de son
+  avantage, jamais le code promo ; une boutique inconnue répond comme un code inconnu.
 - **À la réservation** : le checkout attribue la réservation au partenaire actif de **cette**
   boutique (code tapé, sinon lien dans la durée). Un code inconnu ou archivé n'attribue rien,
   une réservation test jamais, une réservation déjà attribuée garde son partenaire. Une erreur
   d'attribution ne fait jamais échouer une réservation.
 - **L'avantage client** (facultatif) : un des codes promo de la boutique, appliqué tout seul au
-  paiement quand le client arrive par le lien ou tape le code. Il se voit comme un code promo ;
-  il ne marche que tant que le code promo est actif.
+  paiement quand le client arrive par le lien ou tape le code. Le client en voit la réduction
+  (« Avantage partenaire »), jamais le code : le serveur l'applique à la réservation, pour le
+  partenaire qu'elle crédite. Il ne marche que tant que le code promo est actif ; s'il ne peut
+  plus servir au moment de réserver, la réservation est refusée avec un message, l'avantage
+  est retiré, et le client réserve à nouveau sans lui.
 - **La visite** : `/api/track` note le partenaire sur les pages vues (`page_views.partner_id`) :
   la boutique voit si l'affiche sert, avant la première réservation.
 - **À la main** : en créant une réservation (carte « Partenaire »), ou sur la fiche d'une
@@ -166,14 +174,19 @@ boutique. Pour chaque partenaire et chaque mois (les 12 derniers) :
 - dû, payé, reste à payer, à venir, visites par son lien ;
 - **« Marquer comme payé »** : la boutique note qu'elle a réglé le reste de ce mois (montant,
   date). Si une réservation du mois change ensuite, le reste à payer montre l'écart (positif
-  ou négatif) ; un paiement noté par erreur s'annule ;
+  ou négatif) ; un paiement noté par erreur s'annule. Un mois n'est noté payé qu'une fois par
+  intention : le reste est recalculé sous un verrou du partenaire, et chaque essai porte sa clé
+  d'idempotence ;
 - **export CSV** pour la comptabilité de la boutique (cellules neutralisées contre les
   formules).
 
 ### L'espace partenaire
 
 Un **lien secret** (`/partner/<secret>`, 43 caractères aléatoires), sans compte, que la boutique
-envoie avec le lien dans un message prêt (e-mail, WhatsApp). Il ouvre l'espace du partenaire :
+envoie avec le lien dans un message prêt (e-mail, WhatsApp). Seule une personne qui gère les
+partenaires (`manage_settings`) l'obtient, dans le dashboard ; aucune lecture d'un relevé (API,
+MCP, assistant) ne le contient, et les journaux du serveur le masquent. Il ouvre l'espace du
+partenaire :
 
 - **où il en est**, d'un coup d'œil : **À recevoir** (commissions dues, pas encore payées, tous
   mois confondus), **À venir** (locations réservées, pas encore terminées), **Reçu** (ce que la
@@ -230,6 +243,12 @@ Dans « Se faire connaître », une troisième entrée **« Partenaires »**
 - **« À regarder »** (la cloche et sa page) : « Commission à payer » pour chaque mois terminé
   qui doit encore quelque chose à un partenaire, avec le lien vers sa fiche. Elle se marque
   traitée comme les autres.
+- **Droits** : ajouter, modifier, archiver un partenaire, régler la durée d'un lien, marquer un
+  mois payé ou annuler un paiement, ajuster, attribuer ou retirer une réservation, changer le
+  lien d'un espace demandent le droit de gérer les réglages (`manage_settings`, propriétaire et
+  administrateurs), comme les codes promo, tout comme le lien de l'espace d'un partenaire. Un
+  membre voit les partenaires et leurs relevés ; ces boutons sont désactivés pour lui, avec la
+  raison, et le message prêt qu'il envoie ne contient pas le lien de l'espace.
 
 ## Phases
 
@@ -241,7 +260,7 @@ ajustements, états, relevé mensuel, payé, CSV, espace partenaire avec ses not
 (e-mails par l'outbox : réservation, paiement, relevé du mois), rappel « Commission à payer »,
 lecture des partenaires et des relevés pour les assistants (`partners_list`,
 `partners_get_statement`, API `GET /partners` et `GET /partners/{id}/statement`). Les écritures
-restent dans le dashboard. 13 langues ; événements PostHog ; effacement avec la boutique.
+restent dans le dashboard, avec le droit `manage_settings`. 13 langues ; événements PostHog ; effacement avec la boutique.
 
 ### Phase 3 — Seulement si la demande est forte
 
@@ -265,12 +284,13 @@ restent dans le dashboard. 13 langues ; événements PostHog ; effacement avec l
   consentement (position examinée par le Conseil d'État le 8 avril 2022, n° 452668) : c'est un
   risque assumé, comme pour le cookie reeent `louez_channel`. Si une carte de consentement
   devient nécessaire, elle se pose devant le cookie sans toucher au reste (une première version
-  l'avait). Le cookie ne contient que le slug de la boutique, le code et l'heure du clic, sur le
-  domaine de la boutique, httpOnly, 90 jours au plus.
+  l'avait). Le cookie ne contient que le slug de la boutique, le code, l'heure du clic et leur
+  signature, sur le domaine de la boutique, httpOnly, 90 jours au plus.
 - Les coordonnées du partenaire (souvent une personne) sont des données de la boutique :
   effacées avec elle. Ses e-mails ne parlent que de ses gains, et se coupent depuis son espace.
 - Le lien de l'espace est un secret : page `noindex`, sans analytics, sans référent, comme les
-  pages de handoff ; en mode standalone, il ne passe pas par la vitrine.
+  pages de handoff ; en mode standalone, il ne passe pas par la vitrine ; les journaux du
+  serveur le masquent.
 
 ## Abus
 
@@ -280,11 +300,15 @@ restent dans le dashboard. 13 langues ; événements PostHog ; effacement avec l
 | Commission sur des clients que la boutique avait déjà      | La boutique retire ou ajuste une attribution ; la durée du lien est réglable                                        |
 | Le loueur teste le lien sur la tablette du comptoir        | Les réservations faites ensuite depuis la vitrine sur cette tablette iraient au partenaire : la boutique les retire |
 | Un partenaire réserve pour lui-même par son lien           | La boutique choisit ses partenaires ; elle retire l'attribution                                                     |
-| Deviner un code partenaire au paiement                     | Il ne donne que le nom du partenaire et son avantage, un code promo fait pour circuler                              |
+| Deviner un code partenaire au paiement                     | Vérification limitée par IP et par boutique ; nom et réduction seulement, jamais le code promo                      |
 | Commission sur une réservation annulée                     | Annulée avec elle ; une annulation après paiement apparaît en écart négatif                                         |
 | Deux partenaires pour une réservation                      | Un seul : le code tapé, sinon le dernier lien, ou le choix de la boutique                                           |
 | Lien de l'espace transmis à un tiers                       | Il ne montre rien du client ; il ne permet que de changer les e-mails du partenaire ; la boutique change le lien    |
+| Une clé API ou un assistant lit le lien de l'espace        | Aucune lecture ne le contient : seul le dashboard le donne, à qui gère les partenaires                              |
 | Faux code dans l'URL                                       | Un code inconnu de la boutique n'attribue rien                                                                      |
+| Faux cookie de lien pour tester des codes au paiement      | Le cookie est signé par le serveur : un cookie fabriqué ne donne ni avantage ni attribution                         |
+| Un membre de l'équipe crédite ou paie un partenaire        | Les écritures demandent `manage_settings`, comme les codes promo : un membre ne fait que lire                       |
+| Un mois noté payé deux fois (deux onglets, nouvel essai)   | Recalculé sous un verrou : le second trouve « rien à payer », sans e-mail ; un même essai, même réponse             |
 
 ## Auto-hébergé
 

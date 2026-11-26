@@ -5,6 +5,7 @@ import type {
   DeliverySettings,
   TaxSettings,
 } from "@louez/types";
+import type { PartnerPerkView } from "@louez/api/contracts/partners";
 import type {
   CheckoutProfileField,
   CustomerExtraLayoutItem,
@@ -234,9 +235,20 @@ export interface CheckoutSubmitError {
   step: StepId;
 }
 
-/** A partner the checkout knows (Liens partenaires): its name and its link's perk. */
+/**
+ * The partner whose link brought the visitor (Liens partenaires), as the page
+ * may know it: what the customer sees of its perk, never its promo code.
+ */
 export interface CheckoutLinkPartner {
-  name: string;
-  /** A promo code the store gives the partner's customers, applied for them; null for none. */
-  perkCode: string | null;
+  /** The discount the store gives the partner's customers, applied for them; null for none. */
+  perk: PartnerPerkView | null;
 }
+
+/**
+ * The promo the checkout applies: a code the customer typed and the server
+ * validated, or the perk of the partner it credits, whose promo code only
+ * the server knows and applies at booking.
+ */
+export type CheckoutPromo =
+  | ({ source: "code" } & Pick<ValidatedPromo, "code" | "type" | "value" | "minimumAmount">)
+  | ({ source: "partner" } & PartnerPerkView);

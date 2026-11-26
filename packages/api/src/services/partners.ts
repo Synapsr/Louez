@@ -10,27 +10,32 @@ import {
   storePartnerSettings,
   storePartners,
   stores,
+  type Transaction,
 } from "@louez/db";
 import { and, asc, eq, gt, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 
 import {
   DEFAULT_PARTNER_ATTRIBUTION_DAYS,
   PARTNER_STATEMENT_MONTHS,
+  parsePartnerCode,
   partnerAttributionDays,
   partnerCodeFromName,
   partnerErrors,
   type Partner,
   type PartnerBooking,
   type PartnerBookingOrigin,
+  type PartnerCodeCheck,
   type PartnerCommissionType,
   type PartnerFields,
   type PartnerList,
   type PartnerMonthTotals,
+  type PartnerPerkView,
   type PartnerSettings,
   type PartnerStatement,
   type ReservationPartner,
 } from "../contracts/partners";
 import { enqueueEffects } from "../platform/effects";
+import { consumeRateLimit } from "../platform/rate-limit";
 import {
   commissionBase,
   commissionState,
@@ -52,6 +57,9 @@ import { resolveTimezone } from "./sales-window";
  */
 
 type PartnerRow = typeof storePartners.$inferSelect;
+
+/** Where a read runs: the database, or the transaction of a write that reads under its lock. */
+type Executor = typeof db | Transaction;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -132,10 +140,14 @@ async function findPartner(storeId: string, partnerId: string): Promise<PartnerR
 }
 
 /** The codes of some of the store's promo codes, by id. */
-async function readPromoCodes(storeId: string, ids: readonly (string | null)[]) {
+async function readPromoCodes(
+  storeId: string,
+  ids: readonly (string | null)[],
+  executor: Executor = db,
+) {
   const wanted = [...new Set(ids.filter((id): id is string => id !== null))];
   if (wanted.length === 0) return new Map<string, string>();
-  const rows = await db
+  const rows = await executor
     .select({ id: promoCodes.id, code: promoCodes.code })
     .from(promoCodes)
     .where(and(eq(promoCodes.storeId, storeId), inArray(promoCodes.id, wanted)));
@@ -166,9 +178,10 @@ export async function readPartnerBookings(input: {
   range?: { start: Date; end: Date };
   currency: string;
   now: Date;
+  executor?: Executor;
 }): Promise<(PartnerBooking & { partnerId: string; creditedAt: Date })[]> {
   if (input.partnerIds.length === 0) return [];
-  const rows = await db
+  const rows = await (input.executor ?? db)
     .select({
       partnerId: partnerBookings.partnerId,
       reservationId: reservations.id,
@@ -235,9 +248,10 @@ export async function readPartnerPayouts(
   storeId: string,
   partnerIds: readonly string[],
   month?: string,
+  executor: Executor = db,
 ) {
   if (partnerIds.length === 0) return [];
-  const rows = await db
+  const rows = await executor
     .select({
       id: partnerPayouts.id,
       partnerId: partnerPayouts.partnerId,
@@ -262,8 +276,9 @@ export async function readPartnerVisits(
   storeId: string,
   start: Date,
   end: Date,
+  executor: Executor = db,
 ): Promise<Map<string, number>> {
-  const rows = await db
+  const rows = await executor
     .select({
       partnerId: pageViews.partnerId,
       visits: sql<number>`COUNT(DISTINCT ${pageViews.sessionId})`,
@@ -369,13 +384,21 @@ export async function partnerStatementFor(
   store: PartnerStore,
   month: string,
   now: Date,
+  executor: Executor = db,
 ): Promise<PartnerStatement> {
   const range = monthRange(month, store.timezone);
   const [bookings, payouts, visits, perks] = await Promise.all([
-    readPartnerBookings({ storeId, partnerIds: [row.id], range, currency: store.currency, now }),
-    readPartnerPayouts(storeId, [row.id], month),
-    readPartnerVisits(storeId, range.start, range.end),
-    readPromoCodes(storeId, [row.promoCodeId]),
+    readPartnerBookings({
+      storeId,
+      partnerIds: [row.id],
+      range,
+      currency: store.currency,
+      now,
+      executor,
+    }),
+    readPartnerPayouts(storeId, [row.id], month, executor),
+    readPartnerVisits(storeId, range.start, range.end, executor),
+    readPromoCodes(storeId, [row.promoCodeId], executor),
   ]);
   const paid = payouts.reduce((sum, payout) => sum + payout.amount, 0);
   return {
@@ -394,13 +417,13 @@ export async function partnerStatementFor(
   };
 }
 
-/** A partner's statement for a month (the current one by default), with its space's secret. */
+/** A partner's statement for a month (the current one by default), with the months to pick from. */
 export async function getPartnerStatement(
   storeId: string,
   partnerId: string,
   month?: string,
   now: Date = new Date(),
-): Promise<PartnerStatement & { months: string[]; statementToken: string }> {
+): Promise<PartnerStatement & { months: string[] }> {
   const [row, store] = await Promise.all([
     findPartner(storeId, partnerId),
     readPartnerStore(storeId),
@@ -411,8 +434,15 @@ export async function getPartnerStatement(
   return {
     ...statement,
     months: months.includes(selected) ? months : [selected, ...months],
-    statementToken: row.statementToken,
   };
+}
+
+/**
+ * The secret of a partner's space, for the dashboard's own action that hands
+ * its link to a person who manages partners; no read of a statement gives it.
+ */
+export async function getPartnerSpaceToken(storeId: string, partnerId: string): Promise<string> {
+  return (await findPartner(storeId, partnerId)).statementToken;
 }
 
 // --- Store writes -----------------------------------------------------------------
@@ -524,20 +554,32 @@ export async function setPartnerArchived(
 export async function rotatePartnerStatementToken(
   storeId: string,
   partnerId: string,
-): Promise<{ statementToken: string }> {
+): Promise<void> {
   await findPartner(storeId, partnerId);
-  const statementToken = newStatementToken();
   await db
     .update(storePartners)
-    .set({ statementToken, updatedAt: new Date() })
+    .set({ statementToken: newStatementToken(), updatedAt: new Date() })
     .where(and(eq(storePartners.storeId, storeId), eq(storePartners.id, partnerId)));
-  return { statementToken };
 }
+
+/**
+ * A payout reads what is left to pay after it holds the partner's lock: under
+ * READ COMMITTED each read sees the payouts committed before it, never a
+ * snapshot taken earlier in the transaction.
+ */
+const PAYOUT_TRANSACTION = { isolationLevel: "read committed" } as const;
 
 /**
  * Records that the store paid what is left of a month's due commissions, and
  * tells the partner. The money moves outside Louez; this is the store's own
  * note, so the statement shows what remains when a rental changes afterwards.
+ *
+ * One payout per intent: the partner's row is locked first, then what is left
+ * is computed, checked and paid in the same transaction. A second tab, member
+ * or retry waits for the lock, then finds the month settled
+ * (`PARTNER_NOTHING_TO_PAY`) and queues no e-mail. A retry of the same attempt
+ * sends the same idempotency key and gets the first answer back
+ * (platform/operations.ts).
  */
 export async function markPartnerMonthPaid(input: {
   storeId: string;
@@ -546,41 +588,40 @@ export async function markPartnerMonthPaid(input: {
   month: string;
   now?: Date;
 }): Promise<{ totals: PartnerMonthTotals; effectIds: string[] }> {
-  const [row, store] = await Promise.all([
-    findPartner(input.storeId, input.partnerId),
-    readPartnerStore(input.storeId),
-  ]);
-  const statement = await partnerStatementFor(
-    input.storeId,
-    row,
-    store,
-    input.month,
-    input.now ?? new Date(),
-  );
-  if (statement.totals.remaining <= 0) throw partnerErrors.nothingToPay();
-  const effectIds = await db.transaction(async (tx) => {
+  const store = await readPartnerStore(input.storeId);
+  const now = input.now ?? new Date();
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(storePartners)
+      .where(and(eq(storePartners.storeId, input.storeId), eq(storePartners.id, input.partnerId)))
+      .for("update");
+    if (!row) throw partnerErrors.notFound();
+    const { totals } = await partnerStatementFor(input.storeId, row, store, input.month, now, tx);
+    if (totals.remaining <= 0) throw partnerErrors.nothingToPay();
     const [payout] = await tx
       .insert(partnerPayouts)
       .values({
         storeId: input.storeId,
         partnerId: input.partnerId,
         month: input.month,
-        amount: statement.totals.remaining.toFixed(2),
+        amount: totals.remaining.toFixed(2),
         currency: store.currency,
         userId: input.userId,
       })
       .$returningId();
-    if (!payout) return [];
-    return enqueueEffects(tx, input.storeId, [
+    const effectIds = await enqueueEffects(tx, input.storeId, [
       {
         type: "partner.payoutEmail",
         payload: { partnerId: input.partnerId, payoutId: payout.id },
         orderingKey: `partner:${input.partnerId}:email`,
       },
     ]);
-  });
-  const paid = statement.totals.paid + statement.totals.remaining;
-  return { totals: { ...statement.totals, paid, remaining: 0 }, effectIds };
+    return {
+      totals: { ...totals, paid: totals.paid + totals.remaining, remaining: 0 },
+      effectIds,
+    };
+  }, PAYOUT_TRANSACTION);
 }
 
 /** Removes a payment the store recorded by mistake. */
@@ -784,8 +825,12 @@ async function withinWindow(storeId: string, clickedAt: Date, now: Date): Promis
 export interface CheckoutPartner {
   code: string;
   name: string;
-  /** The perk's promo code, when the store gave one and it can be used now. */
-  perkCode: string | null;
+  /**
+   * The perk, when the store gave one and it can be used now: its discount,
+   * and the promo code the server applies at booking. The code never reaches
+   * the storefront (`checkoutPerkView`).
+   */
+  perk: (PartnerPerkView & { promoCode: string }) | null;
 }
 
 /**
@@ -807,6 +852,9 @@ export async function findCheckoutPartner(input: {
       code: storePartners.code,
       name: storePartners.name,
       perkCode: promoCodes.code,
+      perkType: promoCodes.type,
+      perkValue: promoCodes.value,
+      perkMinimum: promoCodes.minimumAmount,
     })
     .from(storePartners)
     .leftJoin(
@@ -819,7 +867,106 @@ export async function findCheckoutPartner(input: {
     )
     .where(activeCode(input.storeId, input.code))
     .limit(1);
-  return row ? { code: row.code, name: row.name, perkCode: row.perkCode ?? null } : null;
+  if (!row) return null;
+  return {
+    code: row.code,
+    name: row.name,
+    perk:
+      row.perkCode && row.perkType && row.perkValue !== null
+        ? {
+            promoCode: row.perkCode,
+            type: row.perkType,
+            value: Number(row.perkValue),
+            minimumAmount: Number(row.perkMinimum ?? 0),
+          }
+        : null,
+  };
+}
+
+/** What the storefront may see of a perk: its discount, without its promo code. */
+export const checkoutPerkView = (perk: CheckoutPartner["perk"]): PartnerPerkView | null =>
+  perk ? { type: perk.type, value: perk.value, minimumAmount: perk.minimumAmount } : null;
+
+/**
+ * How often the checkout's partner code field may be tried. Per IP, a
+ * customer typing the code they were given needs a few tries, never dozens.
+ * Per store, guessing codes from many addresses stays slow, while one person
+ * cannot easily block the field for the store's other customers. Only the
+ * check is limited: booking never is, and partner links keep working.
+ */
+export const PARTNER_CODE_CHECK_LIMITS = {
+  perIp: { windowMs: 15 * 60 * 1000, max: 10 },
+  perStore: { windowMs: 60 * 60 * 1000, max: 120 },
+} as const;
+
+/**
+ * A partner's code typed at checkout: the partner's name and what the
+ * customer sees of its perk, never the perk's promo code. Both limits are
+ * counted before anything is read, and an unknown store answers as an
+ * unknown code does.
+ */
+export async function checkStorefrontPartnerCode(input: {
+  storeId: string;
+  code: string;
+  ip: string;
+  now?: Date;
+}): Promise<PartnerCodeCheck> {
+  const now = input.now ?? new Date();
+  const perIp = await consumeRateLimit(
+    `partner-code:ip:${input.ip.slice(0, 64)}`,
+    PARTNER_CODE_CHECK_LIMITS.perIp,
+    now.getTime(),
+  );
+  if (!perIp.allowed) return { status: "rate_limited", retryAfterSeconds: perIp.retryAfterSeconds };
+  const perStore = await consumeRateLimit(
+    `partner-code:store:${input.storeId}`,
+    PARTNER_CODE_CHECK_LIMITS.perStore,
+    now.getTime(),
+  );
+  if (!perStore.allowed) {
+    return { status: "rate_limited", retryAfterSeconds: perStore.retryAfterSeconds };
+  }
+  const code = parsePartnerCode(input.code);
+  const partner = code ? await findCheckoutPartner({ storeId: input.storeId, code, now }) : null;
+  if (!partner) return { status: "not_found" };
+  return { status: "found", partner: { name: partner.name, perk: checkoutPerkView(partner.perk) } };
+}
+
+/** The partner a booking credits, and how. */
+export interface CheckoutCredit {
+  code: string;
+  origin: Exclude<PartnerBookingOrigin, "manual">;
+  clickedAt?: Date;
+}
+
+/**
+ * The partner a storefront booking credits, read before it is written: the
+ * code the customer typed, else the link the storefront's cookie remembers
+ * (within the store's window, checked again at attribution). With the
+ * promo code of its perk when it can be used now, for the server to apply
+ * when the customer kept the perk the checkout showed. Null without a code
+ * or a link.
+ */
+export async function resolveCheckoutCredit(input: {
+  storeId: string;
+  typedCode: string | undefined;
+  link: { code: string; clickedAt: Date } | null;
+  now?: Date;
+}): Promise<{ credit: CheckoutCredit; perkPromoCode: string | null } | null> {
+  const typed = parsePartnerCode(input.typedCode);
+  const credit: CheckoutCredit | null = typed
+    ? { code: typed, origin: "code" }
+    : input.link
+      ? { code: input.link.code, origin: "link", clickedAt: input.link.clickedAt }
+      : null;
+  if (!credit) return null;
+  const partner = await findCheckoutPartner({
+    storeId: input.storeId,
+    code: credit.code,
+    clickedAt: credit.clickedAt,
+    now: input.now,
+  });
+  return { credit, perkPromoCode: partner?.perk?.promoCode ?? null };
 }
 
 /**

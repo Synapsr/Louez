@@ -335,13 +335,15 @@ export const CheckoutForm = ({
     delivery,
     isDeliveryEnabled: delivery.isDeliveryEnabled,
     tulipInsuranceMode: tulipQuote.mode,
-    promoCode: promo.promo?.code,
+    promoCode: promo.promo?.source === "code" ? promo.promo.code : undefined,
     partnerCode: partner.typed?.code,
+    partnerPerk: promo.promo?.source === "partner",
     advisorConversationId: advisorGate.conversationId ?? undefined,
     blockedReason,
     checkoutFields,
     hasDetailsStep,
     onAdvanceNoticeRejected: advanceNotice.reportServerIssue,
+    onPartnerPerkUnavailable: promo.removePartnerPerk,
     onCheckoutFieldIssues: (issues: CheckoutFieldIssue[]) => {
       // The store may have changed what it asks since the page loaded.
       customFields.refresh();

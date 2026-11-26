@@ -7793,7 +7793,8 @@
         "sendEmail": "E-mail",
         "emailSubject": "Votre lien partenaire {store}",
         "message": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nVotre espace partenaire, pour suivre vos gains et choisir vos notifications : {space}\n\nMerci de nous recommander !",
-        "posterRecommended": "Recommandé par {partner}"
+        "posterRecommended": "Recommandé par {partner}",
+        "messageWithoutSpace": "Bonjour,\n\nVoici votre lien partenaire pour {store} : {link}\nVous touchez {rule} sur chaque location réservée par ce lien, quand la location est terminée.\n\nMerci de nous recommander !"
       },
       "statement": {
         "title": "Relevé",
@@ -7885,7 +7886,8 @@
         "title": "Partenaire",
         "description": "Ce client vient de la part d'un partenaire ? La réservation lui sera créditée.",
         "none": "Aucun partenaire"
-      }
+      },
+      "readOnly": "Lecture seule : seuls le propriétaire et les administrateurs gèrent les partenaires et leurs paiements."
     }
   },
   "storefront": {
@@ -8624,7 +8626,9 @@
         "placeholder": "Entrez votre code",
         "apply": "Appliquer",
         "discount": "Réduction ({code})",
-        "remove": "Retirer le code promo"
+        "remove": "Retirer le code promo",
+        "partnerPerk": "Avantage partenaire",
+        "removePartnerPerk": "Retirer l'avantage partenaire"
       },
       "lineNeedsUpdate": "Certaines lignes ne sont plus disponibles. Mettez à jour votre panier avant de valider.",
       "advisor": {
@@ -8725,7 +8729,8 @@
         "apply": "Valider",
         "notFound": "Ce code ne correspond à aucun partenaire.",
         "credited": "Recommandé par {partner}",
-        "remove": "Retirer le partenaire"
+        "remove": "Retirer le partenaire",
+        "rateLimited": "Trop d'essais : réessayez dans quelques minutes. Vous pouvez réserver sans attendre."
       }
     },
     "confirmation": {
@@ -10278,7 +10283,8 @@
     "partnerNothingToPay": "Il ne reste rien à payer à ce partenaire pour ce mois.",
     "partnerReservationNotAttributed": "Cette réservation n'est attribuée à aucun partenaire.",
     "partnerPerkNotFound": "Ce code promo n'existe pas dans votre boutique.",
-    "demoStoreActionDisabled": "Cette action est désactivée dans la boutique de démonstration."
+    "demoStoreActionDisabled": "Cette action est désactivée dans la boutique de démonstration.",
+    "partnerPerkUnavailable": "L'avantage partenaire n'est plus disponible : nous l'avons retiré. Vérifiez le total, puis réservez à nouveau."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",
