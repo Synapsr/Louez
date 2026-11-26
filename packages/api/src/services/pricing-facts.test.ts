@@ -13,6 +13,10 @@ const breakdown = (fields: Partial<PricingBreakdown>): PricingBreakdown => ({
   discountPercent: null,
   discountAmount: 0,
   tierApplied: null,
+  taxRate: null,
+  taxAmount: null,
+  subtotalExclTax: null,
+  subtotalInclTax: null,
   ...fields,
 });
 

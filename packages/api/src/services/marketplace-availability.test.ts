@@ -77,6 +77,7 @@ function store(overrides: Partial<MarketplaceBookingStore> = {}): MarketplaceBoo
   return {
     id: storeId,
     slug: "test-store",
+    demoVertical: null,
     settings: settings(),
     channelStatus: "published",
     ...overrides,

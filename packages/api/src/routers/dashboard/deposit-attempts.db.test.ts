@@ -54,7 +54,11 @@ describe("resolveDepositAttempt (database)", { skip: skipWithoutTestDatabase() }
   let louezDb: typeof import("@louez/db");
   let orpc: typeof import("@orpc/server");
   let apiKeys: typeof import("../../services/api-keys");
-  let routers: { reservations: { resolveDepositAttempt: unknown } };
+  let routers: {
+    reservations: {
+      resolveDepositAttempt: typeof import("./deposit-attempts").resolveDepositAttempt;
+    };
+  };
 
   const asked: Array<Parameters<DepositHoldsPort["resolveUnconfirmedAttempt"]>[0]> = [];
   let answer: DepositAttemptResolution = { ok: true, outcome: "closed", paymentIntentId: null };
@@ -122,7 +126,7 @@ describe("resolveDepositAttempt (database)", { skip: skipWithoutTestDatabase() }
     };
   }>;
   const client = (context: BaseContext) =>
-    orpc.createRouterClient(routers as never, { context, path: ["dashboard"] }) as Client;
+    orpc.createRouterClient(routers, { context, path: ["dashboard"] }) as Client;
 
   async function rejects(promise: Promise<unknown>, code: string) {
     let caught: unknown;

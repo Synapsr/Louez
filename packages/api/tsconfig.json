@@ -4,7 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

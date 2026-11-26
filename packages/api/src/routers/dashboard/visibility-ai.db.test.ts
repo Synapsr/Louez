@@ -114,6 +114,8 @@ describe("AI visibility (database)", { skip: skipWithoutTestDatabase() }, () => 
     price: values.price ?? "25.00",
     images: values.images ?? [],
     status: values.status ?? ("active" as const),
+    // What MySQL stores when the column is left out: the enum's first value.
+    pricingMode: "hour" as const,
   });
 
   test("readiness reads the store and counts active products with a photo and a price", async () => {

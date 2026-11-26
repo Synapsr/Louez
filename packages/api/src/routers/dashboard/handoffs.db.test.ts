@@ -1787,7 +1787,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(await handoffs.purgeHandoffs(new Date(), { batch: 2, budgetMs: 0 }), 2);
     const left = (await handoffRows()).map((row) => row.tokenHash).sort();
     assert.deepEqual(
-      left.filter((hash) => hash.startsWith("old_")),
+      left.filter((hash) => hash!.startsWith("old_")),
       ["old_3", "old_4", "old_5"],
     );
     assert.equal(await handoffs.purgeHandoffs(new Date(), { batch: 2 }), 3);
@@ -2147,7 +2147,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
     const refused = withKey();
     await rejects(client(refused).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
-    assert.notEqual(refused.receipt.replayed, true, "nothing was replayed");
+    assert.notEqual(refused.receipt!.replayed, true, "nothing was replayed");
     await narrowed("read");
     await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
     await rejects(client(withKey()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
@@ -2184,7 +2184,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const replayContext = agent();
     replayContext.headers.set("idempotency-key", KEY);
     const replayed = await client(replayContext).handoffs.refresh({ id: attempt.id });
-    assert.equal(replayContext.receipt.replayed, true);
+    assert.equal(replayContext.receipt!.replayed, true);
     assert.deepEqual(replayed, first);
     assert.equal(billing.state.finished.length, asked, "the provider was not asked again");
     assert.equal((await handoffs.getHandoffRow(STORE, attempt.id)).status, "opened");
@@ -2225,7 +2225,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     replayContext.headers.set("idempotency-key", "ho-replay-1");
     const second = await client(replayContext).payments.startStripeOnboarding({});
     assert.equal(second.url, first.url);
-    assert.equal(replayContext.receipt.replayed, true);
+    assert.equal(replayContext.receipt!.replayed, true);
     // The replay ran nothing: the step was asked for once.
     assert.equal((await handoffs.getHandoffRow(STORE, first.handoff.id)).revision, 1);
 

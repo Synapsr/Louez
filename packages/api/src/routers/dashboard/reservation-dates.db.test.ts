@@ -423,17 +423,20 @@ describe(
         totalDeposit: 50,
         taxSettings: settings?.tax,
       });
+      const fixed = (value: number | null) => (value === null ? null : value.toFixed(2));
       return {
-        lines: priced.cart.lines.map((line, index) => ({
-          unitPrice: line.unitPrice.toFixed(2),
-          totalPrice: line.subtotal.toFixed(2),
-          promotion: line.promotion ?? null,
-          ...Object.fromEntries(
-            Object.entries(pricing.getReservationItemTaxFields(totals, line, index)).map(
-              ([key, value]) => [key, value === null ? null : value.toFixed(2)],
-            ),
-          ),
-        })),
+        lines: priced.cart.lines.map((line, index) => {
+          const tax = pricing.getReservationItemTaxFields(totals, line, index);
+          return {
+            unitPrice: line.unitPrice.toFixed(2),
+            totalPrice: line.subtotal.toFixed(2),
+            promotion: line.promotion ?? null,
+            taxRate: fixed(tax.taxRate),
+            taxAmount: fixed(tax.taxAmount),
+            priceExclTax: fixed(tax.priceExclTax),
+            totalExclTax: fixed(tax.totalExclTax),
+          };
+        }),
         subtotalAmount: totals.subtotal.toFixed(2),
         totalAmount: totals.total.toFixed(2),
         taxAmount: totals.taxAmount?.toFixed(2) ?? null,
@@ -540,10 +543,10 @@ describe(
           unitPrice: price.unitPrice,
           depositPerUnit: "50.00",
           totalPrice: price.totalPrice,
-          taxRate: price.taxRate as string | null,
-          taxAmount: price.taxAmount as string | null,
-          priceExclTax: price.priceExclTax as string | null,
-          totalExclTax: price.totalExclTax as string | null,
+          taxRate: price.taxRate,
+          taxAmount: price.taxAmount,
+          priceExclTax: price.priceExclTax,
+          totalExclTax: price.totalExclTax,
           combinationKey: line.combinationKey ?? null,
           productSnapshot: { name: "Kayak", description: null, images: [] },
           // A fixed creation order: the lines are read and priced in it.

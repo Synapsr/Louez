@@ -4,7 +4,9 @@ import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 import { eq } from "drizzle-orm";
+import type { ErrorMap, Meta, Schema } from "@orpc/server";
 
+import type { BaseContext } from "../../context";
 import { lockWaitsOn } from "../../platform/test-lock-waits";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
@@ -795,7 +797,7 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
       { url: `${new URL(createTestUrls().dashboard("/")).origin}/partner/${token}` },
     );
     // …never a key or the assistant, though it acts with the owner's session.
-    for (const context of [key, { ...session(), assistant: true }]) {
+    for (const context of [key, { ...session(), assistant: true as const }]) {
       await assert.rejects(
         orpc.call(router.getSpaceLink, { partnerId: partner.id }, { context }),
         (error: { data?: { code?: string } }) => error.data?.code === "SESSION_ONLY",
@@ -937,14 +939,21 @@ describe("partner links (database)", { skip: skipWithoutTestDatabase() }, () => 
           userId: OWNER,
         })
         .$returningId();
-      const procedure = router[write] as Parameters<typeof orpc.call>[0];
+      const call = orpc.call<
+        BaseContext,
+        Schema<unknown, unknown>,
+        Schema<unknown, unknown>,
+        ErrorMap,
+        Meta
+      >;
+      const procedure = router[write];
       const args = input({ partnerId: partner.id, payoutId: payout.id });
 
       await assert.rejects(
-        orpc.call(procedure, args, { context: session(MEMBER) }),
+        call(procedure, args, { context: session(MEMBER) }),
         (error: { data?: { code?: string } }) => error.data?.code === "PERMISSION_DENIED",
       );
-      await orpc.call(procedure, args, { context: session() });
+      await call(procedure, args, { context: session() });
     });
   }
 

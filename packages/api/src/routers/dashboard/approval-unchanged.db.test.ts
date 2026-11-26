@@ -152,7 +152,12 @@ describe(
         name: "Morlaix Kayak",
         slug: "au-morlaix",
         email: "store@au.test",
-        settings: { reservationMode: "payment", currency: "EUR", country: "FR" },
+        settings: {
+          reservationMode: "payment",
+          advanceNoticeMinutes: 1440,
+          currency: "EUR",
+          country: "FR",
+        },
         onboardingCompleted: true,
       });
       await db
@@ -439,7 +444,7 @@ describe(
         .select()
         .from(louezDb.apiHandoffs)
         .where(orm.eq(louezDb.apiHandoffs.id, id));
-      assert.ok(row?.payload);
+      assert.ok(row?.payload && "email" in row.payload);
       return call<{ decision: string }>(
         routers.handoffs.decide,
         {

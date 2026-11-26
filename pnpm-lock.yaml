@@ -586,6 +586,9 @@ importers:
       '@louez/config':
         specifier: workspace:*
         version: link:../config
+      '@types/node':
+        specifier: ^20.19.27
+        version: 20.19.27
       '@types/react':
         specifier: ^19
         version: 19.2.7

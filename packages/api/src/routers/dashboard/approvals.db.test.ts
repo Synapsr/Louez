@@ -160,7 +160,12 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
         userId: OWNER,
         name: "Roscoff Voile",
         slug: "ap-roscoff",
-        settings: { currency: "EUR", country: "FR" },
+        settings: {
+          reservationMode: "payment",
+          advanceNoticeMinutes: 1440,
+          currency: "EUR",
+          country: "FR",
+        },
         onboardingCompleted: true,
       },
       {
@@ -168,7 +173,12 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
         userId: OWNER,
         name: "Carantec Voile",
         slug: "ap-carantec",
-        settings: { currency: "EUR", country: "FR" },
+        settings: {
+          reservationMode: "payment",
+          advanceNoticeMinutes: 1440,
+          currency: "EUR",
+          country: "FR",
+        },
         onboardingCompleted: true,
       },
     ]);
@@ -822,7 +832,9 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.deepEqual(await rowOf(asked.approval.id), before, "nothing was decided");
 
     // The page: only its approver reads it, and it continues to no provider.
-    assert.equal((await handoffs.readHandoffLink(asked.approval.id, OWNER)).reason, "other_user");
+    const otherUser = await handoffs.readHandoffLink(asked.approval.id, OWNER);
+    assert.ok(!otherUser.ok);
+    assert.equal(otherUser.reason, "other_user");
     await louezDb.db
       .update(louezDb.storeMembers)
       .set({ role: "owner" })

@@ -9,7 +9,8 @@
     "./env": "./src/env.ts"
   },
   "scripts": {
-    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\"",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@louez/types": "workspace:*",
