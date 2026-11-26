@@ -1,6 +1,6 @@
 import "server-only";
 
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 
 import { getLogoForLightBackground } from "@louez/utils";
 import { MAX_IMAGE_SIZE, getStorageRelativePath } from "@louez/validations";
@@ -10,18 +10,22 @@ import { getImageFiles } from "@/lib/storage/files";
 
 /**
  * A stored key: segments of safe characters ending in an image extension, so
- * no `..`, `%` or `\` leads it out of its folder. SVG is there for the logos
- * uploaded before uploads refused it.
+ * no `..`, `%` or `\` leads it out of its folder. AVIF and SVG are there for
+ * the files stored before uploads refused them.
  */
-const STORED_IMAGE_KEY = /^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|gif|webp|svg)$/;
+const STORED_IMAGE_KEY = /^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|gif|webp|avif|svg)$/;
 
 export type PdfImageKind = "photo" | "logo";
 
 /** The formats each kind may be stored in, read from its bytes, and the longest side it converts to. */
 const PDF_IMAGE_KINDS = {
-  photo: { formats: new Set(["jpeg", "png", "webp", "gif"]), maxSide: 1600 },
-  logo: { formats: new Set(["jpeg", "png", "webp", "gif", "svg"]), maxSide: 400 },
+  photo: { formats: new Set(["jpeg", "png", "webp", "gif", "avif"]), maxSide: 1600 },
+  logo: { formats: new Set(["jpeg", "png", "webp", "gif", "avif", "svg"]), maxSide: 400 },
 } satisfies Record<PdfImageKind, { formats: ReadonlySet<string>; maxSide: number }>;
+
+/** The format of an image's bytes; sharp reports AVIF as a HEIF image compressed with AV1. */
+const formatOf = ({ format, compression }: Metadata) =>
+  format === "heif" && compression === "av1" ? "avif" : format;
 
 const toDataUrl = (format: "jpeg" | "png", bytes: Buffer) =>
   `data:image/${format};base64,${bytes.toString("base64")}`;
@@ -34,7 +38,7 @@ const toDataUrl = (format: "jpeg" | "png", bytes: Buffer) =>
  */
 async function toPdfImage(bytes: Buffer, kind: PdfImageKind): Promise<string | null> {
   const { formats, maxSide } = PDF_IMAGE_KINDS[kind];
-  const { format } = await sharp(bytes).metadata();
+  const format = formatOf(await sharp(bytes).metadata());
   if (!format || !formats.has(format)) return null;
   if (format === "jpeg" || format === "png") return toDataUrl(format, bytes);
 

@@ -34,7 +34,7 @@ beforeEach(() => {
 
 const PHOTOS = "storeA/inspections";
 
-const image = (format: "jpeg" | "png" | "webp" | "gif", alpha = false) =>
+const image = (format: "jpeg" | "png" | "webp" | "gif" | "avif", alpha = false) =>
   sharp({
     create: {
       width: 64,
@@ -69,6 +69,18 @@ test("a WebP or GIF photo becomes a JPEG the PDF embeds", async () => {
     assert.equal(metadata.format, "jpeg", format);
     assert.equal(metadata.width, 64, format);
   }
+});
+
+test("an AVIF photo, stored before uploads refused the format, becomes a JPEG", async () => {
+  const bytes = await image("avif");
+  // sharp reads AVIF as a HEIF image compressed with AV1.
+  assert.equal((await sharp(bytes).metadata()).compression, "av1");
+  stored.set(`${PHOTOS}/a.avif`, bytes);
+  const result = decode(await pdfImages.readStoredImageForPdf(`${PHOTOS}/a.avif`, PHOTOS, "photo"));
+  assert.equal(result.format, "jpeg");
+  const metadata = await sharp(result.bytes).metadata();
+  assert.equal(metadata.format, "jpeg");
+  assert.equal(metadata.width, 64);
 });
 
 test("a JPEG or PNG photo is embedded as stored", async () => {
@@ -139,6 +151,15 @@ test("a WebP logo becomes a PNG that keeps its transparency", async () => {
   stored.set("storeA/logo/logo.webp", await image("webp", true));
   const result = decode(
     await pdfImages.readStoreLogoForPdf({ id: "storeA", logoUrl: "/files/storeA/logo/logo.webp" }),
+  );
+  assert.equal(result.format, "png");
+  assert.equal((await sharp(result.bytes).metadata()).hasAlpha, true);
+});
+
+test("an AVIF logo becomes a PNG that keeps its transparency", async () => {
+  stored.set("storeA/logo/logo.avif", await image("avif", true));
+  const result = decode(
+    await pdfImages.readStoreLogoForPdf({ id: "storeA", logoUrl: "/files/storeA/logo/logo.avif" }),
   );
   assert.equal(result.format, "png");
   assert.equal((await sharp(result.bytes).metadata()).hasAlpha, true);
