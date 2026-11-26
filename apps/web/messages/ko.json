@@ -2721,14 +2721,13 @@
         "originalPrice": "원래 가격",
         "totalSavings": "총 절감액",
         "customItem": {
-          "title": "맞춤 아이템",
-          "add": "추가",
           "button": "맞춤 아이템",
           "units": "단위",
           "badge": "맞춤",
-          "empty": "추가된 맞춤 항목이 없습니다.",
           "dialogTitle": "맞춤 항목 추가",
           "dialogDescription": "이 예약에 대한 예외 항목 만들기",
+          "editDialogTitle": "맞춤 항목 편집",
+          "editDialogDescription": "이 예약에 대한 항목의 세부 정보 변경",
           "name": "품목 이름",
           "namePlaceholder": "예: 빈티지 사운드 콘솔",
           "description": "설명(선택사항)",
@@ -2742,7 +2741,12 @@
           "addButton": "추가",
           "nameRequired": "항목의 이름을 입력하세요.",
           "priceRequired": "올바른 가격을 입력하세요.",
-          "added": "맞춤 항목이 추가되었습니다."
+          "added": "맞춤 항목이 추가되었습니다.",
+          "updated": "맞춤 항목이 업데이트되었습니다.",
+          "editLabel": "{name} 편집",
+          "decreaseLabel": "{name} 수량 줄이기",
+          "increaseLabel": "{name} 수량 늘리기",
+          "removeLabel": "{name} 제거"
         },
         "priceOverride": {
           "dialogTitle": "가격 수정",

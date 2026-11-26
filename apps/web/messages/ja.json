@@ -2721,14 +2721,13 @@
         "originalPrice": "元の価格",
         "totalSavings": "総節約額",
         "customItem": {
-          "title": "カスタムアイテム",
-          "add": "追加",
           "button": "カスタムアイテム",
           "units": "ユニット",
           "badge": "カスタム",
-          "empty": "カスタムアイテムは追加されていません",
           "dialogTitle": "カスタム項目を追加する",
           "dialogDescription": "この予約に対して例外的なアイテムを作成する",
+          "editDialogTitle": "カスタムアイテムを編集する",
+          "editDialogDescription": "この予約のアイテムの詳細を変更する",
           "name": "項目名",
           "namePlaceholder": "例: ビンテージサウンドコンソール",
           "description": "説明 (オプション)",
@@ -2742,7 +2741,12 @@
           "addButton": "追加",
           "nameRequired": "アイテムの名前を入力してください",
           "priceRequired": "有効な価格を入力してください",
-          "added": "カスタムアイテムが追加されました"
+          "added": "カスタムアイテムが追加されました",
+          "updated": "カスタムアイテムが更新されました",
+          "editLabel": "{name}を編集",
+          "decreaseLabel": "{name}の数量を減らす",
+          "increaseLabel": "{name}の数量を増やす",
+          "removeLabel": "{name}を削除"
         },
         "priceOverride": {
           "dialogTitle": "価格を編集する",

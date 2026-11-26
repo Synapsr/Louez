@@ -6,15 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Calendar,
-  Check,
-  FileText,
-  PenLine,
-  Plus,
-  ShieldCheckIcon,
-} from "lucide-react";
+import { AlertTriangle, Calendar, Check, FileText, PenLine, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
 
@@ -22,10 +14,7 @@ import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import type { PricingMode, UnitAttributes } from "@louez/types";
 import { toastManager } from "@louez/ui";
 import { Button } from "@louez/ui";
-import { Input } from "@louez/ui";
-import { Textarea } from "@louez/ui";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@louez/ui";
 import { InputPrice, StepActions, Tabs, TabsList, TabsTrigger } from "@louez/ui";
 import {
   Dialog,
@@ -63,6 +52,7 @@ import { useStoreTimezone } from "@/contexts/store-context";
 
 import { getManualReservationAvailability } from "../actions";
 import { NewReservationConfirmDrawer } from "./components/new-reservation-confirm-drawer";
+import { NewReservationCustomItemDialog } from "./components/new-reservation-custom-item-dialog";
 import { NewReservationStepCustomer } from "./components/new-reservation-step-customer";
 import { NewReservationStepDelivery } from "./components/new-reservation-step-delivery";
 import { NewReservationStepProducts } from "./components/new-reservation-step-products";
@@ -72,6 +62,7 @@ import {
 } from "./components/new-reservation-summary-panel";
 import { useNewReservationDelivery } from "./hooks/use-new-reservation-delivery";
 import { useNewReservationPricing } from "./hooks/use-new-reservation-pricing";
+import { usePricingModeLabels } from "./hooks/use-pricing-mode-labels";
 import {
   getPeriodAvailability,
   useNewReservationWarnings,
@@ -88,6 +79,7 @@ import type {
 } from "./types";
 import { buildRecapDeliveryLeg, buildRecapItemLines } from "./utils/recap-lines";
 import { creationTotals } from "./utils/creation-totals";
+import type { CustomItemValues } from "./utils/custom-item-form";
 import { buildProductCombinations, getLineQuantityConstraints } from "./utils/variant-lines";
 import { createManualReservationSchema } from "./validation";
 
@@ -97,12 +89,6 @@ function createLineId() {
   }
 
   return `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
-  if (mode === "hour") return 60;
-  if (mode === "week") return 10080;
-  return 1440;
 }
 
 type PriceOverrideMode = "unit" | "total" | "percent";
@@ -173,17 +159,13 @@ export function NewReservationForm({
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
-  const [showCustomItemDialog, setShowCustomItemDialog] = useState(false);
-  const [customItemForm, setCustomItemForm] = useState({
-    name: "",
-    description: "",
-    unitPrice: "",
-    totalPrice: "",
-    deposit: "",
-    quantity: "1",
-    pricingMode: "day" as PricingMode,
-  });
-  const [priceInputMode, setPriceInputMode] = useState<"unit" | "total">("total");
+  // Each opening is a new session, which the dialog is keyed by: it starts from
+  // the item edited, or empty.
+  const [customItemDialog, setCustomItemDialog] = useState<{
+    open: boolean;
+    item: CustomItem | null;
+    session: number;
+  }>({ open: false, item: null, session: 0 });
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true);
   const [globalDiscount, setGlobalDiscount] = useState<{
     mode: "amount" | "percent";
@@ -1021,134 +1003,22 @@ export function NewReservationForm({
   };
 
   // Custom item management
-  const resetCustomItemForm = () => {
-    setCustomItemForm({
-      name: "",
-      description: "",
-      unitPrice: "",
-      totalPrice: "",
-      deposit: "",
-      quantity: "1",
-      pricingMode: "day",
-    });
+  const openCustomItemDialog = (item: CustomItem | null) => {
+    setCustomItemDialog((current) => ({ open: true, item, session: current.session + 1 }));
   };
 
-  const customItemDuration =
-    watchStartDate && watchEndDate
-      ? calculateDurationForMode(watchStartDate, watchEndDate, customItemForm.pricingMode)
-      : 0;
-
-  // Calculate unit price from total price
-  const calculateUnitPriceFromTotal = (totalPrice: string, qty: string) => {
-    const total = parseFloat(totalPrice);
-    const quantity = parseInt(qty) || 1;
-    if (isNaN(total) || total <= 0 || customItemDuration <= 0) return "";
-    return (total / (quantity * customItemDuration)).toFixed(2);
-  };
-
-  // Calculate total price from unit price
-  const calculateTotalFromUnitPrice = (unitPrice: string, qty: string) => {
-    const unit = parseFloat(unitPrice);
-    const quantity = parseInt(qty) || 1;
-    if (isNaN(unit) || unit <= 0 || customItemDuration <= 0) return "";
-    return (unit * quantity * customItemDuration).toFixed(2);
-  };
-
-  // Handle unit price change
-  const handleUnitPriceChange = (value: string) => {
-    const quantity = customItemForm.quantity;
-    setCustomItemForm({
-      ...customItemForm,
-      unitPrice: value,
-      totalPrice: calculateTotalFromUnitPrice(value, quantity),
-    });
-  };
-
-  // Handle total price change
-  const handleTotalPriceChange = (value: string) => {
-    const quantity = customItemForm.quantity;
-    setCustomItemForm({
-      ...customItemForm,
-      totalPrice: value,
-      unitPrice: calculateUnitPriceFromTotal(value, quantity),
-    });
-  };
-
-  // Handle quantity change for custom item form
-  const handleCustomItemQuantityChange = (value: string) => {
-    if (priceInputMode === "total") {
-      // Recalculate unit price based on total
-      setCustomItemForm({
-        ...customItemForm,
-        quantity: value,
-        unitPrice: calculateUnitPriceFromTotal(customItemForm.totalPrice, value),
-      });
+  const saveCustomItem = (values: CustomItemValues) => {
+    const editedId = customItemDialog.item?.id;
+    if (editedId) {
+      setCustomItems((current) =>
+        current.map((item) => (item.id === editedId ? { ...values, id: editedId } : item)),
+      );
+      toastManager.add({ title: t("customItem.updated"), type: "success" });
     } else {
-      // Recalculate total based on unit price
-      setCustomItemForm({
-        ...customItemForm,
-        quantity: value,
-        totalPrice: calculateTotalFromUnitPrice(customItemForm.unitPrice, value),
-      });
+      setCustomItems((current) => [...current, { ...values, id: createLineId() }]);
+      toastManager.add({ title: t("customItem.added"), type: "success" });
     }
-  };
-
-  const handleAddCustomItem = () => {
-    let unitPrice: number;
-
-    if (priceInputMode === "total") {
-      // Calculate unit price from total
-      const totalPrice = parseFloat(customItemForm.totalPrice);
-      const quantity = parseInt(customItemForm.quantity) || 1;
-      if (isNaN(totalPrice) || totalPrice <= 0) {
-        toastManager.add({
-          title: t("customItem.priceRequired"),
-          type: "error",
-        });
-        return;
-      }
-      if (customItemDuration <= 0) {
-        toastManager.add({
-          title: t("customItem.selectPeriodFirst"),
-          type: "error",
-        });
-        return;
-      }
-      unitPrice = totalPrice / (quantity * customItemDuration);
-    } else {
-      unitPrice = parseFloat(customItemForm.unitPrice);
-      if (isNaN(unitPrice) || unitPrice <= 0) {
-        toastManager.add({
-          title: t("customItem.priceRequired"),
-          type: "error",
-        });
-        return;
-      }
-    }
-
-    const deposit = parseFloat(customItemForm.deposit) || 0;
-    const quantity = parseInt(customItemForm.quantity) || 1;
-
-    if (!customItemForm.name.trim()) {
-      toastManager.add({ title: t("customItem.nameRequired"), type: "error" });
-      return;
-    }
-
-    const newItem: CustomItem = {
-      id: `custom-${Date.now()}`,
-      name: customItemForm.name.trim(),
-      description: customItemForm.description.trim(),
-      unitPrice,
-      deposit,
-      quantity,
-      pricingMode: customItemForm.pricingMode,
-      basePeriodMinutes: pricingModeToBasePeriodMinutes(customItemForm.pricingMode),
-    };
-
-    setCustomItems([...customItems, newItem]);
-    resetCustomItemForm();
-    setShowCustomItemDialog(false);
-    toastManager.add({ title: t("customItem.added"), type: "success" });
+    setCustomItemDialog((current) => ({ ...current, open: false }));
   };
 
   const updateCustomItemQuantity = (id: string, delta: number) => {
@@ -1291,14 +1161,7 @@ export function NewReservationForm({
     }));
   };
 
-  const getPricingUnitLabel = useCallback(
-    (mode: PricingMode) => {
-      if (mode === "hour") return t("perHour");
-      if (mode === "week") return t("perWeek");
-      return t("perDay");
-    },
-    [t],
-  );
+  const { perUnit: getPricingUnitLabel } = usePricingModeLabels();
 
   const effectiveDeposit = depositOverride ?? deposit;
   // The total the creation writes: the tax engine, as the server computes it (slice 10).
@@ -1597,7 +1460,8 @@ export function NewReservationForm({
                   updateQuantity={updateQuantity}
                   updateSelectedAttributes={updateSelectedAttributes}
                   removeSelectedProductLine={removeSelectedProductLine}
-                  onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
+                  onAddCustomItem={() => openCustomItemDialog(null)}
+                  onEditCustomItem={openCustomItemDialog}
                   updateCustomItemQuantity={updateCustomItemQuantity}
                   removeCustomItem={removeCustomItem}
                   onTulipInsuranceOptInChange={setTulipInsuranceOptIn}
@@ -1773,205 +1637,17 @@ export function NewReservationForm({
         availabilityWarnings={availabilityWarnings}
       />
 
-      {/* Custom Item Dialog */}
-      <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>
-        <DialogPopup className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <PenLine className="h-5 w-5" />
-              {t("customItem.dialogTitle")}
-            </DialogTitle>
-            <DialogDescription>{t("customItem.dialogDescription")}</DialogDescription>
-          </DialogHeader>
-          <DialogPanel>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="custom-name">{t("customItem.name")} *</Label>
-                <Input
-                  id="custom-name"
-                  placeholder={t("customItem.namePlaceholder")}
-                  value={customItemForm.name}
-                  onChange={(e) =>
-                    setCustomItemForm({
-                      ...customItemForm,
-                      name: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="custom-description">{t("customItem.description")}</Label>
-                <Textarea
-                  id="custom-description"
-                  placeholder={t("customItem.descriptionPlaceholder")}
-                  value={customItemForm.description}
-                  onChange={(e) =>
-                    setCustomItemForm({
-                      ...customItemForm,
-                      description: e.target.value,
-                    })
-                  }
-                  className="resize-none"
-                  rows={2}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="custom-quantity">{t("customItem.quantity")}</Label>
-                  <Input
-                    id="custom-quantity"
-                    type="number"
-                    min="1"
-                    value={customItemForm.quantity}
-                    onChange={(e) => handleCustomItemQuantityChange(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="custom-deposit">{t("customItem.deposit")}</Label>
-                  <div className="relative">
-                    <Input
-                      id="custom-deposit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={customItemForm.deposit}
-                      onChange={(e) =>
-                        setCustomItemForm({
-                          ...customItemForm,
-                          deposit: e.target.value,
-                        })
-                      }
-                      className="pr-8"
-                    />
-                    <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-sm">
-                      €
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="custom-pricing-mode">{t("customItem.pricingPeriod")}</Label>
-                <Select
-                  value={customItemForm.pricingMode}
-                  onValueChange={(value) =>
-                    setCustomItemForm({
-                      ...customItemForm,
-                      pricingMode: value as PricingMode,
-                    })
-                  }
-                >
-                  <SelectTrigger id="custom-pricing-mode">
-                    <SelectValue>
-                      {customItemForm.pricingMode === "hour" && t("perHour")}
-                      {customItemForm.pricingMode === "day" && t("perDay")}
-                      {customItemForm.pricingMode === "week" && "week"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hour" label={t("perHour")}>
-                      {t("perHour")}
-                    </SelectItem>
-                    <SelectItem value="day" label={t("perDay")}>
-                      {t("perDay")}
-                    </SelectItem>
-                    <SelectItem value="week" label="week">
-                      week
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {customItemDuration > 0 && (
-                <div className="bg-muted/30 space-y-3 rounded-lg border p-3">
-                  <div className="text-muted-foreground flex items-center justify-between text-sm">
-                    <span>{t("customItem.pricingPeriod")}</span>
-                    <span className="text-foreground font-medium">
-                      {customItemDuration}{" "}
-                      {customItemForm.pricingMode === "hour"
-                        ? "h"
-                        : customItemForm.pricingMode === "week"
-                          ? "sem"
-                          : "j"}{" "}
-                      × {customItemForm.quantity || 1} unité(s)
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="custom-total" className="text-xs">
-                        {t("customItem.totalPrice")} *
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="custom-total"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          value={customItemForm.totalPrice}
-                          onChange={(e) => handleTotalPriceChange(e.target.value)}
-                          onFocus={() => setPriceInputMode("total")}
-                          className="pr-8"
-                        />
-                        <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-sm">
-                          €
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="custom-unit" className="text-xs">
-                        {t("customItem.unitPrice")}
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="custom-unit"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          value={customItemForm.unitPrice}
-                          onChange={(e) => handleUnitPriceChange(e.target.value)}
-                          onFocus={() => setPriceInputMode("unit")}
-                          className="pr-12"
-                        />
-                        <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-sm">
-                          €/
-                          {customItemForm.pricingMode === "hour"
-                            ? t("perHour")
-                            : customItemForm.pricingMode === "week"
-                              ? "week"
-                              : t("perDay")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {customItemDuration === 0 && (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-600 dark:border-amber-800 dark:bg-amber-950/30">
-                  {t("customItem.selectPeriodFirst")}
-                </p>
-              )}
-            </div>
-          </DialogPanel>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                resetCustomItemForm();
-                setShowCustomItemDialog(false);
-              }}
-            >
-              {tCommon("cancel")}
-            </Button>
-            <Button type="button" onClick={handleAddCustomItem}>
-              <Plus className="mr-1 h-4 w-4" />
-              {t("customItem.addButton")}
-            </Button>
-          </DialogFooter>
-        </DialogPopup>
-      </Dialog>
+      <NewReservationCustomItemDialog
+        key={customItemDialog.session}
+        open={customItemDialog.open}
+        onOpenChange={(open) => setCustomItemDialog((current) => ({ ...current, open }))}
+        item={customItemDialog.item}
+        startDate={watchStartDate}
+        endDate={watchEndDate}
+        calculateDurationForMode={calculateDurationForMode}
+        currency={currency}
+        onSave={saveCustomItem}
+      />
 
       {/* Price Override Dialog */}
       <Dialog

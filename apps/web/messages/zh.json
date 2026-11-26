@@ -2721,14 +2721,13 @@
         "originalPrice": "原价",
         "totalSavings": "节省总额",
         "customItem": {
-          "title": "定制项目",
-          "add": "添加",
           "button": "定制项目",
           "units": "单位",
           "badge": "定制",
-          "empty": "未添加自定义项目",
           "dialogTitle": "添加自定义项目",
           "dialogDescription": "为这次预订创造一个特殊的项目",
+          "editDialogTitle": "编辑自定义项目",
+          "editDialogDescription": "修改此预订中该项目的详细信息",
           "name": "商品名称",
           "namePlaceholder": "例如：老式调音台",
           "description": "说明（可选）",
@@ -2742,7 +2741,12 @@
           "addButton": "添加",
           "nameRequired": "请输入商品名称",
           "priceRequired": "请输入有效价格",
-          "added": "添加了自定义项目"
+          "added": "添加了自定义项目",
+          "updated": "自定义项目已更新",
+          "editLabel": "编辑{name}",
+          "decreaseLabel": "减少{name}的数量",
+          "increaseLabel": "增加{name}的数量",
+          "removeLabel": "删除{name}"
         },
         "priceOverride": {
           "dialogTitle": "编辑价格",

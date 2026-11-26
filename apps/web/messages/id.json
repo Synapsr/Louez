@@ -2721,14 +2721,13 @@
         "originalPrice": "Harga asli",
         "totalSavings": "Jumlah penghematan",
         "customItem": {
-          "title": "Item khusus",
-          "add": "Tambahkan",
           "button": "Barang khusus",
           "units": "satuan",
           "badge": "Adat",
-          "empty": "Tidak ada item khusus yang ditambahkan",
           "dialogTitle": "Tambahkan item khusus",
           "dialogDescription": "Buat item luar biasa untuk reservasi ini",
+          "editDialogTitle": "Sunting item khusus",
+          "editDialogDescription": "Ubah detail item ini untuk reservasi ini",
           "name": "Nama barang",
           "namePlaceholder": "Misalnya: Konsol suara antik",
           "description": "Deskripsi (opsional)",
@@ -2742,7 +2741,12 @@
           "addButton": "Tambahkan",
           "nameRequired": "Silakan masukkan nama untuk item tersebut",
           "priceRequired": "Silakan masukkan harga yang valid",
-          "added": "Item khusus ditambahkan"
+          "added": "Item khusus ditambahkan",
+          "updated": "Item khusus diperbarui",
+          "editLabel": "Sunting {name}",
+          "decreaseLabel": "Kurangi jumlah {name}",
+          "increaseLabel": "Tambah jumlah {name}",
+          "removeLabel": "Hapus {name}"
         },
         "priceOverride": {
           "dialogTitle": "Sunting harga",

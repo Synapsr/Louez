@@ -2721,14 +2721,13 @@
         "originalPrice": "Original price",
         "totalSavings": "Total savings",
         "customItem": {
-          "title": "Custom items",
-          "add": "Add",
           "button": "Custom item",
           "units": "unit(s)",
           "badge": "Custom",
-          "empty": "No custom items added",
           "dialogTitle": "Add a custom item",
           "dialogDescription": "Create an exceptional item for this reservation",
+          "editDialogTitle": "Edit the custom item",
+          "editDialogDescription": "Change this item's details for this reservation",
           "name": "Item name",
           "namePlaceholder": "E.g.: Vintage sound console",
           "description": "Description (optional)",
@@ -2742,7 +2741,12 @@
           "addButton": "Add",
           "nameRequired": "Please enter a name for the item",
           "priceRequired": "Please enter a valid price",
-          "added": "Custom item added"
+          "added": "Custom item added",
+          "updated": "Custom item updated",
+          "editLabel": "Edit {name}",
+          "decreaseLabel": "Decrease the quantity of {name}",
+          "increaseLabel": "Increase the quantity of {name}",
+          "removeLabel": "Remove {name}"
         },
         "priceOverride": {
           "dialogTitle": "Edit price",

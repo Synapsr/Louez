@@ -2721,14 +2721,13 @@
         "originalPrice": "Precio original",
         "totalSavings": "Ahorro total",
         "customItem": {
-          "title": "Artículos personalizados",
-          "add": "Agregar",
           "button": "Personalizado",
           "units": "unidad(es)",
           "badge": "Personalizado",
-          "empty": "No hay artículos personalizados agregados",
           "dialogTitle": "Agregar un artículo personalizado",
           "dialogDescription": "Cree un artículo excepcional para esta reserva",
+          "editDialogTitle": "Editar el artículo personalizado",
+          "editDialogDescription": "Modifique los datos de este artículo para esta reserva",
           "name": "Nombre del artículo",
           "namePlaceholder": "Ej: Consola de sonido vintage",
           "description": "Descripción (opcional)",
@@ -2742,7 +2741,12 @@
           "addButton": "Agregar",
           "nameRequired": "Por favor ingrese un nombre para el artículo",
           "priceRequired": "Por favor ingrese un precio válido",
-          "added": "Artículo personalizado agregado"
+          "added": "Artículo personalizado agregado",
+          "updated": "Artículo personalizado actualizado",
+          "editLabel": "Editar {name}",
+          "decreaseLabel": "Reducir la cantidad de {name}",
+          "increaseLabel": "Aumentar la cantidad de {name}",
+          "removeLabel": "Quitar {name}"
         },
         "priceOverride": {
           "dialogTitle": "Modificar precio",

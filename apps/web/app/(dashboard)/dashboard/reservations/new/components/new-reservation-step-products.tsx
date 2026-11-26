@@ -50,6 +50,7 @@ import { ProductAddCombobox } from "@/components/dashboard/product-add-combobox"
 import { ProductImage } from "@/components/product/product-image";
 
 import type { PeriodAvailability } from "../hooks/use-new-reservation-warnings";
+import { usePricingModeLabels } from "../hooks/use-pricing-mode-labels";
 import type {
   AvailabilityWarning,
   CustomItem,
@@ -82,7 +83,8 @@ interface NewReservationStepProductsProps {
   updateQuantity: (lineId: string, delta: number) => void;
   updateSelectedAttributes: (lineId: string, axisKey: string, value: string | undefined) => void;
   removeSelectedProductLine: (lineId: string) => void;
-  onOpenCustomItemDialog: () => void;
+  onAddCustomItem: () => void;
+  onEditCustomItem: (item: CustomItem) => void;
   updateCustomItemQuantity: (id: string, delta: number) => void;
   removeCustomItem: (id: string) => void;
   onTulipInsuranceOptInChange: (value: boolean) => void;
@@ -124,7 +126,8 @@ export function NewReservationStepProducts({
   updateQuantity,
   updateSelectedAttributes,
   removeSelectedProductLine,
-  onOpenCustomItemDialog,
+  onAddCustomItem,
+  onEditCustomItem,
   updateCustomItemQuantity,
   removeCustomItem,
   onTulipInsuranceOptInChange,
@@ -234,17 +237,7 @@ export function NewReservationStepProducts({
     return false;
   };
 
-  const getPricingUnitLabel = (mode: PricingMode) => {
-    if (mode === "hour") return t("perHour");
-    if (mode === "week") return t("perWeek");
-    return t("perDay");
-  };
-
-  const getDurationLabel = (mode: PricingMode, count: number) => {
-    if (mode === "hour") return tCommon("hourUnit", { count });
-    if (mode === "week") return tCommon("weekUnit", { count });
-    return tCommon("dayUnit", { count });
-  };
+  const { perUnit: getPricingUnitLabel, units: getDurationLabel } = usePricingModeLabels();
 
   const formatPeriodLabel = (periodMinutes: number) => {
     const period = minutesToPriceDuration(periodMinutes);
@@ -323,7 +316,7 @@ export function NewReservationStepProducts({
                 className="min-w-0 shrink max-sm:max-w-[50%]"
                 onClick={() => {
                   if (guardPeriodSelected()) {
-                    onOpenCustomItemDialog();
+                    onAddCustomItem();
                   }
                 }}
               >
@@ -857,82 +850,95 @@ export function NewReservationStepProducts({
           <div className="space-y-3">
             {customItems.length > 0 && (
               <div className="grid gap-3 sm:grid-cols-2">
-                {customItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="border-primary/30 bg-primary/5 rounded-lg border border-dashed p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate font-medium">{item.name}</p>
-                          <Badge variant="expired" className="text-xs">
-                            {t("customItem.badge")}
-                          </Badge>
-                        </div>
-                        <p className="text-muted-foreground mt-0.5 text-sm">
-                          {formatCurrency(item.unitPrice)}/
-                          {item.pricingMode === "hour"
-                            ? t("perHour")
-                            : item.pricingMode === "week"
-                              ? "week"
-                              : t("perDay")}
+                {customItems.map((item) => {
+                  const itemDuration =
+                    startDate && endDate
+                      ? calculateDurationForMode(startDate, endDate, item.pricingMode)
+                      : null;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="border-primary/30 bg-primary/5 rounded-lg border border-dashed p-4"
+                    >
+                      {/* The title has the card's whole width: two lines, then the rest on hover. */}
+                      <p title={item.name} className="line-clamp-2 font-medium wrap-break-word">
+                        {item.name}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Badge variant="expired" className="text-xs">
+                          {t("customItem.badge")}
+                        </Badge>
+                        <span className="text-muted-foreground text-sm">
+                          {formatCurrency(item.unitPrice)}/{getPricingUnitLabel(item.pricingMode)}
+                        </span>
+                      </div>
+                      {item.description && (
+                        <p className="text-muted-foreground mt-1 line-clamp-2 text-xs wrap-break-word">
+                          {item.description}
                         </p>
-                        {item.description && (
-                          <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-                            {item.description}
-                          </p>
-                        )}
+                      )}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={t("customItem.decreaseLabel", { name: item.name })}
+                            onClick={() => updateCustomItemQuantity(item.id, -1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center font-medium">{item.quantity}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={t("customItem.increaseLabel", { name: item.name })}
+                            onClick={() => updateCustomItemQuantity(item.id, 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t("customItem.editLabel", { name: item.name })}
+                            onClick={() => onEditCustomItem(item)}
+                          >
+                            <PenLine data-slot="icon" />
+                            {tCommon("edit")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive h-8 w-8"
+                            aria-label={t("customItem.removeLabel", { name: item.name })}
+                            onClick={() => removeCustomItem(item.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateCustomItemQuantity(item.id, -1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateCustomItemQuantity(item.id, 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive h-8 w-8"
-                          onClick={() => removeCustomItem(item.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      {itemDuration !== null && (
+                        <div className="border-border mt-3 flex items-center justify-between gap-2 border-t pt-3 text-sm">
+                          <span className="text-muted-foreground">
+                            {item.quantity} × {itemDuration}{" "}
+                            {getDurationLabel(item.pricingMode, itemDuration)}
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(getCustomItemTotal(item))}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    {startDate && endDate && (
-                      <div className="border-border mt-3 flex items-center justify-between border-t pt-3 text-sm">
-                        <span className="text-muted-foreground">
-                          {item.quantity} ×{" "}
-                          {calculateDurationForMode(startDate, endDate, item.pricingMode)}{" "}
-                          {item.pricingMode === "hour"
-                            ? "h"
-                            : item.pricingMode === "week"
-                              ? "sem"
-                              : "j"}
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(getCustomItemTotal(item))}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

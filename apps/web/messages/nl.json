@@ -2682,14 +2682,13 @@
         "originalPrice": "Oorspronkelijke prijs",
         "totalSavings": "Totale besparing",
         "customItem": {
-          "title": "Aangepaste artikelen",
-          "add": "Toevoegen",
           "button": "Eigen artikel",
           "units": "eenheid(en)",
           "badge": "Aangepast",
-          "empty": "Geen aangepaste artikelen toegevoegd",
           "dialogTitle": "Aangepast artikel toevoegen",
           "dialogDescription": "Maak een uitzonderlijk artikel aan voor deze reservering",
+          "editDialogTitle": "Aangepast artikel bewerken",
+          "editDialogDescription": "Wijzig de gegevens van dit artikel voor deze reservering",
           "name": "Artikelnaam",
           "namePlaceholder": "Bijv. Vintage mengpaneel",
           "description": "Beschrijving (optioneel)",
@@ -2703,7 +2702,12 @@
           "addButton": "Toevoegen",
           "nameRequired": "Voer een naam in voor het artikel",
           "priceRequired": "Voer een geldige prijs in",
-          "added": "Aangepast artikel toegevoegd"
+          "added": "Aangepast artikel toegevoegd",
+          "updated": "Aangepast artikel bijgewerkt",
+          "editLabel": "{name} bewerken",
+          "decreaseLabel": "Aantal van {name} verlagen",
+          "increaseLabel": "Aantal van {name} verhogen",
+          "removeLabel": "{name} verwijderen"
         },
         "priceOverride": {
           "dialogTitle": "Prijs bewerken",
