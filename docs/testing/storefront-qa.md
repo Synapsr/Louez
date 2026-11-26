@@ -42,12 +42,12 @@ Les liens préparés pour le suivi client ouvrent de vraies sessions sur des ré
 
 ## Widget sur un autre site
 
-Le widget (`/embed`) vit dans une iframe sur le site du loueur, donc sur une autre origine que la boutique. À vérifier après un changement du widget, de ses scripts ou des en-têtes de sécurité :
+Le widget (`/embed`) vit dans une iframe sur le site du loueur, donc sur une autre origine que la boutique. À vérifier après un changement du widget, de ses scripts, des traceurs ou des en-têtes de sécurité :
 
 1. Dans le tableau de bord de la boutique (`/dashboard/settings/integrations/widget`), copier le code du widget avec redimensionnement automatique, sans le modifier.
 2. L’enregistrer dans un fichier HTML et le servir depuis une autre origine que la boutique, par exemple `python3 -m http.server 8081` dans son dossier, puis ouvrir `http://127.0.0.1:8081/<fichier>.html`.
 3. Attendu : le widget s’affiche ; la hauteur de l’iframe suit son contenu (elle grandit à l’ouverture du calendrier) ; après le choix d’une date, « Voir les disponibilités » ouvre le catalogue de la boutique avec la période dans un nouvel onglet.
-4. Erreurs visibles : dans les outils de développement, chaque script d’une autre origine de l’iframe porte `crossorigin="anonymous"`. En bloquant les cookies tiers (Chrome : Paramètres → Confidentialité → Cookies tiers), l’erreur d’un traceur s’affiche avec son message et son fichier, jamais en « Script error. ». Par exemple, le traceur de fromHello lève `SecurityError` en lisant `localStorage` dans une iframe tierce ; cela n’empêche ni le widget ni la réservation.
+4. Traceurs ([browser-trackers.md](../analytics/browser-trackers.md)) : dans l’onglet Réseau, l’iframe ne fait aucune requête vers `t.js` (fromHello) ni vers le script Umami, et ses appels PostHog `/ingest` sont présents. Sur une page de la boutique hors widget, `t.js` et le script Umami se chargent, avec `crossorigin="anonymous"`. La recette locale ne configure ni PostHog, ni fromHello, ni Umami, qui ne se charge qu’en production : faire ce contrôle sur un build de production (`next build`, puis `next start`) où leurs variables sont renseignées, même avec des valeurs de test, ou en préproduction.
 
 ## Modifier le code avec le hot reload
 
@@ -114,6 +114,7 @@ Pour ajouter un cas, modifier la matrice et, si nécessaire, les données du see
 ## Related
 
 - [Inventaire des fonctionnalités](storefront-coverage.md)
+- [Traceurs du navigateur](../analytics/browser-trackers.md)
 - [Architecture](../ARCHITECTURE.md)
 - [Isolation des tests Playwright](https://playwright.dev/docs/best-practices)
 - [Isolation par projet Docker Compose](https://docs.docker.com/compose/how-tos/project-name/)

@@ -1,11 +1,9 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
 import { cookies, headers } from "next/headers";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER } from "@/lib/landing-demos/policy";
-import { loadsClientAnalytics } from "@/lib/handoffs/handoff-privacy";
 import { isDemoRequest } from "@/lib/demo/demo-request";
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import Script from "next/script";
 import { getLocale } from "next-intl/server";
 
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -14,14 +12,15 @@ import { AnchoredToastProvider, ToastProvider } from "@louez/ui";
 
 import { EvlogProvider } from "@/components/evlog-provider";
 import { InstanceProvider } from "@/components/instance-provider";
+import { MarketingTrackers } from "@/components/marketing-trackers";
 import { PostHogBootstrap } from "@/components/shared/posthog-bootstrap";
 import { PublicEnvProvider } from "@/components/shared/public-env-provider";
-import { UmamiAnalytics } from "@/components/umami-analytics";
 
-import { env, getPublicEnv } from "@/env";
+import { getPublicEnv } from "@/env";
 import { getInstanceConfig } from "@/lib/deployment";
 import { ORPCProvider } from "@/lib/orpc/provider";
 import { NO_INDEX_ROBOTS, isSearchIndexingEnabled } from "@/lib/search-indexing";
+import { clientTrackingFor } from "@/lib/util.client-tracking";
 
 // Import translations directly since this is a root layout without NextIntlProvider
 import messages from "@/messages/fr.json";
@@ -69,10 +68,8 @@ export default async function RootLayout({
   await connection();
   const requestHeaders = await headers();
   const isPublicDemo = requestHeaders.get(DEMO_ROUTE_HEADER) === "1";
-  // A handoff page's URL holds a secret: no analytics, no client log may read it.
-  // A demo store's visitor (lib/demo) is no business metric either.
   const inDemoStore = await isDemoRequest({ headers: requestHeaders, cookies: await cookies() });
-  const withAnalytics = !isPublicDemo && !inDemoStore && loadsClientAnalytics(requestHeaders);
+  const tracking = clientTrackingFor({ headers: requestHeaders, isPublicDemo, inDemoStore });
   const instanceConfig = getInstanceConfig();
   const publicEnv = getPublicEnv();
   // Drives the document language for screen readers and translation tools.
@@ -96,19 +93,7 @@ export default async function RootLayout({
       {/* {process.env.NODE_ENV === 'development' && <Agentation />} */}
 
       <html lang={locale} suppressHydrationWarning className="overscroll-none">
-        {withAnalytics && <UmamiAnalytics />}
-
-        {withAnalytics && env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
-          // Fetched with CORS, which its server allows, so the browser hands its
-          // errors to error tracking instead of a bare "Script error.".
-          <Script
-            src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL.replace(/\/$/, "")}/api/t.js`}
-            crossOrigin="anonymous"
-            data-key={env.NEXT_PUBLIC_FROMHELLO_KEY}
-            data-cookie-domain={env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN || undefined}
-            strategy="afterInteractive"
-          />
-        )}
+        {tracking.marketingTrackers && <MarketingTrackers />}
 
         <head>
           <link
@@ -125,10 +110,10 @@ export default async function RootLayout({
               children
             ) : (
               <>
-                {withAnalytics && <PostHogBootstrap />}
+                {tracking.productAnalytics && <PostHogBootstrap />}
                 <InstanceProvider config={instanceConfig}>
                   <NuqsAdapter>
-                    {withAnalytics ? <EvlogProvider>{app}</EvlogProvider> : app}
+                    {tracking.productAnalytics ? <EvlogProvider>{app}</EvlogProvider> : app}
                   </NuqsAdapter>
                 </InstanceProvider>
               </>

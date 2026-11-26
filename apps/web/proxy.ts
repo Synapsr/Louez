@@ -8,6 +8,7 @@ import { LOUEZ_TERMS_PATH, isBillingOnlyPath } from "@/lib/billing/billing-route
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
 import { NO_INDEX_DIRECTIVE, isSearchIndexingEnabled } from "@/lib/search-indexing";
+import { EMBED_MODE_HEADER } from "@/lib/embed/util.embed-request";
 import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import { MARKETPLACE_SALES_CHANNEL, SALES_CHANNEL_COOKIE } from "@/lib/util.sales-channel";
@@ -59,12 +60,32 @@ const getRuntimePublicEnv = (): PublicEnv => {
   return runtimePublicEnv;
 };
 
-function isEmbedPath(pathname: string): boolean {
-  return (
-    pathname === "/embed" ||
-    pathname.startsWith("/embed/") ||
-    /^\/[^/]+\/embed(?:\/|$)/.test(pathname)
-  );
+/** Match the widget in the route namespace selected by the proxy. */
+function isEmbedPath(pathname: string, storefrontRewrite = false): boolean {
+  // A storefront host adds its slug during rewriting: only /embed is its widget.
+  if (storefrontRewrite) return /^\/embed(?:\/|$)/.test(pathname);
+
+  // Direct URLs include the slug. Fixed app routes take precedence over [slug].
+  if (isDashboardRoute(pathname)) return false;
+  const root = pathname.split("/")[1];
+  if (
+    [
+      "api",
+      "ingest",
+      "_next",
+      "dev",
+      "demos",
+      "files",
+      "handoffs",
+      "partner",
+      "account",
+      "account-deleted",
+      "privacy",
+      "terms",
+    ].includes(root ?? "")
+  )
+    return false;
+  return /^\/[^/]+\/embed(?:\/|$)/.test(pathname);
 }
 
 /**
@@ -82,6 +103,7 @@ function withRuntimeSecurityHeaders(
   response: NextResponse,
   pathname: string,
   publicEnv: PublicEnv,
+  storefrontRewrite = false,
 ) {
   const options = {
     appDomain: publicEnv.NEXT_PUBLIC_APP_DOMAIN,
@@ -96,7 +118,7 @@ function withRuntimeSecurityHeaders(
   };
   const securityHeaders = isDemoPath(pathname)
     ? buildDemoSecurityHeaders(options)
-    : isEmbedPath(pathname)
+    : isEmbedPath(pathname, storefrontRewrite)
       ? buildEmbedSecurityHeaders(options)
       : isHandoffPagePath(pathname)
         ? buildHandoffSecurityHeaders(options)
@@ -121,7 +143,7 @@ const DASHBOARD_ROUTES = [
   "/invitation",
   "/multi-store",
   "/admin", // platform-admin area (gated in its layout)
-  "/demo/", // the one-click demo stores (lib/demo), never a storefront slug
+  "/demo", // the one-click demo stores (lib/demo), never a storefront slug
 ];
 
 /** A route owns its path and descendants, never another segment sharing its prefix. */
@@ -131,7 +153,7 @@ function hasRouteSegmentPrefix(pathname: string, route: string): boolean {
 
 /** Check if the pathname is a dashboard/auth route that should not be rewritten. */
 function isDashboardRoute(pathname: string): boolean {
-  return DASHBOARD_ROUTES.some((route) => pathname.startsWith(route));
+  return DASHBOARD_ROUTES.some((route) => hasRouteSegmentPrefix(pathname, route));
 }
 
 /**
@@ -169,10 +191,16 @@ function createActiveStoreSwitch(request: NextRequest): NextResponse | null {
   return NextResponse.rewrite(url, { request: { headers: routingHeaders(request) } });
 }
 
-/** Only a resolved storefront rewrite may identify a store by header. */
-function routingHeaders(request: NextRequest): Headers {
+/** Derive internal layout markers from routing, never from caller-supplied headers. */
+function routingHeaders(request: NextRequest, storefrontRewrite = false): Headers {
   const headers = new Headers(request.headers);
   headers.delete("x-store-slug");
+  headers.delete("x-sales-channel");
+  headers.delete("x-storefront-path");
+  headers.delete(EMBED_MODE_HEADER);
+  if (isEmbedPath(request.nextUrl.pathname, storefrontRewrite)) {
+    headers.set(EMBED_MODE_HEADER, "1");
+  }
   return headers;
 }
 
@@ -200,13 +228,7 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
   const isMarketplaceChannel =
     requestedChannel === MARKETPLACE_SALES_CHANNEL ||
     (requestedChannel !== "direct" && hasMarketplaceCookie);
-  const requestHeaders = routingHeaders(request);
-
-  // Never trust caller-provided mode headers. The proxy derives them from the
-  // route, query, and cookie before forwarding the rewritten request upstream.
-  requestHeaders.delete("x-embed-mode");
-  requestHeaders.delete("x-sales-channel");
-  requestHeaders.delete("x-storefront-path");
+  const requestHeaders = routingHeaders(request, true);
 
   // The i18n request config reads the store's fallback language from this
   // before any page runs; it has no route params of its own.
@@ -217,11 +239,6 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
 
   if (isMarketplaceChannel) {
     requestHeaders.set("x-sales-channel", MARKETPLACE_SALES_CHANNEL);
-  }
-
-  // Embed routes drop the app chrome (used by the layout).
-  if (pathname === "/embed" || pathname.startsWith("/embed/")) {
-    requestHeaders.set("x-embed-mode", "1");
   }
 
   const response = NextResponse.rewrite(url, {
@@ -542,7 +559,12 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    return withRuntimeSecurityHeaders(createStorefrontRewrite(request, slug), pathname, publicEnv);
+    return withRuntimeSecurityHeaders(
+      createStorefrontRewrite(request, slug),
+      pathname,
+      publicEnv,
+      true,
+    );
   }
 
   // -----------------------------------------------------------------------------
@@ -562,6 +584,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
       ),
       pathname,
       publicEnv,
+      true,
     );
   }
 
@@ -592,6 +615,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
       captureAcquisition(request, createStorefrontRewrite(request, subdomain), host, appDomain),
       pathname,
       publicEnv,
+      true,
     );
   }
 
