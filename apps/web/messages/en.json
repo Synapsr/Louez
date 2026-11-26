@@ -2851,6 +2851,12 @@
         "overbooked": "Overbooked",
         "turnoverBufferOverridden": "Short turnaround",
         "contract_signed": "Contract signed",
+        "inspection_departure_started": "Departure inspection started",
+        "inspection_departure_completed": "Departure inspection completed",
+        "inspection_return_started": "Return inspection started",
+        "inspection_return_completed": "Return inspection completed",
+        "inspection_damage_detected": "Damage detected during inspection",
+        "inspection_signed": "Inspection signed by the customer",
         "contractUnsigned": "Without signed contract",
         "signedBy": "Signed by {name}",
         "showAll": "Show all ({count} events)",
@@ -5795,14 +5801,6 @@
           "estimatedCost": "Estimated cost",
           "captureDeposit": "Capture from deposit",
           "createPayment": "Create payment"
-        },
-        "activity": {
-          "departureStarted": "Departure inspection started",
-          "departureCompleted": "Departure inspection completed",
-          "returnStarted": "Return inspection started",
-          "returnCompleted": "Return inspection completed",
-          "damageDetected": "Damage detected: {description}",
-          "signed": "Inspection signed by customer"
         },
         "prompt": {
           "departureTitle": "Perform inspection?",

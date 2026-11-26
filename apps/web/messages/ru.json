@@ -2851,6 +2851,12 @@
         "overbooked": "Перебронировано",
         "turnoverBufferOverridden": "Буфер сокращён",
         "contract_signed": "Договор подписан",
+        "inspection_departure_started": "Осмотр при выдаче начат",
+        "inspection_departure_completed": "Осмотр при выдаче завершён",
+        "inspection_return_started": "Осмотр при возврате начат",
+        "inspection_return_completed": "Осмотр при возврате завершён",
+        "inspection_damage_detected": "При осмотре обнаружены повреждения",
+        "inspection_signed": "Акт осмотра подписан клиентом",
         "contractUnsigned": "Без подписанного договора",
         "signedBy": "Подписал(а): {name}",
         "showAll": "Показать все (события {count})",
@@ -5794,14 +5800,6 @@
           "estimatedCost": "Ориентировочная стоимость",
           "captureDeposit": "Захват с депозита",
           "createPayment": "Создать платеж"
-        },
-        "activity": {
-          "departureStarted": "Начался выездной осмотр",
-          "departureCompleted": "Выездная проверка завершена",
-          "returnStarted": "Проверка возврата началась",
-          "returnCompleted": "Проверка возврата завершена",
-          "damageDetected": "Обнаружено повреждение: {description}",
-          "signed": "Осмотр, подписанный клиентом"
         },
         "prompt": {
           "departureTitle": "Провести осмотр?",

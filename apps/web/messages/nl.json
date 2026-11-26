@@ -2812,6 +2812,12 @@
         "overbooked": "Overboekt",
         "turnoverBufferOverridden": "Buffer ingekort",
         "contract_signed": "Contract ondertekend",
+        "inspection_departure_started": "Ophaalverslag gestart",
+        "inspection_departure_completed": "Ophaalverslag voltooid",
+        "inspection_return_started": "Terugbrengverslag gestart",
+        "inspection_return_completed": "Terugbrengverslag voltooid",
+        "inspection_damage_detected": "Schade vastgesteld in het verslag",
+        "inspection_signed": "Verslag ondertekend door de klant",
         "contractUnsigned": "Zonder ondertekend contract",
         "signedBy": "Ondertekend door {name}",
         "showAll": "Alles tonen ({count} gebeurtenissen)",
@@ -5658,14 +5664,6 @@
           "estimatedCost": "Geschatte kosten",
           "captureDeposit": "Inhouden van borg",
           "createPayment": "Betaling aanmaken"
-        },
-        "activity": {
-          "departureStarted": "Ophaverslag gestart",
-          "departureCompleted": "Ophaverslag voltooid",
-          "returnStarted": "Terugbrengverslag gestart",
-          "returnCompleted": "Terugbrengverslag voltooid",
-          "damageDetected": "Schade gedetecteerd: {description}",
-          "signed": "Verslag ondertekend door klant"
         },
         "prompt": {
           "departureTitle": "Verslag uitvoeren?",

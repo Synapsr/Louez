@@ -2812,6 +2812,12 @@
         "overbooked": "Sobrerreservada",
         "turnoverBufferOverridden": "Margem reduzida",
         "contract_signed": "Contrato assinado",
+        "inspection_departure_started": "Vistoria de retirada iniciada",
+        "inspection_departure_completed": "Vistoria de retirada concluída",
+        "inspection_return_started": "Vistoria de devolução iniciada",
+        "inspection_return_completed": "Vistoria de devolução concluída",
+        "inspection_damage_detected": "Danos constatados na vistoria",
+        "inspection_signed": "Vistoria assinada pelo cliente",
         "contractUnsigned": "Sem contrato assinado",
         "signedBy": "Assinado por {name}",
         "showAll": "Mostrar tudo ({count} eventos)",
@@ -5658,14 +5664,6 @@
           "estimatedCost": "Custo estimado",
           "captureDeposit": "Reter do depósito",
           "createPayment": "Criar pagamento"
-        },
-        "activity": {
-          "departureStarted": "Vistoria de retirada iniciada",
-          "departureCompleted": "Vistoria de retirada concluída",
-          "returnStarted": "Vistoria de devolução iniciada",
-          "returnCompleted": "Vistoria de devolução concluída",
-          "damageDetected": "Dano detectado: {description}",
-          "signed": "Vistoria assinada pelo cliente"
         },
         "prompt": {
           "departureTitle": "Realizar vistoria?",

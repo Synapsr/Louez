@@ -2812,6 +2812,12 @@
         "overbooked": "Overbooking",
         "turnoverBufferOverridden": "Margine ridotto",
         "contract_signed": "Contratto firmato",
+        "inspection_departure_started": "Verbale di ritiro iniziato",
+        "inspection_departure_completed": "Verbale di ritiro completato",
+        "inspection_return_started": "Verbale di riconsegna iniziato",
+        "inspection_return_completed": "Verbale di riconsegna completato",
+        "inspection_damage_detected": "Danni rilevati nel verbale",
+        "inspection_signed": "Verbale firmato dal cliente",
         "contractUnsigned": "Senza contratto firmato",
         "signedBy": "Firmato da {name}",
         "showAll": "Mostra tutto ({count} eventi)",
@@ -5658,14 +5664,6 @@
           "estimatedCost": "Costo stimato",
           "captureDeposit": "Trattenere dal deposito",
           "createPayment": "Crea pagamento"
-        },
-        "activity": {
-          "departureStarted": "Verbale di ritiro iniziato",
-          "departureCompleted": "Verbale di ritiro completato",
-          "returnStarted": "Verbale di riconsegna iniziato",
-          "returnCompleted": "Verbale di riconsegna completato",
-          "damageDetected": "Danno rilevato: {description}",
-          "signed": "Verbale firmato dal cliente"
         },
         "prompt": {
           "departureTitle": "Effettuare il verbale?",

@@ -2851,6 +2851,12 @@
         "overbooked": "Pemesanan berlebih",
         "turnoverBufferOverridden": "Buffer dipersingkat",
         "contract_signed": "Kontrak ditandatangani",
+        "inspection_departure_started": "Pemeriksaan keberangkatan dimulai",
+        "inspection_departure_completed": "Pemeriksaan keberangkatan selesai",
+        "inspection_return_started": "Pemeriksaan pengembalian dimulai",
+        "inspection_return_completed": "Pemeriksaan pengembalian selesai",
+        "inspection_damage_detected": "Kerusakan ditemukan saat pemeriksaan",
+        "inspection_signed": "Pemeriksaan ditandatangani oleh pelanggan",
         "contractUnsigned": "Tanpa kontrak bertanda tangan",
         "signedBy": "Ditandatangani oleh {name}",
         "showAll": "Tampilkan semua (acara {count})",
@@ -5794,14 +5800,6 @@
           "estimatedCost": "Perkiraan biaya",
           "captureDeposit": "Tangkap dari deposit",
           "createPayment": "Buat pembayaran"
-        },
-        "activity": {
-          "departureStarted": "Inspeksi keberangkatan dimulai",
-          "departureCompleted": "Pemeriksaan keberangkatan selesai",
-          "returnStarted": "Inspeksi pengembalian dimulai",
-          "returnCompleted": "Pemeriksaan pengembalian selesai",
-          "damageDetected": "Kerusakan terdeteksi: {description}",
-          "signed": "Inspeksi ditandatangani oleh pelanggan"
         },
         "prompt": {
           "departureTitle": "Lakukan pemeriksaan?",

@@ -2860,6 +2860,12 @@
         "overbooked": "Sur-réservée",
         "turnoverBufferOverridden": "Marge de rotation réduite",
         "contract_signed": "Contrat signé",
+        "inspection_departure_started": "État des lieux de départ commencé",
+        "inspection_departure_completed": "État des lieux de départ terminé",
+        "inspection_return_started": "État des lieux de retour commencé",
+        "inspection_return_completed": "État des lieux de retour terminé",
+        "inspection_damage_detected": "Dommages constatés à l'état des lieux",
+        "inspection_signed": "État des lieux signé par le client",
         "contractUnsigned": "Sans contrat signé",
         "signedBy": "Signé par {name}",
         "showAll": "Voir tout ({count} événements)",
@@ -5795,14 +5801,6 @@
           "estimatedCost": "Coût estimé",
           "captureDeposit": "Capturer sur la caution",
           "createPayment": "Créer un paiement"
-        },
-        "activity": {
-          "departureStarted": "État des lieux de départ commencé",
-          "departureCompleted": "État des lieux de départ terminé",
-          "returnStarted": "État des lieux de retour commencé",
-          "returnCompleted": "État des lieux de retour terminé",
-          "damageDetected": "Dommage détecté : {description}",
-          "signed": "État des lieux signé par le client"
         },
         "prompt": {
           "departureTitle": "Effectuer l'état des lieux ?",

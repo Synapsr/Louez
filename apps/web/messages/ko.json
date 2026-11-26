@@ -2851,6 +2851,12 @@
         "overbooked": "초과 예약됨",
         "turnoverBufferOverridden": "버퍼 단축",
         "contract_signed": "계약 서명",
+        "inspection_departure_started": "대여 시 점검 시작",
+        "inspection_departure_completed": "대여 시 점검 완료",
+        "inspection_return_started": "반납 시 점검 시작",
+        "inspection_return_completed": "반납 시 점검 완료",
+        "inspection_damage_detected": "점검 중 손상 발견",
+        "inspection_signed": "고객이 점검 보고서에 서명함",
         "contractUnsigned": "계약 미서명",
         "signedBy": "서명자: {name}",
         "showAll": "모두 표시 ({count} 이벤트)",
@@ -5794,14 +5800,6 @@
           "estimatedCost": "예상 비용",
           "captureDeposit": "예금에서 캡처",
           "createPayment": "결제 생성"
-        },
-        "activity": {
-          "departureStarted": "출국심사가 시작되었습니다",
-          "departureCompleted": "출국심사 완료",
-          "returnStarted": "반품검사가 시작되었습니다",
-          "returnCompleted": "반품검사 완료",
-          "damageDetected": "손상 감지됨: {description}",
-          "signed": "고객이 서명한 검사"
         },
         "prompt": {
           "departureTitle": "검사를 수행하시겠습니까?",
