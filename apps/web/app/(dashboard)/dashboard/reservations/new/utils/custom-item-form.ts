@@ -108,17 +108,17 @@ const priceIsUnchanged = (values: CustomItemFormValues, origin: CustomItemFormOr
   values.pricingMode === origin.form.pricingMode;
 
 /**
- * The item the dialog saves, or what it lacks, in this order: a price, a
- * period to spread a total over, a name. The unit price comes from the field
- * typed in last. An item edited without touching its price, quantity or
- * period keeps its exact unit price, which the rounded figures the dialog
- * shows could not give back.
+ * Once there is a period, the dialog checks the price and name. The unit
+ * price comes from the field typed in last. Editing without touching the
+ * pricing fields keeps the item's exact unit price.
  */
 export const resolveCustomItemForm = (
   values: CustomItemFormValues,
   duration: number,
   origin?: CustomItemFormOrigin,
 ): CustomItemFormResult => {
+  if (duration <= 0) return { ok: false, errors: ["selectPeriodFirst"] };
+
   const errors: CustomItemFormError[] = [];
   const quantity = parseInt(values.quantity) || 1;
 
@@ -128,7 +128,6 @@ export const resolveCustomItemForm = (
   } else if (values.priceField === "total") {
     const totalPrice = parseFloat(values.totalPrice);
     if (isNaN(totalPrice) || totalPrice <= 0) errors.push("priceRequired");
-    else if (duration <= 0) errors.push("selectPeriodFirst");
     else unitPrice = totalPrice / (quantity * duration);
   } else {
     unitPrice = parseFloat(values.unitPrice);

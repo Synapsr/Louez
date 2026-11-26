@@ -69,7 +69,7 @@ test("the name and description are trimmed, an empty deposit is none", () => {
   );
 });
 
-test("what is missing is said in order: a price, a period, a name", () => {
+test("with a period, the price is checked before the name", () => {
   assert.deepEqual(resolveCustomItemForm(form({ name: " ", totalPrice: "" }), THREE_DAYS), {
     ok: false,
     errors: ["priceRequired", "nameRequired"],
@@ -78,13 +78,18 @@ test("what is missing is said in order: a price, a period, a name", () => {
     ok: false,
     errors: ["priceRequired"],
   });
-  assert.deepEqual(resolveCustomItemForm(form({ totalPrice: "40" }), 0), {
-    ok: false,
-    errors: ["selectPeriodFirst"],
-  });
   assert.deepEqual(
     resolveCustomItemForm(form({ unitPrice: "0", priceField: "unit" }), THREE_DAYS),
     { ok: false, errors: ["priceRequired"] },
+  );
+});
+
+test("adding requires a period for both price fields", () => {
+  const missingPeriod = { ok: false, errors: ["selectPeriodFirst"] };
+  assert.deepEqual(resolveCustomItemForm(form({ totalPrice: "40" }), 0), missingPeriod);
+  assert.deepEqual(
+    resolveCustomItemForm(form({ unitPrice: "12.5", priceField: "unit" }), 0),
+    missingPeriod,
   );
 });
 
@@ -124,15 +129,6 @@ test("an item edited without touching its price keeps its exact unit price", () 
   assert.equal(renamed.values.unitPrice, sound.unitPrice);
   assert.equal(renamed.values.name, "Sound console");
 
-  // Without a period to read a total against, its name can still change.
-  const undated = customItemFormFromItem(sound, 0);
-  const renamedUndated = resolveCustomItemForm({ ...undated, name: "Console" }, 0, {
-    item: sound,
-    form: undated,
-  });
-  assert.ok(renamedUndated.ok);
-  assert.equal(renamedUndated.values.unitPrice, sound.unitPrice);
-
   // Another quantity is priced from the total shown, as when adding.
   const doubled = resolveCustomItemForm(
     { ...opened, quantity: "2", unitPrice: "16.67" },
@@ -141,4 +137,20 @@ test("an item edited without touching its price keeps its exact unit price", () 
   );
   assert.ok(doubled.ok);
   assert.equal(doubled.values.unitPrice, 100 / 6);
+});
+
+test("editing requires a period even when the pricing fields are unchanged", () => {
+  const opened = customItemFormFromItem(sound, 0);
+  const origin = { item: sound, form: opened };
+  const missingPeriod = { ok: false, errors: ["selectPeriodFirst"] };
+
+  assert.deepEqual(resolveCustomItemForm({ ...opened, name: "Console" }, 0, origin), missingPeriod);
+  assert.deepEqual(
+    resolveCustomItemForm({ ...opened, totalPrice: "40" }, 0, origin),
+    missingPeriod,
+  );
+  assert.deepEqual(
+    resolveCustomItemForm({ ...opened, unitPrice: "12.5", priceField: "unit" }, 0, origin),
+    missingPeriod,
+  );
 });

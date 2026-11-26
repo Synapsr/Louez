@@ -248,23 +248,26 @@ test("adding checks the same way, then adds", async () => {
   ]);
 });
 
-test("without a period: no price fields, a price is asked when adding, a name still changes", async () => {
+test("adding without a period asks for a period and keeps the dialog open", async () => {
   const toasts = recordToasts();
-  const added = open(null, { dated: false });
+  const opened = open(null, { dated: false });
   await tick(500);
   assert.ok(dialogText().includes(words.selectPeriodFirst));
   assert.equal(document.querySelector('[role="dialog"] input[name="totalPrice"]'), null);
   typeInto(field("name"), "Stage");
   await press(words.addButton);
-  assert.deepEqual(added.saves, []);
-  assert.equal(toasts.at(-1)?.title, words.priceRequired);
-  unmount?.();
-  document.body.innerHTML = "";
+  assert.deepEqual(opened.saves, []);
+  assert.equal(toasts.at(-1)?.title, words.selectPeriodFirst);
+  assert.ok(isOpen());
+});
 
-  const edited = open(sound, { dated: false });
+test("editing without a period asks for a period even when only the name changes", async () => {
+  const toasts = recordToasts();
+  const opened = open(sound, { dated: false });
   await tick(500);
   typeInto(field("name"), "Sound console");
   await press(messages.common.save);
-  assert.equal(edited.saves[0]?.name, "Sound console");
-  assert.equal(edited.saves[0]?.unitPrice, 100 / 3);
+  assert.deepEqual(opened.saves, []);
+  assert.equal(toasts.at(-1)?.title, words.selectPeriodFirst);
+  assert.ok(isOpen());
 });

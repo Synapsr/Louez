@@ -651,8 +651,8 @@ export function NewReservationStepProducts({
                             </div>
 
                             {hasBookingAttributes && (
-                              <div className="space-y-2">
-                                <div className="grid gap-2 sm:grid-cols-2">
+                              <div className="@container space-y-2">
+                                <div className="grid gap-2 @[20.5rem]:grid-cols-2">
                                   {bookingAttributeAxes.map((axis) => (
                                     <Select
                                       key={`${line.lineId}-${axis.key}`}
@@ -847,9 +847,9 @@ export function NewReservationStepProducts({
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className="@container space-y-3">
             {customItems.length > 0 && (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 @[42.5rem]:grid-cols-2">
                 {customItems.map((item) => {
                   const itemDuration =
                     startDate && endDate
