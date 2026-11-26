@@ -15,6 +15,7 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 // `generateCreditNoteForRefund` does (it answers `already_invoiced` for a
 // refund already credited), and can fail or be turned off.
 
+const FILES_SDK = new URL("../../node_modules/files-sdk/dist/", import.meta.url);
 Reflect.get(
   nodeModule,
   "registerHooks",
@@ -25,6 +26,12 @@ Reflect.get(
     next: (specifier: string, context: unknown) => unknown,
   ) {
     if (specifier === "server-only") return { url: "node:module", shortCircuit: true };
+    // The PDFs' images are read through the file storage SDK, which exports ESM
+    // only, through an "import" condition the test's require misses.
+    if (specifier === "files-sdk" || specifier.startsWith("files-sdk/")) {
+      const entry = specifier === "files-sdk" ? "index.js" : `${specifier.slice(10)}/index.js`;
+      return { url: new URL(entry, FILES_SDK).href, shortCircuit: true };
+    }
     return next(specifier, context);
   },
 });

@@ -31,7 +31,8 @@
     "equipment": "Equipment",
     "condition": "Condition",
     "photos": "Photos",
-    "notes": "Notes"
+    "notes": "Notes",
+    "photoUnavailable": "Photo unavailable"
   },
   "signature": {
     "customerSignature": "Customer Signature",

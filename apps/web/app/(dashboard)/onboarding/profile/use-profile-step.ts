@@ -71,13 +71,13 @@ export const useProfileStep = ({
       let uploadedKey: string | null = null;
 
       try {
-        let imageUrl: string | null | undefined =
-          value.image === initialImage ? undefined : value.image;
+        // undefined keeps the current photo, null removes it, a key sets the upload.
+        let imageKey: string | null | undefined = value.image === initialImage ? undefined : null;
 
         if (selectedImageFile.current) {
           const uploaded = await uploadImage(selectedImageFile.current);
           uploadedKey = uploaded.key;
-          imageUrl = uploaded.url;
+          imageKey = uploaded.key;
         }
 
         // The onSubmit validator already rejects a missing status (ADR 010);
@@ -91,13 +91,13 @@ export const useProfileStep = ({
           businessType: value.businessType,
           productCategory: value.productCategory,
           fleetSize: value.fleetSize,
-          imageUrl,
+          imageKey,
         });
         if (result.error) {
           throw new Error(result.error);
         }
 
-        if (initialImage && imageUrl !== undefined && imageUrl !== initialImage) {
+        if (initialImage && imageKey !== undefined) {
           void deleteImage(initialImage).catch(() => undefined);
         }
 

@@ -90,6 +90,7 @@ test("an inspection report that runs past eleven pages renders", async () => {
           condition: "good" as const,
           notes: paragraph.repeat(4),
           photos: [],
+          photoCount: 0,
         })),
       },
       document: { number: "TEST", generatedAt: date },

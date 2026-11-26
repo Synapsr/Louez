@@ -25,7 +25,6 @@ import {
   completeInspectionSchema,
   createInspectionSchema,
   signInspectionSchema,
-  isOwnedImageUrl,
 } from "@louez/validations";
 
 import { getCurrentStore } from "@/lib/store-context";
@@ -171,15 +170,15 @@ export async function createInspection(data: CreateInspectionInput): Promise<{
       createdAt: now,
     });
     for (const [displayOrder, photo] of item.photos.entries()) {
-      if (!isOwnedImageUrl(photo.url, `${store.id}/inspections`)) {
-        return { error: "errors.invalidData" };
-      }
-
+      // A bare file name (inspectionPhotoSchema) can only point into the
+      // store's own folder. The URL comes from the key, never from the
+      // browser: "/files/…" or the bucket's, whatever the storage mode.
+      const photoKey = `${store.id}/inspections/${photo.key}`;
       inspectionPhotoRows.push({
         id: nanoid(),
         inspectionItemId: itemId,
-        photoKey: `${store.id}/inspections/${photo.key}`,
-        photoUrl: photo.url,
+        photoKey,
+        photoUrl: await getImageFiles().url(photoKey),
         caption: photo.caption || null,
         displayOrder,
         createdAt: now,

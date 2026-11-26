@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, users } from "@louez/db";
-import { isOwnedImageUrl } from "@louez/validations";
+import { uploadedImageFileNameSchema } from "@louez/validations";
 
 import { auth } from "@/lib/auth";
 import {
@@ -14,11 +14,12 @@ import {
   resolveKeyboardShortcuts,
   type KeyboardShortcutOverrides,
 } from "@/lib/keyboard-shortcuts";
+import { getImageFiles } from "@/lib/storage/files";
 
 const updateAccountInfoSchema = z.object({
   name: z.string().trim().min(2).max(255),
-  // undefined = keep the current image, null = remove it, string = uploaded URL.
-  imageUrl: z.string().url().nullable().optional(),
+  // undefined = keep the current image, null = remove it, string = the avatar upload's key.
+  imageKey: uploadedImageFileNameSchema.nullable().optional(),
 });
 
 type UpdateAccountInfoInput = z.infer<typeof updateAccountInfoSchema>;
@@ -34,10 +35,12 @@ export async function updateAccountInfo(input: UpdateAccountInfoInput) {
     return { error: "errors.invalidData" };
   }
 
-  const imageUrl = parsed.data.imageUrl;
-  if (imageUrl && !isOwnedImageUrl(imageUrl, `users/${session.user.id}`)) {
-    return { error: "errors.invalidData" };
-  }
+  // The key can only name a file of the user's avatar folder, and the URL
+  // comes from it, whatever the storage mode.
+  const { imageKey } = parsed.data;
+  const imageUrl = imageKey
+    ? await getImageFiles().url(`users/${session.user.id}/${imageKey}`)
+    : imageKey;
 
   await db
     .update(users)

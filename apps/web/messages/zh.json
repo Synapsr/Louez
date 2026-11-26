@@ -2851,6 +2851,12 @@
         "overbooked": "超额预订",
         "turnoverBufferOverridden": "缓冲已缩短",
         "contract_signed": "合同已签署",
+        "inspection_departure_started": "交付检查已开始",
+        "inspection_departure_completed": "交付检查已完成",
+        "inspection_return_started": "归还检查已开始",
+        "inspection_return_completed": "归还检查已完成",
+        "inspection_damage_detected": "检查中发现损坏",
+        "inspection_signed": "客户已签署检查报告",
         "contractUnsigned": "合同未签署",
         "signedBy": "签署人：{name}",
         "showAll": "显示全部（{count} 事件）",
@@ -5887,14 +5893,6 @@
           "estimatedCost": "预计费用",
           "captureDeposit": "从存款中捕获",
           "createPayment": "创建付款"
-        },
-        "activity": {
-          "departureStarted": "出境检查开始",
-          "departureCompleted": "出境检查完成",
-          "returnStarted": "退货检验开始",
-          "returnCompleted": "退货检验完成",
-          "damageDetected": "检测到损坏：{description}",
-          "signed": "客户签字检验"
         },
         "prompt": {
           "departureTitle": "进行检查？",

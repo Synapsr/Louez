@@ -1,6 +1,10 @@
 import { getInspectionTranslations } from "./inspection-i18n";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { InspectionReportDocument, SupportedLocale } from "./inspection-report";
+import {
+  INSPECTION_REPORT_PHOTOS_PER_ITEM,
+  InspectionReportDocument,
+  SupportedLocale,
+} from "./inspection-report";
 import { db } from "@louez/db";
 import {
   inspections,
@@ -11,9 +15,8 @@ import {
   customers,
   users,
 } from "@louez/db";
-import { eq, and, sql } from "drizzle-orm";
-import { convertImageForPdf } from "./image-utils";
-import { getLogoForLightBackground } from "@louez/utils";
+import { asc, eq, and, sql } from "drizzle-orm";
+import { readStoreLogoForPdf, readStoredImageForPdf } from "./image-utils";
 import type { ConditionRating } from "@louez/types";
 
 interface GenerateInspectionReportOptions {
@@ -81,37 +84,43 @@ export async function generateInspectionReport({
     .from(inspectionItems)
     .where(eq(inspectionItems.inspectionId, inspectionId));
 
-  // Get photos for each item
-  const itemsWithPhotos = await Promise.all(
-    items.map(async (item) => {
-      const photos = await db
-        .select({
-          id: inspectionPhotos.id,
-          photoUrl: inspectionPhotos.photoUrl,
-          caption: inspectionPhotos.caption,
-        })
-        .from(inspectionPhotos)
-        .where(eq(inspectionPhotos.inspectionItemId, item.id));
+  // Each item's photos in their order, of which only the shown ones are read
+  // from storage, by key: one item after the other, so at most one item's
+  // photos load at once.
+  const itemsWithPhotos = [];
+  for (const item of items) {
+    const photos = await db
+      .select({
+        photoKey: inspectionPhotos.photoKey,
+        caption: inspectionPhotos.caption,
+      })
+      .from(inspectionPhotos)
+      .where(eq(inspectionPhotos.inspectionItemId, item.id))
+      .orderBy(asc(inspectionPhotos.displayOrder), asc(inspectionPhotos.createdAt));
 
-      const productSnapshot = item.productSnapshot as {
-        name?: string;
-        unitIdentifier?: string | null;
-      } | null;
-      const productName = productSnapshot?.unitIdentifier
-        ? `${productSnapshot.name || "Équipement"} — ${productSnapshot.unitIdentifier}`
-        : productSnapshot?.name || "Équipement";
+    const shownPhotos = await Promise.all(
+      photos.slice(0, INSPECTION_REPORT_PHOTOS_PER_ITEM).map(async (photo) => ({
+        src: await readStoredImageForPdf(photo.photoKey, `${store.id}/inspections`, "photo"),
+        caption: photo.caption,
+      })),
+    );
 
-      return {
-        productName,
-        condition: item.overallCondition as ConditionRating,
-        notes: item.notes,
-        photos: photos.map((p) => ({
-          url: p.photoUrl,
-          caption: p.caption,
-        })),
-      };
-    }),
-  );
+    const productSnapshot = item.productSnapshot as {
+      name?: string;
+      unitIdentifier?: string | null;
+    } | null;
+    const productName = productSnapshot?.unitIdentifier
+      ? `${productSnapshot.name || "Équipement"} — ${productSnapshot.unitIdentifier}`
+      : productSnapshot?.name || "Équipement";
+
+    itemsWithPhotos.push({
+      productName,
+      condition: item.overallCondition as ConditionRating,
+      notes: item.notes,
+      photos: shownPhotos,
+      photoCount: photos.length,
+    });
+  }
 
   // Generate document number
   const documentNumber = await generateInspectionDocumentNumber(store.id);
@@ -119,8 +128,7 @@ export async function generateInspectionReport({
   // Get translations for the locale
   const translations = getInspectionTranslations(locale);
 
-  // Convert store logo to PDF-compatible format
-  const pdfLogoUrl = await convertImageForPdf(getLogoForLightBackground(store));
+  const pdfLogoUrl = await readStoreLogoForPdf(store);
 
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(

@@ -41,6 +41,15 @@ export const IMAGE_UPLOAD_KINDS = [
 export type ImageUploadKind = (typeof IMAGE_UPLOAD_KINDS)[number];
 
 /**
+ * The key an image upload returns: a bare file name under the folder its
+ * route chose. With no slash and no dot segment, it can only name a file of
+ * that folder, so a save builds the stored key and URL from it on the server.
+ */
+export const uploadedImageFileNameSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9_-]+\.(?:jpe?g|png|gif|webp)$/);
+
+/**
  * Where each kind of image is stored, under the store's folder (the avatar
  * under the user's), and how large it may be. Shared by the dashboard's file
  * routes and the API's upload procedures.

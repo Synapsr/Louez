@@ -2812,6 +2812,12 @@
         "overbooked": "Nadmiarowa",
         "turnoverBufferOverridden": "Skrócony bufor",
         "contract_signed": "Umowa podpisana",
+        "inspection_departure_started": "Protokół wydania rozpoczęty",
+        "inspection_departure_completed": "Protokół wydania zakończony",
+        "inspection_return_started": "Protokół zwrotu rozpoczęty",
+        "inspection_return_completed": "Protokół zwrotu zakończony",
+        "inspection_damage_detected": "W protokole stwierdzono szkody",
+        "inspection_signed": "Protokół podpisany przez klienta",
         "contractUnsigned": "Bez podpisanej umowy",
         "signedBy": "Podpisane przez: {name}",
         "showAll": "Pokaż wszystko ({count} wydarzeń)",
@@ -5751,14 +5757,6 @@
           "estimatedCost": "Szacowany koszt",
           "captureDeposit": "Potrącić z kaucji",
           "createPayment": "Utwórz płatność"
-        },
-        "activity": {
-          "departureStarted": "Protokół wydania rozpoczęty",
-          "departureCompleted": "Protokół wydania zakończony",
-          "returnStarted": "Protokół zwrotu rozpoczęty",
-          "returnCompleted": "Protokół zwrotu zakończony",
-          "damageDetected": "Wykryto uszkodzenie: {description}",
-          "signed": "Protokół podpisany przez klienta"
         },
         "prompt": {
           "departureTitle": "Wykonać protokół?",

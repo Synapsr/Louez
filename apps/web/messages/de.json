@@ -2851,6 +2851,12 @@
         "overbooked": "Überbucht",
         "turnoverBufferOverridden": "Puffer verkürzt",
         "contract_signed": "Vertrag unterschrieben",
+        "inspection_departure_started": "Abholprotokoll gestartet",
+        "inspection_departure_completed": "Abholprotokoll abgeschlossen",
+        "inspection_return_started": "Rückgabeprotokoll gestartet",
+        "inspection_return_completed": "Rückgabeprotokoll abgeschlossen",
+        "inspection_damage_detected": "Schaden im Protokoll festgestellt",
+        "inspection_signed": "Protokoll vom Kunden unterschrieben",
         "contractUnsigned": "Ohne unterschriebenen Vertrag",
         "signedBy": "Unterschrieben von {name}",
         "showAll": "Alle anzeigen ({count} Ereignisse)",
@@ -5751,14 +5757,6 @@
           "estimatedCost": "Geschätzte Kosten",
           "captureDeposit": "Von Kaution abziehen",
           "createPayment": "Zahlung erstellen"
-        },
-        "activity": {
-          "departureStarted": "Abholprotokoll gestartet",
-          "departureCompleted": "Abholprotokoll abgeschlossen",
-          "returnStarted": "Rückgabeprotokoll gestartet",
-          "returnCompleted": "Rückgabeprotokoll abgeschlossen",
-          "damageDetected": "Schaden erkannt: {description}",
-          "signed": "Protokoll vom Kunden unterschrieben"
         },
         "prompt": {
           "departureTitle": "Protokoll durchführen?",

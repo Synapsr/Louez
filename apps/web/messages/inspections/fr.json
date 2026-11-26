@@ -31,7 +31,8 @@
     "equipment": "Équipement",
     "condition": "État",
     "photos": "Photos",
-    "notes": "Remarques"
+    "notes": "Remarques",
+    "photoUnavailable": "Photo indisponible"
   },
   "signature": {
     "customerSignature": "Signature du client",

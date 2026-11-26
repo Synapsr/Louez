@@ -47,6 +47,7 @@ export const authInstance = {
 after(() => rmSync(directory, { recursive: true }));
 
 // The status-change module the tools import pulls in "server-only".
+const FILES_SDK = new URL("../../node_modules/files-sdk/dist/", import.meta.url);
 Reflect.get(
   nodeModule,
   "registerHooks",
@@ -57,6 +58,12 @@ Reflect.get(
     next: (specifier: string, context: unknown) => unknown,
   ) {
     if (specifier === "server-only") return { url: "node:module", shortCircuit: true };
+    // The PDFs' images are read through the file storage SDK, which exports ESM
+    // only, through an "import" condition the test's require misses.
+    if (specifier === "files-sdk" || specifier.startsWith("files-sdk/")) {
+      const entry = specifier === "files-sdk" ? "index.js" : `${specifier.slice(10)}/index.js`;
+      return { url: new URL(entry, FILES_SDK).href, shortCircuit: true };
+    }
     if (specifier === "@louez/auth") {
       return { url: pathToFileURL(authStubPath).href, shortCircuit: true };
     }

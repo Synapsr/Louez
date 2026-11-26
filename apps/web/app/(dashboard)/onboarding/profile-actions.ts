@@ -6,8 +6,8 @@ import { db, users } from "@louez/db";
 import {
   type AcquisitionInput,
   acquisitionSchema,
-  isOwnedImageUrl,
   profileSchema,
+  uploadedImageFileNameSchema,
 } from "@louez/validations";
 import { z } from "zod";
 
@@ -15,12 +15,13 @@ import { persistSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { auth } from "@/lib/auth";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { getImageFiles } from "@/lib/storage/files";
 
 import { sendAfterResponse } from "./_lib/send-after-response";
 
 const updateUserProfileSchema = profileSchema.extend({
-  // undefined = keep the current image, null = remove it, string = uploaded URL.
-  imageUrl: z.string().url().nullable().optional(),
+  // undefined = keep the current image, null = remove it, string = the avatar upload's key.
+  imageKey: uploadedImageFileNameSchema.nullable().optional(),
 });
 
 type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;
@@ -36,10 +37,12 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     return { error: "errors.invalidData" };
   }
 
-  const imageUrl = parsed.data.imageUrl;
-  if (imageUrl && !isOwnedImageUrl(imageUrl, `users/${session.user.id}`)) {
-    return { error: "errors.invalidData" };
-  }
+  // The key can only name a file of the user's avatar folder, and the URL
+  // comes from it, whatever the storage mode.
+  const { imageKey } = parsed.data;
+  const imageUrl = imageKey
+    ? await getImageFiles().url(`users/${session.user.id}/${imageKey}`)
+    : imageKey;
 
   await persistSignupOrigin(session.user.id);
   await db

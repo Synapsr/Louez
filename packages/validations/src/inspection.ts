@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { uploadedImageFileNameSchema } from "./image";
+
 // ============================================================================
 // Enums
 // ============================================================================
@@ -106,9 +108,12 @@ export const inspectionFieldValueSchema = z.object({
 
 export type InspectionFieldValueInput = z.infer<typeof inspectionFieldValueSchema>;
 
+/**
+ * A photo the wizard uploaded: its file name in the store's inspections
+ * folder. The server derives the stored key and URL from it.
+ */
 export const inspectionPhotoSchema = z.object({
-  key: z.string().regex(/^[a-zA-Z0-9_-]+\.(?:jpe?g|png|gif|webp)$/),
-  url: z.string().url(),
+  key: uploadedImageFileNameSchema,
   caption: z.string().max(500).optional().nullable(),
 });
 

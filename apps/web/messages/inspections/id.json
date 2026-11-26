@@ -31,7 +31,8 @@
     "equipment": "Peralatan",
     "condition": "Kondisi",
     "photos": "Foto",
-    "notes": "Catatan"
+    "notes": "Catatan",
+    "photoUnavailable": "Foto tidak tersedia"
   },
   "signature": {
     "customerSignature": "Tanda Tangan Pelanggan",

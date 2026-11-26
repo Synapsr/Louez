@@ -2851,6 +2851,12 @@
         "overbooked": "オーバーブッキング",
         "turnoverBufferOverridden": "バッファー短縮",
         "contract_signed": "契約署名",
+        "inspection_departure_started": "貸出時の検査を開始",
+        "inspection_departure_completed": "貸出時の検査が完了",
+        "inspection_return_started": "返却時の検査を開始",
+        "inspection_return_completed": "返却時の検査が完了",
+        "inspection_damage_detected": "検査で損傷を確認",
+        "inspection_signed": "お客様が検査報告書に署名",
         "contractUnsigned": "契約未署名",
         "signedBy": "署名者：{name}",
         "showAll": "すべて表示 ({count} イベント)",
@@ -5887,14 +5893,6 @@
           "estimatedCost": "推定コスト",
           "captureDeposit": "デポジットからの回収",
           "createPayment": "支払いの作成"
-        },
-        "activity": {
-          "departureStarted": "出国検査開始",
-          "departureCompleted": "出国検査完了",
-          "returnStarted": "返送検査開始",
-          "returnCompleted": "返品検査完了",
-          "damageDetected": "検出された損傷: {description}",
-          "signed": "顧客が署名した検査"
         },
         "prompt": {
           "departureTitle": "検査を行いますか?",

@@ -57,6 +57,7 @@ export interface InspectionTranslations {
     condition: string;
     photos: string;
     notes: string;
+    photoUnavailable: string;
   };
   signature: {
     customerSignature: string;
@@ -88,8 +89,12 @@ interface Store {
   primaryColor?: string;
 }
 
+/** The photos an item card shows; the generator reads only these. */
+export const INSPECTION_REPORT_PHOTOS_PER_ITEM = 4;
+
 interface InspectionPhoto {
-  url: string;
+  /** A JPEG or PNG the renderer embeds; null for a photo that could not be read. */
+  src: string | null;
   caption?: string | null;
 }
 
@@ -97,7 +102,10 @@ interface InspectionItem {
   productName: string;
   condition: "excellent" | "good" | "fair" | "damaged";
   notes?: string | null;
+  /** The photos shown, at most INSPECTION_REPORT_PHOTOS_PER_ITEM. */
   photos: InspectionPhoto[];
+  /** Every photo of the item, shown or not. */
+  photoCount: number;
 }
 
 interface Inspection {
@@ -151,7 +159,7 @@ export function InspectionReportDocument({
 
   // Calculate summary stats
   const totalItems = inspection.items.length;
-  const totalPhotos = inspection.items.reduce((sum, item) => sum + item.photos.length, 0);
+  const totalPhotos = inspection.items.reduce((sum, item) => sum + item.photoCount, 0);
 
   return (
     <Document>
@@ -269,17 +277,27 @@ export function InspectionReportDocument({
                 </View>
               )}
 
-              {item.photos.length > 0 && (
+              {item.photoCount > 0 && (
                 <View style={styles.photosGrid}>
-                  {item.photos.slice(0, 4).map((photo, photoIndex) => (
+                  {item.photos.map((photo, photoIndex) => (
                     <View key={photoIndex} style={styles.photoContainer}>
-                      <Image src={photo.url} style={styles.photo} />
+                      {photo.src ? (
+                        <Image src={photo.src} style={styles.photo} />
+                      ) : (
+                        <View style={styles.photoUnavailable}>
+                          <Text style={styles.photoUnavailableText}>
+                            {t.table.photoUnavailable}
+                          </Text>
+                        </View>
+                      )}
                       {photo.caption && <Text style={styles.photoCaption}>{photo.caption}</Text>}
                     </View>
                   ))}
-                  {item.photos.length > 4 && (
+                  {item.photoCount > item.photos.length && (
                     <View style={styles.morePhotos}>
-                      <Text style={styles.morePhotosText}>+{item.photos.length - 4}</Text>
+                      <Text style={styles.morePhotosText}>
+                        +{item.photoCount - item.photos.length}
+                      </Text>
                     </View>
                   )}
                 </View>

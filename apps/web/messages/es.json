@@ -2851,6 +2851,12 @@
         "overbooked": "Sobrevendida",
         "turnoverBufferOverridden": "Margen reducido",
         "contract_signed": "Contrato firmado",
+        "inspection_departure_started": "Acta de salida iniciada",
+        "inspection_departure_completed": "Acta de salida completada",
+        "inspection_return_started": "Acta de devolución iniciada",
+        "inspection_return_completed": "Acta de devolución completada",
+        "inspection_damage_detected": "Daños constatados en el acta",
+        "inspection_signed": "Acta firmada por el cliente",
         "contractUnsigned": "Sin contrato firmado",
         "signedBy": "Firmado por {name}",
         "showAll": "Ver todo ({count} eventos)",
@@ -5751,14 +5757,6 @@
           "estimatedCost": "Costo estimado",
           "captureDeposit": "Retener del depósito",
           "createPayment": "Crear pago"
-        },
-        "activity": {
-          "departureStarted": "Acta de salida iniciada",
-          "departureCompleted": "Acta de salida completada",
-          "returnStarted": "Acta de devolución iniciada",
-          "returnCompleted": "Acta de devolución completada",
-          "damageDetected": "Daño detectado: {description}",
-          "signed": "Acta firmada por el cliente"
         },
         "prompt": {
           "departureTitle": "¿Realizar acta de entrega?",

@@ -31,7 +31,8 @@
     "equipment": "장비",
     "condition": "상태",
     "photos": "사진",
-    "notes": "메모"
+    "notes": "메모",
+    "photoUnavailable": "사진을 표시할 수 없음"
   },
   "signature": {
     "customerSignature": "고객 서명",
