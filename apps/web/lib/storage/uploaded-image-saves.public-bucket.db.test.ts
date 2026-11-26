@@ -1,4 +1,4 @@
-import { describeUploadedImageSaves } from "./uploaded-image-saves.fixtures";
+import { describeUploadedImageSaves } from "./uploaded-image-saves.test-fixtures";
 
 // Storage served from a public bucket: stored URLs are the bucket's.
 describeUploadedImageSaves(

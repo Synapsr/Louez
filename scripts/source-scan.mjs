@@ -210,7 +210,11 @@ export function readBindings(ast, tables) {
   return { tableOf, isNamespace };
 }
 
-/** Source files under apps/ and packages/, without migrations, declarations and tests. */
+/**
+ * Source files under apps/ and packages/, excluding migrations, declarations,
+ * tests (`*.test.*`) and test-only fixtures (`*.test-fixtures.*`). Tests and
+ * their fixtures can seed rows directly in isolated test databases.
+ */
 export function listSourceFiles() {
   // Tracked and new files, never ignored ones, so a local build folder cannot
   // change the result.
@@ -223,7 +227,7 @@ export function listSourceFiles() {
     .filter((file) => SOURCE_EXTENSIONS.has(path.extname(file)))
     .filter((file) => !file.startsWith("packages/db/src/migrations/"))
     .filter((file) => !file.endsWith(".d.ts"))
-    .filter((file) => !path.basename(file).includes(".test."))
+    .filter((file) => !/\.(?:test|test-fixtures)\./.test(path.basename(file)))
     .filter((file) => existsSync(path.join(ROOT, file)))
     .sort();
 }
