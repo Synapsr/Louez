@@ -1,3 +1,5 @@
+"use client";
+
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
@@ -10,6 +12,7 @@ import { useTranslations } from "next-intl";
 
 import { cn } from "@louez/utils";
 
+import { useFormatMoney } from "@/hooks/use-format-money";
 import {
   RESERVATION_STATUS_TONE_CLASS,
   type ReservationStatus,
@@ -19,8 +22,11 @@ import type { CheckoutFailure } from "@/lib/reservations/util.checkout-failure";
 interface ReservationStatusCardProps {
   status: ReservationStatus;
   cancelledRequest?: boolean;
-  isRentalPaid: boolean;
-  /** Payment is the next step (confirmed, unpaid, Stripe active). */
+  /** What settles the rental so far (`getRentalBalance`). */
+  rentalPaid: number;
+  /** What remains to pay for the rental (`getRentalBalance`): settled at zero. */
+  rentalDue: number;
+  /** Payment is the next step (confirmed, a balance due, Stripe active). */
   paymentRequired: boolean;
   /** Where the store's answer will land. Named in the pending copy. */
   customerEmail: string;
@@ -41,17 +47,22 @@ const STATUS_ICON: Record<ReservationStatus, typeof ClockIcon> = {
 /**
  * Status disc, one title, one line: where the reservation stands and what
  * happens next. Sits in the page's status bar, so it brings no card of its own.
+ * A confirmed reservation reads its balance: all set once nothing remains, a
+ * balance due with its amount once part of it is paid.
  */
 export const ReservationStatusCard = ({
   status,
   cancelledRequest = false,
-  isRentalPaid,
+  rentalPaid,
+  rentalDue,
   paymentRequired,
   customerEmail,
   checkoutFailure,
 }: ReservationStatusCardProps) => {
   const t = useTranslations("storefront.account");
-  const allSet = status === "confirmed" && isRentalPaid;
+  const formatMoney = useFormatMoney();
+  const allSet = status === "confirmed" && rentalDue === 0;
+  const balanceDue = status === "confirmed" && rentalPaid > 0 && rentalDue > 0;
 
   const Icon = paymentRequired ? AlertCircleIcon : STATUS_ICON[status];
   const toneClass = paymentRequired
@@ -62,15 +73,17 @@ export const ReservationStatusCard = ({
 
   const title = checkoutFailure
     ? t("status.checkoutFailed")
-    : paymentRequired
-      ? t("paymentRequired")
-      : allSet
-        ? t("status.allSet")
-        : status === "pending"
-          ? t("status.pendingFull")
-          : cancelledRequest
-            ? t("cancellation.cancelled")
-            : t(`status.${status}`);
+    : balanceDue
+      ? t("status.balanceDue")
+      : paymentRequired
+        ? t("paymentRequired")
+        : allSet
+          ? t("status.allSet")
+          : status === "pending"
+            ? t("status.pendingFull")
+            : cancelledRequest
+              ? t("cancellation.cancelled")
+              : t(`status.${status}`);
 
   const description = checkoutFailure
     ? checkoutFailure.reason === "amount_too_small" &&
@@ -81,13 +94,15 @@ export const ReservationStatusCard = ({
           currency: checkoutFailure.currency,
         })
       : t("status.checkoutFailedDescription")
-    : paymentRequired
-      ? t("confirmedAwaitingPayment")
-      : allSet
-        ? t("status.allSetDescription")
-        : cancelledRequest
-          ? t("cancellation.done")
-          : t(`status.${status}Description`);
+    : balanceDue
+      ? t("status.balanceDueDescription", { amount: formatMoney(rentalDue) })
+      : paymentRequired
+        ? t("confirmedAwaitingPayment")
+        : allSet
+          ? t("status.allSetDescription")
+          : cancelledRequest
+            ? t("cancellation.done")
+            : t(`status.${status}Description`);
 
   // Waiting on the store is the one state where the customer has nothing to do
   // and no date to look at, so the card leads with where the answer will land

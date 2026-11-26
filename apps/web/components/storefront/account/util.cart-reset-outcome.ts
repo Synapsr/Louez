@@ -16,6 +16,6 @@ export const cartResetOutcome = (
   event: string | null | undefined,
   paymentStatus: string,
 ): CartResetOutcome => {
-  if (event === "paid") return paymentStatus === "paid" ? "paid" : null;
+  if (event === "paid") return paymentStatus === "received" ? "paid" : null;
   return event === "requested" ? "requested" : null;
 };

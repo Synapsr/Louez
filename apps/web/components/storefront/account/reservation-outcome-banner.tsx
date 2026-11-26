@@ -42,7 +42,7 @@ export const ReservationOutcomeBanner = ({
 
   if (!event || event === "requested") return null;
 
-  const key: BannerKey = event === "paid" && paymentStatus !== "paid" ? "processing" : event;
+  const key: BannerKey = event === "paid" && paymentStatus !== "received" ? "processing" : event;
   const Icon = ICON[key];
 
   return (

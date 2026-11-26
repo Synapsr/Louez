@@ -12,7 +12,6 @@ import {
   hasRentalPaymentInProgress,
   isFailedRefundRow,
   isRefundRow,
-  isRentalPaid,
   isStripeRefundRow,
   readPaymentRow,
   refundedPaymentState,
@@ -27,51 +26,6 @@ const stripeRefund = (amount: string, type = "rental") => ({
   stripeRefundId: "re_1",
   stripePaymentIntentId: null,
   stripeCheckoutSessionId: null,
-});
-
-describe("isRentalPaid", () => {
-  test("only a completed rental payment counts", () => {
-    assert.equal(isRentalPaid([{ type: "rental", status: "completed", amount: "10" }]), true);
-    assert.equal(isRentalPaid([{ type: "deposit", status: "completed", amount: "10" }]), false);
-    assert.equal(isRentalPaid([{ type: "rental", status: "pending", amount: "10" }]), false);
-    assert.equal(isRentalPaid([]), false);
-  });
-
-  test("a refund row never makes a rental paid", () => {
-    // Fully refunded through Stripe: the charge is `refunded`, only the refund row is completed.
-    assert.equal(
-      isRentalPaid([
-        { type: "rental", status: "refunded", amount: "0", stripePaymentIntentId: "pi_1" },
-        stripeRefund("100"),
-      ]),
-      false,
-    );
-    assert.equal(
-      isRentalPaid([{ type: "rental", status: "completed", amount: "10", refundOfPaymentId: "a" }]),
-      false,
-    );
-  });
-
-  test("with the reservation's currency, a card payment in another currency pays nothing", () => {
-    const paid = (method: string, currency: string | null) => [
-      { type: "rental", status: "completed", amount: "10", method, currency },
-    ];
-
-    assert.equal(isRentalPaid(paid("stripe", "USD"), "EUR"), false);
-    assert.equal(getRentalPaid(paid("stripe", "USD"), "EUR"), 0);
-    assert.equal(isRentalPaid(paid("stripe", "eur"), "EUR"), true);
-    // A Stripe payment with no stored currency, and any payment outside Stripe, are in
-    // the reservation's currency: older manual rows kept the column's EUR default.
-    assert.equal(isRentalPaid(paid("stripe", null), "USD"), true);
-    assert.equal(isRentalPaid(paid("cash", "EUR"), "USD"), true);
-    assert.equal(getRentalPaid(paid("cash", "EUR"), "USD"), 10);
-    // Without a currency, or with rows loaded without theirs, nothing is left out.
-    assert.equal(isRentalPaid(paid("stripe", "USD")), true);
-    assert.equal(
-      isRentalPaid([{ type: "rental", status: "completed", amount: "10" }], "EUR"),
-      true,
-    );
-  });
 });
 
 describe("isStripeRefundRow", () => {
@@ -98,13 +52,13 @@ describe("isStripeRefundRow", () => {
 });
 
 describe("getReservationPaymentStatus", () => {
-  test("paid beats processing beats unpaid", () => {
+  test("received beats processing beats unpaid", () => {
     assert.equal(
       getReservationPaymentStatus([
         { type: "rental", status: "pending", amount: "10" },
         { type: "rental", status: "completed", amount: "10" },
       ]),
-      "paid",
+      "received",
     );
     assert.equal(
       getReservationPaymentStatus([{ type: "rental", status: "pending", amount: "10" }]),
@@ -117,6 +71,35 @@ describe("getReservationPaymentStatus", () => {
     assert.equal(
       hasRentalPaymentInProgress([{ type: "deposit", status: "pending", amount: "1" }]),
       false,
+    );
+  });
+
+  test("a deposit of the rental, received, is received whatever remains", () => {
+    // 9 of 30 taken at checkout: the checkout's payment has landed.
+    assert.equal(
+      getReservationPaymentStatus([{ type: "rental", status: "completed", amount: "9" }]),
+      "received",
+    );
+  });
+
+  test("a security deposit or a refund row is no rental payment received", () => {
+    assert.equal(
+      getReservationPaymentStatus([{ type: "deposit", status: "completed", amount: "10" }]),
+      "unpaid",
+    );
+    // Fully refunded through Stripe: the charge is `refunded`, only the refund row is completed.
+    assert.equal(
+      getReservationPaymentStatus([
+        { type: "rental", status: "refunded", amount: "0", stripePaymentIntentId: "pi_1" },
+        stripeRefund("100"),
+      ]),
+      "unpaid",
+    );
+    assert.equal(
+      getReservationPaymentStatus([
+        { type: "rental", status: "completed", amount: "10", refundOfPaymentId: "a" },
+      ]),
+      "unpaid",
     );
   });
 });

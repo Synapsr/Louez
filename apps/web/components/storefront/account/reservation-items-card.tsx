@@ -27,6 +27,8 @@ interface ReservationItemsCardProps {
   total: number;
   /** Paid toward the rental itself; deposits and damage fees never count. */
   amountPaid: number;
+  /** What remains to pay for the rental (`getRentalBalance`), never below zero. */
+  remainingDue: number;
   /**
    * Nothing has been charged and the reservation is still live, so the amounts
    * below are what the rental will cost, not what the customer has paid.
@@ -48,6 +50,7 @@ export const ReservationItemsCard = ({
   damageFees,
   total,
   amountPaid,
+  remainingDue,
   isUnsettled,
   notes,
 }: ReservationItemsCardProps) => {
@@ -123,11 +126,11 @@ export const ReservationItemsCard = ({
             </dd>
           </div>
         ) : null}
-        {amountPaid > 0 && amountPaid < total ? (
+        {amountPaid > 0 && remainingDue > 0 ? (
           <div className="flex justify-between gap-4 text-warning">
             <dt>{t("remainingDue")}</dt>
             <dd>
-              <Price amount={total - amountPaid} size="sm" className="text-warning" />
+              <Price amount={remainingDue} size="sm" className="text-warning" />
             </dd>
           </div>
         ) : null}

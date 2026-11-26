@@ -213,7 +213,7 @@ export const getDemoCheckout = (period: RentalPeriodValue, locale: Locale) => {
     values,
     paidReservation: {
       ...detail,
-      outcome: { event: "paid", paymentStatus: "paid" },
+      outcome: { event: "paid", paymentStatus: "received" },
       fulfillment: {
         ...detail.fulfillment,
         fulfillment: { pickup: place, dropoff: place, isSamePlace: true },

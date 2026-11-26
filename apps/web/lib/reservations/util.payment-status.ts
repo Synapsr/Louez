@@ -1,14 +1,14 @@
 /**
  * One reading of a reservation's payments, shared by the account list and
- * the reservation page. "Paid" means the rental itself is settled: a
- * completed `rental` payment. Deposits, holds and refunds never count.
+ * the reservation page. Whether the rental is settled is its balance
+ * (`getRentalBalance`, `util.rental-amount.ts`); deposits, holds and refunds
+ * are read here.
  */
 
 import {
   getRentalPaid,
   getSettledPaymentAmount,
   isCustomerDepositHoldRow,
-  isPaymentInCurrency,
   isStripeRefundRow,
 } from "@louez/utils";
 
@@ -30,7 +30,12 @@ export interface PaymentLike {
   releaseOwedAt?: Date | string | null;
 }
 
-export type ReservationPaymentStatus = "paid" | "processing" | "unpaid";
+/**
+ * Whether the payment the customer just made has landed (`received`), is still
+ * on its way (`processing`), or nothing was paid (`unpaid`). It says nothing of
+ * what remains: a deposit received leaves the balance due.
+ */
+export type ReservationPaymentStatus = "received" | "processing" | "unpaid";
 
 // One in-memory definition of a Stripe refund row, shared with the cash ledger.
 export { isStripeRefundRow };
@@ -140,24 +145,23 @@ export const refundedPaymentState = (
   return allMade ? "done" : "issued";
 };
 
-/** With `currency`, the reservation's, a payment in another currency pays nothing. */
-export const isRentalPaid = (payments: readonly PaymentLike[], currency?: string): boolean =>
-  payments.some(
-    (payment) =>
-      payment.type === "rental" &&
-      payment.status === "completed" &&
-      !isRefundRow(payment) &&
-      (!currency || isPaymentInCurrency(payment, currency)),
-  );
-
 /** A rental payment still `pending` (3DS, webhook lag). */
 export const hasRentalPaymentInProgress = (payments: readonly PaymentLike[]): boolean =>
   payments.some((payment) => payment.type === "rental" && payment.status === "pending");
 
+/**
+ * What the page reached after a checkout (`?event=paid`) says of its payment: a
+ * completed rental payment, refunds left out, has landed; a pending one is on
+ * its way.
+ */
 export const getReservationPaymentStatus = (
   payments: readonly PaymentLike[],
 ): ReservationPaymentStatus => {
-  if (isRentalPaid(payments)) return "paid";
+  const received = payments.some(
+    (payment) =>
+      payment.type === "rental" && payment.status === "completed" && !isRefundRow(payment),
+  );
+  if (received) return "received";
   if (hasRentalPaymentInProgress(payments)) return "processing";
   return "unpaid";
 };

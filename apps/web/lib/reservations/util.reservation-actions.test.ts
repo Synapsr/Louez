@@ -4,7 +4,7 @@ import { describe, test } from "node:test";
 import { getReservationActions } from "./util.reservation-actions";
 
 const base = {
-  isRentalPaid: false,
+  rentalDue: 30,
   isSigned: false,
   stripeAccountId: "acct_1",
   stripeChargesEnabled: true,
@@ -40,7 +40,7 @@ describe("getReservationActions", () => {
     const paid = getReservationActions({
       ...base,
       status: "confirmed",
-      isRentalPaid: true,
+      rentalDue: 0,
     });
     assert.equal(paid.required, null);
     assert.equal(paid.canPay, false);
@@ -48,12 +48,21 @@ describe("getReservationActions", () => {
     const signed = getReservationActions({
       ...base,
       status: "confirmed",
-      isRentalPaid: true,
+      rentalDue: 0,
       isSigned: true,
     });
     assert.equal(signed.required, null);
     assert.equal(signed.canSign, false);
     assert.equal(signed.canDownloadContract, true);
+  });
+
+  test("a balance left after a deposit is still to pay, until nothing remains", () => {
+    for (const status of ["confirmed", "ongoing"]) {
+      const balance = getReservationActions({ ...base, status, rentalDue: 21 });
+      assert.equal(balance.required, "payment", status);
+      assert.equal(balance.canPay, true, status);
+      assert.equal(getReservationActions({ ...base, status, rentalDue: 0 }).canPay, false, status);
+    }
   });
 
   test("a finished rental is no longer offered for signature", () => {

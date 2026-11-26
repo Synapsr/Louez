@@ -3,8 +3,8 @@ import type { StoreSettings } from "@louez/types";
 import { recordedPaymentAmount } from "@louez/api/services/payment-amount";
 
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
-import { type PaymentLike, getRentalPaid } from "@/lib/reservations/util.payment-status";
-import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
+import type { PaymentLike } from "@/lib/reservations/util.payment-status";
+import { getRentalBalance } from "@/lib/reservations/util.rental-amount";
 
 export type PaymentRequestTerms =
   | {
@@ -86,7 +86,7 @@ export function paymentRequestTerms(input: {
   if (input.type === "rental") {
     // What was received in the reservation's currency: a payment in another one does
     // not reduce what is owed (invariant M6).
-    const amount = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
+    const amount = getRentalBalance(reservation, currency).due;
     // In hundredths, exact: 0.57 less 0.07 leaves fifty cents due, not a float below.
     if (Math.round(amount * 100) < 50) return { ok: false, error: "errors.noAmountDue" };
     return { ok: true, amount, description: "Rental", currency };

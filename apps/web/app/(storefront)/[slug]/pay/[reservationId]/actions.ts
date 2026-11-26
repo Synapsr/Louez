@@ -17,8 +17,7 @@ import {
   openRentalCheckoutSession,
   type LockedReservation,
 } from "@/lib/reservations/rental-session-gate";
-import { getRentalPaid } from "@/lib/reservations/util.payment-status";
-import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
+import { getRentalBalance } from "@/lib/reservations/util.rental-amount";
 import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
@@ -118,7 +117,7 @@ const requestRefusal = (
   if (paymentRequest.type !== "rental") return null;
   const currency = reservationCurrency(reservation.currency, storeSettings);
   if (normalizeCurrency(paymentRequest.currency, "") !== currency) return "no_longer_current";
-  const owed = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
+  const owed = getRentalBalance(reservation, currency).due;
   const owedHundredths = Math.round(owed * 100);
   if (owedHundredths === 0) return "already_paid";
   // What the session would charge, in the currency's precision: a request the

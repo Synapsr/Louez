@@ -1,3 +1,5 @@
+import { getRentalPaid, type SettledPaymentRow } from "@louez/utils";
+
 /** An amount in whole hundredths; a value that is not a finite number reads as nothing. */
 const toHundredths = (value: string | number | null | undefined): number => {
   const amount = Number(value ?? 0);
@@ -29,6 +31,25 @@ export function getRentalRemaining(
 ): number {
   const total = Math.max(0, toHundredths(reservation.totalAmount));
   return Math.max(0, total - toHundredths(rentalPaid)) / 100;
+}
+
+/**
+ * Where the customer stands on the rental, in the reservation's currency:
+ * `paid`, what settles it (`getRentalPaid`), and `due`, what is still owed
+ * (`getRentalRemaining`). The rental is settled when `due` is zero, overpaid
+ * included. The one reading of every customer-facing "paid": the account
+ * list and page, their pay button, the customer's payment session and the
+ * store's payment request.
+ */
+export function getRentalBalance(
+  reservation: {
+    readonly totalAmount: string | number | null;
+    readonly payments: readonly SettledPaymentRow[];
+  },
+  currency: string,
+): { paid: number; due: number } {
+  const paid = getRentalPaid(reservation.payments, currency);
+  return { paid, due: getRentalRemaining(reservation, paid) };
 }
 
 /**

@@ -13,7 +13,8 @@ import { toReservationStatus } from "@/components/storefront/account/reservation
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
 import { requireCustomerSession } from "@/lib/customer-auth/require-customer-session";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
-import { isRentalPaid } from "@/lib/reservations/util.payment-status";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import { getRentalBalance } from "@/lib/reservations/util.rental-amount";
 import { getReservationActions } from "@/lib/reservations/util.reservation-actions";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
@@ -64,15 +65,21 @@ export default async function AccountPage({ params }: AccountPageProps) {
       startDate: true,
       endDate: true,
       totalAmount: true,
+      currency: true,
       signedAt: true,
     },
     with: {
       items: { columns: { id: true, productSnapshot: true, quantity: true } },
+      // What settles each rental (`getRentalBalance`): refunds by the row they give
+      // back, card payments by their currency.
       payments: {
         columns: {
+          id: true,
           type: true,
           status: true,
           amount: true,
+          method: true,
+          currency: true,
           refundOfPaymentId: true,
           stripeRefundId: true,
           stripePaymentIntentId: true,
@@ -96,7 +103,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
     totalAmount: Number.parseFloat(row.totalAmount),
     requiredAction: getReservationActions({
       status: row.status,
-      isRentalPaid: isRentalPaid(row.payments),
+      rentalDue: getRentalBalance(row, reservationCurrency(row.currency, store.settings)).due,
       isSigned: row.signedAt !== null,
       stripeAccountId: store.stripeAccountId,
       stripeChargesEnabled: store.stripeChargesEnabled,
