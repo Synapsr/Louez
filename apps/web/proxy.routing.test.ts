@@ -4,6 +4,8 @@ import { NextRequest, type NextResponse } from "next/server";
 
 import { EMBED_MODE_HEADER } from "@/lib/embed/util.embed-request";
 import { clientTrackingFor } from "@/lib/util.client-tracking";
+import { HANDOFF_ROUTE_HEADER } from "@/lib/handoffs/handoff-privacy";
+import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER } from "@/lib/landing-demos/policy";
 
 process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
 process.env.NEXT_PUBLIC_APP_DOMAIN = "example.com";
@@ -37,13 +39,22 @@ const forwardedHeaders = (response: NextResponse): Headers => {
 const visit = (path: string, host = "app.example.com") =>
   proxy(
     new NextRequest(`https://${host}${path}`, {
-      headers: { host, "x-store-slug": "forged", [EMBED_MODE_HEADER]: "1", accept: "text/html" },
+      headers: {
+        host,
+        "x-store-slug": "forged",
+        "x-sales-channel": "marketplace",
+        "x-storefront-path": "/forged",
+        [EMBED_MODE_HEADER]: "1",
+        accept: "text/html",
+      },
     }),
   );
 
 const assertNoStore = (response: NextResponse) => {
   const headers = forwardedHeaders(response);
   assert.equal(headers.get("x-store-slug"), null);
+  assert.equal(headers.get("x-sales-channel"), null);
+  assert.equal(headers.get("x-storefront-path"), null);
   assert.equal(headers.get("accept"), "text/html");
   assert.equal(response.headers.get("x-store-slug"), null);
   assert.equal(headers.get(EMBED_MODE_HEADER), null);
@@ -72,7 +83,13 @@ const assertTracking = (response: NextResponse, embed: boolean) => {
 
 test("direct dashboard and apex paths discard caller-supplied store attribution", async () => {
   for (const host of ["app.example.com", "example.com", "www.example.com"]) {
-    for (const path of ["/dashboard", "/shop/about", "/"]) {
+    for (const path of [
+      "/dashboard",
+      "/shop/about",
+      "/api-bikes/about",
+      "/ingest-shop/about",
+      "/",
+    ]) {
       const response = await visit(path, host);
       assert.equal(response.headers.get("x-middleware-rewrite"), null);
       assertNoStore(response);
@@ -118,11 +135,33 @@ test("standalone dashboard, fresh install and storefront sanitize store attribut
   assert.equal(forwardedHeaders(embed).get("x-store-slug"), "solo");
   assertTracking(embed, true);
   assertTracking(await visit("/shop/embed"), false);
+  for (const path of ["/login-bikes/about", "/dashboard-bikes/about", "/demo-bikes/about"]) {
+    const rewritten = await visit(path);
+    assert.equal(
+      new URL(rewritten.headers.get("x-middleware-rewrite") ?? "").pathname,
+      `/solo${path}`,
+    );
+    assert.equal(forwardedHeaders(rewritten).get("x-store-slug"), "solo");
+    assertTracking(rewritten, false);
+  }
+  for (const path of ["/login", "/login/reset", "/dashboard/settings", "/demo", "/demo/rental"]) {
+    const direct = await visit(path);
+    assert.equal(direct.headers.get("x-middleware-rewrite"), null);
+    assertNoStore(direct);
+  }
 });
 
 test("direct widget URLs align forwarded headers, tracking policy and CSP", async () => {
   for (const host of ["app.example.com", "example.com", "www.example.com"]) {
-    for (const path of ["/shop/embed", "/shop/embed/", "/shop/embed/availability"]) {
+    for (const path of [
+      "/shop/embed",
+      "/shop/embed/",
+      "/shop/embed/availability",
+      "/login-bikes/embed",
+      "/dashboard-bikes/embed",
+      "/api-bikes/embed",
+      "/ingest-shop/embed",
+    ]) {
       const response = await visit(path, host);
       assert.equal(response.headers.get("x-middleware-rewrite"), null);
       assert.equal(forwardedHeaders(response).get("x-store-slug"), null);
@@ -178,4 +217,57 @@ test("fixed app routes and lookalike paths never acquire widget mode or widget C
       /frame-ancestors \*/,
     );
   }
+});
+
+test("local preview distinguishes dashboard segments from prefix-sharing storefront paths", async () => {
+  process.env.PREVIEW_STORE_SLUG = "preview-shop";
+  for (const path of [
+    "/login",
+    "/login/reset",
+    "/dashboard",
+    "/dashboard/settings",
+    "/demo",
+    "/demo/rental",
+  ]) {
+    const response = await visit(path, "localhost:3000");
+    assert.equal(response.headers.get("x-middleware-rewrite"), null);
+    assertNoStore(response);
+  }
+  for (const path of ["/login-bikes/about", "/dashboard-bikes/about", "/demo-bikes/about"]) {
+    const response = await visit(path, "localhost:3000");
+    assert.equal(
+      new URL(response.headers.get("x-middleware-rewrite") ?? "").pathname,
+      `/preview-shop${path}`,
+    );
+    assert.equal(forwardedHeaders(response).get("x-store-slug"), "preview-shop");
+  }
+});
+
+test("caller-supplied demo and handoff markers are rejected before document routing", async () => {
+  for (const marker of [DEMO_ROUTE_HEADER, DEMO_LOCALE_HEADER, HANDOFF_ROUTE_HEADER]) {
+    for (const path of ["/dashboard", "/login-bikes/embed", "/api-bikes/about"]) {
+      const response = await proxy(
+        new NextRequest(`https://app.example.com${path}`, {
+          headers: { host: "app.example.com", [marker]: "1" },
+        }),
+      );
+      assert.equal(response.status, 400);
+      assert.equal(response.headers.get("x-middleware-next"), null);
+      assert.equal(response.headers.get("x-middleware-rewrite"), null);
+    }
+  }
+});
+
+test("storefront path and channel come from the resolved route and acquisition settings", async () => {
+  const direct = await visit("/shop/about");
+  assertNoStore(direct);
+  const storefront = await visit("/about", "shop.example.com");
+  assert.equal(forwardedHeaders(storefront).get("x-storefront-path"), "/about");
+  assert.equal(forwardedHeaders(storefront).get("x-sales-channel"), null);
+  const marketplace = await visit("/about?channel=marketplace", "shop.example.com");
+  assert.equal(
+    forwardedHeaders(marketplace).get("x-storefront-path"),
+    "/about?channel=marketplace",
+  );
+  assert.equal(forwardedHeaders(marketplace).get("x-sales-channel"), "marketplace");
 });

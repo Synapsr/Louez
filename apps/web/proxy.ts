@@ -143,7 +143,7 @@ const DASHBOARD_ROUTES = [
   "/invitation",
   "/multi-store",
   "/admin", // platform-admin area (gated in its layout)
-  "/demo/", // the one-click demo stores (lib/demo), never a storefront slug
+  "/demo", // the one-click demo stores (lib/demo), never a storefront slug
 ];
 
 /** A route owns its path and descendants, never another segment sharing its prefix. */
@@ -153,7 +153,7 @@ function hasRouteSegmentPrefix(pathname: string, route: string): boolean {
 
 /** Check if the pathname is a dashboard/auth route that should not be rewritten. */
 function isDashboardRoute(pathname: string): boolean {
-  return DASHBOARD_ROUTES.some((route) => pathname.startsWith(route));
+  return DASHBOARD_ROUTES.some((route) => hasRouteSegmentPrefix(pathname, route));
 }
 
 /**
@@ -195,6 +195,8 @@ function createActiveStoreSwitch(request: NextRequest): NextResponse | null {
 function routingHeaders(request: NextRequest, storefrontRewrite = false): Headers {
   const headers = new Headers(request.headers);
   headers.delete("x-store-slug");
+  headers.delete("x-sales-channel");
+  headers.delete("x-storefront-path");
   headers.delete(EMBED_MODE_HEADER);
   if (isEmbedPath(request.nextUrl.pathname, storefrontRewrite)) {
     headers.set(EMBED_MODE_HEADER, "1");
@@ -227,11 +229,6 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
     requestedChannel === MARKETPLACE_SALES_CHANNEL ||
     (requestedChannel !== "direct" && hasMarketplaceCookie);
   const requestHeaders = routingHeaders(request, true);
-
-  // Never trust caller-provided mode headers. The proxy derives them from the
-  // route, query, and cookie before forwarding the rewritten request upstream.
-  requestHeaders.delete("x-sales-channel");
-  requestHeaders.delete("x-storefront-path");
 
   // The i18n request config reads the store's fallback language from this
   // before any page runs; it has no route params of its own.
